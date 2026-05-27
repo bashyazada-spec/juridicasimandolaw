@@ -11,15 +11,6 @@
 </head>
 <body>
 
-<!-- Theme Toggle -->
-<div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme">
-  <div class="theme-switch-track">
-    <span class="theme-switch-icon theme-switch-moon">🌙</span>
-    <span class="theme-switch-icon theme-switch-sun">☀️</span>
-    <div class="theme-switch-thumb"></div>
-  </div>
-</div>
-
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -109,6 +100,18 @@
     </div>
     
     <div class="sidebar-footer">
+      <!-- Theme Toggle Switch Container (above suggest/report) -->
+      <div class="theme-switch-container" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px">
+        <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Display Mode</span>
+        <div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme" style="position:static;transform:none;margin:0">
+          <div class="theme-switch-track">
+            <span class="theme-switch-icon theme-switch-moon">🌙</span>
+            <span class="theme-switch-icon theme-switch-sun">☀️</span>
+            <div class="theme-switch-thumb"></div>
+          </div>
+        </div>
+      </div>
+
       <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="suggest-report-btn" style="margin-bottom:12px">
         <span style="font-size:14px">💬</span> Suggest / Report
       </a>
