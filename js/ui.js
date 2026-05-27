@@ -92,7 +92,7 @@ function renderDashboard() {
       const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate)-new Date())/(1000*60*60*24)) : null;
       const urgency = daysLeft !== null
         ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
-         : daysLeft <= 7  ? {col:"var(--red)",   label:daysLeft===0?"Due today":`${daysLeft}d left`}
+         : daysLeft <= 7  ? {col:"var(--red)",   label:daysLeft===0?"Due today"}
          : daysLeft <= 30 ? {col:"var(--amber)", label:`${daysLeft}d left`}
          :                  {col:"var(--text-dim)",label:`${daysLeft}d left`})
         : null;
@@ -151,25 +151,14 @@ function renderDashProfiles() {
        :                  {col:"var(--text-dim)",label:`${daysLeft}d`,   bg:""})
       : null;
 
-    const nearestHtml = nearest
-      ? `<div style="margin-top:9px;padding:8px 10px;background:${urgency?.bg||"var(--surface2)"};border:1px solid ${urgency?.col||"var(--border)"};border-radius:7px;border-left:2px solid ${urgency?.col||"var(--border)"}">
-          <div style="font-size:10px;color:${urgency?.col||"var(--text-dim)"};font-weight:700;letter-spacing:0.5px;margin-bottom:2px">NEAREST DUE ${urgency?.label||""}</div>
-          <div style="font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nearest.title}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${nearest.type} · Due ${formatDate(nearest.dueDate)}</div>
-        </div>`
-      : (pc.length > 0
-          ? `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);font-style:italic">All cases resolved</div>`
-          : "");
-
     return `<div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;margin-bottom:10px;cursor:pointer;transition:all 0.2s" onclick="openProfile('${p.id}')" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
       <div style="display:flex;align-items:center;gap:12px">
-        ${avatarDiv(p.name,p.avatarColor,38,p.photoUrl)}
+        ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text)">${p.name}</div>
           <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${p.role||"Attorney"} · ${pc.length} case${pc.length!==1?"s":""}</div>
         </div>
       </div>
-      ${nearestHtml}
     </div>`;
   }).join("");
 }
@@ -390,6 +379,27 @@ function renderCaseDetail() {
   const backBtn = document.getElementById("cd-back-btn");
   if (backBtn) {
     backBtn.onclick = ()=>{ showView("profileDetail"); renderProfileDetail(); };
+  }
+
+  const isOwner = c.ownerUid === window._currentUser?.uid;
+
+  let actionButtons = `<button class="btn btn-secondary btn-sm" onclick="openEditCase()">✏️ Edit</button>`;
+  if (isOwner) {
+    actionButtons += `
+      <button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()">👥 Share</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()">🗑 Delete</button>
+    `;
+  }
+
+  const detailHeaderActions = document.querySelector("#view-caseDetail .flex-center.gap-10");
+  if (detailHeaderActions) {
+    detailHeaderActions.innerHTML = `
+      <button class="btn btn-ghost" id="cd-back-btn">← Back</button>
+      <div style="flex:1;font-weight:700;font-size:22px;color:var(--text)" id="cd-title">${c.title}</div>
+      ${actionButtons}
+    `;
+    const reBoundBackBtn = document.getElementById("cd-back-btn");
+    if (reBoundBackBtn) reBoundBackBtn.onclick = ()=>{ showView("profileDetail"); renderProfileDetail(); };
   }
 
   const chip = document.getElementById("cd-profile-chip");
@@ -681,6 +691,61 @@ function renderMyProfile() {
     showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
   } else {
     resetSettingsPhotoUpload();
+  }
+
+  // Render Google Drive Status block in settings
+  const statusEl = document.getElementById("settings-drive-status");
+  const btn = document.getElementById("settings-connect-drive-btn");
+  const btnText = document.getElementById("settings-connect-drive-text");
+
+  if (statusEl && btn && btnText) {
+    if (hasValidToken()) {
+      statusEl.className = "drive-status-chip connected";
+      statusEl.textContent = "● Connected";
+      btnText.textContent = "✓ Google Drive Connected";
+      btn.classList.add("connected");
+      btn.disabled = true;
+    } else {
+      statusEl.className = "drive-status-chip disconnected";
+      statusEl.textContent = "● Not Connected";
+      btnText.textContent = "Connect Google Drive";
+      btn.classList.remove("connected");
+      btn.disabled = false;
+    }
+  }
+}
+
+async function connectDriveFromSettings() {
+  const btn = document.getElementById("settings-connect-drive-btn");
+  const btnText = document.getElementById("settings-connect-drive-text");
+  if (!btn) return;
+
+  btn.disabled = true;
+  if (btnText) btnText.textContent = "Connecting...";
+
+  try {
+    await waitForGoogleDriveReady();
+    await promptDriveAuth();
+    showToast("Google Drive connected successfully!");
+    renderMyProfile(); // Refresh status UI
+    
+    // Auto-create drive folder if missing on connect
+    const u = window._currentUser;
+    const myProf = profiles.find(p => p.ownerUid === u.uid);
+    if (myProf && !myProf.driveFolderId) {
+      showToast("Initializing attorney Drive storage folder...");
+      const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
+      if (folderId) {
+        await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
+        myProf.driveFolderId = folderId;
+        showToast("Storage folder created!");
+      }
+    }
+  } catch (err) {
+    console.error("Settings drive auth failed:", err);
+    if (btnText) btnText.textContent = "Connect Google Drive";
+    btn.disabled = false;
+    showToast("Drive connection failed: " + err.message, "error");
   }
 }
 
