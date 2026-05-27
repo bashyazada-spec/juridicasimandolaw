@@ -46,6 +46,25 @@
   </div>
 </div>
 
+<!-- Share Case Modal -->
+<div id="share-modal" class="modal-overlay hidden" style="z-index:10000">
+  <div class="modal-box" style="max-width:440px">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      👥 Share Case Access
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
+      Select which associate attorneys can view and collaborate on this case and its files.
+    </div>
+    <div id="share-modal-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:20px;padding-right:4px">
+      <!-- Populated via JavaScript -->
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeShareModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveShareSettings()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- File preview modal -->
 <div id="file-preview-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;flex-direction:column">
   <div style="position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px)">
