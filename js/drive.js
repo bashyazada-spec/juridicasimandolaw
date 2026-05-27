@@ -239,7 +239,7 @@ async function addDocToCase() {
   // Show modal to select inbound/outbound
   showFileTypeModal().then(async (fileType) => {
     if (!fileType) return; // User cancelled
-    
+
     const inp = document.createElement("input");
     inp.type = "file";
     inp.multiple = true;
@@ -247,11 +247,24 @@ async function addDocToCase() {
       const files = Array.from(e.target.files);
       if (!files.length) return;
 
-      // Determine Drive folder: category > type > title > inbound/outbound
-      const caseCategory = selCase?.category || "Other";
-      const caseType = selCase?.type || "Other";
-      const caseTitle = selCase?.title || "Untitled";
       const profileFolderId = selProfile?.driveFolderId || null;
+
+      // ── Auto re-auth if token is missing or expired ──
+      if (profileFolderId && !hasValidToken()) {
+        showToast("Drive session expired — reconnecting…");
+        try {
+          await waitForGoogleDriveReady(6000);
+          await promptDriveAuth();
+          showToast("Drive reconnected — uploading files…");
+        } catch (authErr) {
+          console.warn("Drive re-auth failed, files will be saved locally:", authErr);
+          showToast("Could not reconnect Drive — files saved locally only.", "error");
+        }
+      }
+
+      const caseCategory = selCase?.category || "Other";
+      const caseType     = selCase?.type     || "Other";
+      const caseTitle    = selCase?.title    || "Untitled";
       let targetFolderId = null;
 
       if (profileFolderId && hasValidToken()) {
@@ -259,7 +272,7 @@ async function addDocToCase() {
         targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId);
         console.log("✅ Target folder ID:", targetFolderId);
       } else {
-        console.warn("⚠️ Drive upload skipped - profileFolderId:", profileFolderId, "hasValidToken:", hasValidToken());
+        console.warn("⚠️ Drive upload skipped — profileFolderId:", profileFolderId, "hasValidToken:", hasValidToken());
       }
 
       const newDocs = [];
@@ -276,7 +289,7 @@ async function addDocToCase() {
             console.warn("⚠️ Upload returned no result for:", f.name);
           }
         } else {
-          console.warn("⚠️ File will be stored locally - hasValidToken:", hasValidToken(), "targetFolderId:", targetFolderId);
+          console.warn("⚠️ File will be stored locally — hasValidToken:", hasValidToken(), "targetFolderId:", targetFolderId);
         }
 
         newDocs.push({
@@ -292,7 +305,19 @@ async function addDocToCase() {
       await dbUpdateCase(selCase.id, { documents: updDocs });
       selCase = { ...selCase, documents: updDocs };
       renderCaseDetail();
-      showToast(`${newDocs.length} doc(s) attached as ${fileType}${newDocs[0]?.driveFileId ? " & synced to Drive" : " (locally)"}`);
+
+      const uploadedToDrive = newDocs.filter(d => d.driveFileId).length;
+      const savedLocally    = newDocs.length - uploadedToDrive;
+      if (uploadedToDrive && !savedLocally) {
+        showToast(`${uploadedToDrive} doc(s) attached as ${fileType} & synced to Drive ✅`);
+      } else if (uploadedToDrive && savedLocally) {
+        showToast(`${uploadedToDrive} to Drive, ${savedLocally} saved locally (Drive unavailable)`, "error");
+      } else {
+        showToast(`${newDocs.length} doc(s) attached locally (Drive not connected)`);
+      }
+
+      // Refresh the chip state after upload attempt
+      if (typeof updateDriveFolderChip === "function") updateDriveFolderChip();
     };
     inp.click();
   });
@@ -343,21 +368,22 @@ function updateDriveFolderChip() {
     } else {
       // Folder linked but token expired — prompt user to re-auth with one click
       chip.className = "drive-status-chip disconnected";
-      chip.textContent = "⚠ Drive Session Expired — Click to Re-connect";
+      chip.textContent = "⚠ Drive Session Expired — Click to Reconnect";
       chip.title = "Click to refresh your Drive connection";
       chip.style.cursor = "pointer";
       chip.onclick = async () => {
-        chip.textContent = "Connecting...";
+        chip.textContent = "Reconnecting…";
         chip.onclick = null;
         try {
+          await waitForGoogleDriveReady(6000);
           await promptDriveAuth();
           updateDriveFolderChip();
-          showToast("Drive re-connected! You can now save with file upload.");
+          showToast("Drive reconnected ✅");
         } catch (e) {
           chip.className = "drive-status-chip disconnected";
-          chip.textContent = "⚠ Drive Session Expired — Click to Re-connect";
-          chip.onclick = updateDriveFolderChip; // reset
-          showToast("Drive re-connect failed.", "error");
+          chip.textContent = "⚠ Drive Session Expired — Click to Reconnect";
+          chip.onclick = () => updateDriveFolderChip();
+          showToast("Drive reconnect failed — try again.", "error");
         }
       };
     }
