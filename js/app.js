@@ -769,12 +769,14 @@ async function saveCase() {
     documents:pendingDocs,
   };
   try {
-    // Sync any locally-staged files to Drive under the correct case-type folder
-    const _caseTypeForDrive = data.type || data.category;
+    // Sync any locally-staged files to Drive under the correct folder hierarchy
+    const caseCategory = data.category || "Other";
+    const caseType = data.type || "Other";
+    const caseTitle = data.title || "Untitled";
     const profileFolderId = selProfile?.driveFolderId || null;
     const hadLocalFiles = pendingDocs.some(d => d._localTempId);
     if (typeof syncPendingFilesToDrive === "function") {
-      const syncedDocs = await syncPendingFilesToDrive(_caseTypeForDrive, profileFolderId);
+      const syncedDocs = await syncPendingFilesToDrive(caseCategory, caseType, caseTitle, profileFolderId);
       data.documents = syncedDocs.map(d => {
         const clean = {...d};
         delete clean._localTempId; // don't persist temp markers
