@@ -379,7 +379,10 @@ function renderCaseDetail() {
                 📄 ${doc.name}
               </span>
             </div>
-            <div style="font-size:12px;color:var(--text-dim)">${doc.size} · ${doc.date}${doc.driveFileId?' · ✅ Drive':''}</div>
+            <div style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:8px">
+              <span>${doc.size} · ${doc.date}${doc.driveFileId?' · ✅ Drive':''}</span>
+              ${doc.fileType ? `<span style="background:${doc.fileType==='Inbound'?'#3b82f644':'#10b98144'};color:${doc.fileType==='Inbound'?'#3b82f6':'#10b981'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${doc.fileType==='Inbound'?'📥 Inbound':'📤 Outbound'}</span>` : ''}
+            </div>
           </div>
           <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${i})">×</button>
         </div>
