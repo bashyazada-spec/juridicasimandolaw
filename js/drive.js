@@ -49,7 +49,6 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      // Included calendar.events scope along with drive.file
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events",
       callback: (response) => {
         if (response.access_token) {
@@ -139,10 +138,105 @@ async function setupProfileDriveFolder(profile) {
   }
 }
 
+// ── NEW: Automatically converts DOCX/DOC to PDF on Google Servers ──────────
+async function convertWordToPdfAndUpload(file, folderId) {
+  if (!hasValidToken()) throw new Error("Drive connection expired.");
+
+  showToast("Processing document structure...");
+
+  // Step 1: Upload raw Word file as a Google Doc
+  const metadata = {
+    name: `temp_convert_${Date.now()}`,
+    mimeType: "application/vnd.google-apps.document"
+  };
+  if (folderId && folderId !== "root") {
+    metadata.parents = [folderId];
+  }
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const fileReader = new FileReader();
+  const arrayBuffer = await new Promise((resolve, reject) => {
+    fileReader.onload = () => resolve(fileReader.result);
+    fileReader.onerror = () => reject(fileReader.error);
+    fileReader.readAsArrayBuffer(file);
+  });
+
+  const metadataPart = delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: ' + (file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') + '\r\n\r\n';
+
+  const encoder = new TextEncoder();
+  const metadataBuffer = encoder.encode(metadataPart);
+  const closeBuffer = encoder.encode(close_delim);
+
+  const bodyBuffer = new Uint8Array(metadataBuffer.byteLength + arrayBuffer.byteLength + closeBuffer.byteLength);
+  bodyBuffer.set(metadataBuffer, 0);
+  bodyBuffer.set(new Uint8Array(arrayBuffer), metadataBuffer.byteLength);
+  bodyBuffer.set(closeBuffer, metadataBuffer.byteLength + arrayBuffer.byteLength);
+
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`
+    },
+    body: bodyBuffer
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || "Failed to initiate document conversion.");
+  }
+
+  const { id: tempDocId } = await res.json();
+
+  // Step 2: Download the converted document as a high-fidelity PDF Blob
+  showToast("Compiling PDF document layout...");
+  const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${tempDocId}/export?mimeType=application/pdf`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  if (!exportRes.ok) {
+    await deleteDriveFile(tempDocId).catch(() => {});
+    throw new Error("Failed to compile layout into PDF.");
+  }
+
+  const pdfBlob = await exportRes.blob();
+
+  // Step 3: Upload compiled PDF Blob back into your folder
+  const pdfFileName = file.name.replace(/\.[^/.]+$/, "") + ".pdf";
+  const pdfFile = new File([pdfBlob], pdfFileName, { type: "application/pdf" });
+  pdfFile._isConvertedPdf = true; // Flag to prevent infinite loop recursion
+
+  const finalPdfMeta = await uploadSingleFileToDrive(pdfFile, folderId);
+
+  // Step 4: Delete the temporary workspace Google Doc
+  await deleteDriveFile(tempDocId).catch(() => {});
+
+  return finalPdfMeta;
+}
+
 async function uploadSingleFileToDrive(file, folderId) {
   if (!hasValidToken()) {
     throw new Error("Missing or invalid Google Drive access token.");
   }
+
+  // Intercept and convert Microsoft Word files automatically
+  const ext = file.name.split('.').pop().toLowerCase();
+  if ((ext === 'docx' || ext === 'doc') && !file._isConvertedPdf) {
+    try {
+      return await convertWordToPdfAndUpload(file, folderId);
+    } catch (err) {
+      console.error("Word layout conversion failed, uploading original file:", err);
+      showToast("Conversion failed — uploading original Word file instead.", "error");
+    }
+  }
+
   const metadata = {
     name: file.name,
     mimeType: file.type || "application/octet-stream"
@@ -255,8 +349,12 @@ async function addDocToCase() {
         }
       }
 
+      // Rename extension output to .pdf in dashboard UI for Word conversions
+      const isWord = f.name.endsWith(".docx") || f.name.endsWith(".doc");
+      const displayName = (isWord && driveFileId) ? f.name.replace(/\.[^/.]+$/, "") + ".pdf" : f.name;
+
       newDocs.push({
-        name: f.name,
+        name: displayName,
         size: (f.size / 1024).toFixed(1) + " KB",
         date: new Date().toLocaleDateString(),
         fileType: fileType,
@@ -478,6 +576,13 @@ async function syncPendingFilesToDrive(caseCategory, caseType, caseTitle, profil
       if (result) {
         doc.driveFileId = result.id;
         doc.driveLink   = result.webViewLink;
+
+        // Change extension in pending display arrays to .pdf
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'docx' || ext === 'doc') {
+          doc.name = file.name.replace(/\.[^/.]+$/, "") + ".pdf";
+        }
+
         delete pendingLocalFiles[tempId];
         delete doc._localTempId;
       }
@@ -588,7 +693,6 @@ async function createOrUpdateCalendarEvent(caseData) {
   const summary = `⚖️ Simando Law: ${caseData.title}`;
   const description = `Case Number: ${caseData.caseNumber || "N/A"}\nCategory: ${caseData.category || "N/A"}\nType: ${caseData.type || "N/A"}\nVenue: ${caseData.venue || "N/A"}\nParties: ${caseData.parties || "N/A"}\n\nNarrative:\n${caseData.narrative || ""}`;
   
-  // Calculate next day for exclusive end date of all-day event
   const startDate = caseData.dueDate;
   const startDateTime = new Date(startDate + "T00:00:00");
   startDateTime.setDate(startDateTime.getDate() + 1);
@@ -602,8 +706,8 @@ async function createOrUpdateCalendarEvent(caseData) {
     reminders: {
       useDefault: false,
       overrides: [
-        { method: 'popup', minutes: 1440 }, // 1 day before
-        { method: 'popup', minutes: 10080 } // 1 week before
+        { method: 'popup', minutes: 1440 }, 
+        { method: 'popup', minutes: 10080 } 
       ]
     }
   };
@@ -630,7 +734,6 @@ async function createOrUpdateCalendarEvent(caseData) {
       const data = await res.json();
       return data.id;
     } else if (res.status === 404 && caseData.calendarEventId) {
-      // Recreate event if it was manually deleted from user's Calendar
       const fallbackRes = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
         method: "POST",
         headers: {
