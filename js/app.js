@@ -3,6 +3,7 @@
 //  CRITICAL: Store target in a closure variable, NOT global deleteTarget
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
+let caseFormOrigin = "profileDetail"; // Router state to track form arrival
 
 function confirmDeleteProfile() {
   const cnt = cases.filter(c => c.profileId === selProfile.id).length;
@@ -702,8 +703,20 @@ function populateCaseSelects() {
   document.getElementById("cf-venue").innerHTML = VENUES.map(v=>`<option>${v}</option>`).join("");
 }
 
+// ── FIXED: openAddCase now forces profile mapping safely even if launched from "All Cases" ──
 async function openAddCase() {
-  if (!selProfile) return;
+  caseFormOrigin = currentView;
+  
+  const u = window._currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  if (!myProf) {
+    showToast("Your attorney profile is still loading. Please wait a moment.", "error");
+    return;
+  }
+
+  selProfile = myProf;
   caseFormMode="add";
   pendingDocs=[];
   cfPetitioners = selProfile.name ? [selProfile.name] : [];
@@ -720,8 +733,9 @@ async function openAddCase() {
   document.getElementById("cf-status").value=STATUS_OPTIONS[0];
   setVenueValue(VENUES[0]);
   document.getElementById("drive-status").textContent="";
-  document.getElementById("cf-back-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
-  document.getElementById("cf-cancel-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
+  
+  document.getElementById("cf-back-btn").onclick=()=>{ navTo(caseFormOrigin); };
+  document.getElementById("cf-cancel-btn").onclick=()=>{ navTo(caseFormOrigin); };
   
   const firstCat = CASE_CATEGORIES[0];
   document.getElementById("cf-category").value = firstCat;
@@ -917,8 +931,8 @@ async function saveCase() {
       data.allowedUids = [window._currentUser.uid];
       await dbAddCase(data);
       showToast("Case added!");
-      showView("profileDetail");
-      renderProfileDetail();
+      showView(caseFormOrigin);
+      if (caseFormOrigin === "profileDetail") renderProfileDetail();
     } else {
       if (selCase) {
         data.ownerUid = selCase.ownerUid || window._currentUser.uid;
