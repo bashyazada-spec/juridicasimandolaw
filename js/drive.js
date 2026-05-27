@@ -49,16 +49,17 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: "https://www.googleapis.com/auth/drive.file",
+      // Included calendar.events scope along with drive.file
+      scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events",
       callback: (response) => {
         if (response.access_token) {
           accessToken = response.access_token;
           persistToken(response.access_token, response.expires_in);
-          console.log("Drive auth success");
+          console.log("Drive & Calendar auth success");
           if (pendingDriveAuthResolve) pendingDriveAuthResolve(accessToken);
         } else {
-          console.error("Drive auth response error:", response);
-          if (pendingDriveAuthReject) pendingDriveAuthReject(new Error(response.error_description || "Drive auth failed"));
+          console.error("Drive & Calendar auth response error:", response);
+          if (pendingDriveAuthReject) pendingDriveAuthReject(new Error(response.error_description || "Auth failed"));
         }
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
       },
@@ -68,16 +69,15 @@ function initGoogleDrive() {
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
       }
     });
-    console.log("Google Drive initialized");
+    console.log("Google Drive & Calendar APIs initialized");
   } catch (err) {
-    console.error("Failed to initialize Google Drive:", err);
+    console.error("Failed to initialize Google Services Client:", err);
   }
 }
 
-// Interactive auth — shows account chooser (used only for explicit "Connect Drive" button)
 function promptDriveAuth() {
   if (!gTokenClient) {
-    return Promise.reject(new Error("Google Drive not ready. Reload the page."));
+    return Promise.reject(new Error("Google Client not ready. Reload the page."));
   }
   return new Promise((resolve, reject) => {
     pendingDriveAuthResolve = resolve;
@@ -215,14 +215,14 @@ async function addDocToCase() {
     if (!files.length) return;
 
     if (!hasValidToken()) {
-      showToast("Drive session expired or not connected — reconnecting…");
+      showToast("Session expired — reconnecting…");
       try {
         await waitForGoogleDriveReady(6000);
         await promptDriveAuth();
-        showToast("Drive reconnected — uploading files…");
+        showToast("Reconnected — uploading files…");
       } catch (authErr) {
-        console.warn("Drive re-auth failed:", authErr);
-        showToast("Could not connect Drive — saving locally only.", "error");
+        console.warn("Re-auth failed:", authErr);
+        showToast("Could not connect — saving locally only.", "error");
       }
     }
 
@@ -576,6 +576,89 @@ async function deleteDriveFile(driveFileId) {
     });
   } catch (err) {
     console.error("deleteDriveFile error:", err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GOOGLE CALENDAR EVENT SYNCHRONIZATION
+// ═══════════════════════════════════════════════════════════════
+async function createOrUpdateCalendarEvent(caseData) {
+  if (!hasValidToken() || !caseData.dueDate) return null;
+
+  const summary = `⚖️ Simando Law: ${caseData.title}`;
+  const description = `Case Number: ${caseData.caseNumber || "N/A"}\nCategory: ${caseData.category || "N/A"}\nType: ${caseData.type || "N/A"}\nVenue: ${caseData.venue || "N/A"}\nParties: ${caseData.parties || "N/A"}\n\nNarrative:\n${caseData.narrative || ""}`;
+  
+  // Calculate next day for exclusive end date of all-day event
+  const startDate = caseData.dueDate;
+  const startDateTime = new Date(startDate + "T00:00:00");
+  startDateTime.setDate(startDateTime.getDate() + 1);
+  const endDate = startDateTime.toISOString().split("T")[0];
+
+  const eventBody = {
+    summary: summary,
+    description: description,
+    start: { date: startDate },
+    end: { date: endDate },
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: 'popup', minutes: 1440 }, // 1 day before
+        { method: 'popup', minutes: 10080 } // 1 week before
+      ]
+    }
+  };
+
+  try {
+    let url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+    let method = "POST";
+
+    if (caseData.calendarEventId) {
+      url += `/${caseData.calendarEventId}`;
+      method = "PUT";
+    }
+
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(eventBody)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.id;
+    } else if (res.status === 404 && caseData.calendarEventId) {
+      // Recreate event if it was manually deleted from user's Calendar
+      const fallbackRes = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(eventBody)
+      });
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        return fallbackData.id;
+      }
+    }
+  } catch (err) {
+    console.error("Calendar sync error:", err);
+  }
+  return null;
+}
+
+async function deleteCalendarEvent(eventId) {
+  if (!eventId || !hasValidToken()) return;
+  try {
+    await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+  } catch (err) {
+    console.error("deleteCalendarEvent error:", err);
   }
 }
 
