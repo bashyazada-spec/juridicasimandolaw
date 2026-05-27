@@ -546,6 +546,9 @@ function openProfile(id) {
   renderProfileDetail();
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  OPEN CASE DETAILS ROUTER
+// ═══════════════════════════════════════════════════════════════
 function openCase(id) {
   selCase = cases.find(c=>c.id===id);
   if (!selCase) return;
