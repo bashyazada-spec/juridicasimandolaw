@@ -90,55 +90,6 @@ function promptDriveAuth() {
   });
 }
 
-/**
- * Show a modal asking the user to select file type (Inbound/Outbound)
- * Returns a promise that resolves with the selected type or null if cancelled
- */
-function showFileTypeModal() {
-  return new Promise((resolve) => {
-    const modalHTML = `
-      <div id="file-type-modal" style="
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
-        justify-content: center; z-index: 10000;
-      ">
-        <div style="
-          background: var(--surface); border-radius: var(--radius);
-          padding: 24px; box-shadow: var(--shadow-lg); max-width: 400px;
-          width: 90%;
-        ">
-          <h2 style="margin: 0 0 16px 0; color: var(--text);">Document Type</h2>
-          <p style="margin: 0 0 20px 0; color: var(--text-muted);">
-            Is this document inbound or outbound?
-          </p>
-          <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button onclick="this.closest('#file-type-modal').remove(); window._fileTypeResolve?.(null)" style="
-              padding: 8px 16px; border: 1px solid var(--border);
-              background: var(--surface); color: var(--text);
-              border-radius: var(--radius); cursor: pointer;
-            ">Cancel</button>
-            <button onclick="this.closest('#file-type-modal').remove(); window._fileTypeResolve?.('Inbound')" style="
-              padding: 8px 16px; background: #3b82f6; color: white;
-              border: none; border-radius: var(--radius); cursor: pointer;
-            ">📥 Inbound</button>
-            <button onclick="this.closest('#file-type-modal').remove(); window._fileTypeResolve?.('Outbound')" style="
-              padding: 8px 16px; background: #10b981; color: white;
-              border: none; border-radius: var(--radius); cursor: pointer;
-            ">📤 Outbound</button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    window._fileTypeResolve = (type) => {
-      resolve(type);
-      window._fileTypeResolve = null;
-    };
-  });
-}
-
 function hasValidToken() {
   return accessToken && Date.now() < tokenExpiresAt - 60000;
 }
@@ -253,85 +204,84 @@ async function uploadSingleFileToDrive(file, folderId) {
 }
 
 async function addDocToCase() {
-  showFileTypeModal().then(async (fileType) => {
-    if (!fileType) return;
+  const fileTypeEl = document.querySelector('input[name="cd-file-type"]:checked');
+  const fileType = fileTypeEl ? fileTypeEl.value : "Inbound";
 
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.multiple = true;
-    inp.onchange = async (e) => {
-      const files = Array.from(e.target.files);
-      if (!files.length) return;
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.multiple = true;
+  inp.onchange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
 
-      if (!hasValidToken()) {
-        showToast("Drive session expired or not connected — reconnecting…");
-        try {
-          await waitForGoogleDriveReady(6000);
-          await promptDriveAuth();
-          showToast("Drive reconnected — uploading files…");
-        } catch (authErr) {
-          console.warn("Drive re-auth failed:", authErr);
-          showToast("Could not connect Drive — saving locally only.", "error");
+    if (!hasValidToken()) {
+      showToast("Drive session expired or not connected — reconnecting…");
+      try {
+        await waitForGoogleDriveReady(6000);
+        await promptDriveAuth();
+        showToast("Drive reconnected — uploading files…");
+      } catch (authErr) {
+        console.warn("Drive re-auth failed:", authErr);
+        showToast("Could not connect Drive — saving locally only.", "error");
+      }
+    }
+
+    let profileFolderId = selProfile?.driveFolderId || null;
+    if (!profileFolderId && selProfile && hasValidToken()) {
+      showToast("Creating missing profile folder…");
+      profileFolderId = await setupProfileDriveFolder(selProfile);
+    }
+
+    const caseCategory = selCase?.category || "Other";
+    const caseType     = selCase?.type     || "Other";
+    const caseTitle    = selCase?.title    || "Untitled";
+    let targetFolderId = null;
+
+    if (hasValidToken()) {
+      const rootFolder = profileFolderId || DRIVE_FOLDER_ID || "root";
+      console.log("Creating folder hierarchy for:", {caseCategory, caseType, caseTitle, fileType});
+      targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, rootFolder);
+    }
+
+    const newDocs = [];
+    for (const f of files) {
+      let driveFileId = null, driveLink = null;
+      if (hasValidToken() && targetFolderId) {
+        console.log("Uploading file to Drive:", f.name);
+        const result = await uploadSingleFileToDrive(f, targetFolderId);
+        if (result) {
+          driveFileId = result.id;
+          driveLink   = result.webViewLink;
         }
       }
 
-      let profileFolderId = selProfile?.driveFolderId || null;
-      if (!profileFolderId && selProfile && hasValidToken()) {
-        showToast("Creating missing profile folder…");
-        profileFolderId = await setupProfileDriveFolder(selProfile);
-      }
+      newDocs.push({
+        name: f.name,
+        size: (f.size / 1024).toFixed(1) + " KB",
+        date: new Date().toLocaleDateString(),
+        fileType: fileType,
+        ...(driveFileId && { driveFileId, driveLink })
+      });
+    }
 
-      const caseCategory = selCase?.category || "Other";
-      const caseType     = selCase?.type     || "Other";
-      const caseTitle    = selCase?.title    || "Untitled";
-      let targetFolderId = null;
+    const updDocs = [...(selCase.documents || []), ...newDocs];
+    await dbUpdateCase(selCase.id, { documents: updDocs });
+    selCase = { ...selCase, documents: updDocs };
+    renderCaseDetail();
 
-      if (hasValidToken()) {
-        const rootFolder = profileFolderId || DRIVE_FOLDER_ID || "root";
-        console.log("Creating folder hierarchy for:", {caseCategory, caseType, caseTitle, fileType});
-        targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, rootFolder);
-      }
+    const uploadedToDrive = newDocs.filter(d => d.driveFileId).length;
+    const savedLocally    = newDocs.length - uploadedToDrive;
+    if (uploadedToDrive && !savedLocally) {
+      showToast(`${uploadedToDrive} doc(s) attached as ${fileType} & synced to Drive ✅`);
+    } else if (uploadedToDrive && savedLocally) {
+      showToast(`${uploadedToDrive} sent to Drive, ${savedLocally} saved locally (Drive unavailable)`, "error");
+    } else {
+      showToast(`${newDocs.length} doc(s) attached locally (Drive not connected)`);
+    }
 
-      const newDocs = [];
-      for (const f of files) {
-        let driveFileId = null, driveLink = null;
-        if (hasValidToken() && targetFolderId) {
-          console.log("Uploading file to Drive:", f.name);
-          const result = await uploadSingleFileToDrive(f, targetFolderId);
-          if (result) {
-            driveFileId = result.id;
-            driveLink   = result.webViewLink;
-          }
-        }
-
-        newDocs.push({
-          name: f.name,
-          size: (f.size / 1024).toFixed(1) + " KB",
-          date: new Date().toLocaleDateString(),
-          fileType: fileType,
-          ...(driveFileId && { driveFileId, driveLink })
-        });
-      }
-
-      const updDocs = [...(selCase.documents || []), ...newDocs];
-      await dbUpdateCase(selCase.id, { documents: updDocs });
-      selCase = { ...selCase, documents: updDocs };
-      renderCaseDetail();
-
-      const uploadedToDrive = newDocs.filter(d => d.driveFileId).length;
-      const savedLocally    = newDocs.length - uploadedToDrive;
-      if (uploadedToDrive && !savedLocally) {
-        showToast(`${uploadedToDrive} doc(s) attached as ${fileType} & synced to Drive ✅`);
-      } else if (uploadedToDrive && savedLocally) {
-        showToast(`${uploadedToDrive} sent to Drive, ${savedLocally} saved locally (Drive unavailable)`, "error");
-      } else {
-        showToast(`${newDocs.length} doc(s) attached locally (Drive not connected)`);
-      }
-
-      if (typeof updateDriveFolderChip === "function") updateDriveFolderChip();
-    };
-    inp.click();
-  });
+    if (typeof updateDriveFolderChip === "function") updateDriveFolderChip();
+  };
+  inp.click();
 }
 
 function renderPendingDocs() {
@@ -423,6 +373,9 @@ async function handleLocalAttach(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
 
+  const fileTypeEl = document.querySelector('input[name="cf-file-type"]:checked');
+  const fileType = fileTypeEl ? fileTypeEl.value : "Inbound";
+
   for (const file of files) {
     const tempId = "local_" + Date.now() + "_" + Math.random().toString(36).slice(2);
     pendingLocalFiles[tempId] = file;
@@ -431,6 +384,7 @@ async function handleLocalAttach(e) {
       name: file.name,
       size: (file.size / 1024).toFixed(1) + " KB",
       date: new Date().toLocaleDateString(),
+      fileType: fileType,
       _localTempId: tempId,
     };
     pendingDocs.push(docEntry);
