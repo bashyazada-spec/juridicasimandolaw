@@ -53,7 +53,7 @@ async function dbLoad() {
   try {
     const db = window._db;
 
-    // Users are allowed to read the basic directories of ALL attorneys in the system
+    // Load global profiles so users see the firm directory
     let pSnap;
     try {
       pSnap = await window._fbGetDocs(window._fbQuery(
@@ -66,7 +66,7 @@ async function dbLoad() {
     }
     profiles = pSnap.docs.map(d=>({id:d.id,...d.data()}));
 
-    // SECURITY: Users can only pull and view cases that belong to them
+    // SECURITY: Limit cases to the logged-in user
     let cSnap;
     try {
       cSnap = await window._fbGetDocs(window._fbQuery(
@@ -75,14 +75,14 @@ async function dbLoad() {
       ));
     } catch (indexErr) {
       console.warn("cases filtered query failed:", indexErr.message);
-      cSnap = await window._fbGetDocs(window._fbCol(db, "cases"));
+      cSnap = await window._fbGetDocs(window._fbQuery(db, "cases"));
     }
     cases = cSnap.docs.map(d=>({id:d.id,...d.data()}));
 
-    // Auto-create a linked profile if this is the user's first time logging in
+    // Generate Profile entry if missing using the user's email address as default display name
     let myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
     if (!myProf) {
-      const defaultName = window._currentUser.displayName || "Atty. " + window._currentUser.email.split('@')[0];
+      const defaultName = window._currentUser.displayName || window._currentUser.email;
       const defaultData = {
         name: defaultName,
         role: "Attorney",
