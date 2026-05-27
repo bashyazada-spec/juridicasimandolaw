@@ -142,6 +142,10 @@ function showFileTypeModal() {
   });
 }
 
+function hasValidToken() {
+  return accessToken && Date.now() < tokenExpiresAt - 60000;
+}
+
 
 async function createDriveFolder(name, parentId = null) {
   const metadata = {
