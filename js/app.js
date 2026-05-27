@@ -589,13 +589,81 @@ function setVenueValue(val) {
   }
 }
 
-function populateCaseSelects() {
-  document.getElementById("cf-type").innerHTML=CASE_TYPES.map(t=>`<option>${t}</option>`).join("");
-  document.getElementById("cf-status").innerHTML=STATUS_OPTIONS.map(t=>`<option>${t}</option>`).join("");
-  document.getElementById("cf-venue").innerHTML=VENUES.map(v=>`<option>${v}</option>`).join("");
+// ── Case Type suggestions (loaded from Firestore per category) ──
+let _caseTypeSuggestions = [];
+
+async function loadCaseTypesForCategory(category) {
+  _caseTypeSuggestions = [];
+  if (!window._db || !category) return;
+  try {
+    const snap = await window._fbGetDocs(window._fbQuery(
+      window._fbCol(window._db, "caseTypes"),
+      window._fbWhere("category", "==", category)
+    ));
+    _caseTypeSuggestions = snap.docs.map(d => d.data().name).filter(Boolean);
+  } catch(e) { console.warn("loadCaseTypes error:", e); }
 }
 
-function openAddCase() {
+async function saveCaseTypeIfNew(category, typeName) {
+  if (!typeName || !category || !window._db) return;
+  const name = typeName.trim();
+  if (!name || _caseTypeSuggestions.includes(name)) return;
+  try {
+    await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), { category, name, createdAt: new Date().toISOString() });
+    _caseTypeSuggestions.push(name);
+  } catch(e) { console.warn("saveCaseType error:", e); }
+}
+
+function filterCaseTypeSuggestions(val) {
+  const dd = document.getElementById("cf-type-dropdown");
+  const q = val.trim().toLowerCase();
+  const filtered = q ? _caseTypeSuggestions.filter(s => s.toLowerCase().includes(q)) : _caseTypeSuggestions;
+  if (!filtered.length) { dd.style.display = "none"; return; }
+  dd.innerHTML = filtered.map(s =>
+    `<div onclick="selectCaseType('${s.replace(/'/g,"\'")}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s" onmouseover="this.style.background='rgba(201,165,92,0.08)'" onmouseout="this.style.background=''">${s}</div>`
+  ).join("");
+  dd.style.display = "block";
+}
+
+function showCaseTypeSuggestions() {
+  filterCaseTypeSuggestions(document.getElementById("cf-type-input").value);
+}
+
+function hideCaseTypeSuggestions() {
+  const dd = document.getElementById("cf-type-dropdown");
+  if (dd) dd.style.display = "none";
+}
+
+function selectCaseType(name) {
+  document.getElementById("cf-type-input").value = name;
+  hideCaseTypeSuggestions();
+}
+
+function onCaseTypeKeydown(e) {
+  if (e.key === "Escape") hideCaseTypeSuggestions();
+}
+
+async function onCategoryChange(category) {
+  // Update party labels
+  const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
+  const aLabel = document.getElementById("cf-party-a-label");
+  const bLabel = document.getElementById("cf-party-b-label");
+  if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
+  if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
+  // Load saved case types for this category
+  await loadCaseTypesForCategory(category);
+  document.getElementById("cf-type-input").value = "";
+  hideCaseTypeSuggestions();
+}
+
+function populateCaseSelects() {
+  // Case categories
+  document.getElementById("cf-category").innerHTML = CASE_CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+  document.getElementById("cf-status").innerHTML = STATUS_OPTIONS.map(t=>`<option>${t}</option>`).join("");
+  document.getElementById("cf-venue").innerHTML = VENUES.map(v=>`<option>${v}</option>`).join("");
+}
+
+async function openAddCase() {
   if (!selProfile) return;
   caseFormMode="add";
   pendingDocs=[];
@@ -607,12 +675,18 @@ function openAddCase() {
   document.getElementById("cf-case-title").value="";
   document.getElementById("cf-narrative").value="";
   document.getElementById("cf-due").value="";
-  document.getElementById("cf-type").value=CASE_TYPES[0];
+  document.getElementById("cf-case-number").value="";
+  document.getElementById("cf-doc-type").value="";
+  document.getElementById("cf-type-input").value="";
   document.getElementById("cf-status").value=STATUS_OPTIONS[0];
   setVenueValue(VENUES[0]);
   document.getElementById("drive-status").textContent="";
   document.getElementById("cf-back-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
   document.getElementById("cf-cancel-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
+  // Trigger first category load
+  const firstCat = CASE_CATEGORIES[0];
+  document.getElementById("cf-category").value = firstCat;
+  await onCategoryChange(firstCat);
   renderPartyLists();
   serializeParties();
   renderPendingDocs();
@@ -622,7 +696,7 @@ function openAddCase() {
   showView("caseForm");
 }
 
-function openEditCase() {
+async function openEditCase() {
   const c=selCase;
   caseFormMode="edit";
   pendingDocs=[...(c.documents||[])];
@@ -633,9 +707,15 @@ function openEditCase() {
   document.getElementById("cf-case-title").value=c.title;
   document.getElementById("cf-narrative").value=c.narrative;
   document.getElementById("cf-due").value=c.dueDate;
-  document.getElementById("cf-type").value=c.type;
+  document.getElementById("cf-case-number").value=c.caseNumber||"";
+  document.getElementById("cf-doc-type").value=c.docType||"";
   document.getElementById("cf-status").value=c.status;
   setVenueValue(c.venue);
+  // Set category and load its case types
+  const cat = c.category || CASE_CATEGORIES[0];
+  document.getElementById("cf-category").value = cat;
+  await onCategoryChange(cat);
+  document.getElementById("cf-type-input").value = c.type||"";
   document.getElementById("drive-status").textContent=pendingDocs.length?`${pendingDocs.length} file(s)`:"";
   document.getElementById("cf-back-btn").onclick=()=>{ showView("caseDetail"); renderCaseDetail(); };
   document.getElementById("cf-cancel-btn").onclick=()=>{ showView("caseDetail"); renderCaseDetail(); };
@@ -674,20 +754,27 @@ async function saveCase() {
   if(!narrative){document.getElementById("cf-narrative-err").classList.remove("hidden");document.getElementById("cf-narrative").classList.add("err");valid=false;}
   if(!valid) return;
 
+  const category = document.getElementById("cf-category").value;
+  const caseType = document.getElementById("cf-type-input").value.trim();
+  // Save new case type to Firestore for future suggestions
+  if (caseType) await saveCaseTypeIfNew(category, caseType);
   const data={
     title,dueDate:due,parties,narrative,
-    type:document.getElementById("cf-type").value,
+    category,
+    type: caseType,
+    caseNumber: document.getElementById("cf-case-number").value.trim(),
+    docType: document.getElementById("cf-doc-type").value.trim(),
     status:document.getElementById("cf-status").value,
     venue:getVenueValue(),
     documents:pendingDocs,
   };
   try {
     // Sync any locally-staged files to Drive under the correct case-type folder
-    const caseType = data.type;
+    const _caseTypeForDrive = data.type || data.category;
     const profileFolderId = selProfile?.driveFolderId || null;
     const hadLocalFiles = pendingDocs.some(d => d._localTempId);
     if (typeof syncPendingFilesToDrive === "function") {
-      const syncedDocs = await syncPendingFilesToDrive(caseType, profileFolderId);
+      const syncedDocs = await syncPendingFilesToDrive(_caseTypeForDrive, profileFolderId);
       data.documents = syncedDocs.map(d => {
         const clean = {...d};
         delete clean._localTempId; // don't persist temp markers
