@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  DELETE CONFIRMATION — TYPE "DELETE" TO CONFIRM
+//  DELETE CONFIRMATION — TYPE VERIFICATION TO CONFIRM
 //  CRITICAL: Store target in a closure variable, NOT global deleteTarget
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
@@ -12,6 +12,10 @@ function confirmDeleteProfile() {
   document.getElementById("del-body").innerHTML = 
     `You are about to permanently remove <strong style="color:var(--text)">${selProfile.name}</strong> and all ${cnt} associated case(s).<br>This action <strong>cannot</strong> be undone.`;
 
+  const label = document.getElementById("del-confirm-target-text");
+  label.textContent = "DELETE";
+  label.style.color = "var(--red)";
+
   openDeleteModal();
 }
 
@@ -22,6 +26,10 @@ function confirmDeleteCase() {
   document.getElementById("del-body").innerHTML = 
     `You are about to permanently remove <strong style="color:var(--text)">${selCase.title}</strong>.<br>This action <strong>cannot</strong> be undone.`;
 
+  const label = document.getElementById("del-confirm-target-text");
+  label.textContent = "DELETE";
+  label.style.color = "var(--red)";
+
   openDeleteModal();
 }
 
@@ -31,20 +39,23 @@ function openDeleteModal() {
   const btn = document.getElementById("del-confirm-btn");
   const err = document.getElementById("del-input-err");
 
-  // Reset state
+  const targetText = document.getElementById("del-confirm-target-text").textContent.trim();
+
   input.value = "";
   btn.disabled = true;
   btn.style.opacity = "0.5";
   err.classList.add("hidden");
 
-  // Remove old listeners to prevent stacking
   const newBtn = btn.cloneNode(true);
   btn.parentNode.replaceChild(newBtn, btn);
 
-  // Input validation
   input.oninput = () => {
-    const val = input.value.trim().toUpperCase();
-    if (val === "DELETE") {
+    const val = input.value.trim();
+    const expected = targetText;
+    
+    const isMatched = expected.includes("@") ? (val === expected) : (val.toUpperCase() === "DELETE");
+
+    if (isMatched) {
       newBtn.disabled = false;
       newBtn.style.opacity = "1";
       err.classList.add("hidden");
@@ -60,7 +71,6 @@ function openDeleteModal() {
     }
   };
 
-  // Confirm button handler
   newBtn.onclick = () => executeDelete();
 
   modal.classList.remove("hidden");
@@ -74,30 +84,25 @@ function closeDeleteModal() {
 
 async function executeDelete() {
   const target = _pendingDeleteTarget;
-  if (!target) {
-    console.error("No pending delete target");
-    return;
-  }
+  if (!target) return;
 
   closeDeleteModal();
 
   try {
-    if (target.type === "case") {
+    if (target.type === "account_delete") {
+      await executeDeleteAccountWipe();
+    } else if (target.type === "case") {
       await dbDeleteCase(target.id);
-      // Remove from local array immediately for responsive UI
       cases = cases.filter(c => c.id !== target.id);
       selCase = null;
       showToast("Case deleted successfully", "error");
       showView("profileDetail");
       renderProfileDetail();
-
     } else if (target.type === "profile") {
-      // Delete all associated cases first
       const toDelete = cases.filter(c => c.profileId === target.id);
       for (const c of toDelete) {
         await dbDeleteCase(c.id);
       }
-      // Remove from local arrays immediately
       cases = cases.filter(c => c.profileId !== target.id);
 
       await dbDeleteProfile(target.id);
@@ -105,14 +110,11 @@ async function executeDelete() {
 
       selProfile = null;
       selCase = null;
-      showToast(`Profile "${target.name}" and ${toDelete.length} case(s) deleted`, "error");
+      showToast(`Profile and associated cases deleted`, "error");
       navTo("profiles");
-      renderQuickAccess();
     }
 
-    // Refresh dashboard stats if visible
     if (currentView === "dashboard") renderDashboard();
-
   } catch (err) {
     console.error("executeDelete error:", err);
     showToast("Delete failed: " + (err.message || "Unknown error"), "error");
@@ -130,7 +132,6 @@ function openAddProfile() {
   pfDriveConnected = false;
   pfPhotoDataUrl = null;
 
-  // Reset form
   document.getElementById("pf-title").textContent="New Attorney Profile";
   document.getElementById("pf-name").value="";
   document.getElementById("pf-role").value="";
@@ -139,12 +140,8 @@ function openAddProfile() {
   document.getElementById("pf-cancel-btn").onclick=()=>navTo("profiles");
   document.getElementById("pf-back-btn").onclick=()=>navTo("profiles");
 
-  // Reset Drive auth UI
   resetDriveAuthUI();
-
-  // Disable details section until Drive is connected
   setDetailsEnabled(false);
-
   clearProfileErrors();
   resetPhotoUpload();
   updateAvatarPreview();
@@ -155,8 +152,8 @@ function openEditProfile() {
   const p=selProfile;
   profFormMode="edit";
   pfColor=p.avatarColor || AVATAR_COLORS[0];
-  pfPhotoDataUrl = p.photoUrl || null;  // use Drive URL for preview
-  pfDriveConnected = true; // Already has drive folder or can skip
+  pfPhotoDataUrl = p.photoUrl || null;
+  pfDriveConnected = true;
 
   document.getElementById("pf-title").textContent="Edit Profile";
   document.getElementById("pf-name").value=p.name;
@@ -166,7 +163,6 @@ function openEditProfile() {
   document.getElementById("pf-cancel-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
   document.getElementById("pf-back-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
 
-  // For edit, hide the drive auth requirement (already connected)
   const driveSection = document.getElementById("pf-drive-section");
   if (driveSection) driveSection.style.display = "none";
 
@@ -178,7 +174,6 @@ function openEditProfile() {
 
   clearProfileErrors();
   resetPhotoUpload();
-  // If they already have a photo, show it
   if (pfPhotoDataUrl) {
     showPhotoPreview(pfPhotoDataUrl);
   }
@@ -226,7 +221,6 @@ function setDetailsEnabled(enabled) {
   }
 }
 
-// ── DRIVE AUTH HANDLER ──
 async function connectDriveForProfile() {
   const btn = document.getElementById("pf-connect-drive-btn");
   const btnText = document.getElementById("pf-connect-drive-text");
@@ -237,15 +231,11 @@ async function connectDriveForProfile() {
   errorEl.classList.add("hidden");
 
   try {
-    // Wait up to 8s for GIS to initialize (handles slow loads & new Netlify domains)
     await waitForGoogleDriveReady();
-
     await promptDriveAuth();
 
-    // Success!
     pfDriveConnected = true;
 
-    // Update UI
     const statusEl = document.getElementById("pf-drive-status");
     statusEl.className = "drive-status-chip connected";
     statusEl.textContent = "● Connected";
@@ -253,10 +243,8 @@ async function connectDriveForProfile() {
     btn.classList.add("connected");
     btnText.textContent = "✓ Google Drive Connected";
 
-    // Enable details section
     setDetailsEnabled(true);
 
-    // Enable save button
     const saveBtn = document.getElementById("pf-save-btn");
     saveBtn.disabled = false;
     saveBtn.style.opacity = "1";
@@ -264,7 +252,6 @@ async function connectDriveForProfile() {
     document.getElementById("pf-save-btn-text").textContent = profFormMode === "add" ? "Create Profile" : "Save Changes";
 
     showToast("Google Drive connected successfully");
-
   } catch (err) {
     console.error("Drive auth failed:", err);
     btn.disabled = false;
@@ -275,7 +262,6 @@ async function connectDriveForProfile() {
   }
 }
 
-// ── PHOTO UPLOAD ──
 let pfPhotoDataUrl = null;
 
 function resetPhotoUpload() {
@@ -296,7 +282,7 @@ function showPhotoPreview(dataUrl) {
   const initialsWrap = document.getElementById("pf-photo-initials-wrap");
   const img = document.getElementById("pf-photo-preview-img");
   if (dropzone) dropzone.style.display = "none";
-  if (previewWrap) { previewWrap.style.display = "flex"; }
+  if (previewWrap) previewWrap.style.display = "flex";
   if (initialsWrap) initialsWrap.style.display = "none";
   if (img) img.src = dataUrl;
 }
@@ -328,7 +314,6 @@ function updateAvatarPreview() {
   const name=document.getElementById("pf-name")?.value||"Preview";
   const role=document.getElementById("pf-role")?.value||"Role";
 
-  // Update initials preview
   const av=document.getElementById("pf-avatar-preview");
   if (av) av.textContent=initials(name);
 
@@ -337,14 +322,12 @@ function updateAvatarPreview() {
   if (namePreviewInitials) namePreviewInitials.textContent=name==="Preview"?"Attorney Name":name;
   if (rolePreviewInitials) rolePreviewInitials.textContent=role==="Role"?"Role":role;
 
-  // Also update name/role in the photo preview if visible
   const namePreview = document.getElementById("pf-name-preview");
   const rolePreview = document.getElementById("pf-role-preview");
   if (namePreview) namePreview.textContent=name==="Preview"?"Attorney Name":name;
   if (rolePreview) rolePreview.textContent=role==="Role"?"Role":role;
 }
 
-// Bind input listeners (only once)
 function bindProfileInputs() {
   const nameInp = document.getElementById("pf-name");
   const roleInp = document.getElementById("pf-role");
@@ -370,7 +353,6 @@ function clearProfileErrors() {
 }
 
 async function saveProfile() {
-  // Validate Drive connection for new profiles
   if (profFormMode === "add" && !pfDriveConnected) {
     showToast("Please connect Google Drive before creating a profile", "error");
     return;
@@ -388,7 +370,7 @@ async function saveProfile() {
     contact: document.getElementById("pf-contact").value.trim(),
     email: document.getElementById("pf-email").value.trim(),
     avatarColor: pfColor,
-    photoDataUrl: null  // never store base64 in Firestore
+    photoDataUrl: null
   };
 
   try {
@@ -397,7 +379,6 @@ async function saveProfile() {
       const np = await dbAddProfile(data);
       selProfile = np;
 
-      // Auto-create Drive folder now that we're connected
       showToast("Creating Drive folder...");
       const folderId = await createDriveFolder(`Simando Law — ${np.name}`, DRIVE_FOLDER_ID || null);
       if (folderId) {
@@ -406,7 +387,6 @@ async function saveProfile() {
         showToast("Drive folder created!");
       }
 
-      // Upload profile photo to Drive if provided
       if (pfPhotoDataUrl && np.driveFolderId) {
         try {
           showToast("Uploading profile photo...");
@@ -417,7 +397,7 @@ async function saveProfile() {
           showToast("Profile photo saved!");
         } catch (photoErr) {
           console.error("Photo upload error:", photoErr);
-          showToast("Profile created, but photo upload failed: " + photoErr.message, "error");
+          showToast("Photo upload failed: " + photoErr.message, "error");
         }
       }
 
@@ -425,13 +405,10 @@ async function saveProfile() {
       renderProfiles();
       navTo("profiles");
     } else {
-      // Edit mode — handle photo changes
       if (pfPhotoDataUrl && pfPhotoDataUrl.startsWith("data:")) {
-        // New photo selected — upload it
         try {
           showToast("Uploading profile photo...");
           const folderId = selProfile.driveFolderId;
-          // Delete old photo from Drive if exists
           if (selProfile.photoFileId && hasValidToken()) {
             await deleteDriveFile(selProfile.photoFileId).catch(() => {});
           }
@@ -444,12 +421,10 @@ async function saveProfile() {
           showToast("Photo upload failed: " + photoErr.message, "error");
         }
       } else if (!pfPhotoDataUrl && selProfile.photoFileId) {
-        // Photo was removed
         if (hasValidToken()) await deleteDriveFile(selProfile.photoFileId).catch(() => {});
         data.photoFileId = null;
         data.photoUrl = null;
       } else {
-        // Photo unchanged — keep existing
         data.photoFileId = selProfile.photoFileId || null;
         data.photoUrl = selProfile.photoUrl || null;
       }
@@ -460,7 +435,6 @@ async function saveProfile() {
       showView("profileDetail");
       renderProfileDetail();
     }
-    renderQuickAccess();
   } catch (err) {
     console.error("saveProfile error:", err);
     showToast("Failed to save profile: " + (err.message || "Unknown error"), "error");
@@ -484,8 +458,6 @@ async function createProfileFolderManual() {
 // ═══════════════════════════════════════════════════════════════
 //  CASE FORM
 // ═══════════════════════════════════════════════════════════════
-
-// ── Party Builder state ──
 let cfPetitioners = [];
 let cfRespondents = [];
 
@@ -527,7 +499,6 @@ function renderPartyLists() {
 }
 
 function serializeParties() {
-  // Build the parties string that gets stored: "Petitioner: A, B | Respondent: C, D"
   const parts = [];
   if (cfPetitioners.length) parts.push("Petitioner: " + cfPetitioners.join(", "));
   if (cfRespondents.length) parts.push("Respondent: " + cfRespondents.join(", "));
@@ -535,7 +506,6 @@ function serializeParties() {
 }
 
 function parsePartiesString(str) {
-  // Parse stored string back into arrays
   cfPetitioners = [];
   cfRespondents = [];
   if (!str) return;
@@ -546,13 +516,11 @@ function parsePartiesString(str) {
     } else if (seg.toLowerCase().startsWith("respondent:")) {
       cfRespondents = seg.slice(11).split(",").map(s=>s.trim()).filter(Boolean);
     } else if (seg) {
-      // Legacy plain string fallback — treat whole thing as respondent
       cfRespondents = [seg];
     }
   });
 }
 
-// ── Venue helpers ──
 function onVenueChange(sel) {
   const manual = document.getElementById("cf-venue-manual");
   if (sel.value === "Other (specify)") {
@@ -582,14 +550,12 @@ function setVenueValue(val) {
     sel.value = match;
     manual.style.display = "none";
   } else if (val) {
-    // Value is a custom string — select "Other (specify)" and fill manual
     sel.value = "Other (specify)";
     manual.style.display = "block";
     manual.value = val;
   }
 }
 
-// ── Case Type suggestions (loaded from Firestore per category) ──
 let _caseTypeSuggestions = [];
 
 async function loadCaseTypesForCategory(category) {
@@ -644,20 +610,17 @@ function onCaseTypeKeydown(e) {
 }
 
 async function onCategoryChange(category) {
-  // Update party labels
   const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
   const aLabel = document.getElementById("cf-party-a-label");
   const bLabel = document.getElementById("cf-party-b-label");
   if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
   if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
-  // Load saved case types for this category
   await loadCaseTypesForCategory(category);
   document.getElementById("cf-type-input").value = "";
   hideCaseTypeSuggestions();
 }
 
 function populateCaseSelects() {
-  // Case categories
   document.getElementById("cf-category").innerHTML = CASE_CATEGORIES.map(c=>`<option>${c}</option>`).join("");
   document.getElementById("cf-status").innerHTML = STATUS_OPTIONS.map(t=>`<option>${t}</option>`).join("");
   document.getElementById("cf-venue").innerHTML = VENUES.map(v=>`<option>${v}</option>`).join("");
@@ -683,7 +646,7 @@ async function openAddCase() {
   document.getElementById("drive-status").textContent="";
   document.getElementById("cf-back-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
   document.getElementById("cf-cancel-btn").onclick=()=>{ showView("profileDetail"); renderProfileDetail(); };
-  // Trigger first category load
+  
   const firstCat = CASE_CATEGORIES[0];
   document.getElementById("cf-category").value = firstCat;
   await onCategoryChange(firstCat);
@@ -711,11 +674,12 @@ async function openEditCase() {
   document.getElementById("cf-doc-type").value=c.docType||"";
   document.getElementById("cf-status").value=c.status;
   setVenueValue(c.venue);
-  // Set category and load its case types
+  
   const cat = c.category || CASE_CATEGORIES[0];
   document.getElementById("cf-category").value = cat;
   await onCategoryChange(cat);
   document.getElementById("cf-type-input").value = c.type||"";
+  
   document.getElementById("drive-status").textContent=pendingDocs.length?`${pendingDocs.length} file(s)`:"";
   document.getElementById("cf-back-btn").onclick=()=>{ showView("caseDetail"); renderCaseDetail(); };
   document.getElementById("cf-cancel-btn").onclick=()=>{ showView("caseDetail"); renderCaseDetail(); };
@@ -742,7 +706,7 @@ function clearCaseErrors() {
 }
 
 async function saveCase() {
-  serializeParties(); // make sure hidden field is current
+  serializeParties();
   const title=document.getElementById("cf-case-title").value.trim();
   const due=document.getElementById("cf-due").value;
   const parties=document.getElementById("cf-parties").value.trim();
@@ -756,7 +720,6 @@ async function saveCase() {
 
   const category = document.getElementById("cf-category").value;
   const caseType = document.getElementById("cf-type-input").value.trim();
-  // Save new case type to Firestore for future suggestions
   if (caseType) await saveCaseTypeIfNew(category, caseType);
   const data={
     title,dueDate:due,parties,narrative,
@@ -769,7 +732,6 @@ async function saveCase() {
     documents:pendingDocs,
   };
   try {
-    // Sync any locally-staged files to Drive under the correct folder hierarchy
     const caseCategory = data.category || "Other";
     const caseType = data.type || "Other";
     const caseTitle = data.title || "Untitled";
@@ -779,13 +741,12 @@ async function saveCase() {
       const syncedDocs = await syncPendingFilesToDrive(caseCategory, caseType, caseTitle, profileFolderId);
       data.documents = syncedDocs.map(d => {
         const clean = {...d};
-        delete clean._localTempId; // don't persist temp markers
+        delete clean._localTempId;
         return clean;
       });
-      // Warn if files couldn't be uploaded to Drive (token expired)
       const stillLocal = data.documents.some(d => !d.driveFileId && d.name);
       if (hadLocalFiles && stillLocal) {
-        showToast("Case saved — Drive session expired. Re-connect Drive to upload files.", "error");
+        showToast("Case saved locally — Drive session expired.", "error");
       }
     }
     if(caseFormMode==="add"){
@@ -837,7 +798,6 @@ async function connectDatabase() {
     const banner = document.getElementById("config-banner");
     if (banner) banner.classList.remove("show");
 
-    // If no user is logged in after firebase-ready fires, redirect to login
     if (!window._currentUser) {
       window.location.replace("login.html");
       return;
