@@ -110,6 +110,7 @@ function renderDashboard() {
     }).join("");
 
   renderQuickAccess();
+  fetchAndRenderGoogleCalendarEvents();
 }
 
 function getNearestDueCase(profileId) {
@@ -966,4 +967,82 @@ async function handleLogout() {
   } catch (err) {
     console.error("Signout error:", err);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DYNAMIC AGENDA LOADER FROM GOOGLE CALENDAR API
+// ═══════════════════════════════════════════════════════════════
+async function fetchAndRenderGoogleCalendarEvents() {
+  const card = document.getElementById("dash-calendar-card");
+  if (!card) return;
+
+  let html = `<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">📅</span> Google Calendar Agenda
+    </div>
+    <button onclick="fetchAndRenderGoogleCalendarEvents()" class="btn btn-ghost" style="font-size:11px;padding:4px 8px" title="Refresh Agenda">↻ Refresh</button>
+  </div>`;
+
+  if (!hasValidToken()) {
+    html += `<div style="text-align:center;padding:24px 12px;color:var(--text-dim);border:1px dashed var(--border);border-radius:10px">
+      <div style="font-size:24px;margin-bottom:8px">☁️</div>
+      <div style="font-size:12px;font-weight:600">Google Calendar Not Synced</div>
+      <div style="font-size:11px;margin-top:4px">Authorize Google Calendar under <a href="#" onclick="navTo('myprofile'); return false;" style="color:var(--gold);text-decoration:underline">My Settings</a> to sync case deadlines and view your agenda live.</div>
+    </div>`;
+    card.innerHTML = html;
+    return;
+  }
+
+  try {
+    card.innerHTML = html + `<div style="text-align:center;padding:20px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
+    
+    const timeMin = new Date().toISOString();
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=4`;
+    
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to load events");
+    }
+
+    const data = await res.json();
+    const events = data.items || [];
+
+    if (events.length === 0) {
+      html += `<div style="text-align:center;padding:24px 12px;color:var(--text-dim);border:1px dashed var(--border);border-radius:10px;font-size:12px">
+        No upcoming events found on your Google Calendar.
+      </div>`;
+    } else {
+      html += `<div style="display:flex;flex-direction:column;gap:10px">`;
+      events.forEach(ev => {
+        const start = ev.start.date || ev.start.dateTime;
+        const eventDate = new Date(start);
+        const dateStr = eventDate.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+        const isAllDay = !!ev.start.date;
+        const timeStr = isAllDay ? "All Day" : eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        html += `
+          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+            <div style="text-align:center;background:rgba(201,168,76,0.1);border:1px solid var(--gold-border);border-radius:8px;padding:6px;min-width:48px">
+              <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase">${eventDate.toLocaleDateString("en-PH", { weekday: "short" })}</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px">${eventDate.getDate()}</div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary)}">${escHtml(ev.summary)}</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px">📅 ${dateStr} · ⏰ ${timeStr}</div>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+  } catch (err) {
+    console.error("fetchAndRenderGoogleCalendarEvents error:", err);
+    html += `<div style="text-align:center;padding:20px;color:var(--red);font-size:12px">
+      ⚠ Failed to load Google Calendar Agenda. Click refresh to try again.
+    </div>`;
+  }
+  card.innerHTML = html;
 }
