@@ -90,9 +90,9 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: User's Cases ──────────────────────────────────────────
+    // ── Real-Time Sync: Cases (Checks allowedUids for access) ─────────────
     const cColRef = window._fbCol(db, "cases");
-    const cQuery = window._fbQuery(cColRef, window._fbWhere("ownerUid", "==", window._currentUser.uid));
+    const cQuery = window._fbQuery(cColRef, window._fbWhere("allowedUids", "array-contains", window._currentUser.uid));
     casesUnsub = window._fbOnSnapshot(cQuery, (snap) => {
       cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       refreshCurrentView();
@@ -107,7 +107,6 @@ async function dbLoad() {
   }
 }
 
-// ── Refresh router for real-time changes ────────────────────────────────────
 function refreshCurrentView() {
   if (!dbReady) return;
 
