@@ -57,7 +57,7 @@ function initGoogleDrive() {
           console.log("Drive auth success");
           if (pendingDriveAuthResolve) pendingDriveAuthResolve(accessToken);
         } else {
-          console.error("Drive auth response:", response);
+          console.error("Drive auth response error:", response);
           if (pendingDriveAuthReject) pendingDriveAuthReject(new Error(response.error_description || "Drive auth failed"));
         }
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
@@ -90,14 +90,12 @@ function promptDriveAuth() {
   });
 }
 
-
 /**
  * Show a modal asking the user to select file type (Inbound/Outbound)
  * Returns a promise that resolves with the selected type or null if cancelled
  */
 function showFileTypeModal() {
   return new Promise((resolve) => {
-    // Create modal HTML
     const modalHTML = `
       <div id="file-type-modal" style="
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -134,7 +132,6 @@ function showFileTypeModal() {
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    // Store the resolve function so buttons can call it
     window._fileTypeResolve = (type) => {
       resolve(type);
       window._fileTypeResolve = null;
@@ -146,13 +143,15 @@ function hasValidToken() {
   return accessToken && Date.now() < tokenExpiresAt - 60000;
 }
 
-
 async function createDriveFolder(name, parentId = null) {
   const metadata = {
     name: name,
-    mimeType: "application/vnd.google-apps.folder",
-    ...(parentId && { parents: [parentId] })
+    mimeType: "application/vnd.google-apps.folder"
   };
+  if (parentId && parentId !== "root") {
+    metadata.parents = [parentId];
+  }
+
   const res = await fetch("https://www.googleapis.com/drive/v3/files", {
     method: "POST",
     headers: {
@@ -189,56 +188,73 @@ async function setupProfileDriveFolder(profile) {
   }
 }
 
-async function uploadFilesToDrive(files, folderId = null) {
-  const targetFolder = folderId || DRIVE_FOLDER_ID || null;
-  const statusEl = document.getElementById("drive-status");
-  if (statusEl) statusEl.textContent = `Uploading ${files.length} file(s)…`;
-
-  for (const file of files) {
-    try {
-      const meta = { name: file.name, mimeType: file.type };
-      if (targetFolder) meta.parents = [targetFolder];
-      const form = new FormData();
-      form.append("metadata", new Blob([JSON.stringify(meta)], {type:"application/json"}));
-      form.append("file", file);
-      const res = await fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
-        { method:"POST", headers:{Authorization:`Bearer ${accessToken}`}, body:form }
-      );
-      if (res.ok) {
-        const data = await res.json();
-        pendingDocs.push({
-          name: file.name,
-          size: (file.size/1024).toFixed(1)+" KB",
-          date: new Date().toLocaleDateString(),
-          driveFileId: data.id,
-          driveLink: data.webViewLink
-        });
-        renderPendingDocs();
-      } else {
-        const err = await res.json();
-        if (err.error?.code === 401) {
-          clearPersistedToken();
-          showToast("Drive session expired. Click upload again to re-authenticate.", "error");
-          return;
-        }
-        showToast(`Upload failed: ${err.error?.message}`,"error");
-      }
-    } catch(e) {
-      showToast("Drive upload error — check console","error");
-      console.error(e);
-    }
+async function uploadSingleFileToDrive(file, folderId) {
+  if (!hasValidToken()) {
+    throw new Error("Missing or invalid Google Drive access token.");
   }
-  if (statusEl) statusEl.textContent = `${pendingDocs.length} file(s) ready`;
+  const metadata = {
+    name: file.name,
+    mimeType: file.type || "application/octet-stream"
+  };
+  if (folderId && folderId !== "root") {
+    metadata.parents = [folderId];
+  }
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const fileReader = new FileReader();
+  const arrayBuffer = await new Promise((resolve, reject) => {
+    fileReader.onload = () => resolve(fileReader.result);
+    fileReader.onerror = () => reject(fileReader.error);
+    fileReader.readAsArrayBuffer(file);
+  });
+
+  const metadataPart = delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: ' + (file.type || 'application/octet-stream') + '\r\n\r\n';
+
+  const encoder = new TextEncoder();
+  const metadataBuffer = encoder.encode(metadataPart);
+  const closeBuffer = encoder.encode(close_delim);
+
+  const bodyBuffer = new Uint8Array(metadataBuffer.byteLength + arrayBuffer.byteLength + closeBuffer.byteLength);
+  bodyBuffer.set(metadataBuffer, 0);
+  bodyBuffer.set(new Uint8Array(arrayBuffer), metadataBuffer.byteLength);
+  bodyBuffer.set(closeBuffer, metadataBuffer.byteLength + arrayBuffer.byteLength);
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`
+      },
+      body: bodyBuffer
+    }
+  );
+
+  if (res.ok) {
+    return await res.json();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 401 || err.error?.code === 401) {
+      clearPersistedToken();
+      showToast("Drive session expired. Re-authenticate and try again.", "error");
+    } else {
+      showToast(`Drive upload failed: ${err.error?.message || "Unknown error"}`, "error");
+    }
+    return null;
+  }
 }
 
-
-
-
 async function addDocToCase() {
-  // Show modal to select inbound/outbound
   showFileTypeModal().then(async (fileType) => {
-    if (!fileType) return; // User cancelled
+    if (!fileType) return;
 
     const inp = document.createElement("input");
     inp.type = "file";
@@ -247,19 +263,22 @@ async function addDocToCase() {
       const files = Array.from(e.target.files);
       if (!files.length) return;
 
-      const profileFolderId = selProfile?.driveFolderId || null;
-
-      // ── Auto re-auth if token is missing or expired ──
-      if (profileFolderId && !hasValidToken()) {
-        showToast("Drive session expired — reconnecting…");
+      if (!hasValidToken()) {
+        showToast("Drive session expired or not connected — reconnecting…");
         try {
           await waitForGoogleDriveReady(6000);
           await promptDriveAuth();
           showToast("Drive reconnected — uploading files…");
         } catch (authErr) {
-          console.warn("Drive re-auth failed, files will be saved locally:", authErr);
-          showToast("Could not reconnect Drive — files saved locally only.", "error");
+          console.warn("Drive re-auth failed:", authErr);
+          showToast("Could not connect Drive — saving locally only.", "error");
         }
+      }
+
+      let profileFolderId = selProfile?.driveFolderId || null;
+      if (!profileFolderId && selProfile && hasValidToken()) {
+        showToast("Creating missing profile folder…");
+        profileFolderId = await setupProfileDriveFolder(selProfile);
       }
 
       const caseCategory = selCase?.category || "Other";
@@ -267,29 +286,22 @@ async function addDocToCase() {
       const caseTitle    = selCase?.title    || "Untitled";
       let targetFolderId = null;
 
-      if (profileFolderId && hasValidToken()) {
-        console.log("📁 Creating folder hierarchy for:", {caseCategory, caseType, caseTitle, fileType});
-        targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId);
-        console.log("✅ Target folder ID:", targetFolderId);
-      } else {
-        console.warn("⚠️ Drive upload skipped — profileFolderId:", profileFolderId, "hasValidToken:", hasValidToken());
+      if (hasValidToken()) {
+        const rootFolder = profileFolderId || DRIVE_FOLDER_ID || "root";
+        console.log("Creating folder hierarchy for:", {caseCategory, caseType, caseTitle, fileType});
+        targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, rootFolder);
       }
 
       const newDocs = [];
       for (const f of files) {
         let driveFileId = null, driveLink = null;
         if (hasValidToken() && targetFolderId) {
-          console.log("📤 Uploading file to Drive:", f.name);
+          console.log("Uploading file to Drive:", f.name);
           const result = await uploadSingleFileToDrive(f, targetFolderId);
           if (result) {
             driveFileId = result.id;
             driveLink   = result.webViewLink;
-            console.log("✅ File uploaded to Drive:", result.id);
-          } else {
-            console.warn("⚠️ Upload returned no result for:", f.name);
           }
-        } else {
-          console.warn("⚠️ File will be stored locally — hasValidToken:", hasValidToken(), "targetFolderId:", targetFolderId);
         }
 
         newDocs.push({
@@ -311,12 +323,11 @@ async function addDocToCase() {
       if (uploadedToDrive && !savedLocally) {
         showToast(`${uploadedToDrive} doc(s) attached as ${fileType} & synced to Drive ✅`);
       } else if (uploadedToDrive && savedLocally) {
-        showToast(`${uploadedToDrive} to Drive, ${savedLocally} saved locally (Drive unavailable)`, "error");
+        showToast(`${uploadedToDrive} sent to Drive, ${savedLocally} saved locally (Drive unavailable)`, "error");
       } else {
         showToast(`${newDocs.length} doc(s) attached locally (Drive not connected)`);
       }
 
-      // Refresh the chip state after upload attempt
       if (typeof updateDriveFolderChip === "function") updateDriveFolderChip();
     };
     inp.click();
@@ -366,7 +377,6 @@ function updateDriveFolderChip() {
       chip.style.cursor = "default";
       chip.onclick = null;
     } else {
-      // Folder linked but token expired — prompt user to re-auth with one click
       chip.className = "drive-status-chip disconnected";
       chip.textContent = "⚠ Drive Session Expired — Click to Reconnect";
       chip.title = "Click to refresh your Drive connection";
@@ -399,12 +409,10 @@ function updateDriveFolderChip() {
   }
 }
 
-
 // ═══════════════════════════════════════════════════════════════
 //  LOCAL ATTACHMENT — files staged locally, synced to Drive on save
 // ═══════════════════════════════════════════════════════════════
 
-// Map of pending local File objects keyed by a temp id so we can upload them on save
 const pendingLocalFiles = {};
 
 function triggerLocalAttach() {
@@ -427,8 +435,6 @@ async function handleLocalAttach(e) {
     };
     pendingDocs.push(docEntry);
     renderPendingDocs();
-
-    // Analysis removed — no auto brief
   }
 
   const statusEl = document.getElementById("drive-status");
@@ -440,47 +446,23 @@ async function handleLocalAttach(e) {
 //  DRIVE FOLDER RESOLUTION — auto-create per case type
 // ═══════════════════════════════════════════════════════════════
 
-// Cache: hierarchical paths → Drive folder id
 const caseFolderCache = {};
 
-/**
- * Get (or create) the Drive subfolder for a given case with full hierarchy
- * under the profile's drive folder.
- *
- * Hierarchy:
- *   Simando Law (root DRIVE_FOLDER_ID)
- *     └─ Simando Law — <Profile Name>  (profile folder)
- *           └─ <Case Category>         (auto-created by this fn)
- *                 └─ <Case Type>       (auto-created by this fn)
- *                       └─ <Case Title> (auto-created by this fn)
- *                             ├─ Inbound
- *                             └─ Outbound
- *
- * @param {string} caseCategory   e.g. "Civil"
- * @param {string} caseType       e.g. "Staffa"
- * @param {string} caseTitle      e.g. "Case Title"
- * @param {string} fileType       "Inbound" or "Outbound"
- * @param {string} profileFolderId  the profile's Drive folder id
- * @returns {Promise<string|null>} the folder id, or null on failure
- */
 async function getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId) {
-  const cacheKey = `${profileFolderId}::${caseCategory}::${caseType}::${caseTitle}::${fileType}`.toLowerCase();
+  const rootId = profileFolderId || DRIVE_FOLDER_ID || "root";
+  const cacheKey = `${rootId}::${caseCategory}::${caseType}::${caseTitle}::${fileType}`.toLowerCase();
   if (caseFolderCache[cacheKey]) return caseFolderCache[cacheKey];
 
   try {
-    // Step 1: Get or create Category folder
-    let categoryFolderId = await getOrCreateFolderInParent(caseCategory, profileFolderId);
+    let categoryFolderId = await getOrCreateFolderInParent(caseCategory, rootId);
     if (!categoryFolderId) return null;
 
-    // Step 2: Get or create Type folder under Category
     let typeFolderId = await getOrCreateFolderInParent(caseType, categoryFolderId);
     if (!typeFolderId) return null;
 
-    // Step 3: Get or create Title folder under Type
     let titleFolderId = await getOrCreateFolderInParent(caseTitle, typeFolderId);
     if (!titleFolderId) return null;
 
-    // Step 4: Get or create Inbound/Outbound folder under Title
     let fileTypeFolderId = await getOrCreateFolderInParent(fileType, titleFolderId);
     if (!fileTypeFolderId) return null;
 
@@ -492,17 +474,11 @@ async function getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle,
   }
 }
 
-/**
- * Helper: Get or create a folder with given name under a parent folder
- * @param {string} folderName
- * @param {string} parentFolderId
- * @returns {Promise<string|null>} folder id or null
- */
 async function getOrCreateFolderInParent(folderName, parentFolderId) {
+  const pid = parentFolderId || "root";
   try {
-    // Search for existing folder
     const q = encodeURIComponent(
-      `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${parentFolderId}' in parents and trashed=false`
+      `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${pid}' in parents and trashed=false`
     );
     const res = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
@@ -514,8 +490,7 @@ async function getOrCreateFolderInParent(folderName, parentFolderId) {
         return data.files[0].id;
       }
     }
-    // Not found — create it
-    const folderId = await createDriveFolder(folderName, parentFolderId);
+    const folderId = await createDriveFolder(folderName, pid);
     return folderId;
   } catch (err) {
     console.error(`getOrCreateFolderInParent error for "${folderName}":`, err);
@@ -523,79 +498,38 @@ async function getOrCreateFolderInParent(folderName, parentFolderId) {
   }
 }
 
-/**
- * Upload a single File object to Drive inside the given folder.
- * Returns the drive file metadata {id, webViewLink} or null on failure.
- */
-async function uploadSingleFileToDrive(file, folderId) {
-  const meta = { name: file.name, mimeType: file.type || "application/octet-stream" };
-  if (folderId) meta.parents = [folderId];
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify(meta)], { type: "application/json" }));
-  form.append("file", file);
-  const res = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
-    { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form }
-  );
-  if (res.ok) return await res.json();
-  const err = await res.json().catch(() => ({}));
-  if (err.error?.code === 401) {
-    clearPersistedToken();
-    showToast("Drive session expired. Re-authenticate and try again.", "error");
-  } else {
-    showToast(`Drive upload failed: ${err.error?.message || "Unknown error"}`, "error");
-  }
-  return null;
-}
-
-/**
- * Called from saveCase (in app.js) BEFORE the case is persisted.
- * Syncs any locally-staged files up to Drive under the correct folder hierarchy:
- * Category > Type > Title > Inbound/Outbound
- *
- * @param {string} caseCategory e.g. "Civil"
- * @param {string} caseType e.g. "Staffa"
- * @param {string} caseTitle e.g. "Case Title"
- * @param {string} profileFolderId  selProfile.driveFolderId
- * @returns {Promise<Array>} the updated pendingDocs array (local markers resolved to drive refs)
- */
 async function syncPendingFilesToDrive(caseCategory, caseType, caseTitle, profileFolderId) {
   const localDocs = pendingDocs.filter(d => d._localTempId);
   if (!localDocs.length) return pendingDocs;
 
-  // If no valid token, skip Drive upload entirely and save files as local-only.
-  // The user can re-sync from the case detail view after re-authenticating Drive.
   if (!hasValidToken()) return pendingDocs;
 
-  // Upload each staged local file with its associated fileType (Inbound/Outbound)
+  let activeProfileFolderId = profileFolderId;
+  if (!activeProfileFolderId && selProfile && hasValidToken()) {
+    activeProfileFolderId = await setupProfileDriveFolder(selProfile);
+  }
+
+  const rootFolder = activeProfileFolderId || DRIVE_FOLDER_ID || "root";
+
   for (const doc of localDocs) {
     const tempId = doc._localTempId;
     const file = pendingLocalFiles[tempId];
     if (!file) continue;
     
-    // Get file type or default to "Inbound"
     const fileType = doc.fileType || "Inbound";
-    
-    // Resolve the target folder using the full hierarchy
-    let targetFolderId = null;
-    if (profileFolderId) {
-      targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId);
-    } else if (DRIVE_FOLDER_ID) {
-      targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, DRIVE_FOLDER_ID);
-    }
+    let targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, rootFolder);
     
     if (targetFolderId) {
       const result = await uploadSingleFileToDrive(file, targetFolderId);
       if (result) {
         doc.driveFileId = result.id;
         doc.driveLink   = result.webViewLink;
-        delete pendingLocalFiles[tempId]; // delete from store BEFORE clearing the key
+        delete pendingLocalFiles[tempId];
         delete doc._localTempId;
       }
     }
   }
 
-  // Clean up any orphaned local file refs
   Object.keys(pendingLocalFiles).forEach(k => {
     if (!pendingDocs.some(d => d._localTempId === k)) delete pendingLocalFiles[k];
   });
@@ -603,15 +537,9 @@ async function syncPendingFilesToDrive(caseCategory, caseType, caseTitle, profil
   return pendingDocs;
 }
 
-/**
- * Upload a profile photo (base64 dataUrl) to the attorney's Drive folder,
- * set it as publicly readable, and return { fileId, thumbnailUrl }.
- * The thumbnailUrl uses Google's thumbnail endpoint — no token needed for display.
- */
 async function uploadProfilePhotoToDrive(dataUrl, folderId, profileName) {
   if (!hasValidToken()) throw new Error("Drive not connected");
 
-  // Convert base64 dataUrl → Blob
   const [header, base64] = dataUrl.split(",");
   const mime = header.match(/:(.*?);/)[1];
   const byteChars = atob(base64);
@@ -620,27 +548,58 @@ async function uploadProfilePhotoToDrive(dataUrl, folderId, profileName) {
   const blob = new Blob([byteArr], { type: mime });
   const ext = mime.split("/")[1] || "jpg";
 
-  // Upload via multipart
-  const meta = {
+  const metadata = {
     name: `profile-photo-${profileName.replace(/\s+/g,"-")}.${ext}`,
-    mimeType: mime,
-    ...(folderId && { parents: [folderId] })
+    mimeType: mime
   };
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify(meta)], { type: "application/json" }));
-  form.append("file", blob);
+  if (folderId && folderId !== "root") {
+    metadata.parents = [folderId];
+  }
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = "\r\n--" + boundary + "\r\n";
+  const close_delim = "\r\n--" + boundary + "--";
+
+  const arrayBuffer = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(blob);
+  });
+
+  const metadataPart = delimiter +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify(metadata) +
+    delimiter +
+    'Content-Type: ' + mime + '\r\n\r\n';
+
+  const encoder = new TextEncoder();
+  const metadataBuffer = encoder.encode(metadataPart);
+  const closeBuffer = encoder.encode(close_delim);
+
+  const bodyBuffer = new Uint8Array(metadataBuffer.byteLength + arrayBuffer.byteLength + closeBuffer.byteLength);
+  bodyBuffer.set(metadataBuffer, 0);
+  bodyBuffer.set(new Uint8Array(arrayBuffer), metadataBuffer.byteLength);
+  bodyBuffer.set(closeBuffer, metadataBuffer.byteLength + arrayBuffer.byteLength);
 
   const res = await fetch(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
-    { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: form }
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`
+      },
+      body: bodyBuffer
+    }
   );
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error?.message || "Photo upload failed");
   }
   const { id: fileId } = await res.json();
 
-  // Make it publicly readable so we can display it without a token
   await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
     method: "POST",
     headers: {
@@ -650,15 +609,10 @@ async function uploadProfilePhotoToDrive(dataUrl, folderId, profileName) {
     body: JSON.stringify({ role: "reader", type: "anyone" })
   });
 
-  // Use Google's direct thumbnail URL (works publicly after permission set above)
   const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
-
   return { fileId, thumbnailUrl };
 }
 
-/**
- * Delete a file from Drive by its id.
- */
 async function deleteDriveFile(driveFileId) {
   if (!driveFileId || !hasValidToken()) return;
   try {
@@ -671,13 +625,11 @@ async function deleteDriveFile(driveFileId) {
   }
 }
 
-// Called by the GIS script itself once it's ready (via onload attribute)
 window.onGoogleLibraryLoad = function() {
   initGoogleDrive();
 };
 
 window.addEventListener("load", () => {
-  // Fallback: if GIS already loaded before this listener ran, init now
   if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
     initGoogleDrive();
   } else {
@@ -685,10 +637,6 @@ window.addEventListener("load", () => {
   }
 });
 
-/**
- * Returns a promise that resolves when gTokenClient is ready,
- * or rejects after a timeout. Used by connectDriveForProfile.
- */
 function waitForGoogleDriveReady(timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     if (gTokenClient) { resolve(); return; }
@@ -700,7 +648,7 @@ function waitForGoogleDriveReady(timeoutMs = 8000) {
       } else if (Date.now() - start > timeoutMs) {
         clearInterval(interval);
         reject(new Error(
-          "Google Drive failed to initialize. Make sure your new site domain is added to " +
+          "Google Drive failed to initialize. Make sure your domain is added to " +
           "Authorized JavaScript Origins in your Google Cloud Console OAuth client settings."
         ));
       }
