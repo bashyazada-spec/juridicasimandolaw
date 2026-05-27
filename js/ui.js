@@ -582,3 +582,256 @@ function closeFilePreview() {
   modal.style.display = "none";
   document.getElementById("fpm-body").innerHTML = "";
   if (_previewObjectUrl) { URL.revokeObjectURL(_previewObjectUrl); _previewObjectUrl = null; }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("file-preview-modal");
+  if (modal) {
+    modal.addEventListener("click", e => { if (e.target === modal) closeFilePreview(); });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  PERSONAL SETTINGS MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+let settingsPhotoDataUrl = null;
+
+function renderMyProfile() {
+  const u = window._currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  if (!myProf) return;
+
+  document.getElementById("setting-name").value    = myProf.name || "";
+  document.getElementById("setting-role").value    = myProf.role || "Attorney";
+  document.getElementById("setting-contact").value = myProf.contact || "";
+  document.getElementById("setting-email").value   = u.email || "";
+  document.getElementById("setting-password").value = "";
+  document.getElementById("setting-current-password").value = "";
+  document.getElementById("setting-reauth-panel").style.display = "none";
+
+  settingsPhotoDataUrl = myProf.photoUrl || null;
+  if (settingsPhotoDataUrl) {
+    showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
+  } else {
+    resetSettingsPhotoUpload();
+  }
+}
+
+function showSettingsPhotoPreview(url, name, role) {
+  document.getElementById("setting-photo-dropzone").style.display = "none";
+  const wrap = document.getElementById("setting-photo-preview-wrap");
+  wrap.style.display = "flex";
+  document.getElementById("setting-photo-preview-img").src = url;
+  document.getElementById("setting-name-preview").textContent = name || "Attorney Name";
+  document.getElementById("setting-role-preview").textContent = role || "Role";
+}
+
+function resetSettingsPhotoUpload() {
+  document.getElementById("setting-photo-dropzone").style.display = "block";
+  document.getElementById("setting-photo-preview-wrap").style.display = "none";
+  document.getElementById("setting-photo-input").value = "";
+  settingsPhotoDataUrl = null;
+}
+
+function handleSettingsPhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    showToast("Photo must be under 2MB", "error");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    settingsPhotoDataUrl = e.target.result;
+    showSettingsPhotoPreview(settingsPhotoDataUrl, document.getElementById("setting-name").value, document.getElementById("setting-role").value);
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeSettingsPhoto() {
+  resetSettingsPhotoUpload();
+}
+
+async function saveUserSettings() {
+  const u = window._currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  if (!myProf) return;
+
+  const name = document.getElementById("setting-name").value.trim();
+  const role = document.getElementById("setting-role").value.trim();
+  const contact = document.getElementById("setting-contact").value.trim();
+
+  if (!name || !role) {
+    showToast("Name and Role are required.", "error");
+    return;
+  }
+
+  const upd = { name, role, contact };
+
+  try {
+    showToast("Saving settings...");
+
+    if (settingsPhotoDataUrl && settingsPhotoDataUrl.startsWith("data:")) {
+      if (myProf.photoFileId && hasValidToken()) {
+        await deleteDriveFile(myProf.photoFileId).catch(() => {});
+      }
+      if (hasValidToken()) {
+        const folderId = myProf.driveFolderId || null;
+        const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(settingsPhotoDataUrl, folderId, name);
+        upd.photoFileId = fileId;
+        upd.photoUrl = thumbnailUrl;
+      } else {
+        showToast("Drive not connected. Profile photo was not uploaded to storage.", "error");
+      }
+    } else if (!settingsPhotoDataUrl && myProf.photoFileId) {
+      if (hasValidToken()) await deleteDriveFile(myProf.photoFileId).catch(() => {});
+      upd.photoFileId = null;
+      upd.photoUrl = null;
+    }
+
+    await dbUpdateProfile(myProf.id, upd);
+    
+    if (typeof window._fbUpdateProfile === "function") {
+      await window._fbUpdateProfile(u, { displayName: name, photoURL: upd.photoUrl || null });
+    }
+
+    selProfile = { ...myProf, ...upd };
+    showToast("Profile settings updated!");
+    renderMyProfile();
+  } catch (err) {
+    console.error("saveUserSettings error:", err);
+    showToast("Failed to save settings: " + err.message, "error");
+  }
+}
+
+async function saveSecuritySettings() {
+  const u = window._currentUser;
+  if (!u) return;
+
+  const email = document.getElementById("setting-email").value.trim();
+  const pass = document.getElementById("setting-password").value;
+  const currentPass = document.getElementById("setting-current-password").value;
+
+  if (email === u.email && !pass) {
+    showToast("No security modifications requested.");
+    return;
+  }
+
+  const reauthPanel = document.getElementById("setting-reauth-panel");
+  if (reauthPanel.style.display === "none") {
+    reauthPanel.style.display = "block";
+    showToast("Enter your current password to verify identity.", "error");
+    return;
+  }
+
+  if (!currentPass) {
+    showToast("Please enter your current password to proceed.", "error");
+    return;
+  }
+
+  try {
+    showToast("Verifying credentials...");
+    const credential = window._fbEmailCred(u.email, currentPass);
+    await window._fbReauth(u, credential);
+
+    if (email !== u.email) {
+      await window._fbUpdateEmail(u, email);
+      const myProf = profiles.find(p => p.ownerUid === u.uid);
+      if (myProf) {
+        await dbUpdateProfile(myProf.id, { email: email });
+      }
+    }
+
+    if (pass) {
+      await window._fbUpdatePassword(u, pass);
+    }
+
+    showToast("Credentials updated successfully!");
+    reauthPanel.style.display = "none";
+    document.getElementById("setting-password").value = "";
+    document.getElementById("setting-current-password").value = "";
+  } catch (err) {
+    console.error("Credentials update failed:", err);
+    showToast("Verification failed: " + err.message, "error");
+  }
+}
+
+function confirmDeleteUserAccount() {
+  const u = window._currentUser;
+  if (!u) return;
+  
+  const pending = { type: "account_delete", email: u.email };
+  _pendingDeleteTarget = pending;
+
+  document.getElementById("del-title").textContent = "Delete Your Account?";
+  document.getElementById("del-body").innerHTML = 
+    `You are about to permanently delete your account, attorney profile, and all cases.<br>This cannot be undone. To proceed, please type your email address exactly:<br><strong>${u.email}</strong>`;
+  
+  const label = document.getElementById("del-confirm-target-text");
+  label.textContent = u.email;
+  label.style.color = "var(--red)";
+
+  openDeleteModal();
+}
+
+async function executeDeleteAccountWipe() {
+  const u = window._currentUser;
+  if (!u) return;
+
+  try {
+    showToast("Purging your files & database records...");
+
+    const myProf = profiles.find(p => p.ownerUid === u.uid);
+    
+    const myCases = cases.filter(c => c.ownerUid === u.uid);
+    for (const c of myCases) {
+      if (c.documents) {
+        for (const doc of c.documents) {
+          if (doc.driveFileId && hasValidToken()) {
+            await deleteDriveFile(doc.driveFileId).catch(() => {});
+          }
+        }
+      }
+      await dbDeleteCase(c.id).catch(() => {});
+    }
+
+    if (myProf) {
+      if (myProf.photoFileId && hasValidToken()) {
+        await deleteDriveFile(myProf.photoFileId).catch(() => {});
+      }
+      if (myProf.driveFolderId && hasValidToken()) {
+        await deleteDriveFile(myProf.driveFolderId).catch(() => {});
+      }
+      await dbDeleteProfile(myProf.id).catch(() => {});
+    }
+
+    showToast("Deleting security credential...");
+    await window._fbDeleteUser(u);
+    
+    showToast("Account deleted successfully.");
+    window.location.replace("login.html");
+  } catch (err) {
+    console.error("Account wipe failure:", err);
+    if (err.code === "auth/requires-recent-login") {
+      showToast("Verification expired. Re-authenticate in My Settings and try again.", "error");
+    } else {
+      showToast("Cleanup finished with network warnings: " + err.message, "error");
+    }
+  }
+}
+
+async function handleLogout() {
+  try {
+    if (window._fbSignOut) {
+      await window._fbSignOut(window._auth);
+      clearPersistedToken();
+      window.location.replace("login.html");
+    }
+  } catch (err) {
+    console.error("Signout error:", err);
+  }
+}
