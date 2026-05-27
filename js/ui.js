@@ -92,7 +92,7 @@ function renderDashboard() {
       const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate)-new Date())/(1000*60*60*24)) : null;
       const urgency = daysLeft !== null
         ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
-         : daysLeft <= 7  ? {col:"var(--red)",   label:daysLeft===0?"Due today"}
+         : daysLeft <= 7  ? {col:"var(--red)",   label:daysLeft===0?"Due today":`${daysLeft}d left`}
          : daysLeft <= 30 ? {col:"var(--amber)", label:`${daysLeft}d left`}
          :                  {col:"var(--text-dim)",label:`${daysLeft}d left`})
         : null;
@@ -230,7 +230,7 @@ function renderProfileDetail() {
   const headerCard = document.getElementById("profile-header-card");
   if (headerCard) {
     headerCard.innerHTML = `
-      ${avatarDiv(p.name,p.avatarColor,64,p.photoUrl)}
+      ${avatarDiv(p.name, p.avatarColor, 64, p.photoUrl)}
       <div style="flex:1">
         <div style="font-size:24px;font-weight:700;color:var(--text)">${p.name}</div>
         <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${p.role}</div>
@@ -693,7 +693,6 @@ function renderMyProfile() {
     resetSettingsPhotoUpload();
   }
 
-  // Render Google Drive Status block in settings
   const statusEl = document.getElementById("settings-drive-status");
   const btn = document.getElementById("settings-connect-drive-btn");
   const btnText = document.getElementById("settings-connect-drive-text");
@@ -727,9 +726,8 @@ async function connectDriveFromSettings() {
     await waitForGoogleDriveReady();
     await promptDriveAuth();
     showToast("Google Drive connected successfully!");
-    renderMyProfile(); // Refresh status UI
+    renderMyProfile();
     
-    // Auto-create drive folder if missing on connect
     const u = window._currentUser;
     const myProf = profiles.find(p => p.ownerUid === u.uid);
     if (myProf && !myProf.driveFolderId) {
