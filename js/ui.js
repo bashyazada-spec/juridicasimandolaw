@@ -35,7 +35,7 @@ function showView(name) {
   if (el) el.classList.remove("hidden");
   currentView = name;
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
-  if (["dashboard","profiles","allcases"].includes(name)) {
+  if (["dashboard","profiles","allcases","myprofile"].includes(name)) {
     const btn = document.querySelector(`.nav-btn[data-nav="${name}"]`);
     if (btn) btn.classList.add("active");
   }
@@ -46,7 +46,6 @@ function navTo(view) {
   const ac = document.getElementById("ac-search");
   if (pd) pd.value = "";
   if (ac) ac.value = "";
-  // Reset dropdowns to defaults
   ["pd-status","pd-type","ac-status","ac-type"].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value="All";
   });
@@ -57,14 +56,17 @@ function navTo(view) {
   if (view==="dashboard") renderDashboard();
   if (view==="profiles")  renderProfiles();
   if (view==="allcases")  renderAllCases();
+  if (view==="myprofile") renderMyProfile();
 }
 
 // ═══════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════════
 function renderDashboard() {
-  document.getElementById("today-date").textContent =
-    new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  if (document.getElementById("today-date")) {
+    document.getElementById("today-date").textContent =
+      new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  }
   document.getElementById("stat-profiles").textContent  = profiles.length;
   document.getElementById("stat-total").textContent     = cases.length;
   document.getElementById("stat-ongoing").textContent   = cases.filter(c=>c.status==="On-going").length;
@@ -73,15 +75,11 @@ function renderDashboard() {
   renderDashProfiles();
 
   const dcEl = document.getElementById("dash-cases");
-  // Show upcoming due cases sorted by date
-  const activeCases = cases
-    .filter(c=>c.dueDate && !["Completed","Dismissed","Settled"].includes(c.status))
-    .sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
-  const displayCases = activeCases.length ? activeCases : cases.slice(0,6);
+  const displayCases = cases.slice(0,6);
 
   dcEl.innerHTML = displayCases.length===0
     ? '<div class="empty-state"><div class="empty-state-icon">📁</div><div>No cases yet.</div></div>'
-    : displayCases.slice(0,6).map(c=>{
+    : displayCases.map(c=>{
       const p = profiles.find(x=>x.id===c.profileId);
       const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate)-new Date())/(1000*60*60*24)) : null;
       const urgency = daysLeft !== null
@@ -102,11 +100,8 @@ function renderDashboard() {
         </div>
       </div>`;
     }).join("");
-
-  renderQuickAccess();
 }
 
-// Helper: get the nearest due case per profile
 function getNearestDueCase(profileId) {
   const active = cases.filter(c=>
     c.profileId===profileId && c.dueDate &&
@@ -161,9 +156,8 @@ function renderDashProfiles() {
         ${avatarDiv(p.name,p.avatarColor,38,p.photoUrl)}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text)">${p.name}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${p.role||"Attorney"} · ${pc.length} case${pc.length!==1?"s":""} · ${active.length} active</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${p.role||"Attorney"} · ${pc.length} case${pc.length!==1?"s":""}</div>
         </div>
-        <div style="font-size:12px;color:var(--gold);font-weight:700;flex-shrink:0">${active.length > 0 ? active.length+" active" : "✓ clear"}</div>
       </div>
       ${nearestHtml}
     </div>`;
@@ -173,12 +167,11 @@ function renderDashProfiles() {
 // ═══════════════════════════════════════════════════════════════
 //  PROFILES
 // ═══════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════
 function renderProfiles() {
   document.getElementById("profiles-count").textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
   const el = document.getElementById("profiles-grid");
   if (profiles.length===0) {
-    el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👤</div><div style="font-size:16px;margin-bottom:8px">No profiles yet</div><div style="font-size:13px">Add your first attorney profile to get started.</div></div>';
+    el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👤</div><div style="font-size:16px;margin-bottom:8px">No profiles yet</div></div>';
     return;
   }
   el.innerHTML = profiles.map(p=>{
@@ -196,12 +189,11 @@ function renderProfiles() {
       ${p.email?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>`:""}
       ${p.contact?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>`:""}
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:14px;color:var(--gold);font-weight:700">${pc.length} case${pc.length!==1?"s":""}</div>
-        ${ongoing>0?badge(ongoing+" active","#f59e0b"):""}
+        <div style="font-size:14px;color:var(--gold);font-weight:700">${p.ownerUid === window._currentUser?.uid ? `${pc.length} cases` : 'Locked'}</div>
+        ${p.ownerUid === window._currentUser?.uid && ongoing>0?badge(ongoing+" active","#f59e0b"):""}
       </div>
     </div>`;
   }).join("");
-  renderQuickAccess();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -211,11 +203,26 @@ function renderProfileDetail() {
   const p = selProfile;
   if (!p) return;
 
-  const driveChip = p.driveFolderId
-    ? `<a href="https://drive.google.com/drive/folders/${p.driveFolderId}" target="_blank" style="font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:500;padding:4px 10px;background:rgba(34,197,94,0.08);border-radius:6px;border:1px solid rgba(34,197,94,0.2)" title="Open Drive Folder">📁 Drive Folder →</a>`
-    : (accessToken
-        ? `<button onclick="createProfileFolderManual()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:4px 10px;border-radius:6px;transition:all 0.2s" onmouseenter="this.style.background='rgba(245,158,11,0.08)'" onmouseleave="this.style.background='transparent'">📁 Create Drive Folder</button>`
-        : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px">📁 Drive not connected</span>`);
+  const isOwner = p.ownerUid === window._currentUser?.uid;
+
+  let actionButtons = "";
+  let driveChip = "";
+
+  if (isOwner) {
+    driveChip = p.driveFolderId
+      ? `<a href="https://drive.google.com/drive/folders/${p.driveFolderId}" target="_blank" style="font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:500;padding:4px 10px;background:rgba(34,197,94,0.08);border-radius:6px;border:1px solid rgba(34,197,94,0.2)" title="Open Drive Folder">📁 Drive Folder →</a>`
+      : (accessToken
+          ? `<button onclick="createProfileFolderManual()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:4px 10px;border-radius:6px;transition:all 0.2s">📁 Create Drive Folder</button>`
+          : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px">📁 Drive not connected</span>`);
+
+    actionButtons = `
+      <button class="btn btn-secondary btn-sm" onclick="openEditProfile()">✏️ Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDeleteProfile()">🗑 Delete</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddCase()">+ Add Case</button>
+    `;
+  } else {
+    driveChip = `<span style="font-size:12px;color:var(--text-dim)">📁 Files Protected</span>`;
+  }
 
   document.getElementById("profile-header-card").innerHTML = `
     ${avatarDiv(p.name,p.avatarColor,64,p.photoUrl)}
@@ -225,36 +232,46 @@ function renderProfileDetail() {
       <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
         ${p.email?`<span style="font-size:12px;color:var(--text-dim)">✉ ${p.email}</span>`:""}
         ${p.contact?`<span style="font-size:12px;color:var(--text-dim)">📞 ${p.contact}</span>`:""}
-        <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt}</span>
+        <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
         ${driveChip}
       </div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" onclick="openEditProfile()">✏️ Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="confirmDeleteProfile()">🗑 Delete</button>
-      <button class="btn btn-primary btn-sm" onclick="openAddCase()">+ Add Case</button>
+      ${actionButtons}
     </div>
   `;
 
-  const pc=cases.filter(c=>c.profileId===p.id);
-  const docs=pc.reduce((a,c)=>a+(c.documents?.length||0),0);
-  document.getElementById("profile-stats-row").innerHTML = [
-    ["Total Cases",pc.length,"var(--violet)"],
-    ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
-    ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
-    ["Documents",docs,"var(--gold)"]
-  ].map(([l,n,c])=>`
-    <div class="stat-card" style="--accent:${c};padding:16px 18px">
-      <div class="stat-number" style="color:${c};font-size:32px">${n}</div>
-      <div class="stat-label">${l}</div>
-    </div>`).join("");
+  if (isOwner) {
+    document.getElementById("profile-restricted-notice").style.display = "none";
+    document.getElementById("profile-cases-section").style.display = "block";
+    document.getElementById("profile-stats-row").style.display = "grid";
 
-  populateCaseFilterSelects("pd");
-  renderProfileCases();
+    const pc=cases.filter(c=>c.profileId===p.id);
+    const docs=pc.reduce((a,c)=>a+(c.documents?.length||0),0);
+
+    document.getElementById("profile-stats-row").innerHTML = [
+      ["Total Cases",pc.length,"var(--violet)"],
+      ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
+      ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
+      ["Documents",docs,"var(--gold)"]
+    ].map(([l,n,c])=>`
+      <div class="stat-card" style="--accent:${c};padding:16px 18px">
+        <div class="stat-number" style="color:${c};font-size:32px">${n}</div>
+        <div class="stat-label">${l}</div>
+      </div>`).join("");
+
+    populateCaseFilterSelects("pd");
+    renderProfileCases();
+  } else {
+    document.getElementById("profile-restricted-notice").style.display = "block";
+    document.getElementById("profile-cases-section").style.display = "none";
+    document.getElementById("profile-stats-row").style.display = "none";
+  }
 }
 
 function renderProfileCases() {
-  const p      = selProfile;
+  const p = selProfile;
+  if (!p) return;
   const q      = (document.getElementById("pd-search")?.value||"").toLowerCase();
   const status = document.getElementById("pd-status")?.value || "All";
   const type   = document.getElementById("pd-type")?.value   || "All";
@@ -271,7 +288,7 @@ function renderProfileCases() {
   const el = document.getElementById("profile-cases-list");
   if (filtered.length===0) {
     el.innerHTML=`<div class="empty-state">${pc.length===0
-      ? '<div class="empty-state-icon">⚖️</div><div>No cases yet</div><div style="font-size:13px;margin-top:8px">Add the first case for this attorney.</div>'
+      ? '<div class="empty-state-icon">⚖️</div><div>No cases yet</div>'
       : '<div class="empty-state-icon">🔍</div><div>No cases match your filters.</div>'
     }</div>`;
     return;
@@ -445,24 +462,6 @@ async function removeDocFromCase(idx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  QUICK ACCESS SIDEBAR
-// ═══════════════════════════════════════════════════════════════
-function renderQuickAccess() {
-  const qa = document.getElementById("quick-access");
-  const ql = document.getElementById("quick-list");
-  if (profiles.length===0) { qa.style.display="none"; return; }
-  qa.style.display="block";
-  ql.innerHTML = profiles.slice(0,7).map(p=>`
-    <button class="nav-btn ${selProfile?.id===p.id?'active':''}" style="gap:10px;padding:10px 24px" onclick="openProfile('${p.id}')">
-      ${p.photoUrl
-        ? `<img src="${p.photoUrl}" alt="${initials(p.name)}" class="quick-avatar" style="object-fit:cover;border:2px solid ${p.avatarColor||'#c9a84c'}">`
-        : `<span class="quick-avatar" style="background:${p.avatarColor}22;border:2px solid ${p.avatarColor};color:${p.avatarColor}">${initials(p.name)}</span>`
-      }
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${p.name}</span>
-    </button>`).join("");
-}
-
-// ═══════════════════════════════════════════════════════════════
 //  OPEN HELPERS
 // ═══════════════════════════════════════════════════════════════
 function openProfile(id) {
@@ -470,7 +469,6 @@ function openProfile(id) {
   if (!selProfile) return;
   showView("profileDetail");
   renderProfileDetail();
-  renderQuickAccess();
 }
 
 function openCase(id) {
@@ -584,11 +582,3 @@ function closeFilePreview() {
   modal.style.display = "none";
   document.getElementById("fpm-body").innerHTML = "";
   if (_previewObjectUrl) { URL.revokeObjectURL(_previewObjectUrl); _previewObjectUrl = null; }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const modal = document.getElementById("file-preview-modal");
-  if (modal) {
-    modal.addEventListener("click", e => { if (e.target === modal) closeFilePreview(); });
-  }
-});
