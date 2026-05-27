@@ -13,6 +13,9 @@ let pdFilter     = "All";
 let dbReady      = false;
 let localMode    = false;
 
+let profilesUnsub = null;
+let casesUnsub    = null;
+
 const statusColor = s =>
   ({Completed:"#22c55e","On-going":"#f59e0b",Dismissed:"#ef4444",Settled:"#6366f1"}[s]||"#94a3b8");
 
@@ -42,6 +45,11 @@ function showToast(msg, type="success") {
   toastTimer = setTimeout(()=>{ t.className=""; }, 3000);
 }
 
+function dbUnsubscribe() {
+  if (profilesUnsub) { profilesUnsub(); profilesUnsub = null; }
+  if (casesUnsub) { casesUnsub(); casesUnsub = null; }
+}
+
 async function dbLoad() {
   if (localMode || !window._db) return;
 
@@ -52,66 +60,73 @@ async function dbLoad() {
 
   try {
     const db = window._db;
+    dbUnsubscribe();
 
-    // Load global profiles so users see the firm directory
-    let pSnap;
-    try {
-      pSnap = await window._fbGetDocs(window._fbQuery(
-        window._fbCol(db, "profiles"),
-        window._fbOrderBy("createdAt", "desc")
-      ));
-    } catch (indexErr) {
-      console.warn("profiles orderBy failed, loading without sort:", indexErr.message);
-      pSnap = await window._fbGetDocs(window._fbCol(db, "profiles"));
-    }
-    profiles = pSnap.docs.map(d=>({id:d.id,...d.data()}));
+    // ── Real-Time Sync: Attorney Directory ───────────────────────────────────
+    const pColRef = window._fbCol(db, "profiles");
+    profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
+      profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // SECURITY: Limit cases to the logged-in user
-    let cSnap;
-    try {
-      cSnap = await window._fbGetDocs(window._fbQuery(
-        window._fbCol(db, "cases"),
-        window._fbWhere("ownerUid", "==", window._currentUser.uid)
-      ));
-    } catch (indexErr) {
-      console.warn("cases filtered query failed:", indexErr.message);
-      cSnap = await window._fbGetDocs(window._fbQuery(db, "cases"));
-    }
-    cases = cSnap.docs.map(d=>({id:d.id,...d.data()}));
+      // Automatically generate user profile on first login using email fallback
+      let myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
+      if (!myProf) {
+        const defaultName = window._currentUser.displayName || window._currentUser.email;
+        const defaultData = {
+          name: defaultName,
+          role: "Attorney",
+          contact: "",
+          email: window._currentUser.email,
+          avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+          photoUrl: window._currentUser.photoURL || null,
+          ownerUid: window._currentUser.uid,
+          createdAt: new Date().toISOString().slice(0,10)
+        };
+        dbAddProfile(defaultData);
+      }
 
-    // Generate Profile entry if missing using the user's email address as default display name
-    let myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
-    if (!myProf) {
-      const defaultName = window._currentUser.displayName || window._currentUser.email;
-      const defaultData = {
-        name: defaultName,
-        role: "Attorney",
-        contact: "",
-        email: window._currentUser.email,
-        avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
-        photoUrl: window._currentUser.photoURL || null,
-        ownerUid: window._currentUser.uid,
-        createdAt: new Date().toISOString().slice(0,10)
-      };
-      myProf = await dbAddProfile(defaultData);
-    }
+      dbReady = true;
+      refreshCurrentView();
+    }, (error) => {
+      console.error("Profiles real-time connection error:", error);
+    });
 
-    dbReady = true;
-    if (currentView === "dashboard") renderDashboard();
-    if (currentView === "profiles")  renderProfiles();
-    if (currentView === "allcases")  renderAllCases();
-    if (currentView === "profileDetail" && selProfile) renderProfileDetail();
-    if (currentView === "caseDetail" && selCase) renderCaseDetail();
-    if (currentView === "myprofile") renderMyProfile();
+    // ── Real-Time Sync: User's Cases ──────────────────────────────────────────
+    const cColRef = window._fbCol(db, "cases");
+    const cQuery = window._fbQuery(cColRef, window._fbWhere("ownerUid", "==", window._currentUser.uid));
+    casesUnsub = window._fbOnSnapshot(cQuery, (snap) => {
+      cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      refreshCurrentView();
+    }, (error) => {
+      console.error("Cases real-time connection error:", error);
+    });
+
   } catch(e) {
-    console.error("Firestore load error:", e);
+    console.error("Firestore database connection error:", e);
     dbReady = false;
-    if (e.code === "permission-denied") {
-      showToast("Firestore permission denied","error");
-    } else {
-      showToast("Database connection error","error");
-    }
+    showToast("Real-time sync connection failed", "error");
   }
+}
+
+// ── Refresh router for real-time changes ────────────────────────────────────
+function refreshCurrentView() {
+  if (!dbReady) return;
+
+  // Preserve selected profiles and cases when array lists update
+  if (selProfile) {
+    const updatedProfile = profiles.find(p => p.id === selProfile.id);
+    if (updatedProfile) selProfile = updatedProfile;
+  }
+  if (selCase) {
+    const updatedCase = cases.find(c => c.id === selCase.id);
+    if (updatedCase) selCase = updatedCase;
+  }
+
+  if (currentView === "dashboard") renderDashboard();
+  if (currentView === "profiles")  renderProfiles();
+  if (currentView === "allcases")  renderAllCases();
+  if (currentView === "profileDetail" && selProfile) renderProfileDetail();
+  if (currentView === "caseDetail" && selCase) renderCaseDetail();
+  if (currentView === "myprofile") renderMyProfile();
 }
 
 async function dbAddProfile(data) {
