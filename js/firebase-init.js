@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDIDs21G2wWy-Wd72wb-iWNMCTy0_KlADo",
@@ -39,11 +39,17 @@ try {
   window._fbSignIn    = signInWithPopup;
   window._fbGoogleProvider = new GoogleAuthProvider();
   window._fbSignOut   = signOut;
+  
+  // Auth Settings Management helpers
+  window._fbUpdateProfile  = updateProfile;
+  window._fbUpdateEmail    = updateEmail;
+  window._fbUpdatePassword = updatePassword;
+  window._fbDeleteUser     = deleteUser;
+  window._fbReauth         = reauthenticateWithCredential;
+  window._fbEmailCred      = EmailAuthProvider.credential;
 
   window._fbReady = true;
 
-  // Wait for auth state before firing firebase-ready
-  // This ensures window._currentUser is set before dbLoad() runs
   onAuthStateChanged(auth, user => {
     window._currentUser = user || null;
     if (!window._firebaseReadyFired) {
