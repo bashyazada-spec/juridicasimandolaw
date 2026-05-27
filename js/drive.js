@@ -255,18 +255,28 @@ async function addDocToCase() {
       let targetFolderId = null;
 
       if (profileFolderId && hasValidToken()) {
+        console.log("📁 Creating folder hierarchy for:", {caseCategory, caseType, caseTitle, fileType});
         targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId);
+        console.log("✅ Target folder ID:", targetFolderId);
+      } else {
+        console.warn("⚠️ Drive upload skipped - profileFolderId:", profileFolderId, "hasValidToken:", hasValidToken());
       }
 
       const newDocs = [];
       for (const f of files) {
         let driveFileId = null, driveLink = null;
-        if (hasValidToken()) {
+        if (hasValidToken() && targetFolderId) {
+          console.log("📤 Uploading file to Drive:", f.name);
           const result = await uploadSingleFileToDrive(f, targetFolderId);
           if (result) {
             driveFileId = result.id;
             driveLink   = result.webViewLink;
+            console.log("✅ File uploaded to Drive:", result.id);
+          } else {
+            console.warn("⚠️ Upload returned no result for:", f.name);
           }
+        } else {
+          console.warn("⚠️ File will be stored locally - hasValidToken:", hasValidToken(), "targetFolderId:", targetFolderId);
         }
 
         newDocs.push({
