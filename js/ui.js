@@ -173,6 +173,7 @@ function renderDashProfiles() {
 // ═══════════════════════════════════════════════════════════════
 //  PROFILES
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 function renderProfiles() {
   document.getElementById("profiles-count").textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
   const el = document.getElementById("profiles-grid");
@@ -363,10 +364,23 @@ function renderCaseDetail() {
     </div>`;
 
   const docs = c.documents||[];
-  let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Documents</div>
-    <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload</button>
+    
+    <!-- Instant upload Type selector -->
+    <div style="display:inline-flex;align-items:center;gap:12px">
+      <div style="display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px 12px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
+          <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 In
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
+          <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
+        </label>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload</button>
+    </div>
   </div>`;
+
   if (docs.length===0) {
     docsHtml+=`<div class="upload-area" onclick="addDocToCase()"><div style="font-size:28px;margin-bottom:6px">📎</div><div>Click to attach a document</div></div>`;
   } else {
@@ -386,7 +400,6 @@ function renderCaseDetail() {
           </div>
           <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${i})">×</button>
         </div>
-
       </div>`).join("");
     docsHtml+=`<div class="upload-area" style="margin-top:10px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
   }
@@ -417,7 +430,6 @@ async function removeDocFromCase(idx) {
   try {
     const docs = selCase.documents || [];
     const doc = docs[idx];
-    // Delete from Drive if it has a drive file id
     if (doc && doc.driveFileId && typeof deleteDriveFile === "function") {
       await deleteDriveFile(doc.driveFileId);
     }
@@ -477,20 +489,18 @@ function openCurrentProfile() {
 // ═══════════════════════════════════════════════════════════════
 //  STATUS FILTER PILLS
 // ═══════════════════════════════════════════════════════════════
-// ── Sort helper ──
 function sortCasesByDue(arr, dir) {
-  if (dir === "none") return arr; // preserve original (date-added) order
+  if (dir === "none") return arr;
   return [...arr].sort((a, b) => {
     const da = a.dueDate ? new Date(a.dueDate) : null;
     const db = b.dueDate ? new Date(b.dueDate) : null;
     if (!da && !db) return 0;
-    if (!da) return 1;   // no due date goes to the end
+    if (!da) return 1;
     if (!db) return -1;
     return dir === "asc" ? da - db : db - da;
   });
 }
 
-// ── Due-date urgency badge ──
 function dueBadge(dueDate) {
   if (!dueDate) return '<span style="font-size:11px;color:var(--text-dim)">No due date</span>';
   const days = Math.ceil((new Date(dueDate) - new Date()) / (1000*60*60*24));
@@ -502,14 +512,11 @@ function dueBadge(dueDate) {
   return `<span style="font-size:11px;color:var(--text-dim)">Due ${formatted}</span>`;
 }
 
-// ── Populate the three selects for a given prefix (pd or ac) ──
-// Avoids clobbering the user's current selection if options haven't changed
 function populateCaseFilterSelects(prefix) {
   const statusSel = document.getElementById(prefix+"-status");
   const typeSel   = document.getElementById(prefix+"-type");
   if (!statusSel || !typeSel) return;
 
-  // Status options
   const statusOpts = ["All", ...STATUS_OPTIONS];
   if (statusSel.options.length !== statusOpts.length) {
     const cur = statusSel.value;
@@ -517,7 +524,6 @@ function populateCaseFilterSelects(prefix) {
     if (statusOpts.includes(cur)) statusSel.value = cur;
   }
 
-  // Type options — built from CASE_TYPES constant
   const typeOpts = ["All", ...CASE_TYPES];
   if (typeSel.options.length !== typeOpts.length) {
     const cur = typeSel.value;
@@ -529,32 +535,22 @@ function populateCaseFilterSelects(prefix) {
 // ═══════════════════════════════════════════════════════════════
 //  FILE PREVIEW MODAL
 // ═══════════════════════════════════════════════════════════════
-
-// Stores objectURLs created for local files so we can revoke them on close
 let _previewObjectUrl = null;
 
-/**
- * Open the preview modal for a document entry.
- * doc can come from pendingDocs (has _localTempId) or a saved case doc (has driveLink).
- */
 function openFilePreview(doc) {
-  // ── Case 1: local staged file — create a blob URL and open it ──
   if (doc._localTempId && pendingLocalFiles[doc._localTempId]) {
     const file = pendingLocalFiles[doc._localTempId];
     const url  = URL.createObjectURL(file);
     window.open(url, "_blank");
-    // Revoke after a short delay to give the browser time to load it
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     return;
   }
 
-  // ── Case 2: Drive file — open the webViewLink directly ──
   if (doc.driveLink) {
     window.open(doc.driveLink, "_blank");
     return;
   }
 
-  // ── Case 3: no source available ──
   showToast("No preview available — save the case first or sync to Drive.", "error");
 }
 
@@ -564,13 +560,11 @@ function _renderPreviewContent(container, url, ext, name) {
   } else if (ext === "pdf") {
     container.innerHTML = `<iframe src="${url}" style="width:95vw;height:calc(100vh - 80px);border:none;border-radius:8px;background:#fff"></iframe>`;
   } else if (["txt","md","html","htm","csv"].includes(ext)) {
-    // Read as text and display in a code block
     const reader = new FileReader();
     reader.onload = e => {
       const text = e.target.result;
       container.innerHTML = `<pre style="background:#1a1a2e;color:#e2e8f0;padding:24px;border-radius:8px;max-width:90vw;max-height:calc(100vh - 100px);overflow:auto;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word">${escHtml(text.slice(0, 50000))}</pre>`;
     };
-    // We need the actual file; fetch from the objectURL as blob
     fetch(url).then(r => r.blob()).then(b => reader.readAsText(b));
   } else {
     container.innerHTML = `<div style="color:#fff;text-align:center;padding:40px">
@@ -592,7 +586,6 @@ function closeFilePreview() {
   if (_previewObjectUrl) { URL.revokeObjectURL(_previewObjectUrl); _previewObjectUrl = null; }
 }
 
-// Close on backdrop click
 document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("file-preview-modal");
   if (modal) {
