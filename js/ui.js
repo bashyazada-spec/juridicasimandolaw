@@ -63,18 +63,26 @@ function navTo(view) {
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════════
 function renderDashboard() {
-  if (document.getElementById("today-date")) {
-    document.getElementById("today-date").textContent =
-      new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  const todayDateEl = document.getElementById("today-date");
+  if (todayDateEl) {
+    todayDateEl.textContent = new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
   }
-  document.getElementById("stat-profiles").textContent  = profiles.length;
-  document.getElementById("stat-total").textContent     = cases.length;
-  document.getElementById("stat-ongoing").textContent   = cases.filter(c=>c.status==="On-going").length;
-  document.getElementById("stat-completed").textContent = cases.filter(c=>c.status==="Completed").length;
+
+  const statProfilesEl = document.getElementById("stat-profiles");
+  const statTotalEl = document.getElementById("stat-total");
+  const statOngoingEl = document.getElementById("stat-ongoing");
+  const statCompletedEl = document.getElementById("stat-completed");
+
+  if (statProfilesEl) statProfilesEl.textContent = profiles.length;
+  if (statTotalEl) statTotalEl.textContent = cases.length;
+  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c=>c.status==="On-going").length;
+  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c=>c.status==="Completed").length;
 
   renderDashProfiles();
 
   const dcEl = document.getElementById("dash-cases");
+  if (!dcEl) return;
+
   const displayCases = cases.slice(0,6);
 
   dcEl.innerHTML = displayCases.length===0
@@ -100,6 +108,8 @@ function renderDashboard() {
         </div>
       </div>`;
     }).join("");
+
+  renderQuickAccess();
 }
 
 function getNearestDueCase(profileId) {
@@ -168,8 +178,12 @@ function renderDashProfiles() {
 //  PROFILES
 // ═══════════════════════════════════════════════════════════════
 function renderProfiles() {
-  document.getElementById("profiles-count").textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
+  const countEl = document.getElementById("profiles-count");
+  if (countEl) countEl.textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
+
   const el = document.getElementById("profiles-grid");
+  if (!el) return;
+
   if (profiles.length===0) {
     el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👤</div><div style="font-size:16px;margin-bottom:8px">No profiles yet</div></div>';
     return;
@@ -224,48 +238,56 @@ function renderProfileDetail() {
     driveChip = `<span style="font-size:12px;color:var(--text-dim)">📁 Files Protected</span>`;
   }
 
-  document.getElementById("profile-header-card").innerHTML = `
-    ${avatarDiv(p.name,p.avatarColor,64,p.photoUrl)}
-    <div style="flex:1">
-      <div style="font-size:24px;font-weight:700;color:var(--text)">${p.name}</div>
-      <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${p.role}</div>
-      <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
-        ${p.email?`<span style="font-size:12px;color:var(--text-dim)">✉ ${p.email}</span>`:""}
-        ${p.contact?`<span style="font-size:12px;color:var(--text-dim)">📞 ${p.contact}</span>`:""}
-        <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
-        ${driveChip}
+  const headerCard = document.getElementById("profile-header-card");
+  if (headerCard) {
+    headerCard.innerHTML = `
+      ${avatarDiv(p.name,p.avatarColor,64,p.photoUrl)}
+      <div style="flex:1">
+        <div style="font-size:24px;font-weight:700;color:var(--text)">${p.name}</div>
+        <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${p.role}</div>
+        <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
+          ${p.email?`<span style="font-size:12px;color:var(--text-dim)">✉ ${p.email}</span>`:""}
+          ${p.contact?`<span style="font-size:12px;color:var(--text-dim)">📞 ${p.contact}</span>`:""}
+          <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
+          ${driveChip}
+        </div>
       </div>
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      ${actionButtons}
-    </div>
-  `;
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${actionButtons}
+      </div>
+    `;
+  }
+
+  const noticeEl = document.getElementById("profile-restricted-notice");
+  const sectionEl = document.getElementById("profile-cases-section");
+  const statsEl = document.getElementById("profile-stats-row");
 
   if (isOwner) {
-    document.getElementById("profile-restricted-notice").style.display = "none";
-    document.getElementById("profile-cases-section").style.display = "block";
-    document.getElementById("profile-stats-row").style.display = "grid";
+    if (noticeEl) noticeEl.style.display = "none";
+    if (sectionEl) sectionEl.style.display = "block";
+    if (statsEl) {
+      statsEl.style.display = "grid";
+      const pc=cases.filter(c=>c.profileId===p.id);
+      const docs=pc.reduce((a,c)=>a+(c.documents?.length||0),0);
 
-    const pc=cases.filter(c=>c.profileId===p.id);
-    const docs=pc.reduce((a,c)=>a+(c.documents?.length||0),0);
-
-    document.getElementById("profile-stats-row").innerHTML = [
-      ["Total Cases",pc.length,"var(--violet)"],
-      ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
-      ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
-      ["Documents",docs,"var(--gold)"]
-    ].map(([l,n,c])=>`
-      <div class="stat-card" style="--accent:${c};padding:16px 18px">
-        <div class="stat-number" style="color:${c};font-size:32px">${n}</div>
-        <div class="stat-label">${l}</div>
-      </div>`).join("");
+      statsEl.innerHTML = [
+        ["Total Cases",pc.length,"var(--violet)"],
+        ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
+        ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
+        ["Documents",docs,"var(--gold)"]
+      ].map(([l,n,c])=>`
+        <div class="stat-card" style="--accent:${c};padding:16px 18px">
+          <div class="stat-number" style="color:${c};font-size:32px">${n}</div>
+          <div class="stat-label">${l}</div>
+        </div>`).join("");
+    }
 
     populateCaseFilterSelects("pd");
     renderProfileCases();
   } else {
-    document.getElementById("profile-restricted-notice").style.display = "block";
-    document.getElementById("profile-cases-section").style.display = "none";
-    document.getElementById("profile-stats-row").style.display = "none";
+    if (noticeEl) noticeEl.style.display = "block";
+    if (sectionEl) sectionEl.style.display = "none";
+    if (statsEl) statsEl.style.display = "none";
   }
 }
 
@@ -286,6 +308,8 @@ function renderProfileCases() {
   filtered = sortCasesByDue(filtered, sort);
 
   const el = document.getElementById("profile-cases-list");
+  if (!el) return;
+
   if (filtered.length===0) {
     el.innerHTML=`<div class="empty-state">${pc.length===0
       ? '<div class="empty-state-icon">⚖️</div><div>No cases yet</div>'
@@ -326,8 +350,12 @@ function renderAllCases() {
   });
   filtered = sortCasesByDue(filtered, sort);
 
-  document.getElementById("allcases-count").textContent = `${filtered.length} case${filtered.length!==1?"s":""} found`;
+  const countEl = document.getElementById("allcases-count");
+  if (countEl) countEl.textContent = `${filtered.length} case${filtered.length!==1?"s":""} found`;
+
   const el = document.getElementById("all-cases-list");
+  if (!el) return;
+
   if (filtered.length===0) {
     el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No cases match your filters.</div></div>';
     return;
@@ -356,29 +384,41 @@ function renderCaseDetail() {
   const c = selCase;
   const p = profiles.find(x=>x.id===c.profileId);
 
-  document.getElementById("cd-title").textContent = c.title;
-  document.getElementById("cd-back-btn").onclick = ()=>{ showView("profileDetail"); renderProfileDetail(); };
+  const titleEl = document.getElementById("cd-title");
+  if (titleEl) titleEl.textContent = c.title;
+
+  const backBtn = document.getElementById("cd-back-btn");
+  if (backBtn) {
+    backBtn.onclick = ()=>{ showView("profileDetail"); renderProfileDetail(); };
+  }
 
   const chip = document.getElementById("cd-profile-chip");
-  if (p) {
-    chip.innerHTML = `${avatarDiv(p.name,p.avatarColor,28,p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:12px;color:var(--text-dim)">${p.role}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
-    chip.style.display="inline-flex";
-  } else chip.style.display="none";
+  if (chip) {
+    if (p) {
+      chip.innerHTML = `${avatarDiv(p.name,p.avatarColor,28,p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:12px;color:var(--text-dim)">${p.role}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
+      chip.style.display="inline-flex";
+    } else {
+      chip.style.display="none";
+    }
+  }
 
-  document.getElementById("cd-info").innerHTML = `
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      ${badge(c.status,statusColor(c.status))} ${badge(c.type,"#6366f1")}
-    </div>
-    <hr class="divider"/>
-    ${[["Parties",c.parties],["Venue",c.venue],["Due Date",c.dueDate||"Not set"],["Added",c.createdAt]].map(([l,v])=>`
-      <div style="margin-bottom:16px">
-        <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
-        <div style="font-size:15px;color:var(--text)">${v}</div>
-      </div>`).join("")}
-    <div>
-      <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
-      <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${c.narrative}</div>
-    </div>`;
+  const infoEl = document.getElementById("cd-info");
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        ${badge(c.status,statusColor(c.status))} ${badge(c.type,"#6366f1")}
+      </div>
+      <hr class="divider"/>
+      ${[["Parties",c.parties],["Venue",c.venue],["Due Date",c.dueDate||"Not set"],["Added",c.createdAt]].map(([l,v])=>`
+        <div style="margin-bottom:16px">
+          <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
+          <div style="font-size:15px;color:var(--text)">${v}</div>
+        </div>`).join("")}
+      <div>
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
+        <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${c.narrative}</div>
+      </div>`;
+  }
 
   const docs = c.documents||[];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
@@ -420,14 +460,19 @@ function renderCaseDetail() {
       </div>`).join("");
     docsHtml+=`<div class="upload-area" style="margin-top:10px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
   }
-  document.getElementById("cd-docs").innerHTML = docsHtml;
+  
+  const docsEl = document.getElementById("cd-docs");
+  if (docsEl) docsEl.innerHTML = docsHtml;
 
-  document.getElementById("cd-status-panel").innerHTML = `
-    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
-    ${STATUS_OPTIONS.map(st=>`
-      <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status===st?statusColor(st):"var(--border)"};background:${c.status===st?statusColor(st)+"18":"transparent"};color:${c.status===st?statusColor(st):"var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status===st?700:500};transition:all 0.2s">
-        ${c.status===st?"✓ ":""}${st}
-      </button>`).join("")}`;
+  const statusPanelEl = document.getElementById("cd-status-panel");
+  if (statusPanelEl) {
+    statusPanelEl.innerHTML = `
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
+      ${STATUS_OPTIONS.map(st=>`
+        <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status===st?statusColor(st):"var(--border)"};background:${c.status===st?statusColor(st)+"18":"transparent"};color:${c.status===st?statusColor(st):"var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status===st?700:500};transition:all 0.2s">
+          ${c.status===st?"✓ ":""}${st}
+        </button>`).join("")}`;
+  }
 }
 
 async function updateCaseStatus(st) {
@@ -459,6 +504,26 @@ async function removeDocFromCase(idx) {
     console.error("removeDocFromCase error:", err);
     showToast("Failed to remove document: " + (err.message || "Unknown error"), "error");
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  QUICK ACCESS SIDEBAR (SAFEGUARDED)
+// ═══════════════════════════════════════════════════════════════
+function renderQuickAccess() {
+  const qa = document.getElementById("quick-access");
+  const ql = document.getElementById("quick-list");
+  if (!qa || !ql) return; // Safeguard if the element is removed from HTML
+  
+  if (profiles.length===0) { qa.style.display="none"; return; }
+  qa.style.display="block";
+  ql.innerHTML = profiles.slice(0,7).map(p=>`
+    <button class="nav-btn ${selProfile?.id===p.id?'active':''}" style="gap:10px;padding:10px 24px" onclick="openProfile('${p.id}')">
+      ${p.photoUrl
+        ? `<img src="${p.photoUrl}" alt="${initials(p.name)}" class="quick-avatar" style="object-fit:cover;border:2px solid ${p.avatarColor||'#c9a84c'}">`
+        : `<span class="quick-avatar" style="background:${p.avatarColor}22;border:2px solid ${p.avatarColor};color:${p.avatarColor}">${initials(p.name)}</span>`
+      }
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${p.name}</span>
+    </button>`).join("");
 }
 
 // ═══════════════════════════════════════════════════════════════
