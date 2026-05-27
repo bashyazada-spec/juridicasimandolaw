@@ -91,9 +91,57 @@ function promptDriveAuth() {
 }
 
 
-function hasValidToken() {
-  return accessToken && Date.now() < tokenExpiresAt - 60000;
+/**
+ * Show a modal asking the user to select file type (Inbound/Outbound)
+ * Returns a promise that resolves with the selected type or null if cancelled
+ */
+function showFileTypeModal() {
+  return new Promise((resolve) => {
+    // Create modal HTML
+    const modalHTML = `
+      <div id="file-type-modal" style="
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+        justify-content: center; z-index: 10000;
+      ">
+        <div style="
+          background: var(--surface); border-radius: var(--radius);
+          padding: 24px; box-shadow: var(--shadow-lg); max-width: 400px;
+          width: 90%;
+        ">
+          <h2 style="margin: 0 0 16px 0; color: var(--text);">Document Type</h2>
+          <p style="margin: 0 0 20px 0; color: var(--text-muted);">
+            Is this document inbound or outbound?
+          </p>
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="this.closest('#file-type-modal').remove(); window._fileTypeResolve?.(null)" style="
+              padding: 8px 16px; border: 1px solid var(--border);
+              background: var(--surface); color: var(--text);
+              border-radius: var(--radius); cursor: pointer;
+            ">Cancel</button>
+            <button onclick="this.closest('#file-type-modal').remove(); window._fileTypeResolve?.('Inbound')" style="
+              padding: 8px 16px; background: #3b82f6; color: white;
+              border: none; border-radius: var(--radius); cursor: pointer;
+            ">📥 Inbound</button>
+            <button onclick="this.closest('#file-type-modal').remove(); window._fileTypeResolve?.('Outbound')" style="
+              padding: 8px 16px; background: #10b981; color: white;
+              border: none; border-radius: var(--radius); cursor: pointer;
+            ">📤 Outbound</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Store the resolve function so buttons can call it
+    window._fileTypeResolve = (type) => {
+      resolve(type);
+      window._fileTypeResolve = null;
+    };
+  });
 }
+
 
 async function createDriveFolder(name, parentId = null) {
   const metadata = {
@@ -184,48 +232,56 @@ async function uploadFilesToDrive(files, folderId = null) {
 
 
 async function addDocToCase() {
-  const inp = document.createElement("input");
-  inp.type = "file";
-  inp.multiple = true;
-  inp.onchange = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
+  // Show modal to select inbound/outbound
+  showFileTypeModal().then(async (fileType) => {
+    if (!fileType) return; // User cancelled
+    
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.multiple = true;
+    inp.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
 
-    // Determine Drive folder: case-type subfolder under profile folder
-    const caseType = selCase?.type || "Other";
-    const profileFolderId = selProfile?.driveFolderId || null;
-    let targetFolderId = null;
+      // Determine Drive folder: category > type > title > inbound/outbound
+      const caseCategory = selCase?.category || "Other";
+      const caseType = selCase?.type || "Other";
+      const caseTitle = selCase?.title || "Untitled";
+      const profileFolderId = selProfile?.driveFolderId || null;
+      let targetFolderId = null;
 
-    if (profileFolderId && hasValidToken()) {
-      targetFolderId = await getOrCreateCaseTypeFolder(caseType, profileFolderId);
-    }
-
-    const newDocs = [];
-    for (const f of files) {
-      let driveFileId = null, driveLink = null;
-      if (hasValidToken()) {
-        const result = await uploadSingleFileToDrive(f, targetFolderId);
-        if (result) {
-          driveFileId = result.id;
-          driveLink   = result.webViewLink;
-        }
+      if (profileFolderId && hasValidToken()) {
+        targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId);
       }
 
-      newDocs.push({
-        name: f.name,
-        size: (f.size / 1024).toFixed(1) + " KB",
-        date: new Date().toLocaleDateString(),
-        ...(driveFileId && { driveFileId, driveLink })
-      });
-    }
+      const newDocs = [];
+      for (const f of files) {
+        let driveFileId = null, driveLink = null;
+        if (hasValidToken()) {
+          const result = await uploadSingleFileToDrive(f, targetFolderId);
+          if (result) {
+            driveFileId = result.id;
+            driveLink   = result.webViewLink;
+          }
+        }
 
-    const updDocs = [...(selCase.documents || []), ...newDocs];
-    await dbUpdateCase(selCase.id, { documents: updDocs });
-    selCase = { ...selCase, documents: updDocs };
-    renderCaseDetail();
-    showToast(`${newDocs.length} doc(s) attached${newDocs[0]?.driveFileId ? " & synced to Drive" : " (locally)"}`);
-  };
-  inp.click();
+        newDocs.push({
+          name: f.name,
+          size: (f.size / 1024).toFixed(1) + " KB",
+          date: new Date().toLocaleDateString(),
+          fileType: fileType,
+          ...(driveFileId && { driveFileId, driveLink })
+        });
+      }
+
+      const updDocs = [...(selCase.documents || []), ...newDocs];
+      await dbUpdateCase(selCase.id, { documents: updDocs });
+      selCase = { ...selCase, documents: updDocs };
+      renderCaseDetail();
+      showToast(`${newDocs.length} doc(s) attached as ${fileType}${newDocs[0]?.driveFileId ? " & synced to Drive" : " (locally)"}`);
+    };
+    inp.click();
+  });
 }
 
 function renderPendingDocs() {
@@ -239,7 +295,10 @@ function renderPendingDocs() {
             📎 ${doc.name}
           </span>
         </div>
-        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${doc.size} · ${doc.date}${doc.driveFileId ? ' · ✅ Drive' : ' · 📋 Local'}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;display:flex;align-items:center;gap:8px">
+          <span>${doc.size} · ${doc.date}${doc.driveFileId ? ' · ✅ Drive' : ' · 📋 Local'}</span>
+          ${doc.fileType ? `<span style="background:${doc.fileType==='Inbound'?'#3b82f644':'#10b98144'};color:${doc.fileType==='Inbound'?'#3b82f6':'#10b981'};padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600">${doc.fileType==='Inbound'?'📥 Inbound':'📤 Outbound'}</span>` : ''}
+        </div>
       </div>
       <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 8px;flex-shrink:0" onclick="removePendingDoc(${i})">×</button>
     </div>
@@ -341,30 +400,69 @@ async function handleLocalAttach(e) {
 //  DRIVE FOLDER RESOLUTION — auto-create per case type
 // ═══════════════════════════════════════════════════════════════
 
-// Cache: caseType (lowercase) → Drive folder id, scoped under the profile folder
+// Cache: hierarchical paths → Drive folder id
 const caseFolderCache = {};
 
 /**
- * Get (or create) the Drive subfolder for a given case type
+ * Get (or create) the Drive subfolder for a given case with full hierarchy
  * under the profile's drive folder.
  *
  * Hierarchy:
  *   Simando Law (root DRIVE_FOLDER_ID)
  *     └─ Simando Law — <Profile Name>  (profile folder)
- *           └─ <Case Type>           (auto-created by this fn)
+ *           └─ <Case Category>         (auto-created by this fn)
+ *                 └─ <Case Type>       (auto-created by this fn)
+ *                       └─ <Case Title> (auto-created by this fn)
+ *                             ├─ Inbound
+ *                             └─ Outbound
  *
- * @param {string} caseType   e.g. "Staffa"
+ * @param {string} caseCategory   e.g. "Civil"
+ * @param {string} caseType       e.g. "Staffa"
+ * @param {string} caseTitle      e.g. "Case Title"
+ * @param {string} fileType       "Inbound" or "Outbound"
  * @param {string} profileFolderId  the profile's Drive folder id
  * @returns {Promise<string|null>} the folder id, or null on failure
  */
-async function getOrCreateCaseTypeFolder(caseType, profileFolderId) {
-  const cacheKey = `${profileFolderId}::${caseType.toLowerCase()}`;
+async function getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId) {
+  const cacheKey = `${profileFolderId}::${caseCategory}::${caseType}::${caseTitle}::${fileType}`.toLowerCase();
   if (caseFolderCache[cacheKey]) return caseFolderCache[cacheKey];
 
-  // Search for existing folder with this name under the profile folder
   try {
+    // Step 1: Get or create Category folder
+    let categoryFolderId = await getOrCreateFolderInParent(caseCategory, profileFolderId);
+    if (!categoryFolderId) return null;
+
+    // Step 2: Get or create Type folder under Category
+    let typeFolderId = await getOrCreateFolderInParent(caseType, categoryFolderId);
+    if (!typeFolderId) return null;
+
+    // Step 3: Get or create Title folder under Type
+    let titleFolderId = await getOrCreateFolderInParent(caseTitle, typeFolderId);
+    if (!titleFolderId) return null;
+
+    // Step 4: Get or create Inbound/Outbound folder under Title
+    let fileTypeFolderId = await getOrCreateFolderInParent(fileType, titleFolderId);
+    if (!fileTypeFolderId) return null;
+
+    caseFolderCache[cacheKey] = fileTypeFolderId;
+    return fileTypeFolderId;
+  } catch (err) {
+    console.error("getOrCreateCaseFolderHierarchy error:", err);
+    return null;
+  }
+}
+
+/**
+ * Helper: Get or create a folder with given name under a parent folder
+ * @param {string} folderName
+ * @param {string} parentFolderId
+ * @returns {Promise<string|null>} folder id or null
+ */
+async function getOrCreateFolderInParent(folderName, parentFolderId) {
+  try {
+    // Search for existing folder
     const q = encodeURIComponent(
-      `mimeType='application/vnd.google-apps.folder' and name='${caseType}' and '${profileFolderId}' in parents and trashed=false`
+      `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${parentFolderId}' in parents and trashed=false`
     );
     const res = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
@@ -373,18 +471,14 @@ async function getOrCreateCaseTypeFolder(caseType, profileFolderId) {
     if (res.ok) {
       const data = await res.json();
       if (data.files && data.files.length > 0) {
-        const folderId = data.files[0].id;
-        caseFolderCache[cacheKey] = folderId;
-        return folderId;
+        return data.files[0].id;
       }
     }
     // Not found — create it
-    const folderId = await createDriveFolder(caseType, profileFolderId);
-    caseFolderCache[cacheKey] = folderId;
-    showToast(`📁 Drive folder "${caseType}" created`);
+    const folderId = await createDriveFolder(folderName, parentFolderId);
     return folderId;
   } catch (err) {
-    console.error("getOrCreateCaseTypeFolder error:", err);
+    console.error(`getOrCreateFolderInParent error for "${folderName}":`, err);
     return null;
   }
 }
@@ -416,13 +510,16 @@ async function uploadSingleFileToDrive(file, folderId) {
 
 /**
  * Called from saveCase (in app.js) BEFORE the case is persisted.
- * Syncs any locally-staged files up to Drive under the correct case-type folder.
+ * Syncs any locally-staged files up to Drive under the correct folder hierarchy:
+ * Category > Type > Title > Inbound/Outbound
  *
+ * @param {string} caseCategory e.g. "Civil"
  * @param {string} caseType e.g. "Staffa"
+ * @param {string} caseTitle e.g. "Case Title"
  * @param {string} profileFolderId  selProfile.driveFolderId
  * @returns {Promise<Array>} the updated pendingDocs array (local markers resolved to drive refs)
  */
-async function syncPendingFilesToDrive(caseType, profileFolderId) {
+async function syncPendingFilesToDrive(caseCategory, caseType, caseTitle, profileFolderId) {
   const localDocs = pendingDocs.filter(d => d._localTempId);
   if (!localDocs.length) return pendingDocs;
 
@@ -430,25 +527,31 @@ async function syncPendingFilesToDrive(caseType, profileFolderId) {
   // The user can re-sync from the case detail view after re-authenticating Drive.
   if (!hasValidToken()) return pendingDocs;
 
-  // Resolve the target folder (profile folder → case type subfolder)
-  let targetFolderId = null;
-  if (profileFolderId) {
-    targetFolderId = await getOrCreateCaseTypeFolder(caseType, profileFolderId);
-  } else if (DRIVE_FOLDER_ID) {
-    targetFolderId = await getOrCreateCaseTypeFolder(caseType, DRIVE_FOLDER_ID);
-  }
-
-  // Upload each staged local file
+  // Upload each staged local file with its associated fileType (Inbound/Outbound)
   for (const doc of localDocs) {
     const tempId = doc._localTempId;
     const file = pendingLocalFiles[tempId];
     if (!file) continue;
-    const result = await uploadSingleFileToDrive(file, targetFolderId);
-    if (result) {
-      doc.driveFileId = result.id;
-      doc.driveLink   = result.webViewLink;
-      delete pendingLocalFiles[tempId]; // delete from store BEFORE clearing the key
-      delete doc._localTempId;
+    
+    // Get file type or default to "Inbound"
+    const fileType = doc.fileType || "Inbound";
+    
+    // Resolve the target folder using the full hierarchy
+    let targetFolderId = null;
+    if (profileFolderId) {
+      targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, profileFolderId);
+    } else if (DRIVE_FOLDER_ID) {
+      targetFolderId = await getOrCreateCaseFolderHierarchy(caseCategory, caseType, caseTitle, fileType, DRIVE_FOLDER_ID);
+    }
+    
+    if (targetFolderId) {
+      const result = await uploadSingleFileToDrive(file, targetFolderId);
+      if (result) {
+        doc.driveFileId = result.id;
+        doc.driveLink   = result.webViewLink;
+        delete pendingLocalFiles[tempId]; // delete from store BEFORE clearing the key
+        delete doc._localTempId;
+      }
     }
   }
 
@@ -564,4 +667,3 @@ function waitForGoogleDriveReady(timeoutMs = 8000) {
     }, 200);
   });
 }
-
