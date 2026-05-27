@@ -133,6 +133,71 @@ async function executeDelete() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  CASE SHARING SYSTEM
+// ═══════════════════════════════════════════════════════════════
+function openShareCaseModal() {
+  if (!selCase) return;
+  const listEl = document.getElementById("share-modal-list");
+  if (!listEl) return;
+
+  const sharedUids = selCase.sharedWith || [];
+  const currentUid = window._currentUser?.uid;
+
+  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
+
+  if (associates.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
+  } else {
+    listEl.innerHTML = associates.map(p => {
+      const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
+      return `
+        <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
+          <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked} style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
+          ${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${p.email}</div>
+          </div>
+        </label>
+      `;
+    }).join("");
+  }
+
+  document.getElementById("share-modal").classList.remove("hidden");
+}
+
+function closeShareModal() {
+  document.getElementById("share-modal").classList.add("hidden");
+}
+
+async function saveShareSettings() {
+  if (!selCase) return;
+  const checkboxes = document.querySelectorAll('input[name="share-associate-checkbox"]');
+  const selectedUids = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) selectedUids.push(cb.value);
+  });
+
+  const ownerUid = selCase.ownerUid || window._currentUser.uid;
+  const allowedUids = [ownerUid, ...selectedUids];
+
+  try {
+    showToast("Updating share settings...");
+    await dbUpdateCase(selCase.id, {
+      sharedWith: selectedUids,
+      allowedUids: allowedUids
+    });
+    selCase.sharedWith = selectedUids;
+    selCase.allowedUids = allowedUids;
+    closeShareModal();
+    showToast("Case shared successfully!");
+  } catch (err) {
+    console.error("saveShareSettings error:", err);
+    showToast("Failed to share case: " + err.message, "error");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  PROFILE FORM — DRIVE AUTH REQUIRED
 // ═══════════════════════════════════════════════════════════════
 let pfDriveConnected = false;
@@ -847,11 +912,19 @@ async function saveCase() {
     if(caseFormMode==="add"){
       data.profileId=selProfile.id;
       data.createdAt=new Date().toISOString().slice(0,10);
+      data.ownerUid = window._currentUser.uid;
+      data.sharedWith = [];
+      data.allowedUids = [window._currentUser.uid];
       await dbAddCase(data);
       showToast("Case added!");
       showView("profileDetail");
       renderProfileDetail();
     } else {
+      if (selCase) {
+        data.ownerUid = selCase.ownerUid || window._currentUser.uid;
+        data.sharedWith = selCase.sharedWith || [];
+        data.allowedUids = selCase.allowedUids || [data.ownerUid];
+      }
       await dbUpdateCase(selCase.id,data);
       selCase={...selCase,...data};
       showToast("Case updated!");
