@@ -352,16 +352,34 @@
             <div class="field-err hidden" id="cf-title-err">Required</div>
           </div>
           <div class="grid2">
+            <!-- Case Category (replaces old Type of Case) -->
             <div>
-              <label class="field-label">Type of Case</label>
-              <select class="field-input" id="cf-type"></select>
+              <label class="field-label">Case Category *</label>
+              <select class="field-input" id="cf-category" onchange="onCategoryChange(this.value)"></select>
+            </div>
+            <!-- Case Type — manual input with saved suggestions -->
+            <div>
+              <label class="field-label">Case Type</label>
+              <div style="position:relative">
+                <input class="field-input" id="cf-type-input" placeholder="Type or select…" autocomplete="off"
+                  oninput="filterCaseTypeSuggestions(this.value)"
+                  onkeydown="onCaseTypeKeydown(event)"
+                  onfocus="showCaseTypeSuggestions()"
+                  onblur="setTimeout(hideCaseTypeSuggestions,180)"/>
+                <div id="cf-type-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius);margin-top:4px;max-height:180px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+              </div>
+            </div>
+            <!-- Case Number -->
+            <div>
+              <label class="field-label">Case Number</label>
+              <input class="field-input" id="cf-case-number" placeholder="e.g. Civil Case No. 2024-001"/>
             </div>
             <div>
               <label class="field-label">Status</label>
               <select class="field-input" id="cf-status"></select>
             </div>
             <div>
-              <label class="field-label">Due Date *</label>
+              <label class="field-label">Date Case Filed *</label>
               <input type="date" class="field-input" id="cf-due"/>
               <div class="field-err hidden" id="cf-due-err">Required</div>
             </div>
@@ -371,12 +389,14 @@
               <input class="field-input" id="cf-venue-manual" placeholder="Specify venue…" style="display:none;margin-top:8px;font-size:13px"/>
             </div>
           </div>
+
+          <!-- Parties — labels change based on category -->
           <div class="mt-16">
             <label class="field-label">Name of Parties *</label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
-              <!-- Petitioners -->
+              <!-- Party A (Petitioner / Private Complainant / Plaintiff) -->
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
-                <div style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                <div id="cf-party-a-label" style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
                   <span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> Petitioners
                 </div>
                 <div id="cf-petitioners-list" style="margin-bottom:10px;min-height:4px"></div>
@@ -385,9 +405,9 @@
                   <button type="button" onclick="addParty('petitioner')" style="padding:8px 12px;border-radius:7px;background:rgba(201,165,92,0.12);border:1px solid var(--gold-border);color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.background='rgba(201,165,92,0.2)'" onmouseout="this.style.background='rgba(201,165,92,0.12)'">+ Add</button>
                 </div>
               </div>
-              <!-- Respondents -->
+              <!-- Party B (Respondent / Accused / Defendant) -->
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
-                <div style="font-size:10px;font-weight:700;color:var(--violet);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+                <div id="cf-party-b-label" style="font-size:10px;font-weight:700;color:var(--violet);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
                   <span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> Respondents
                 </div>
                 <div id="cf-respondents-list" style="margin-bottom:10px;min-height:4px"></div>
@@ -398,8 +418,15 @@
               </div>
             </div>
             <input type="hidden" id="cf-parties"/>
-            <div class="field-err hidden" id="cf-parties-err">Add at least one petitioner and one respondent</div>
+            <div class="field-err hidden" id="cf-parties-err">Add at least one party on each side</div>
           </div>
+
+          <!-- Document Type -->
+          <div class="mt-16">
+            <label class="field-label">Document Type</label>
+            <input class="field-input" id="cf-doc-type" placeholder="e.g. Complaint, Motion, Decision…"/>
+          </div>
+
           <div class="mt-16">
             <label class="field-label">Brief Narrative *</label>
             <textarea class="field-input" id="cf-narrative" style="min-height:120px;resize:vertical" placeholder="Describe the case background, key facts, and relief sought..."></textarea>
