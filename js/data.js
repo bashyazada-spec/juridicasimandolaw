@@ -35,6 +35,7 @@ const formatDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString("en-PH",{
 let toastTimer;
 function showToast(msg, type="success") {
   const t = document.getElementById("toast");
+  if (!t) return;
   t.textContent = msg;
   t.className = `show ${type}`;
   clearTimeout(toastTimer);
@@ -44,7 +45,6 @@ function showToast(msg, type="success") {
 async function dbLoad() {
   if (localMode || !window._db) return;
 
-  // Guard: must have an authenticated user before querying Firestore
   if (!window._currentUser) {
     console.warn("dbLoad: no authenticated user, skipping load");
     return;
@@ -53,7 +53,7 @@ async function dbLoad() {
   try {
     const db = window._db;
 
-    // Load all profiles — with fallback if index doesn't exist yet
+    // Users are allowed to read the basic directories of ALL attorneys in the system
     let pSnap;
     try {
       pSnap = await window._fbGetDocs(window._fbQuery(
@@ -66,18 +66,35 @@ async function dbLoad() {
     }
     profiles = pSnap.docs.map(d=>({id:d.id,...d.data()}));
 
-    // Load all cases — with fallback
+    // SECURITY: Users can only pull and view cases that belong to them
     let cSnap;
     try {
       cSnap = await window._fbGetDocs(window._fbQuery(
         window._fbCol(db, "cases"),
-        window._fbOrderBy("createdAt", "desc")
+        window._fbWhere("ownerUid", "==", window._currentUser.uid)
       ));
     } catch (indexErr) {
-      console.warn("cases orderBy failed, loading without sort:", indexErr.message);
+      console.warn("cases filtered query failed:", indexErr.message);
       cSnap = await window._fbGetDocs(window._fbCol(db, "cases"));
     }
     cases = cSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+    // Auto-create a linked profile if this is the user's first time logging in
+    let myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
+    if (!myProf) {
+      const defaultName = window._currentUser.displayName || "Atty. " + window._currentUser.email.split('@')[0];
+      const defaultData = {
+        name: defaultName,
+        role: "Attorney",
+        contact: "",
+        email: window._currentUser.email,
+        avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+        photoUrl: window._currentUser.photoURL || null,
+        ownerUid: window._currentUser.uid,
+        createdAt: new Date().toISOString().slice(0,10)
+      };
+      myProf = await dbAddProfile(defaultData);
+    }
 
     dbReady = true;
     if (currentView === "dashboard") renderDashboard();
@@ -85,14 +102,14 @@ async function dbLoad() {
     if (currentView === "allcases")  renderAllCases();
     if (currentView === "profileDetail" && selProfile) renderProfileDetail();
     if (currentView === "caseDetail" && selCase) renderCaseDetail();
-    renderQuickAccess();
+    if (currentView === "myprofile") renderMyProfile();
   } catch(e) {
     console.error("Firestore load error:", e);
     dbReady = false;
     if (e.code === "permission-denied") {
-      showToast("Firestore permission denied — check your security rules","error");
+      showToast("Firestore permission denied","error");
     } else {
-      showToast("Database connection error — check console","error");
+      showToast("Database connection error","error");
     }
   }
 }
@@ -100,7 +117,7 @@ async function dbLoad() {
 async function dbAddProfile(data) {
   if (localMode || !window._db) { data.id = "local_"+Date.now(); profiles.unshift(data); return data; }
   data.ownerUid = window._currentUser?.uid || null;
-  data.createdAt = new Date().toISOString();
+  data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"profiles"), data);
   data.id = ref.id;
   profiles.unshift(data);
@@ -121,7 +138,7 @@ async function dbDeleteProfile(id) {
 async function dbAddCase(data) {
   if (localMode || !window._db) { data.id = "local_"+Date.now(); cases.unshift(data); return data; }
   data.ownerUid = window._currentUser?.uid || null;
-  data.createdAt = new Date().toISOString();
+  data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
   data.id = ref.id;
   cases.unshift(data);
