@@ -891,6 +891,7 @@ async function executeDeleteAccountWipe() {
 
 async function handleLogout() {
   try {
+    if (typeof dbUnsubscribe === "function") dbUnsubscribe();
     if (window._fbSignOut) {
       await window._fbSignOut(window._auth);
       clearPersistedToken();
