@@ -830,10 +830,16 @@
             </div>
             <div>
               <label class="field-label">Date Case Filed *</label>
-              <input type="date" class="field-input" id="cf-due"/>
-              <div class="field-err hidden" id="cf-due-err">Required</div>
+              <input type="date" class="field-input" id="cf-filed"/>
+              <div class="field-err hidden" id="cf-filed-err">Required</div>
             </div>
+            <!-- Due Date (optional) -->
             <div>
+              <label class="field-label">Due Date <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
+              <input type="date" class="field-input" id="cf-due"/>
+            </div>
+            <!-- Venue -->
+            <div style="grid-column: 1/-1">
               <label class="field-label">Venue</label>
               <select class="field-input" id="cf-venue" onchange="onVenueChange(this)"></select>
               <input class="field-input" id="cf-venue-manual" placeholder="Specify venue…" style="display:none;margin-top:8px;font-size:13px"/>
@@ -873,7 +879,7 @@
 
           <!-- Document Type -->
           <div class="mt-16">
-            <label class="field-label">Document Type</label>
+            <label class="field-label">Document Type <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
             <input class="field-input" id="cf-doc-type" placeholder="e.g. Complaint, Motion, Decision…"/>
           </div>
 
