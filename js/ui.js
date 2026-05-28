@@ -660,6 +660,45 @@ function openCase(id) {
   renderCaseDetail();
 }
 
+// ── Sidebar User Card Dynamic Populator ──
+function renderSidebarUser() {
+  const chip = document.getElementById("sidebar-user-chip");
+  const adminSection = document.getElementById("admin-sidebar-section");
+  if (!chip) return;
+
+  const u = window._currentUser;
+  if (!u) {
+    chip.style.display = "none";
+    if (adminSection) adminSection.style.display = "none";
+    return;
+  }
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  if (!myProf) {
+    chip.style.display = "none";
+    if (adminSection) adminSection.style.display = "none";
+    return;
+  }
+
+  chip.innerHTML = `
+    ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
+    <div style="flex:1;min-width:0;text-align:left">
+      <div style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.name}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.email}</div>
+    </div>
+  `;
+  chip.style.display = "flex";
+
+  // Dynamically show admin panel controls for authorized attorneys
+  if (adminSection) {
+    if (myProf.role === "admin") {
+      adminSection.style.display = "block";
+    } else {
+      adminSection.style.display = "none";
+    }
+  }
+}
+
 function openCurrentProfile() {
   if (selProfile) openProfile(selProfile.id);
 }
@@ -1139,33 +1178,6 @@ async function fetchAndRenderGoogleCalendarEvents() {
     </div>`;
   }
   card.innerHTML = html;
-}
-
-// ── Sidebar User Card Dynamic Populator ──
-function renderSidebarUser() {
-  const chip = document.getElementById("sidebar-user-chip");
-  if (!chip) return;
-
-  const u = window._currentUser;
-  if (!u) {
-    chip.style.display = "none";
-    return;
-  }
-
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf) {
-    chip.style.display = "none";
-    return;
-  }
-
-  chip.innerHTML = `
-    ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
-    <div style="flex:1;min-width:0;text-align:left">
-      <div style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.name}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.email}</div>
-    </div>
-  `;
-  chip.style.display = "flex";
 }
 
 function openMyDriveFolder() {
