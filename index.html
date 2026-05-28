@@ -307,7 +307,7 @@
 
 <!-- Share Case Modal -->
 <div id="share-modal" class="modal-overlay hidden" style="z-index:10000">
-  <div class="modal-box" style="max-width:440px">
+  <div class="modal-box">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
       👥 Share Case Access
     </div>
@@ -365,6 +365,12 @@
       <button class="nav-btn" data-nav="allcases" onclick="navTo('allcases')">📋&nbsp;&nbsp;All Cases</button>
       <div class="nav-section">Settings</div>
       <button class="nav-btn" data-nav="myprofile" onclick="navTo('myprofile')">👤&nbsp;&nbsp;My Profile</button>
+      
+      <!-- Dynamically Rendered Administration Portal navigation segment -->
+      <div id="admin-sidebar-section" style="display:none">
+        <div class="nav-section">Administration</div>
+        <button class="nav-btn" onclick="window.location.assign('admin.html')" style="color:var(--gold-light) !important;font-weight:600">🛡️&nbsp;&nbsp;Admin Console</button>
+      </div>
     </div>
     
     <div class="sidebar-footer">
