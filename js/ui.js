@@ -165,38 +165,80 @@ function renderDashProfiles() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES
+//  PROFILES (RESTRUCTURED FOR DUAL-SECTION DIR LAYOUT)
 // ═══════════════════════════════════════════════════════════════
 function renderProfiles() {
+  const u = window._currentUser;
+  if (!u) return;
+
   const countEl = document.getElementById("profiles-count");
   if (countEl) countEl.textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
 
+  // Find logged-in user profile by ownerUid OR registered email address
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const otherProfs = profiles.filter(p => p.id !== (myProf ? myProf.id : ""));
+
+  // 1. Render User's Personal Card
+  const myContainer = document.getElementById("profiles-my-profile-container");
+  if (myContainer && myProf) {
+    const pc = cases.filter(c => c.profileId === myProf.id);
+    const ongoing = pc.filter(c => c.status === "On-going").length;
+
+    myContainer.innerHTML = `
+      <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:700">My Profile</div>
+      <div class="profile-card" style="max-width:100%; display:flex; gap:20px; align-items:center; flex-wrap:wrap; cursor:pointer; border-color:var(--gold-border); background:rgba(201,168,76,0.03)" onclick="openProfile('${myProf.id}')">
+        ${avatarDiv(myProf.name, myProf.avatarColor, 56, myProf.photoUrl)}
+        <div style="flex:1; min-width:200px">
+          <div style="font-weight:700;font-size:18px;color:var(--text)">${myProf.name} <span style="font-size:11px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 8px;border-radius:4px;margin-left:8px;font-weight:600">YOU</span></div>
+          <div style="font-size:13px;color:var(--text-dim);margin-top:2px">${myProf.role}</div>
+          <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;font-size:12px;color:var(--text-muted)">
+            ${myProf.email?`<span>✉ ${myProf.email}</span>`:""}
+            ${myProf.contact?`<span>📞 ${myProf.contact}</span>`:""}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+          <div style="text-align:right">
+            <div style="font-size:14px;color:var(--gold);font-weight:700">${pc.length} case${pc.length!==1?"s":""}</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${ongoing} active</div>
+          </div>
+          <div style="font-size:16px;color:var(--text-dim)">→</div>
+        </div>
+      </div>
+    `;
+  } else if (myContainer) {
+    myContainer.innerHTML = "";
+  }
+
+  // 2. Render Associate Directory List
   const el = document.getElementById("profiles-grid");
   if (!el) return;
 
-  if (profiles.length===0) {
-    el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👤</div><div style="font-size:16px;margin-bottom:8px">No profiles yet</div></div>';
+  if (otherProfs.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👥</div><div style="font-size:13px;color:var(--text-dim)">No other associate attorneys are currently registered.</div></div>`;
     return;
   }
-  el.innerHTML = profiles.map(p=>{
-    const pc=cases.filter(c=>c.profileId===p.id);
-    const ongoing=pc.filter(c=>c.status==="On-going").length;
-    return `<div class="profile-card" onclick="openProfile('${p.id}')">
-      <div class="flex-center gap-14 mb-16">
-        ${avatarDiv(p.name,p.avatarColor,50,p.photoUrl)}
-        <div>
-          <div style="font-weight:700;font-size:16px;color:var(--text)">${p.name}</div>
-          <div style="font-size:13px;color:var(--text-dim)">${p.role}</div>
+
+  el.innerHTML = otherProfs.map(p => {
+    const pc = cases.filter(c => c.profileId === p.id);
+    const ongoing = pc.filter(c => c.status === "On-going").length;
+    return `
+      <div class="profile-card" onclick="openProfile('${p.id}')">
+        <div class="flex-center gap-14 mb-16">
+          ${avatarDiv(p.name, p.avatarColor, 50, p.photoUrl)}
+          <div>
+            <div style="font-weight:700;font-size:16px;color:var(--text)">${p.name}</div>
+            <div style="font-size:13px;color:var(--text-dim)">${p.role}</div>
+          </div>
+        </div>
+        <hr class="divider"/>
+        ${p.email?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>`:""}
+        ${p.contact?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>`:""}
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;color:var(--text-dim)">Private Files</span>
+          ${p.ownerUid === window._currentUser?.uid && ongoing>0?badge(ongoing+" active","#f59e0b"):""}
         </div>
       </div>
-      <hr class="divider"/>
-      ${p.email?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>`:""}
-      ${p.contact?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>`:""}
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:14px;color:var(--gold);font-weight:700">${p.ownerUid === window._currentUser?.uid ? `${pc.length} cases` : 'Locked'}</div>
-        ${p.ownerUid === window._currentUser?.uid && ongoing>0?badge(ongoing+" active","#f59e0b"):""}
-      </div>
-    </div>`;
+    `;
   }).join("");
 }
 
@@ -523,7 +565,6 @@ async function removeDocFromCase(idx) {
 
 // ═══════════════════════════════════════════════════════════════
 //  QUICK ACCESS SIDEBAR (SAFEGUARDED)
-// ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════
 function renderQuickAccess() {
   const qa = document.getElementById("quick-access");
