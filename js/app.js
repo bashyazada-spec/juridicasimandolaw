@@ -881,6 +881,7 @@ async function saveCase() {
   const due=document.getElementById("cf-due").value;     // Optional Due Date
   const parties=document.getElementById("cf-parties").value.trim();
   const narrative=document.getElementById("cf-narrative").value.trim();
+  
   let valid=true;
   if(!title){document.getElementById("cf-title-err").classList.remove("hidden");document.getElementById("cf-case-title").classList.add("err");valid=false;}
   if(!filed){document.getElementById("cf-filed-err").classList.remove("hidden");document.getElementById("cf-filed").classList.add("err");valid=false;}
@@ -888,13 +889,21 @@ async function saveCase() {
   if(!narrative){document.getElementById("cf-narrative-err").classList.remove("hidden");document.getElementById("cf-narrative").classList.add("err");valid=false;}
   if(!valid) return;
 
+  // Prevent double clicks & multiple submissions during network request
+  const saveBtn = document.getElementById("cf-save-btn");
+  if (saveBtn) {
+    if (saveBtn.disabled) return;
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+  }
+
   const category = document.getElementById("cf-category").value;
   const caseType = document.getElementById("cf-type-input").value.trim();
   if (caseType) await saveCaseTypeIfNew(category, caseType);
   const data={
     title,
     filedDate: filed,
-    dueDate: due || null, // Saved to Firestore, can be null
+    dueDate: due || null, // Saved to Firestore, explicitly null if omitted
     parties,narrative,
     category,
     type: caseType,
@@ -960,5 +969,10 @@ async function saveCase() {
   } catch (err) {
     console.error("saveCase error:", err);
     showToast("Failed to save case: " + (err.message || "Unknown error"), "error");
+    // Restore save button state on failure
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = caseFormMode === "add" ? "Add Case" : "Save Changes";
+    }
   }
 }
