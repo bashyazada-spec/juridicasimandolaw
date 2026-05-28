@@ -1178,3 +1178,34 @@ function openMyDriveFolder() {
     showToast("No Drive folder linked. Please connect Google Drive in Settings first.", "error");
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  FILE PREVIEW CONTROLLER
+// ═══════════════════════════════════════════════════════════════
+window.openFilePreview = function(doc) {
+  if (!doc) return;
+
+  // Scenario 1: Google Drive Sync'd Document
+  if (doc.driveLink) {
+    window.open(doc.driveLink, "_blank");
+    return;
+  }
+
+  // Scenario 2: Staged Local Document
+  if (doc._localTempId && typeof pendingLocalFiles !== "undefined") {
+    const file = pendingLocalFiles[doc._localTempId];
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      window.open(objectUrl, "_blank");
+      return;
+    }
+  }
+
+  // Fallback state
+  showToast("File link not found.", "error");
+};
+
+window.closeFilePreview = function() {
+  const modal = document.getElementById("file-preview-modal");
+  if (modal) modal.style.display = "none";
+};
