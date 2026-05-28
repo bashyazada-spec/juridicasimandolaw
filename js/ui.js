@@ -174,11 +174,9 @@ function renderProfiles() {
   const countEl = document.getElementById("profiles-count");
   if (countEl) countEl.textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
 
-  // Find logged-in user profile by ownerUid OR registered email address
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   const otherProfs = profiles.filter(p => p.id !== (myProf ? myProf.id : ""));
 
-  // 1. Render User's Personal Card
   const myContainer = document.getElementById("profiles-my-profile-container");
   if (myContainer && myProf) {
     const pc = cases.filter(c => c.profileId === myProf.id);
@@ -209,7 +207,6 @@ function renderProfiles() {
     myContainer.innerHTML = "";
   }
 
-  // 2. Render Associate Directory List
   const el = document.getElementById("profiles-grid");
   if (!el) return;
 
@@ -314,7 +311,7 @@ function renderProfileDetail() {
         </div>`).join("");
     }
 
-    populateCaseFilterSelects("pd");
+    updateAllFilterDropdowns(); // FIXED: References updated filter dropdown populator
     renderProfileCases();
   } else {
     if (noticeEl) noticeEl.style.display = "block";
@@ -370,7 +367,7 @@ function renderProfileCases() {
 //  ALL CASES
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
-  populateCaseFilterSelects("ac");
+  updateAllFilterDropdowns(); // FIXED: References updated filter dropdown populator
   const q      = (document.getElementById("ac-search")?.value||"").toLowerCase();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
