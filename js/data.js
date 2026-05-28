@@ -65,26 +65,37 @@ async function dbLoad() {
     const db = window._db;
     dbUnsubscribe();
 
-    // ── Real-Time Sync: Attorney Directory ───────────────────────────────────
+    // ── Real-Time Sync: Attorney Directory (Self-Healing) ───────────────────
     const pColRef = window._fbCol(db, "profiles");
     profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
       profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Automatically generate user profile on first login using email fallback
-      let myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
-      if (!myProf) {
-        const defaultName = window._currentUser.displayName || window._currentUser.email;
-        const defaultData = {
-          name: defaultName,
-          role: "Attorney",
-          contact: "",
-          email: window._currentUser.email,
-          avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
-          photoUrl: window._currentUser.photoURL || null,
-          ownerUid: window._currentUser.uid,
-          createdAt: new Date().toISOString().slice(0,10)
-        };
-        dbAddProfile(defaultData);
+      const u = window._currentUser;
+      if (u) {
+        // Robust fallback lookup matching by ownerUid OR registered email address
+        let myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+
+        if (myProf) {
+          // Self-healing data repair: automatically apply missing ownerUid fields to legacy profiles
+          if (!myProf.ownerUid) {
+            dbUpdateProfile(myProf.id, { ownerUid: u.uid });
+            myProf.ownerUid = u.uid;
+          }
+        } else {
+          // Generates a new profile document if none exists in the directory
+          const defaultName = u.displayName || u.email;
+          const defaultData = {
+            name: defaultName,
+            role: "Attorney",
+            contact: "",
+            email: u.email,
+            avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+            photoUrl: u.photoURL || null,
+            ownerUid: u.uid,
+            createdAt: new Date().toISOString().slice(0,10)
+          };
+          dbAddProfile(defaultData);
+        }
       }
 
       dbReady = true;
