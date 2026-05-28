@@ -1,5 +1,6 @@
 let profiles     = [];
 let cases        = [];
+let globalCaseTypes = [];
 let currentView  = "dashboard";
 let selProfile   = null;
 let selCase      = null;
@@ -13,8 +14,9 @@ let pdFilter     = "All";
 let dbReady      = false;
 let localMode    = false;
 
-let profilesUnsub = null;
-let casesUnsub    = null;
+let profilesUnsub  = null;
+let casesUnsub     = null;
+let caseTypesUnsub = null;
 
 const statusColor = s =>
   ({Completed:"#22c55e","On-going":"#f59e0b",Dismissed:"#ef4444",Settled:"#6366f1"}[s]||"#94a3b8");
@@ -48,6 +50,7 @@ function showToast(msg, type="success") {
 function dbUnsubscribe() {
   if (profilesUnsub) { profilesUnsub(); profilesUnsub = null; }
   if (casesUnsub) { casesUnsub(); casesUnsub = null; }
+  if (caseTypesUnsub) { caseTypesUnsub(); caseTypesUnsub = null; }
 }
 
 async function dbLoad() {
@@ -100,6 +103,17 @@ async function dbLoad() {
       console.error("Cases real-time connection error:", error);
     });
 
+    // ── Real-Time Sync: Dynamic Case Types list ──────────────────────────────
+    const ctColRef = window._fbCol(db, "caseTypes");
+    caseTypesUnsub = window._fbOnSnapshot(ctColRef, (snap) => {
+      globalCaseTypes = snap.docs.map(d => d.data());
+      if (typeof updateAllFilterDropdowns === "function") {
+        updateAllFilterDropdowns();
+      }
+    }, (error) => {
+      console.error("CaseTypes sync error:", error);
+    });
+
   } catch(e) {
     console.error("Firestore database connection error:", e);
     dbReady = false;
@@ -107,6 +121,7 @@ async function dbLoad() {
   }
 }
 
+// ── Refresh router for real-time changes ────────────────────────────────────
 function refreshCurrentView() {
   if (!dbReady) return;
 
