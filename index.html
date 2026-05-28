@@ -250,6 +250,19 @@
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:24px">
+        <!-- COLUMN 1 (WIDER): Cases & Calendar Agenda -->
+        <div>
+          <div class="card">
+            <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">📁</span> Recent Cases
+            </div>
+            <div id="dash-cases"></div>
+          </div>
+          <!-- Google Calendar Events Widget Container -->
+          <div class="card mt-16" id="dash-calendar-card"></div>
+        </div>
+
+        <!-- COLUMN 2 (NARROWER): Attorney Profiles -->
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
@@ -261,16 +274,6 @@
             <input class="field-input" id="dash-profile-search" placeholder="🔍 Search attorneys…" oninput="renderDashProfiles()" style="font-size:13px;padding:8px 12px"/>
           </div>
           <div id="dash-profiles"></div>
-        </div>
-        <div>
-          <div class="card">
-            <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px">
-              <span style="font-size:20px">📁</span> Recent Cases
-            </div>
-            <div id="dash-cases"></div>
-          </div>
-          <!-- Google Calendar Events Widget Container -->
-          <div class="card mt-16" id="dash-calendar-card"></div>
         </div>
       </div>
     </div>
