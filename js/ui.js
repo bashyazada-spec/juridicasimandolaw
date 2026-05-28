@@ -524,6 +524,7 @@ async function removeDocFromCase(idx) {
 // ═══════════════════════════════════════════════════════════════
 //  QUICK ACCESS SIDEBAR (SAFEGUARDED)
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 function renderQuickAccess() {
   const qa = document.getElementById("quick-access");
   const ql = document.getElementById("quick-list");
