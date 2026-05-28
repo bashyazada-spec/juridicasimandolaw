@@ -116,7 +116,7 @@
 
 <!-- Security Verification and Directory Load Script -->
 <script type="module">
-  import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   let db, auth;
@@ -148,7 +148,7 @@
           showToast("Admin Session Verified");
           initAdminConsole();
         } else {
-          // Robust fallback search for custom claims/overwritten profiles
+          // Fallback search for custom claims/overwritten profiles using imported 'query'
           const q = query(collection(db, "profiles"));
           const snap = await getDocs(q);
           const matched = snap.docs.find(d => d.data().ownerUid === user.uid && d.data().role === "admin");
