@@ -46,7 +46,7 @@ function navTo(view) {
   const ac = document.getElementById("ac-search");
   if (pd) pd.value = "";
   if (ac) ac.value = "";
-  ["pd-status","pd-type","ac-status","ac-type"].forEach(id=>{
+  ["pd-status","pd-category","pd-type","ac-status","ac-category","ac-type"].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value="All";
   });
   ["pd-sort","ac-sort"].forEach(id=>{
@@ -286,6 +286,7 @@ function renderProfileCases() {
   if (!p) return;
   const q      = (document.getElementById("pd-search")?.value||"").toLowerCase();
   const status = document.getElementById("pd-status")?.value || "All";
+  const category = document.getElementById("pd-category")?.value || "All";
   const type   = document.getElementById("pd-type")?.value   || "All";
   const sort   = document.getElementById("pd-sort")?.value   || "asc";
   const pc     = cases.filter(c=>c.profileId===p.id);
@@ -293,6 +294,7 @@ function renderProfileCases() {
   let filtered = pc.filter(c=>
     (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)) &&
     (status==="All"||c.status===status) &&
+    (category==="All"||c.category===category) &&
     (type==="All"||c.type===type)
   );
   filtered = sortCasesByDue(filtered, sort);
@@ -329,6 +331,7 @@ function renderAllCases() {
   populateCaseFilterSelects("ac");
   const q      = (document.getElementById("ac-search")?.value||"").toLowerCase();
   const status = document.getElementById("ac-status")?.value || "All";
+  const category = document.getElementById("ac-category")?.value || "All";
   const type   = document.getElementById("ac-type")?.value   || "All";
   const sort   = document.getElementById("ac-sort")?.value   || "asc";
 
@@ -336,6 +339,7 @@ function renderAllCases() {
     const p=profiles.find(x=>x.id===c.profileId);
     return (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)||(p&&p.name.toLowerCase().includes(q))) &&
       (status==="All"||c.status===status) &&
+      (category==="All"||c.category===category) &&
       (type==="All"||c.type===type);
   });
   filtered = sortCasesByDue(filtered, sort);
@@ -589,86 +593,64 @@ function dueBadge(dueDate) {
   return `<span style="font-size:11px;color:var(--text-dim)">Due ${formatted}</span>`;
 }
 
-function populateCaseFilterSelects(prefix) {
-  const statusSel = document.getElementById(prefix+"-status");
-  const typeSel   = document.getElementById(prefix+"-type");
-  if (!statusSel || !typeSel) return;
+// ═══════════════════════════════════════════════════════════════
+//  FILTER DROPDOWNS POPULATOR
+// ═══════════════════════════════════════════════════════════════
+function updateAllFilterDropdowns() {
+  ["pd", "ac"].forEach(prefix => {
+    const statusSel = document.getElementById(prefix + "-status");
+    const catSel = document.getElementById(prefix + "-category");
+    if (!statusSel || !catSel) return;
 
-  const statusOpts = ["All", ...STATUS_OPTIONS];
-  if (statusSel.options.length !== statusOpts.length) {
-    const cur = statusSel.value;
-    statusSel.innerHTML = statusOpts.map(s=>`<option value="${s}">${s==="All"?"All Statuses":s}</option>`).join("");
-    if (statusOpts.includes(cur)) statusSel.value = cur;
-  }
+    const curStatus = statusSel.value;
+    const curCat = catSel.value;
 
-  const typeOpts = ["All", ...CASE_TYPES];
-  if (typeSel.options.length !== typeOpts.length) {
-    const cur = typeSel.value;
-    typeSel.innerHTML = typeOpts.map(t=>`<option value="${t}">${t==="All"?"All Types":t}</option>`).join("");
-    if (typeOpts.includes(cur)) typeSel.value = cur;
-  }
+    statusSel.innerHTML = `<option value="All">All Statuses</option>` + 
+      STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join("");
+    statusSel.value = curStatus || "All";
+
+    catSel.innerHTML = `<option value="All">All Categories</option>` + 
+      CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+    catSel.value = curCat || "All";
+
+    refreshFilterTypes(prefix);
+  });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  FILE PREVIEW MODAL
-// ═══════════════════════════════════════════════════════════════
-let _previewObjectUrl = null;
+function refreshFilterTypes(prefix) {
+  const catSel = document.getElementById(prefix + "-category");
+  const typeSel = document.getElementById(prefix + "-type");
+  if (!catSel || !typeSel) return;
 
-function openFilePreview(doc) {
-  if (doc._localTempId && pendingLocalFiles[doc._localTempId]) {
-    const file = pendingLocalFiles[doc._localTempId];
-    const url  = URL.createObjectURL(file);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-    return;
-  }
+  const selectedCat = catSel.value;
+  const curType = typeSel.value;
 
-  if (doc.driveLink) {
-    window.open(doc.driveLink, "_blank");
-    return;
-  }
-
-  showToast("No preview available — save the case first or sync to Drive.", "error");
-}
-
-function _renderPreviewContent(container, url, ext, name) {
-  if (["jpg","jpeg","png","gif","webp","svg","bmp"].includes(ext)) {
-    container.innerHTML = `<img src="${url}" style="max-width:95vw;max-height:calc(100vh - 80px);border-radius:8px;object-fit:contain"/>`;
-  } else if (ext === "pdf") {
-    container.innerHTML = `<iframe src="${url}" style="width:95vw;height:calc(100vh - 80px);border:none;border-radius:8px;background:#fff"></iframe>`;
-  } else if (["txt","md","html","htm","csv"].includes(ext)) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target.result;
-      container.innerHTML = `<pre style="background:#1a1a2e;color:#e2e8f0;padding:24px;border-radius:8px;max-width:90vw;max-height:calc(100vh - 100px);overflow:auto;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word">${escHtml(text.slice(0, 50000))}</pre>`;
-    };
-    fetch(url).then(r => r.blob()).then(b => reader.readAsText(b));
+  let filteredTypes = [];
+  if (selectedCat === "All") {
+    filteredTypes = globalCaseTypes.map(t => t.name);
   } else {
-    container.innerHTML = `<div style="color:#fff;text-align:center;padding:40px">
-      <div style="font-size:40px;margin-bottom:12px">📎</div>
-      <div style="font-size:15px;font-weight:600">${name}</div>
-      <div style="font-size:13px;color:#aaa;margin-top:8px">Preview not available for this file type.<br/>Use the Download button above.</div>
-    </div>`;
+    filteredTypes = globalCaseTypes
+      .filter(t => t.category === selectedCat)
+      .map(t => t.name);
+  }
+
+  const distinctTypes = [...new Set(filteredTypes)].sort();
+
+  typeSel.innerHTML = `<option value="All">All Types</option>` + 
+    distinctTypes.map(t => `<option value="${t}">${t}</option>`).join("");
+  
+  if (distinctTypes.includes(curType)) {
+    typeSel.value = curType;
+  } else {
+    typeSel.value = "All";
   }
 }
 
-function escHtml(str) {
-  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function onFilterCategoryChange(prefix) {
+  refreshFilterTypes(prefix);
+  if (prefix === "pd") renderProfileCases();
+  if (prefix === "ac") renderAllCases();
 }
-
-function closeFilePreview() {
-  const modal = document.getElementById("file-preview-modal");
-  modal.style.display = "none";
-  document.getElementById("fpm-body").innerHTML = "";
-  if (_previewObjectUrl) { URL.revokeObjectURL(_previewObjectUrl); _previewObjectUrl = null; }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const modal = document.getElementById("file-preview-modal");
-  if (modal) {
-    modal.addEventListener("click", e => { if (e.target === modal) closeFilePreview(); });
-  }
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  PERSONAL SETTINGS MANAGEMENT
