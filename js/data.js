@@ -152,6 +152,9 @@ function refreshCurrentView() {
   if (currentView === "profileDetail" && selProfile) renderProfileDetail();
   if (currentView === "caseDetail" && selCase) renderCaseDetail();
   if (currentView === "myprofile") renderMyProfile();
+  
+  // Refresh sidebar dynamic card
+  if (typeof renderSidebarUser === "function") renderSidebarUser();
 }
 
 async function dbAddProfile(data) {
