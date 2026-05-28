@@ -611,98 +611,6 @@ function onVenueChange(sel) {
   }
 }
 
-function getVenueValue() {
-  const sel = document.getElementById("cf-venue");
-  if (sel.value === "Other (specify)") {
-    return document.getElementById("cf-venue-manual").value.trim() || "Other";
-  }
-  return sel.value;
-}
-
-function setVenueValue(val) {
-  const sel = document.getElementById("cf-venue");
-  const manual = document.getElementById("cf-venue-manual");
-  const match = VENUES.find(v => v === val);
-  if (match) {
-    sel.value = match;
-    manual.style.display = "none";
-  } else if (val) {
-    sel.value = "Other (specify)";
-    manual.style.display = "block";
-    manual.value = val;
-  }
-}
-
-let _caseTypeSuggestions = [];
-
-async function loadCaseTypesForCategory(category) {
-  _caseTypeSuggestions = [];
-  if (!window._db || !category) return;
-  try {
-    const snap = await window._fbGetDocs(window._fbQuery(
-      window._fbCol(window._db, "caseTypes"),
-      window._fbWhere("category", "==", category)
-    ));
-    _caseTypeSuggestions = snap.docs.map(d => d.data().name).filter(Boolean);
-  } catch(e) { console.warn("loadCaseTypes error:", e); }
-}
-
-async function saveCaseTypeIfNew(category, typeName) {
-  if (!typeName || !category || !window._db) return;
-  const name = typeName.trim();
-  if (!name || _caseTypeSuggestions.includes(name)) return;
-  try {
-    await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), { category, name, createdAt: new Date().toISOString() });
-    _caseTypeSuggestions.push(name);
-  } catch(e) { console.warn("saveCaseType error:", e); }
-}
-
-function filterCaseTypeSuggestions(val) {
-  const dd = document.getElementById("cf-type-dropdown");
-  const q = val.trim().toLowerCase();
-  const filtered = q ? _caseTypeSuggestions.filter(s => s.toLowerCase().includes(q)) : _caseTypeSuggestions;
-  if (!filtered.length) { dd.style.display = "none"; return; }
-  dd.innerHTML = filtered.map(s =>
-    `<div onclick="selectCaseType('${s.replace(/'/g,"\'")}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s" onmouseover="this.style.background='rgba(201,165,92,0.08)'" onmouseout="this.style.background=''">${s}</div>`
-  ).join("");
-  dd.style.display = "block";
-}
-
-function showCaseTypeSuggestions() {
-  filterCaseTypeSuggestions(document.getElementById("cf-type-input").value);
-}
-
-function hideCaseTypeSuggestions() {
-  const dd = document.getElementById("cf-type-dropdown");
-  if (dd) dd.style.display = "none";
-}
-
-function selectCaseType(name) {
-  document.getElementById("cf-type-input").value = name;
-  hideCaseTypeSuggestions();
-}
-
-function onCaseTypeKeydown(e) {
-  if (e.key === "Escape") hideCaseTypeSuggestions();
-}
-
-async function onCategoryChange(category) {
-  const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
-  const aLabel = document.getElementById("cf-party-a-label");
-  const bLabel = document.getElementById("cf-party-b-label");
-  if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
-  if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
-  await loadCaseTypesForCategory(category);
-  document.getElementById("cf-type-input").value = "";
-  hideCaseTypeSuggestions();
-}
-
-function populateCaseSelects() {
-  document.getElementById("cf-category").innerHTML = CASE_CATEGORIES.map(c=>`<option>${c}</option>`).join("");
-  document.getElementById("cf-status").innerHTML = STATUS_OPTIONS.map(t=>`<option>${t}</option>`).join("");
-  document.getElementById("cf-venue").innerHTML = VENUES.map(v=>`<option>${v}</option>`).join("");
-}
-
 // ── FIXED: openAddCase now forces profile mapping safely even if launched from "All Cases" ──
 async function openAddCase() {
   caseFormOrigin = currentView;
@@ -710,7 +618,7 @@ async function openAddCase() {
   const u = window._currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) {
     showToast("Your attorney profile is still loading. Please wait a moment.", "error");
     return;
@@ -726,6 +634,7 @@ async function openAddCase() {
   document.getElementById("cf-save-btn").textContent="Add Case";
   document.getElementById("cf-case-title").value="";
   document.getElementById("cf-narrative").value="";
+  document.getElementById("cf-filed").value="";
   document.getElementById("cf-due").value="";
   document.getElementById("cf-case-number").value="";
   document.getElementById("cf-doc-type").value="";
@@ -759,10 +668,10 @@ async function openEditCase() {
   document.getElementById("cf-save-btn").textContent="Save Changes";
   document.getElementById("cf-case-title").value=c.title;
   document.getElementById("cf-narrative").value=c.narrative;
-  document.getElementById("cf-due").value=c.dueDate;
+  document.getElementById("cf-filed").value=c.filedDate || "";
+  document.getElementById("cf-due").value=c.dueDate || "";
   document.getElementById("cf-case-number").value=c.caseNumber||"";
   document.getElementById("cf-doc-type").value=c.docType||"";
-  document.getElementById("cf-status").value=c.status;
   setVenueValue(c.venue);
   
   const cat = c.category || CASE_CATEGORIES[0];
@@ -863,19 +772,20 @@ setTimeout(() => {
 }, 6000);
 
 function clearCaseErrors() {
-  ["cf-title-err","cf-due-err","cf-parties-err","cf-narrative-err"].forEach(id=>{document.getElementById(id).classList.add("hidden");});
-  ["cf-case-title","cf-due","cf-narrative"].forEach(id=>{document.getElementById(id).classList.remove("err");});
+  ["cf-title-err","cf-filed-err","cf-parties-err","cf-narrative-err"].forEach(id=>{document.getElementById(id).classList.add("hidden");});
+  ["cf-case-title","cf-filed","cf-narrative"].forEach(id=>{document.getElementById(id).classList.remove("err");});
 }
 
 async function saveCase() {
   serializeParties();
   const title=document.getElementById("cf-case-title").value.trim();
-  const due=document.getElementById("cf-due").value;
+  const filed=document.getElementById("cf-filed").value; // Required Filed Date
+  const due=document.getElementById("cf-due").value;     // Optional Due Date
   const parties=document.getElementById("cf-parties").value.trim();
   const narrative=document.getElementById("cf-narrative").value.trim();
   let valid=true;
   if(!title){document.getElementById("cf-title-err").classList.remove("hidden");document.getElementById("cf-case-title").classList.add("err");valid=false;}
-  if(!due){document.getElementById("cf-due-err").classList.remove("hidden");document.getElementById("cf-due").classList.add("err");valid=false;}
+  if(!filed){document.getElementById("cf-filed-err").classList.remove("hidden");document.getElementById("cf-filed").classList.add("err");valid=false;}
   if(cfPetitioners.length===0||cfRespondents.length===0){document.getElementById("cf-parties-err").classList.remove("hidden");valid=false;}
   if(!narrative){document.getElementById("cf-narrative-err").classList.remove("hidden");document.getElementById("cf-narrative").classList.add("err");valid=false;}
   if(!valid) return;
@@ -884,7 +794,10 @@ async function saveCase() {
   const caseType = document.getElementById("cf-type-input").value.trim();
   if (caseType) await saveCaseTypeIfNew(category, caseType);
   const data={
-    title,dueDate:due,parties,narrative,
+    title,
+    filedDate: filed,
+    dueDate: due || null, // Saved to Firestore, can be null
+    parties,narrative,
     category,
     type: caseType,
     caseNumber: document.getElementById("cf-case-number").value.trim(),
