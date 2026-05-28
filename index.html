@@ -14,18 +14,18 @@
      CLASSIC SLATE & EXECUTIVE LIGHT MODE THEME OVERRIDES
      ═════════════════════════════════════════════════════════════ */
   :root[data-theme="light"] {
-    --bg:          #f8fafc; /* Crisp Slate-50 background */
-    --bg2:         #f1f5f9; /* Slate-100 secondary background */
-    --surface:     #ffffff; /* Pure white raised cards for high elevation contrast */
-    --surface2:    #f8fafc;
-    --surface3:    #e2e8f0;
-    --border:      #e2e8f0; /* Soft Slate-200 dividers */
-    --border-soft: #cbd5e1; /* Clear Slate-300 field outlines */
-    --text:        #0f172a; /* Deep Slate-900 for ultra-legible text */
-    --text-muted:  #334155; /* Slate-700 body text */
-    --text-dim:    #64748b; /* Slate-500 labels */
+    --bg:          #f1f5f9; /* Contrasted Slate-100 page canvas background */
+    --bg2:         #cbd5e1; /* Slate-300 */
+    --surface:     #ffffff; /* Pure white elevated card surfaces */
+    --surface2:    #f8fafc; /* Slate-50: list items inside cards */
+    --surface3:    #f1f5f9; /* Hover states */
+    --border:      #e2e8f0; /* Ultra-soft divider lines */
+    --border-soft: #cbd5e1; /* Clear field outlines */
+    --text:        #0f172a; /* Deep Slate-900 for absolute legibility */
+    --text-muted:  #334155; /* Slate-700 body copy */
+    --text-dim:    #64748b; /* Slate-500 secondary labels */
     
-    --gold:        #aa7c11; /* Deep rich bronze-gold for legibility on white bgs */
+    --gold:        #aa7c11; /* Deep rich bronze-gold for text */
     --gold-light:  #c9a84c;
     --gold-border: #e2c07c;
     --gold-dim:    #fdfbf7;
@@ -36,6 +36,28 @@
     --red:         #be123c;
     
     --input-bg:    #ffffff;
+  }
+
+  /* ── Sophisticated elevation and borders for cards in Light Mode ── */
+  :root[data-theme="light"] .card,
+  :root[data-theme="light"] .stat-card {
+    background-color: var(--surface) !important;
+    border: 1px solid rgba(15, 23, 42, 0.06) !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.03), 0 2px 4px -2px rgba(15, 23, 42, 0.03), 0 1px 3px 0 rgba(0, 0, 0, 0.02) !important;
+    border-radius: 12px !important;
+  }
+
+  /* High contrast search inputs and selects for light mode */
+  :root[data-theme="light"] .field-input,
+  :root[data-theme="light"] select {
+    background-color: var(--input-bg) !important;
+    border: 1px solid var(--border-soft) !important;
+    color: var(--text) !important;
+  }
+  :root[data-theme="light"] .field-input:focus,
+  :root[data-theme="light"] select:focus {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 0 3px rgba(170, 124, 17, 0.12) !important;
   }
 
   /* ── Preserves professional dark contrasting sidebar in both modes ── */
@@ -82,7 +104,7 @@
   
   /* ── Smooth transitions during theme swap ── */
   body, #main, .card, .field-input, select, button, .case-row, .doc-item {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease !important;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease !important;
   }
 </style>
 </head>
