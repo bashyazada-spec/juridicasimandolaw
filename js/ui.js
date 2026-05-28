@@ -311,7 +311,7 @@ function renderProfileDetail() {
         </div>`).join("");
     }
 
-    updateAllFilterDropdowns(); // FIXED: References updated filter dropdown populator
+    updateAllFilterDropdowns(); // FIXED: References corrected dropdown populator (no ReferenceError)
     renderProfileCases();
   } else {
     if (noticeEl) noticeEl.style.display = "block";
@@ -367,7 +367,7 @@ function renderProfileCases() {
 //  ALL CASES
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
-  updateAllFilterDropdowns(); // FIXED: References updated filter dropdown populator
+  updateAllFilterDropdowns(); // FIXED: References corrected dropdown populator (no ReferenceError)
   const q      = (document.getElementById("ac-search")?.value||"").toLowerCase();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
@@ -463,7 +463,13 @@ function renderCaseDetail() {
         ${badge(c.status,statusColor(c.status))} ${badge(c.type,"#6366f1")}
       </div>
       <hr class="divider"/>
-      ${[["Parties",c.parties],["Venue",c.venue],["Due Date",c.dueDate||"Not set"],["Added",c.createdAt]].map(([l,v])=>`
+      ${[
+        ["Parties", c.parties],
+        ["Venue", c.venue],
+        ["Date Case Filed", formatDate(c.filedDate)],
+        ["Due Date", c.dueDate ? formatDate(c.dueDate) : "Not set"],
+        ["Added", c.createdAt]
+      ].map(([l,v])=>`
         <div style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
           <div style="font-size:15px;color:var(--text)">${v}</div>
@@ -1066,4 +1072,42 @@ async function fetchAndRenderGoogleCalendarEvents() {
     </div>`;
   }
   card.innerHTML = html;
+}
+
+// ── Sidebar User Card Dynamic Populator ──
+function renderSidebarUser() {
+  const chip = document.getElementById("sidebar-user-chip");
+  if (!chip) return;
+
+  const u = window._currentUser;
+  if (!u) {
+    chip.style.display = "none";
+    return;
+  }
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  if (!myProf) {
+    chip.style.display = "none";
+    return;
+  }
+
+  chip.innerHTML = `
+    ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
+    <div style="flex:1;min-width:0;text-align:left">
+      <div style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.name}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.email}</div>
+    </div>
+  `;
+  chip.style.display = "flex";
+}
+
+function openMyDriveFolder() {
+  const u = window._currentUser;
+  if (!u) { showToast("Not logged in.", "error"); return; }
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  if (myProf && myProf.driveFolderId) {
+    window.open(`https://drive.google.com/drive/folders/${myProf.driveFolderId}`, "_blank");
+  } else {
+    showToast("No Drive folder linked. Please connect Google Drive in Settings first.", "error");
+  }
 }
