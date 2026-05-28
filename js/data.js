@@ -72,17 +72,14 @@ async function dbLoad() {
 
       const u = window._currentUser;
       if (u) {
-        // Robust fallback lookup matching by ownerUid OR registered email address
         let myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
 
         if (myProf) {
-          // Self-healing data repair: automatically apply missing ownerUid fields to legacy profiles
           if (!myProf.ownerUid) {
             dbUpdateProfile(myProf.id, { ownerUid: u.uid });
             myProf.ownerUid = u.uid;
           }
         } else {
-          // Generates a new profile document if none exists in the directory
           const defaultName = u.displayName || u.email;
           const defaultData = {
             name: defaultName,
@@ -136,7 +133,6 @@ async function dbLoad() {
 function refreshCurrentView() {
   if (!dbReady) return;
 
-  // Preserve selected profiles and cases when array lists update
   if (selProfile) {
     const updatedProfile = profiles.find(p => p.id === selProfile.id);
     if (updatedProfile) selProfile = updatedProfile;
@@ -153,17 +149,20 @@ function refreshCurrentView() {
   if (currentView === "caseDetail" && selCase) renderCaseDetail();
   if (currentView === "myprofile") renderMyProfile();
   
-  // Refresh sidebar dynamic card
   if (typeof renderSidebarUser === "function") renderSidebarUser();
 }
 
 async function dbAddProfile(data) {
-  if (localMode || !window._db) { data.id = "local_"+Date.now(); profiles.unshift(data); return data; }
+  if (localMode || !window._db) { 
+    data.id = "local_" + Date.now(); 
+    profiles.unshift(data); 
+    return data; 
+  }
   data.ownerUid = window._currentUser?.uid || null;
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"profiles"), data);
   data.id = ref.id;
-  profiles.unshift(data);
+  // Let onSnapshot automatically handle addition to local profiles array
   return data;
 }
 
@@ -179,12 +178,16 @@ async function dbDeleteProfile(id) {
 }
 
 async function dbAddCase(data) {
-  if (localMode || !window._db) { data.id = "local_"+Date.now(); cases.unshift(data); return data; }
+  if (localMode || !window._db) { 
+    data.id = "local_" + Date.now(); 
+    cases.unshift(data); 
+    return data; 
+  }
   data.ownerUid = window._currentUser?.uid || null;
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
   data.id = ref.id;
-  cases.unshift(data);
+  // Let onSnapshot automatically handle addition to local cases array
   return data;
 }
 
