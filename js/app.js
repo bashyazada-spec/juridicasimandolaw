@@ -814,6 +814,7 @@ function initAppUI() {
   if (loader) loader.style.display = "none";
   initTheme();
   bindProfileInputs();
+  initPasswordStrengthChecker(); // Triggered to bind password logic dynamically
   showView("dashboard");
   renderDashboard();
 }
