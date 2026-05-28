@@ -611,6 +611,103 @@ function onVenueChange(sel) {
   }
 }
 
+function getVenueValue() {
+  const sel = document.getElementById("cf-venue");
+  if (sel.value === "Other (specify)") {
+    return document.getElementById("cf-venue-manual").value.trim() || "Other";
+  }
+  return sel.value;
+}
+
+function setVenueValue(val) {
+  const sel = document.getElementById("cf-venue");
+  const manual = document.getElementById("cf-venue-manual");
+  const match = VENUES.find(v => v === val);
+  if (match) {
+    sel.value = match;
+    manual.style.display = "none";
+  } else if (val) {
+    sel.value = "Other (specify)";
+    manual.style.display = "block";
+    manual.value = val;
+  }
+}
+
+let _caseTypeSuggestions = [];
+
+async function loadCaseTypesForCategory(category) {
+  _caseTypeSuggestions = [];
+  if (!window._db || !category) return;
+  try {
+    const snap = await window._fbGetDocs(window._fbQuery(
+      window._fbCol(window._db, "caseTypes"),
+      window._fbWhere("category", "==", category)
+    ));
+    _caseTypeSuggestions = snap.docs.map(d => d.data().name).filter(Boolean);
+  } catch(e) { console.warn("loadCaseTypes error:", e); }
+}
+
+async function saveCaseTypeIfNew(category, typeName) {
+  if (!typeName || !category || !window._db) return;
+  const name = typeName.trim();
+  if (!name || _caseTypeSuggestions.includes(name)) return;
+  try {
+    await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), { category, name, createdAt: new Date().toISOString() });
+    _caseTypeSuggestions.push(name);
+  } catch(e) { console.warn("saveCaseType error:", e); }
+}
+
+function filterCaseTypeSuggestions(val) {
+  const dd = document.getElementById("cf-type-dropdown");
+  const q = val.trim().toLowerCase();
+  const filtered = q ? _caseTypeSuggestions.filter(s => s.toLowerCase().includes(q)) : _caseTypeSuggestions;
+  if (!filtered.length) { dd.style.display = "none"; return; }
+  dd.innerHTML = filtered.map(s =>
+    `<div onclick="selectCaseType('${s.replace(/'/g,"\'")}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s" onmouseover="this.style.background='rgba(201,165,92,0.08)'" onmouseout="this.style.background=''">${s}</div>`
+  ).join("");
+  dd.style.display = "block";
+}
+
+function showCaseTypeSuggestions() {
+  filterCaseTypeSuggestions(document.getElementById("cf-type-input").value);
+}
+
+function hideCaseTypeSuggestions() {
+  const dd = document.getElementById("cf-type-dropdown");
+  if (dd) dd.style.display = "none";
+}
+
+function selectCaseType(name) {
+  document.getElementById("cf-type-input").value = name;
+  hideCaseTypeSuggestions();
+}
+
+function onCaseTypeKeydown(e) {
+  if (e.key === "Escape") hideCaseTypeSuggestions();
+}
+
+async function onCategoryChange(category) {
+  const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
+  const aLabel = document.getElementById("cf-party-a-label");
+  const bLabel = document.getElementById("cf-party-b-label");
+  if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
+  if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
+  await loadCaseTypesForCategory(category);
+  document.getElementById("cf-type-input").value = "";
+  hideCaseTypeSuggestions();
+}
+
+// ── FIXED: populateCaseSelects restored safely to avoid reference crashes on form open ──
+function populateCaseSelects() {
+  const catSel = document.getElementById("cf-category");
+  const statusSel = document.getElementById("cf-status");
+  const venueSel = document.getElementById("cf-venue");
+  
+  if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  if (statusSel) statusSel.innerHTML = STATUS_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join("");
+  if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
+}
+
 // ── FIXED: openAddCase now forces profile mapping safely even if launched from "All Cases" ──
 async function openAddCase() {
   caseFormOrigin = currentView;
@@ -629,7 +726,7 @@ async function openAddCase() {
   pendingDocs=[];
   cfPetitioners = selProfile.name ? [selProfile.name] : [];
   cfRespondents = [];
-  populateCaseSelects();
+  populateCaseSelects(); // Call restored cleanly
   document.getElementById("cf-title").textContent="New Case";
   document.getElementById("cf-save-btn").textContent="Add Case";
   document.getElementById("cf-case-title").value="";
@@ -663,7 +760,7 @@ async function openEditCase() {
   caseFormMode="edit";
   pendingDocs=[...(c.documents||[])];
   parsePartiesString(c.parties);
-  populateCaseSelects();
+  populateCaseSelects(); // Call restored cleanly
   document.getElementById("cf-title").textContent="Edit Case";
   document.getElementById("cf-save-btn").textContent="Save Changes";
   document.getElementById("cf-case-title").value=c.title;
