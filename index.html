@@ -8,6 +8,83 @@
 <link rel="stylesheet" href="css/style.css"/>
 <script type="module" src="js/firebase-init.js"></script>
 <base target="_blank">
+
+<style>
+  /* ═════════════════════════════════════════════════════════════
+     PREMIUM WARM LIGHT MODE THEME OVERRIDES
+     ═════════════════════════════════════════════════════════════ */
+  :root[data-theme="light"] {
+    --bg:          #faf9f5;
+    --bg2:         #f3f1e9;
+    --surface:     #ffffff;
+    --surface2:    #fdfcf9;
+    --surface3:    #f5f3eb;
+    --border:      #e4e1d9;
+    --border-soft: #cbd5e1;
+    --text:        #1e293b;
+    --text-muted:  #475569;
+    --text-dim:    #64748b;
+    
+    --gold:        #b58c3d; /* Slightly darker gold to ensure high contrast against light bgs */
+    --gold-light:  #c9a84c;
+    --gold-border: #e4d3b2;
+    --gold-dim:    #faf6ee;
+    
+    --violet:      #4f46e5;
+    --amber:       #b45309;
+    --green:       #15803d;
+    --red:         #be123c;
+    
+    --input-bg:    #ffffff;
+  }
+
+  /* ── Preserves professional dark contrasting sidebar in both modes ── */
+  #sidebar {
+    background-color: #0b131f !important;
+    color: #f8fafc !important;
+    border-right: 1px solid rgba(255,255,255,0.06) !important;
+  }
+  #sidebar .logo-sub {
+    color: rgba(255,255,255,0.45) !important;
+  }
+  #sidebar .nav-section {
+    color: rgba(255,255,255,0.3) !important;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  #sidebar .nav-btn {
+    color: rgba(255,255,255,0.65) !important;
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    transition: all 0.15s ease;
+  }
+  #sidebar .nav-btn:hover {
+    color: #ffffff !important;
+    background: rgba(255,255,255,0.04) !important;
+  }
+  #sidebar .nav-btn.active {
+    color: #c9a84c !important;
+    background: rgba(201,168,76,0.08) !important;
+    border-left: 3px solid #c9a84c !important;
+  }
+  #sidebar .sidebar-footer {
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.4) !important;
+  }
+  #sidebar .suggest-report-btn {
+    color: rgba(255,255,255,0.6) !important;
+  }
+  #sidebar .suggest-report-btn:hover {
+    color: #ffffff !important;
+  }
+  
+  /* ── Smooth transitions during theme swap ── */
+  body, #main, .card, .field-input, select, button, .case-row, .doc-item {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease !important;
+  }
+</style>
 </head>
 <body>
 
