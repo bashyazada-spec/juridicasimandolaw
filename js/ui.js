@@ -9,6 +9,58 @@ function initTheme() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  PASSWORD STRENGTH CHECKER
+// ═══════════════════════════════════════════════════════════════
+function initPasswordStrengthChecker() {
+  const passInput = document.getElementById("setting-password");
+  const reqContainer = document.getElementById("password-requirements");
+
+  if (!passInput || !reqContainer) return;
+
+  const reqs = {
+    length: { el: document.getElementById("req-length"), test: (val) => val.length >= 6 },
+    upper: { el: document.getElementById("req-upper"), test: (val) => /[A-Z]/.test(val) },
+    number: { el: document.getElementById("req-number"), test: (val) => /\d/.test(val) },
+    special: { el: document.getElementById("req-special"), test: (val) => /[^A-Za-z0-9]/.test(val) }
+  };
+
+  passInput.addEventListener("focus", () => {
+    reqContainer.style.display = "block";
+  });
+
+  passInput.addEventListener("input", () => {
+    const val = passInput.value;
+    if (!val) {
+      reqContainer.style.display = "none";
+      return;
+    }
+    reqContainer.style.display = "block";
+
+    for (const key in reqs) {
+      const rule = reqs[key];
+      const passed = rule.test(val);
+      if (rule.el) {
+        const icon = rule.el.querySelector(".req-icon");
+        if (passed) {
+          rule.el.style.color = "var(--green, #22c55e)";
+          if (icon) icon.textContent = "✅";
+        } else {
+          rule.el.style.color = "var(--text-muted)";
+          if (icon) icon.textContent = "❌";
+        }
+      }
+    }
+  });
+
+  // Hide the requirements container if input loses focus and is empty
+  passInput.addEventListener("blur", () => {
+    if (!passInput.value) {
+      reqContainer.style.display = "none";
+    }
+  });
+}
+
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
   const next = current === 'light' ? 'dark' : 'light';
@@ -881,6 +933,19 @@ async function saveSecuritySettings() {
     return;
   }
 
+  // Enforce password requirements check if user is attempting to change password
+  if (pass) {
+    const isLengthValid = pass.length >= 6;
+    const isUpperValid = /[A-Z]/.test(pass);
+    const isNumberValid = /\d/.test(pass);
+    const isSpecialValid = /[^A-Za-z0-9]/.test(pass);
+
+    if (!isLengthValid || !isUpperValid || !isNumberValid || !isSpecialValid) {
+      showToast("Please ensure your new password meets all security requirements.", "error");
+      return;
+    }
+  }
+
   const reauthPanel = document.getElementById("setting-reauth-panel");
   if (reauthPanel.style.display === "none") {
     reauthPanel.style.display = "block";
@@ -914,6 +979,7 @@ async function saveSecuritySettings() {
     reauthPanel.style.display = "none";
     document.getElementById("setting-password").value = "";
     document.getElementById("setting-current-password").value = "";
+    document.getElementById("password-requirements").style.display = "none"; // Hide requirements box upon success
   } catch (err) {
     console.error("Credentials update failed:", err);
     showToast("Verification failed: " + err.message, "error");
