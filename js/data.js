@@ -1,3 +1,10 @@
+// ═══════════════════════════════════════════════════════════════
+//  ADMINISTRATIVE & SYSTEM CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+const ADMIN_EMAILS = [
+  "admin@simandolaw.com", // Change this to your authorized admin attorney's email
+];
+
 let profiles     = [];
 let cases        = [];
 let globalCaseTypes = [];
@@ -75,18 +82,28 @@ async function dbLoad() {
         let myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
 
         if (myProf) {
+          // Self-healing data repair: automatically apply missing ownerUid fields to legacy profiles
           if (!myProf.ownerUid) {
             dbUpdateProfile(myProf.id, { ownerUid: u.uid });
             myProf.ownerUid = u.uid;
           }
+          // Self-healing data repair: enforce admin status if their email is in the admin config
+          const isConfiguredAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+          if (isConfiguredAdmin && myProf.role !== "admin") {
+            dbUpdateProfile(myProf.id, { role: "admin" });
+            myProf.role = "admin";
+          }
         } else {
+          // Generates a new profile document if none exists in the directory
           const defaultName = u.displayName || u.email;
+          const isConfiguredAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+          
           const defaultData = {
             name: defaultName,
-            role: "Attorney",
+            role: isConfiguredAdmin ? "admin" : "Attorney",
             contact: "",
             email: u.email,
-            avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+            avatarColor: ADMIN_EMAILS.includes(u.email.toLowerCase()) ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
             photoUrl: u.photoURL || null,
             ownerUid: u.uid,
             createdAt: new Date().toISOString().slice(0,10)
@@ -162,7 +179,7 @@ async function dbAddProfile(data) {
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"profiles"), data);
   data.id = ref.id;
-  // Let onSnapshot automatically handle addition to local profiles array
+  // Let onSnapshot automatically handle addition to local profiles array to prevent duplicates
   return data;
 }
 
@@ -187,7 +204,7 @@ async function dbAddCase(data) {
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
   data.id = ref.id;
-  // Let onSnapshot automatically handle addition to local cases array
+  // Let onSnapshot automatically handle addition to local cases array to prevent duplicates
   return data;
 }
 
