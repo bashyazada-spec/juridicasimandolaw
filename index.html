@@ -303,9 +303,12 @@
       </div>
       <div id="profile-cases-section">
         <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
-          <input class="field-input" style="max-width:260px;flex:1;min-width:160px" placeholder="🔍 Search cases…" id="pd-search" oninput="renderProfileCases()"/>
+          <input class="field-input" style="max-width:200px;flex:1;min-width:130px" placeholder="🔍 Search cases…" id="pd-search" oninput="renderProfileCases()"/>
           <select class="filter-select" id="pd-status" onchange="renderProfileCases()" title="Filter by status">
             <option value="All">All Statuses</option>
+          </select>
+          <select class="filter-select" id="pd-category" onchange="onFilterCategoryChange('pd')" title="Filter by category">
+            <option value="All">All Categories</option>
           </select>
           <select class="filter-select" id="pd-type" onchange="renderProfileCases()" title="Filter by type">
             <option value="All">All Types</option>
@@ -331,9 +334,12 @@
         <button class="btn btn-primary" onclick="openAddCase()">+ New Case</button>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <input class="field-input" style="max-width:260px;flex:1;min-width:160px" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
+        <input class="field-input" style="max-width:200px;flex:1;min-width:130px" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
         <select class="filter-select" id="ac-status" onchange="renderAllCases()" title="Filter by status">
           <option value="All">All Statuses</option>
+        </select>
+        <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')" title="Filter by category">
+          <option value="All">All Categories</option>
         </select>
         <select class="filter-select" id="ac-type" onchange="renderAllCases()" title="Filter by type">
           <option value="All">All Types</option>
