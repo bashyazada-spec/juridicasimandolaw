@@ -809,6 +809,7 @@ function handleSettingsPhotoUpload(event) {
   reader.readAsDataURL(file);
 }
 
+// stand-alone removal trigger
 function removeSettingsPhoto() {
   resetSettingsPhotoUpload();
 }
