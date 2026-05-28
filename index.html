@@ -106,6 +106,133 @@
   body, #main, .card, .field-input, select, button, .case-row, .doc-item {
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease !important;
   }
+
+  /* ═════════════════════════════════════════════════════════════
+     RESPONSIVE MEDIA QUERIES (PHONES & TABLETS)
+     ═════════════════════════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    #app {
+      display: flex;
+      flex-direction: column; /* Stack sidebar on top, main below */
+      height: auto;
+      min-height: 100vh;
+    }
+
+    #sidebar {
+      width: 100% !important;
+      height: auto !important;
+      padding: 12px 16px !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    #sidebar .logo-wrap {
+      margin-bottom: 0 !important;
+    }
+    #sidebar .logo-img {
+      max-height: 32px !important;
+      width: auto !important;
+    }
+    #sidebar .logo-sub {
+      display: none !important;
+    }
+    #sidebar .nav-section {
+      display: none !important; /* Hide categories labels to save space */
+    }
+
+    /* Convert sidebar navigation into a horizontal tab layout */
+    #sidebar div[style*="flex:1"] {
+      display: flex !important;
+      flex-direction: row !important;
+      gap: 6px !important;
+      margin: 0 12px !important;
+      overflow-x: auto;
+      scrollbar-width: none; /* Hide scrollbars on Firefox */
+    }
+    #sidebar div[style*="flex:1"]::-webkit-scrollbar {
+      display: none; /* Hide scrollbars on Chrome/Safari */
+    }
+
+    #sidebar .nav-btn {
+      padding: 8px 12px !important;
+      font-size: 12px !important;
+      white-space: nowrap !important;
+      border-radius: 8px !important;
+      border-left: none !important;
+      border-bottom: 2px solid transparent !important;
+    }
+    #sidebar .nav-btn.active {
+      border-left: none !important;
+      border-bottom: 2px solid #c9a84c !important;
+    }
+
+    #sidebar .sidebar-footer {
+      display: none !important; /* Hide footer on mobile headers */
+    }
+
+    #main {
+      padding: 16px !important;
+      width: 100% !important;
+    }
+
+    /* Force all grid setups to stack vertically */
+    .grid4, .grid3, .grid2 {
+      grid-template-columns: 1fr !important;
+      gap: 16px !important;
+    }
+
+    #view-dashboard > div[style*="display:grid"] {
+      grid-template-columns: 1fr !important; /* Stack Cases and Profiles */
+      gap: 16px !important;
+    }
+
+    .page-hdr {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+    }
+    .page-hdr .btn {
+      width: 100% !important; /* Full width CTA buttons */
+      justify-content: center !important;
+    }
+
+    /* Filters realignments */
+    #view-profileDetail div[style*="display:flex;gap:10px;margin-bottom:16px"],
+    #view-allcases div[style*="display:flex;gap:10px;margin-bottom:16px"] {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    
+    #view-profileDetail .field-input, 
+    #view-profileDetail .filter-select,
+    #view-allcases .field-input, 
+    #view-allcases .filter-select {
+      max-width: 100% !important;
+      width: 100% !important;
+    }
+
+    /* Forms grids adjustments */
+    #view-caseForm .grid2 {
+      grid-template-columns: 1fr !important;
+    }
+    #view-caseForm div[style*="grid-template-columns:1fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Details page layouts */
+    #view-caseDetail div[style*="grid-template-columns:1.4fr 1fr"] {
+      grid-template-columns: 1fr !important;
+    }
+    
+    #view-myprofile div[style*="display:grid"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
 </style>
 </head>
 <body>
