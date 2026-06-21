@@ -336,6 +336,33 @@
   <div id="fpm-body" style="margin-top:56px;width:100%;height:calc(100vh - 56px);overflow:auto;display:flex;align-items:center;justify-content:center"></div>
 </div>
 
+<!-- Google Calendar Event Detail Modal -->
+<div id="calendar-event-modal" class="modal-overlay hidden" style="z-index: 10001;">
+  <div class="modal-box" style="max-width: 500px;">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px" id="cem-title">
+      📅 Event Details
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Time & Date</div>
+        <div id="cem-time" style="font-size:14px;color:var(--text);margin-top:2px"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Location / Venue</div>
+        <div id="cem-location" style="font-size:14px;color:var(--text);margin-top:2px"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Details / Description</div>
+        <div id="cem-desc" style="font-size:13px;color:var(--text-muted);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:180px;overflow-y:auto;white-space:pre-wrap;margin-top:2px"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeCalendarModal()">Close</button>
+      <a id="cem-link" class="btn btn-primary" href="#" target="_blank">Open in Google Calendar</a>
+    </div>
+  </div>
+</div>
+
 <!-- Main App -->
 <div id="app">
 
@@ -874,24 +901,20 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
               <!-- Party A (Petitioner / Private Complainant / Plaintiff) -->
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
-                <div id="cf-party-a-label" style="font-size:10px;font-weight:700;color:var(--gold);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
-                  <span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> Petitioners
-                </div>
-                <div id="cf-petitioners-list" style="margin-bottom:10px;min-height:4px"></div>
-                <div style="display:flex;gap:6px">
-                  <input class="field-input" id="cf-petitioner-input" placeholder="Name…" style="flex:1;font-size:13px;padding:8px 10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('petitioner')}"/>
-                  <button type="button" onclick="addParty('petitioner')" style="padding:8px 12px;border-radius:7px;background:rgba(201,165,92,0.12);border:1px solid var(--gold-border);color:var(--gold);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.background='rgba(201,165,92,0.2)'" onmouseout="this.style.background='rgba(201,165,92,0.12)'">+ Add</button>
+                <div id="cf-party-a-label" style="font-size:10px;font-weight:700;color:var(--gold);display:inline-block;flex-shrink:0"></div>
+                <div id="cf-petitioners-list" style="margin-top: 8px;"></div>
+                <div style="display:flex;gap:8px;margin-top:12px">
+                  <input type="text" class="field-input" id="cf-petitioner-input" placeholder="Add party..." style="padding:6px 10px;font-size:13px"/>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('petitioner')">Add</button>
                 </div>
               </div>
               <!-- Party B (Respondent / Accused / Defendant) -->
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px">
-                <div id="cf-party-b-label" style="font-size:10px;font-weight:700;color:var(--violet);letter-spacing:1.8px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px">
-                  <span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> Respondents
-                </div>
-                <div id="cf-respondents-list" style="margin-bottom:10px;min-height:4px"></div>
-                <div style="display:flex;gap:6px">
-                  <input class="field-input" id="cf-respondent-input" placeholder="Name…" style="flex:1;font-size:13px;padding:8px 10px" onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('respondent')}"/>
-                  <button type="button" onclick="addParty('respondent')" style="padding:8px 12px;border-radius:7px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.3);color:var(--violet);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.background='rgba(129,140,248,0.18)'" onmouseout="this.style.background='rgba(129,140,248,0.1)'">+ Add</button>
+                <div id="cf-party-b-label" style="font-size:10px;font-weight:700;color:var(--violet);display:inline-block;flex-shrink:0"></div>
+                <div id="cf-respondents-list" style="margin-top: 8px;"></div>
+                <div style="display:flex;gap:8px;margin-top:12px">
+                  <input type="text" class="field-input" id="cf-respondent-input" placeholder="Add party..." style="padding:6px 10px;font-size:13px"/>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('respondent')">Add</button>
                 </div>
               </div>
             </div>
