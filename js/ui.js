@@ -420,7 +420,7 @@ function renderAllCases() {
     const p=profiles.find(x=>x.id===c.profileId);
     return (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)||(p&&p.name.toLowerCase().includes(q))) &&
       (status==="All"||c.status===status) &&
-      (category==="All"||c.category===category) &&
+      (category==="All"||c.category==="All"||c.category===category) &&
       (type==="All"||c.type===type);
   });
   filtered = sortCasesByDue(filtered, sort);
@@ -1084,6 +1084,16 @@ async function handleLogout() {
   } catch (err) {
     console.error("Signout error:", err);
   }
+}
+
+// Helper to escape HTML safely inside the dashboard
+function escHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ═══════════════════════════════════════════════════════════════
