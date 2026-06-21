@@ -49,7 +49,6 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      // Added calendar.readonly to allow event listing and agenda read permissions
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
@@ -57,6 +56,11 @@ function initGoogleDrive() {
           persistToken(response.access_token, response.expires_in);
           console.log("Drive & Calendar auth success");
           if (pendingDriveAuthResolve) pendingDriveAuthResolve(accessToken);
+          
+          // Auto-trigger calendar refresh immediately upon successful connection
+          if (typeof fetchAndRenderGoogleCalendarEvents === "function" && currentView === "dashboard") {
+            fetchAndRenderGoogleCalendarEvents();
+          }
         } else {
           console.error("Drive & Calendar auth response error:", response);
           if (pendingDriveAuthReject) pendingDriveAuthReject(new Error(response.error_description || "Auth failed"));
