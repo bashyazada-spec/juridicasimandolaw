@@ -369,7 +369,7 @@ function renderProfileCases() {
   const status = document.getElementById("pd-status")?.value || "All";
   const category = document.getElementById("pd-category")?.value || "All";
   const type   = document.getElementById("pd-type")?.value   || "All";
-  const sort   = document.getElementById("pd-sort")?.value   || "asc";
+  const sort = document.getElementById("pd-sort")?.value || "asc";
   const pc     = cases.filter(c=>c.profileId===p.id);
 
   let filtered = pc.filter(c=>
@@ -1097,6 +1097,61 @@ function escHtml(str) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  GOOGLE CALENDAR EVENT INTERACTIVE DETAIL MODAL HANDLERS
+// ═══════════════════════════════════════════════════════════════
+window.openCalendarEventModal = function(index) {
+  const events = window._fetchedCalendarEvents;
+  if (!events || !events[index]) return;
+  const ev = events[index];
+
+  const modal = document.getElementById("calendar-event-modal");
+  if (!modal) return;
+
+  const titleEl    = document.getElementById("cem-title");
+  const timeEl     = document.getElementById("cem-time");
+  const locationEl = document.getElementById("cem-location");
+  const descEl     = document.getElementById("cem-desc");
+  const linkEl     = document.getElementById("cem-link");
+
+  const start     = ev.start.dateTime || ev.start.date;
+  const end       = ev.end?.dateTime || ev.end?.date;
+  const startDate = new Date(start);
+  const isAllDay  = !!ev.start.date;
+
+  // Format localized and timezone-accurate date output using explicit "en-US" setting
+  let timeString = startDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  if (!isAllDay) {
+    const startTimeStr = startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    let endTimeStr = "";
+    if (end) {
+      endTimeStr = " - " + new Date(end).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    }
+    timeString += ` · ${startTimeStr}${endTimeStr}`;
+  } else {
+    timeString += " (All Day)";
+  }
+
+  titleEl.innerHTML = `📅 ${escHtml(ev.summary || "No Title")}`;
+  timeEl.textContent = timeString;
+  locationEl.textContent = ev.location || "No venue/location specified";
+  descEl.textContent = ev.description || "No description provided.";
+  
+  if (ev.htmlLink) {
+    linkEl.href = ev.htmlLink;
+    linkEl.style.display = "inline-flex";
+  } else {
+    linkEl.style.display = "none";
+  }
+
+  modal.classList.remove("hidden");
+};
+
+window.closeCalendarModal = function() {
+  const modal = document.getElementById("calendar-event-modal");
+  if (modal) modal.classList.add("hidden");
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  DYNAMIC AGENDA LOADER FROM GOOGLE CALENDAR API
 // ═══════════════════════════════════════════════════════════════
 async function fetchAndRenderGoogleCalendarEvents() {
@@ -1140,6 +1195,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
 
     const data = await res.json();
     const events = data.items || [];
+    window._fetchedCalendarEvents = events; // Store events globally to resolve for interactive detail popups
 
     if (events.length === 0) {
       html += `<div style="text-align:center;padding:24px 12px;color:var(--text-dim);border:1px dashed var(--border);border-radius:10px;font-size:12px">
@@ -1147,22 +1203,28 @@ async function fetchAndRenderGoogleCalendarEvents() {
       </div>`;
     } else {
       html += `<div style="display:flex;flex-direction:column;gap:10px">`;
-      events.forEach(ev => {
+      events.forEach((ev, i) => {
         const start = ev.start.date || ev.start.dateTime;
         const eventDate = new Date(start);
-        const dateStr = eventDate.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+        const dateStr = eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         const isAllDay = !!ev.start.date;
-        const timeStr = isAllDay ? "All Day" : eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timeStr = isAllDay ? "All Day" : eventDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
         
+        // Expose location metadata and short description snippet directly onto the dashboard agenda cards
+        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;display:flex;align-items:center;gap:4px">📍 ${escHtml(ev.location)}</div>` : "";
+        const descriptionMarkup = ev.description ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic">"${escHtml(ev.description.slice(0, 50))}${ev.description.length > 50 ? '...' : ''}"</div>` : "";
+
         html += `
-          <div style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+          <div onclick="openCalendarEventModal(${i})" style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
             <div style="text-align:center;background:rgba(201,168,76,0.1);border:1px solid var(--gold-border);border-radius:8px;padding:6px;min-width:48px">
-              <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase">${eventDate.toLocaleDateString("en-PH", { weekday: "short" })}</div>
+              <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase">${eventDate.toLocaleDateString("en-US", { weekday: "short" })}</div>
               <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px">${eventDate.getDate()}</div>
             </div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary)}">${escHtml(ev.summary)}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary || 'No Title')}">${escHtml(ev.summary || 'No Title')}</div>
               <div style="font-size:11px;color:var(--text-dim);margin-top:2px">📅 ${dateStr} · ⏰ ${timeStr}</div>
+              ${locationMarkup}
+              ${descriptionMarkup}
             </div>
           </div>
         `;
