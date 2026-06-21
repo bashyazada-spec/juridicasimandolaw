@@ -420,7 +420,7 @@ function renderAllCases() {
     const p=profiles.find(x=>x.id===c.profileId);
     return (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)||(p&&p.name.toLowerCase().includes(q))) &&
       (status==="All"||c.status===status) &&
-      (category==="All"||c.category==="All"||c.category===category) &&
+      (category==="All"||c.category===category) &&
       (type==="All"||c.type===type);
   });
   filtered = sortCasesByDue(filtered, sort);
@@ -1194,6 +1194,15 @@ async function fetchAndRenderGoogleCalendarEvents() {
     }
   }
   card.innerHTML = html;
+}
+
+// Background auto-refresh interval: updates the calendar events dynamically every 5 minutes if dashboard is active
+if (!window._calendarIntervalId) {
+  window._calendarIntervalId = setInterval(() => {
+    if (currentView === "dashboard" && hasValidToken() && typeof fetchAndRenderGoogleCalendarEvents === "function") {
+      fetchAndRenderGoogleCalendarEvents();
+    }
+  }, 300000); 
 }
 
 function openMyDriveFolder() {
