@@ -1097,6 +1097,52 @@ function escHtml(str) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  GOOGLE CALENDAR RFC3339 TIMEZONE-PRESERVING DATE PARSER
+// ═══════════════════════════════════════════════════════════════
+function parseGoogleDateTime(isoString) {
+  if (!isoString) return { dateStr: "", timeStr: "", dateObj: new Date(), isAllDay: false };
+
+  // 1. Process All-Day Events (formatted as YYYY-MM-DD)
+  if (isoString.length === 10 && !isoString.includes("T")) {
+    const parts = isoString.split("-");
+    const yr = parseInt(parts[0], 10);
+    const mo = parseInt(parts[1], 10) - 1;
+    const dy = parseInt(parts[2], 10);
+    const dateObj = new Date(yr, mo, dy);
+    const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return { dateStr, timeStr: "All Day", dateObj, isAllDay: true };
+  }
+
+  // 2. Process DateTime Events (formatted as YYYY-MM-DDTHH:MM:SS...)
+  // Extracts original hours/minutes from the string directly to preserve calendar timeline offsets
+  const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (!match) {
+    const d = new Date(isoString);
+    return {
+      dateStr: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+      timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      dateObj: d,
+      isAllDay: false
+    };
+  }
+
+  const yr = parseInt(match[1], 10);
+  const mo = parseInt(match[2], 10) - 1;
+  const dy = parseInt(match[3], 10);
+  const hh = parseInt(match[4], 10);
+  const mm = match[5];
+
+  const dateObj = new Date(yr, mo, dy, hh, parseInt(mm, 10));
+  const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  const ampm = hh >= 12 ? "PM" : "AM";
+  const displayHour = hh % 12 === 0 ? 12 : hh % 12;
+  const timeStr = `${displayHour}:${mm} ${ampm}`;
+
+  return { dateStr, timeStr, dateObj, isAllDay: false };
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  GOOGLE CALENDAR EVENT INTERACTIVE DETAIL MODAL HANDLERS
 // ═══════════════════════════════════════════════════════════════
 window.openCalendarEventModal = function(index) {
@@ -1113,20 +1159,18 @@ window.openCalendarEventModal = function(index) {
   const descEl     = document.getElementById("cem-desc");
   const linkEl     = document.getElementById("cem-link");
 
-  const start     = ev.start.dateTime || ev.start.date;
-  const end       = ev.end?.dateTime || ev.end?.date;
-  const startDate = new Date(start);
-  const isAllDay  = !!ev.start.date;
+  const start = ev.start.dateTime || ev.start.date;
+  const end   = ev.end?.dateTime || ev.end?.date;
+  
+  const parsedStart = parseGoogleDateTime(start);
+  const parsedEnd   = parseGoogleDateTime(end);
 
-  // Format localized and timezone-accurate date output using explicit "en-US" setting
-  let timeString = startDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  if (!isAllDay) {
-    const startTimeStr = startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    let endTimeStr = "";
-    if (end) {
-      endTimeStr = " - " + new Date(end).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  let timeString = parsedStart.dateStr;
+  if (!parsedStart.isAllDay) {
+    timeString += ` · ${parsedStart.timeStr}`;
+    if (end && parsedEnd.timeStr && !parsedEnd.isAllDay) {
+      timeString += ` - ${parsedEnd.timeStr}`;
     }
-    timeString += ` · ${startTimeStr}${endTimeStr}`;
   } else {
     timeString += " (All Day)";
   }
@@ -1205,10 +1249,11 @@ async function fetchAndRenderGoogleCalendarEvents() {
       html += `<div style="display:flex;flex-direction:column;gap:10px">`;
       events.forEach((ev, i) => {
         const start = ev.start.date || ev.start.dateTime;
-        const eventDate = new Date(start);
-        const dateStr = eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        const isAllDay = !!ev.start.date;
-        const timeStr = isAllDay ? "All Day" : eventDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+        const parsedStart = parseGoogleDateTime(start);
+        
+        const dateStr   = parsedStart.dateStr;
+        const timeStr   = parsedStart.timeStr;
+        const eventDate = parsedStart.dateObj;
         
         // Expose location metadata and short description snippet directly onto the dashboard agenda cards
         const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;display:flex;align-items:center;gap:4px">📍 ${escHtml(ev.location)}</div>` : "";
