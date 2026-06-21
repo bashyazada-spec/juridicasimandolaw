@@ -49,7 +49,8 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events",
+      // Added calendar.readonly to allow event listing and agenda read permissions
+      scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
           accessToken = response.access_token;
@@ -138,7 +139,7 @@ async function setupProfileDriveFolder(profile) {
   }
 }
 
-// ── NEW: Automatically converts DOCX/DOC to PDF on Google Servers ──────────
+// ── Automatically converts DOCX/DOC to PDF on Google Servers ──────────
 async function convertWordToPdfAndUpload(file, folderId) {
   if (!hasValidToken()) throw new Error("Drive connection expired.");
 
