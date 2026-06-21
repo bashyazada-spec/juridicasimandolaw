@@ -105,10 +105,10 @@ function navTo(view) {
     const el=document.getElementById(id); if(el) el.value="asc";
   });
   showView(view);
-  if (view===“dashboard”) renderDashboard();
-  if (view===“profiles”)  renderProfiles();
-  if (view===“allcases”)  renderAllCases();
-  if (view===“myprofile”) renderMyProfile();
+  if (view==="dashboard") renderDashboard();
+  if (view==="profiles")  renderProfiles();
+  if (view==="allcases")  renderAllCases();
+  if (view==="myprofile") renderMyProfile();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -127,8 +127,8 @@ function renderDashboard() {
 
   if (statProfilesEl) statProfilesEl.textContent = profiles.length;
   if (statTotalEl) statTotalEl.textContent = cases.length;
-  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c=>c.status===“On-going”).length;
-  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c=>c.status===“Completed”).length;
+  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c=>c.status==="On-going").length;
+  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c=>c.status==="Completed").length;
 
   renderDashProfiles();
 
@@ -343,8 +343,8 @@ function renderProfileDetail() {
 
       statsEl.innerHTML = [
         ["Total Cases",pc.length,"var(--violet)"],
-        ["Active",pc.filter(c=>c.status===“On-going”).length,"var(--amber)"],
-        ["Resolved",pc.filter(c=>c.status===“Completed”).length,"var(--green)"],
+        ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
+        ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
         ["Documents",docs,"var(--gold)"]
       ].map(([l,n,c])=>`
         <div class="stat-card" style="--accent:${c};padding:16px 18px">
@@ -374,9 +374,9 @@ function renderProfileCases() {
 
   let filtered = pc.filter(c=>
     (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)) &&
-    (status===“All”||c.status===status) &&
-    (category===“All”||c.category===category) &&
-    (type===“All”||c.type===type)
+    (status==="All"||c.status===status) &&
+    (category==="All"||c.category===category) &&
+    (type==="All"||c.type===type)
   );
   filtered = sortCasesByDue(filtered, sort);
 
@@ -419,9 +419,9 @@ function renderAllCases() {
   let filtered = cases.filter(c=>{
     const p=profiles.find(x=>x.id===c.profileId);
     return (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)||(p&&p.name.toLowerCase().includes(q))) &&
-      (status===“All”||c.status===status) &&
-      (category===“All”||c.category===category) &&
-      (type===“All”||c.type===type);
+      (status==="All"||c.status===status) &&
+      (category==="All"||c.category===category) &&
+      (type==="All"||c.type===type);
   });
   filtered = sortCasesByDue(filtered, sort);
 
