@@ -7,6 +7,8 @@ const ADMIN_EMAILS = [
 
 let profiles     = [];
 let cases        = [];
+let notifications = [];
+let appointments = [];
 let globalCaseTypes = [];
 let currentView  = "dashboard";
 let selProfile   = null;
@@ -23,10 +25,17 @@ let localMode    = false;
 
 let profilesUnsub  = null;
 let casesUnsub     = null;
-let caseTypesUnsub = null;
+let notificationsUnsub = null;
+let appointmentsUnsub = null;
 
-const statusColor = s =>
-  ({Completed:"#22c55e","On-going":"#f59e0b",Dismissed:"#ef4444",Settled:"#6366f1"}[s]||"#94a3b8");
+const statusColor = (status) => {
+  switch (status) {
+    case "On-going":  return "var(--amber)";
+    case "Completed": return "var(--green)";
+    case "Resolved":  return "var(--green)";
+    default:          return "var(--text-muted)";
+  }
+};
 
 const initials = name => name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
 
@@ -57,7 +66,8 @@ function showToast(msg, type="success") {
 function dbUnsubscribe() {
   if (profilesUnsub) { profilesUnsub(); profilesUnsub = null; }
   if (casesUnsub) { casesUnsub(); casesUnsub = null; }
-  if (caseTypesUnsub) { caseTypesUnsub(); caseTypesUnsub = null; }
+  if (notificationsUnsub) { notificationsUnsub(); notificationsUnsub = null; }
+  if (appointmentsUnsub) { appointmentsUnsub(); appointmentsUnsub = null; }
 }
 
 async function dbLoad() {
@@ -72,7 +82,7 @@ async function dbLoad() {
     const db = window._db;
     dbUnsubscribe();
 
-    // ── Real-Time Sync: Attorney Directory (Self-Healing) ───────────────────
+    // ── Real-Time Sync: Attorney Directory ───────────────────
     const pColRef = window._fbCol(db, "profiles");
     profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
       profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -82,19 +92,16 @@ async function dbLoad() {
         let myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
 
         if (myProf) {
-          // Self-healing data repair: automatically apply missing ownerUid fields to legacy profiles
           if (!myProf.ownerUid) {
             dbUpdateProfile(myProf.id, { ownerUid: u.uid });
             myProf.ownerUid = u.uid;
           }
-          // Self-healing data repair: enforce admin status if their email is in the admin config
           const isConfiguredAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
           if (isConfiguredAdmin && myProf.role !== "admin") {
             dbUpdateProfile(myProf.id, { role: "admin" });
             myProf.role = "admin";
           }
         } else {
-          // Generates a new profile document if none exists in the directory
           const defaultName = u.displayName || u.email;
           const isConfiguredAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
           
@@ -118,7 +125,7 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases (Checks allowedUids for access) ─────────────
+    // ── Real-Time Sync: Cases ─────────────
     const cColRef = window._fbCol(db, "cases");
     const cQuery = window._fbQuery(cColRef, window._fbWhere("allowedUids", "array-contains", window._currentUser.uid));
     casesUnsub = window._fbOnSnapshot(cQuery, (snap) => {
@@ -128,15 +135,25 @@ async function dbLoad() {
       console.error("Cases real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Dynamic Case Types list ──────────────────────────────
-    const ctColRef = window._fbCol(db, "caseTypes");
-    caseTypesUnsub = window._fbOnSnapshot(ctColRef, (snap) => {
-      globalCaseTypes = snap.docs.map(d => d.data());
-      if (typeof updateAllFilterDropdowns === "function") {
-        updateAllFilterDropdowns();
-      }
+    // ── Real-Time Sync: Notifications (Targeted to Active User) ─────────────
+    const notifColRef = window._fbCol(db, "notifications");
+    const notifQuery = window._fbQuery(notifColRef, window._fbWhere("toUid", "==", window._currentUser.uid));
+    notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
+      notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      refreshCurrentView();
     }, (error) => {
-      console.error("CaseTypes sync error:", error);
+      console.error("Notifications sync error:", error);
+    });
+
+    // ── Real-Time Sync: Appointment Proposals (Requester or Target) ─────────────
+    const apptColRef = window._fbCol(db, "appointments");
+    appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
+      const allAppts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const u = window._currentUser;
+      appointments = allAppts.filter(a => a.targetUid === u.uid || a.requesterUid === u.uid);
+      refreshCurrentView();
+    }, (error) => {
+      console.error("Appointments sync error:", error);
     });
 
   } catch(e) {
@@ -165,8 +182,11 @@ function refreshCurrentView() {
   if (currentView === "profileDetail" && selProfile) renderProfileDetail();
   if (currentView === "caseDetail" && selCase) renderCaseDetail();
   if (currentView === "myprofile") renderMyProfile();
+  if (currentView === "calendar")  renderCalendarView();
+  if (currentView === "notifications") renderNotificationsView();
   
   if (typeof renderSidebarUser === "function") renderSidebarUser();
+  if (typeof updateNotificationBadge === "function") updateNotificationBadge();
 }
 
 async function dbAddProfile(data) {
@@ -179,7 +199,6 @@ async function dbAddProfile(data) {
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"profiles"), data);
   data.id = ref.id;
-  // Let onSnapshot automatically handle addition to local profiles array to prevent duplicates
   return data;
 }
 
@@ -204,7 +223,6 @@ async function dbAddCase(data) {
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
   data.id = ref.id;
-  // Let onSnapshot automatically handle addition to local cases array to prevent duplicates
   return data;
 }
 
@@ -217,4 +235,35 @@ async function dbUpdateCase(id, data) {
 async function dbDeleteCase(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db,"cases",id));
   cases = cases.filter(c=>c.id!==id);
+}
+
+// ── Notifications CRUD ──
+async function dbAddNotification(data) {
+  if (localMode || !window._db) return;
+  data.createdAt = new Date().toISOString();
+  await window._fbAddDoc(window._fbCol(window._db, "notifications"), data);
+}
+
+async function dbUpdateNotification(id, data) {
+  if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db, "notifications", id), data);
+}
+
+async function dbDeleteNotification(id) {
+  if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "notifications", id));
+}
+
+// ── Appointments CRUD ──
+async function dbAddAppointment(data) {
+  if (localMode || !window._db) return null;
+  data.createdAt = new Date().toISOString();
+  const ref = await window._fbAddDoc(window._fbCol(window._db, "appointments"), data);
+  return ref.id;
+}
+
+async function dbUpdateAppointment(id, data) {
+  if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db, "appointments", id), data);
+}
+
+async function dbDeleteAppointment(id) {
+  if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "appointments", id));
 }
