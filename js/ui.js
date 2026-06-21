@@ -105,10 +105,10 @@ function navTo(view) {
     const el=document.getElementById(id); if(el) el.value="asc";
   });
   showView(view);
-  if (view==="dashboard") renderDashboard();
-  if (view==="profiles")  renderProfiles();
-  if (view==="allcases")  renderAllCases();
-  if (view==="myprofile") renderMyProfile();
+  if (view===“dashboard”) renderDashboard();
+  if (view===“profiles”)  renderProfiles();
+  if (view===“allcases”)  renderAllCases();
+  if (view===“myprofile”) renderMyProfile();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -127,8 +127,8 @@ function renderDashboard() {
 
   if (statProfilesEl) statProfilesEl.textContent = profiles.length;
   if (statTotalEl) statTotalEl.textContent = cases.length;
-  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c=>c.status==="On-going").length;
-  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c=>c.status==="Completed").length;
+  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c=>c.status===“On-going”).length;
+  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c=>c.status===“Completed”).length;
 
   renderDashProfiles();
 
@@ -144,7 +144,8 @@ function renderDashboard() {
       const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate)-new Date())/(1000*60*60*24)) : null;
       const urgency = daysLeft !== null
         ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
-         : daysLeft <= 7  ? {col:"var(--red)",   label:daysLeft===0?"Due today":`${daysLeft}d left`}
+         : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
+         : daysLeft <= 7  ? {col:"var(--red)",   label:`${daysLeft}d left`}
          : daysLeft <= 30 ? {col:"var(--amber)", label:`${daysLeft}d left`}
          :                  {col:"var(--text-dim)",label:`${daysLeft}d left`})
         : null;
@@ -193,17 +194,6 @@ function renderDashProfiles() {
 
   dpEl.innerHTML = filtered.slice(0,8).map(p=>{
     const pc = cases.filter(c=>c.profileId===p.id);
-    const active = pc.filter(c=>!["Completed","Dismissed","Settled"].includes(c.status));
-    const nearest = getNearestDueCase(p.id);
-    const daysLeft = nearest?.dueDate ? Math.ceil((new Date(nearest.dueDate)-new Date())/(1000*60*60*24)) : null;
-    const urgency = daysLeft !== null
-      ? (daysLeft < 0   ? {col:"var(--red)",    label:"⚠ Overdue",       bg:"rgba(248,113,113,0.08)"}
-       : daysLeft === 0 ? {col:"var(--red)",    label:"⚠ Due today",     bg:"rgba(248,113,113,0.08)"}
-       : daysLeft <= 7  ? {col:"var(--amber)",  label:`⚡ ${daysLeft}d`, bg:"rgba(251,191,36,0.08)"}
-       : daysLeft <= 30 ? {col:"var(--gold)",   label:`📅 ${daysLeft}d`, bg:""}
-       :                  {col:"var(--text-dim)",label:`${daysLeft}d`,   bg:""})
-      : null;
-
     return `<div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;margin-bottom:10px;cursor:pointer;transition:all 0.2s" onclick="openProfile('${p.id}')" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
       <div style="display:flex;align-items:center;gap:12px">
         ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
@@ -217,7 +207,7 @@ function renderDashProfiles() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES (RESTRUCTURED FOR DUAL-SECTION DIR LAYOUT)
+//  PROFILES
 // ═══════════════════════════════════════════════════════════════
 function renderProfiles() {
   const u = window._currentUser;
@@ -353,8 +343,8 @@ function renderProfileDetail() {
 
       statsEl.innerHTML = [
         ["Total Cases",pc.length,"var(--violet)"],
-        ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
-        ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
+        ["Active",pc.filter(c=>c.status===“On-going”).length,"var(--amber)"],
+        ["Resolved",pc.filter(c=>c.status===“Completed”).length,"var(--green)"],
         ["Documents",docs,"var(--gold)"]
       ].map(([l,n,c])=>`
         <div class="stat-card" style="--accent:${c};padding:16px 18px">
@@ -363,7 +353,7 @@ function renderProfileDetail() {
         </div>`).join("");
     }
 
-    updateAllFilterDropdowns(); // FIXED: References corrected dropdown populator (no ReferenceError)
+    updateAllFilterDropdowns(); 
     renderProfileCases();
   } else {
     if (noticeEl) noticeEl.style.display = "block";
@@ -384,9 +374,9 @@ function renderProfileCases() {
 
   let filtered = pc.filter(c=>
     (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)) &&
-    (status==="All"||c.status===status) &&
-    (category==="All"||c.category===category) &&
-    (type==="All"||c.type===type)
+    (status===“All”||c.status===status) &&
+    (category===“All”||c.category===category) &&
+    (type===“All”||c.type===type)
   );
   filtered = sortCasesByDue(filtered, sort);
 
@@ -419,7 +409,7 @@ function renderProfileCases() {
 //  ALL CASES
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
-  updateAllFilterDropdowns(); // FIXED: References corrected dropdown populator (no ReferenceError)
+  updateAllFilterDropdowns(); 
   const q      = (document.getElementById("ac-search")?.value||"").toLowerCase();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
@@ -429,9 +419,9 @@ function renderAllCases() {
   let filtered = cases.filter(c=>{
     const p=profiles.find(x=>x.id===c.profileId);
     return (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)||(p&&p.name.toLowerCase().includes(q))) &&
-      (status==="All"||c.status===status) &&
-      (category==="All"||c.category===category) &&
-      (type==="All"||c.type===type);
+      (status===“All”||c.status===status) &&
+      (category===“All”||c.category===category) &&
+      (type===“All”||c.type===type);
   });
   filtered = sortCasesByDue(filtered, sort);
 
@@ -619,12 +609,12 @@ async function removeDocFromCase(idx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  QUICK ACCESS SIDEBAR (SAFEGUARDED)
+//  QUICK ACCESS SIDEBAR
 // ═══════════════════════════════════════════════════════════════
 function renderQuickAccess() {
   const qa = document.getElementById("quick-access");
   const ql = document.getElementById("quick-list");
-  if (!qa || !ql) return; // Safeguard if the element is removed from HTML
+  if (!qa || !ql) return;
   
   if (profiles.length===0) { qa.style.display="none"; return; }
   qa.style.display="block";
@@ -648,9 +638,6 @@ function openProfile(id) {
   renderProfileDetail();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  OPEN CASE DETAILS ROUTER
-// ═══════════════════════════════════════════════════════════════
 function openCase(id) {
   selCase = cases.find(c=>c.id===id);
   if (!selCase) return;
@@ -660,7 +647,6 @@ function openCase(id) {
   renderCaseDetail();
 }
 
-// ── Sidebar User Card Dynamic Populator ──
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
@@ -900,7 +886,6 @@ function handleSettingsPhotoUpload(event) {
   reader.readAsDataURL(file);
 }
 
-// stand-alone removal trigger
 function removeSettingsPhoto() {
   resetSettingsPhotoUpload();
 }
@@ -972,7 +957,6 @@ async function saveSecuritySettings() {
     return;
   }
 
-  // Enforce password requirements check if user is attempting to change password
   if (pass) {
     const isLengthValid = pass.length >= 6;
     const isUpperValid = /[A-Z]/.test(pass);
@@ -1018,7 +1002,7 @@ async function saveSecuritySettings() {
     reauthPanel.style.display = "none";
     document.getElementById("setting-password").value = "";
     document.getElementById("setting-current-password").value = "";
-    document.getElementById("password-requirements").style.display = "none"; // Hide requirements box upon success
+    document.getElementById("password-requirements").style.display = "none"; 
   } catch (err) {
     console.error("Credentials update failed:", err);
     showToast("Verification failed: " + err.message, "error");
@@ -1127,6 +1111,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
   }
 
   try {
+    // Show temporary inline spinner state
     card.innerHTML = html + `<div style="text-align:center;padding:20px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
     
     const timeMin = new Date().toISOString();
@@ -1137,7 +1122,10 @@ async function fetchAndRenderGoogleCalendarEvents() {
     });
 
     if (!res.ok) {
-      throw new Error("Failed to load events");
+      const errData = await res.json().catch(() => ({}));
+      const errorObj = new Error(errData.error?.message || "Failed to load events");
+      errorObj.status = res.status;
+      throw errorObj;
     }
 
     const data = await res.json();
@@ -1173,9 +1161,27 @@ async function fetchAndRenderGoogleCalendarEvents() {
     }
   } catch (err) {
     console.error("fetchAndRenderGoogleCalendarEvents error:", err);
-    html += `<div style="text-align:center;padding:20px;color:var(--red);font-size:12px">
-      ⚠ Failed to load Google Calendar Agenda. Click refresh to try again.
-    </div>`;
+    
+    // Self-healing: if token is rejected/expired on Google's side, clear the local session state
+    if (err.status === 401) {
+      if (typeof clearPersistedToken === "function") {
+        clearPersistedToken();
+      }
+      // Re-render immediately to present the "Not Connected" setup state
+      fetchAndRenderGoogleCalendarEvents();
+      return;
+    }
+
+    if (err.status === 403) {
+      html += `<div style="text-align:left;padding:16px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px;line-height:1.5">
+        <strong style="color:var(--amber)">🔒 Google Calendar API Access Denied (403)</strong><br>
+        Please ensure the <strong>Google Calendar API</strong> is enabled inside your Google Cloud Console for this project Client ID.
+      </div>`;
+    } else {
+      html += `<div style="text-align:center;padding:20px;color:var(--red);font-size:12px">
+        ⚠ Failed to load Google Calendar Agenda. Click refresh to try again.
+      </div>`;
+    }
   }
   card.innerHTML = html;
 }
