@@ -324,6 +324,22 @@
     document.getElementById("create-modal").classList.add("hidden");
   };
 
+  // Maps technical Auth error codes to descriptive localized statements
+  const translateAuthError = (code) => {
+    switch (code) {
+      case "auth/email-already-in-use":
+        return "This email address is already registered to another account.";
+      case "auth/invalid-email":
+        return "The email address is not formatted correctly.";
+      case "auth/weak-password":
+        return "The password is too weak. Please use at least 6 characters.";
+      case "auth/operation-not-allowed":
+        return "Email/Password registration is not enabled in Firebase.";
+      default:
+        return "Failed to complete account registration.";
+    }
+  };
+
   document.getElementById("btn-create-submit").addEventListener("click", async () => {
     const name = document.getElementById("new-name").value.trim();
     const email = document.getElementById("new-email").value.trim();
@@ -382,7 +398,9 @@
 
     } catch (err) {
       console.error("Account creation process failed:", err);
-      showToast("Process failed: " + err.message, "error");
+      // Display localized friendly error mapping to the admin
+      const friendlyMsg = err.code ? translateAuthError(err.code) : err.message;
+      showToast(friendlyMsg, "error");
     } finally {
       btn.disabled = false;
       btn.textContent = "Create Account";
