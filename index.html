@@ -596,19 +596,6 @@
           <div class="page-sub" id="profiles-count"></div>
         </div>
       </div>
-      
-      <!-- User's Personal Profile Card -->
-      <div id="profiles-my-profile-container" class="mb-24">
-        <!-- My Profile Card will go here -->
-      </div>
-
-      <!-- Section Title for other attorneys -->
-      <div id="profiles-list-header-container" class="mb-16" style="border-top: 1px solid var(--border); padding-top: 24px;">
-        <div style="font-size: 16px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px;">
-          👥 Attorney List
-        </div>
-      </div>
-
       <div id="profiles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px"></div>
     </div>
 
@@ -944,12 +931,12 @@
             <div class="field-err hidden" id="cf-title-err">Required</div>
           </div>
           <div class="grid2">
-            <!-- Case Category (replaces old Type of Case) -->
+            <!-- Case Category -->
             <div>
               <label class="field-label">Case Category *</label>
               <select class="field-input" id="cf-category" onchange="onCategoryChange(this.value)"></select>
             </div>
-            <!-- Case Type — manual input with saved suggestions -->
+            <!-- Case Type -->
             <div>
               <label class="field-label">Case Type</label>
               <div style="position:relative">
@@ -969,16 +956,6 @@
             <div>
               <label class="field-label">Status</label>
               <select class="field-input" id="cf-status"></select>
-            </div>
-            <div>
-              <label class="field-label">Date Case Filed *</label>
-              <input type="date" class="field-input" id="cf-filed" autocomplete="off"/>
-              <div class="field-err hidden" id="cf-filed-err">Required</div>
-            </div>
-            <!-- Due Date (optional) -->
-            <div>
-              <label class="field-label">Due Date <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
-              <input type="date" class="field-input" id="cf-due" autocomplete="off"/>
             </div>
             <!-- Venue -->
             <div style="grid-column: 1/-1">
@@ -1015,10 +992,23 @@
             <div class="field-err hidden" id="cf-parties-err">Add at least one party on each side</div>
           </div>
 
-          <!-- Document Type -->
+          <!-- Document Type & Dates -->
           <div class="mt-16">
             <label class="field-label">Document Type <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
             <input class="field-input" id="cf-doc-type" placeholder="e.g. Complaint, Motion, Decision…"/>
+          </div>
+
+          <div class="grid2 mt-16">
+            <div>
+              <label class="field-label">Date Case Filed *</label>
+              <input type="date" class="field-input" id="cf-filed" autocomplete="off"/>
+              <div class="field-err hidden" id="cf-filed-err">Required</div>
+            </div>
+            <!-- Due Date (optional) -->
+            <div>
+              <label class="field-label">Due Date <span style="font-weight:400;color:var(--text-dim)">(optional)</span></label>
+              <input type="date" class="field-input" id="cf-due" autocomplete="off"/>
+            </div>
           </div>
 
           <div class="mt-16">
@@ -1038,7 +1028,7 @@
                   <input type="radio" name="cf-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 Inbound
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
-                  <input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
+                  <input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> Outbound
                 </label>
               </div>
 
