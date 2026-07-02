@@ -22,7 +22,7 @@ function initPasswordStrengthChecker() {
     length: { el: document.getElementById("req-length"), test: (val) => val.length >= 6 },
     upper: { el: document.getElementById("req-upper"), test: (val) => /[A-Z]/.test(val) },
     number: { el: document.getElementById("req-number"), test: (val) => /\d/.test(val) },
-    special: { el: document.getElementById("req-special"), test: (val) => /[^A-Za-0-9]/.test(val) }
+    special: { el: document.getElementById("req-special"), test: (val) => /[^A-Za-z0-9]/.test(val) }
   };
 
   passInput.addEventListener("focus", () => {
@@ -937,7 +937,7 @@ async function saveSecuritySettings() {
     const isLengthValid = pass.length >= 6;
     const isUpperValid = /[A-Z]/.test(pass);
     const isNumberValid = /\d/.test(pass);
-    const isSpecialValid = /[^A-Za-z0-9]/.test(pass);
+    const isSpecialValid = /[^A-Za-z0-9]/;
 
     if (!isLengthValid || !isUpperValid || !isNumberValid || !isSpecialValid) {
       showToast("Please ensure your new password meets all security requirements.", "error");
@@ -1353,7 +1353,7 @@ function renderNotificationsView() {
             <div style="font-size:11px;color:var(--text-dim);margin-top:6px">${dateStr}</div>
             ${actions}
           </div>
-          ${isUnread ? '<button class="btn btn-ghost btn-sm" style="font-size:11px;padding:4px 8px;flex-shrink:0" onclick="markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
+          ${isUnread ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;flex-shrink:0" onclick="markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
         </div>
       </div>
     `;
