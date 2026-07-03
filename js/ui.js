@@ -87,7 +87,7 @@ function showView(name) {
   if (el) el.classList.remove("hidden");
   currentView = name;
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
-  if (["dashboard","profiles","allcases","myprofile","calendar","notifications"].includes(name)) {
+  if (["dashboard","profiles","allcases","myprofile","calendar","notifications","mydrive"].includes(name)) {
     const btn = document.querySelector(`.nav-btn[data-nav="${name}"]`);
     if (btn) btn.classList.add("active");
   }
@@ -111,6 +111,7 @@ function navTo(view) {
   if (view==="myprofile") renderMyProfile();
   if (view==="calendar")  renderCalendarView();
   if (view==="notifications") renderNotificationsView();
+  if (view==="mydrive") initDriveExplorer();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -429,7 +430,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL
+//  CASE DETAIL (Visualizing split categorized Inbound vs. Outbound documents)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -500,7 +501,7 @@ function renderCaseDetail() {
 
   const docs = c.documents||[];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:15px;font-weight:700;color:var(--text)">Documents</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
     
     <!-- Instant upload Type selector -->
     <div style="display:inline-flex;align-items:center;gap:12px">
@@ -509,7 +510,7 @@ function renderCaseDetail() {
           <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 In
         </label>
         <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-          <input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
+          <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
         </label>
       </div>
       <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload</button>
@@ -519,24 +520,56 @@ function renderCaseDetail() {
   if (docs.length===0) {
     docsHtml+=`<div class="upload-area" onclick="addDocToCase()"><div style="font-size:28px;margin-bottom:6px">📎</div><div>Click to attach a document</div></div>`;
   } else {
-    docsHtml+=docs.map((doc,i)=>`
-      <div class="doc-item">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
-          <div>
-            <div style="font-size:13px;color:var(--text);font-weight:600">
-              <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g,"&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
-                📄 ${doc.name}
-              </span>
+    // Categorize case documents
+    const inboundDocs = docs.filter(d => d.fileType === "Inbound");
+    const outboundDocs = docs.filter(d => d.fileType === "Outbound");
+    const otherDocs = docs.filter(d => d.fileType !== "Inbound" && d.fileType !== "Outbound");
+
+    const renderDocRow = (doc, realIndex) => {
+      return `
+        <div class="doc-item" style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
+            <div>
+              <div style="font-size:13px;color:var(--text);font-weight:600">
+                <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g,"&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
+                  📄 ${doc.name}
+                </span>
+              </div>
+              <div style="font-size:12px;color:var(--text-dim)">
+                ${doc.size} · ${doc.date}${doc.driveFileId ? " · ✅ Drive" : ""}
+              </div>
             </div>
-            <div style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:8px">
-              <span>${doc.size} · ${doc.date}${doc.driveFileId?' · ✅ Drive':''}</span>
-              ${doc.fileType ? `<span style="background:${doc.fileType==='Inbound'?'#3b82f644':'#10b98144'};color:${doc.fileType==='Inbound'?'#3b82f6':'#10b981'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${doc.fileType==='Inbound'?'📥 Inbound':'📤 Outbound'}</span>` : ''}
-            </div>
+            <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIndex})">×</button>
           </div>
-          <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${i})">×</button>
         </div>
-      </div>`).join("");
-    docsHtml+=`<div class="upload-area" style="margin-top:10px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
+      `;
+    };
+
+    if (inboundDocs.length > 0) {
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      inboundDocs.forEach(d => {
+        const realIdx = docs.findIndex(x => x.driveFileId === d.driveFileId && x.name === d.name);
+        docsHtml += renderDocRow(d, realIdx);
+      });
+    }
+
+    if (outboundDocs.length > 0) {
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
+      outboundDocs.forEach(d => {
+        const realIdx = docs.findIndex(x => x.driveFileId === d.driveFileId && x.name === d.name);
+        docsHtml += renderDocRow(d, realIdx);
+      });
+    }
+
+    if (otherDocs.length > 0) {
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
+      otherDocs.forEach(d => {
+        const realIdx = docs.findIndex(x => x.driveFileId === d.driveFileId && x.name === d.name);
+        docsHtml += renderDocRow(d, realIdx);
+      });
+    }
+
+    docsHtml+=`<div class="upload-area" style="margin-top:16px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
   }
   
   const docsEl = document.getElementById("cd-docs");
@@ -937,7 +970,7 @@ async function saveSecuritySettings() {
     const isLengthValid = pass.length >= 6;
     const isUpperValid = /[A-Z]/.test(pass);
     const isNumberValid = /\d/.test(pass);
-    const isSpecialValid = /[^A-Za-z0-9]/;
+    const isSpecialValid = /[^A-Za-z0-9]/.test(pass);
 
     if (!isLengthValid || !isUpperValid || !isNumberValid || !isSpecialValid) {
       showToast("Please ensure your new password meets all security requirements.", "error");
@@ -1623,6 +1656,119 @@ function renderApprovedAppointments() {
       ${a.description ? '<div style="font-size:11px;color:var(--text-dim);background:var(--surface2);padding:6px;border-radius:6px;margin-top:6px;font-style:italic">"' + escHtml(a.description) + '"</div>' : ""}
     </div>
   `).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GOOGLE DRIVE EXPLORER REPLICA CONTROLLER & RENDERING
+// ═══════════════════════════════════════════════════════════════
+let currentExplorerFolderId = "root";
+let explorerBreadcrumbs = [];
+
+window.initDriveExplorer = function() {
+  currentExplorerFolderId = DRIVE_FOLDER_ID || "root";
+  explorerBreadcrumbs = [{ id: currentExplorerFolderId, name: "Firm Drive" }];
+  loadExplorerFiles();
+};
+
+window.loadExplorerFiles = async function() {
+  const listEl = document.getElementById("mydrive-explorer-list");
+  const emptyEl = document.getElementById("mydrive-empty-state");
+  const nativeBtn = document.getElementById("mydrive-open-native-btn");
+
+  if (!listEl) return;
+
+  renderExplorerBreadcrumbs();
+
+  if (nativeBtn) {
+    if (currentExplorerFolderId && currentExplorerFolderId !== "root") {
+      nativeBtn.href = "https://drive.google.com/drive/folders/" + currentExplorerFolderId;
+      nativeBtn.style.display = "inline-flex";
+    } else {
+      nativeBtn.style.display = "none";
+    }
+  }
+
+  if (!hasValidToken()) {
+    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)">
+      <div style="font-size:24px;margin-bottom:8px">☁️</div>
+      <div style="font-size:13px;font-weight:600">Google Drive Session Expired</div>
+      <div style="font-size:11px;margin-top:4px">Please re-authenticate under My Settings to view file explorer records.</div>
+    </div>`;
+    if (emptyEl) emptyEl.classList.add("hidden");
+    return;
+  }
+
+  try {
+    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
+    if (emptyEl) emptyEl.classList.add("hidden");
+
+    const q = encodeURIComponent("'" + currentExplorerFolderId + "' in parents and trashed = false");
+    const url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name,mimeType,size,webViewLink)&orderBy=folder,name";
+
+    const res = await fetch(url, {
+      headers: { Authorization: "Bearer " + accessToken }
+    });
+
+    if (!res.ok) throw new Error("Failed to load folder files");
+
+    const data = await res.json();
+    const files = data.files || [];
+
+    if (files.length === 0) {
+      listEl.innerHTML = "";
+      if (emptyEl) emptyEl.classList.remove("hidden");
+      return;
+    }
+
+    if (emptyEl) emptyEl.classList.add("hidden");
+
+    listEl.innerHTML = files.map(f => {
+      const isFolder = f.mimeType === "application/vnd.google-apps.folder";
+      const icon = isFolder ? "📁" : "📄";
+      const onClickAction = isFolder 
+        ? "onclick=\"navigateIntoFolder('" + f.id + "', '" + f.name.replace(/'/g, "\\'") + "')\""
+        : "onclick=\"window.open('" + f.webViewLink + "', '_blank')\"";
+      
+      const sizeText = f.size ? (f.size / (1024 * 1024)).toFixed(2) + " MB" : "";
+
+      return `
+        <div ${onClickAction} style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
+          <div style="font-size:32px;margin-bottom:8px">${icon}</div>
+          <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
+          ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + sizeText + '</div>' : ""}
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error("loadExplorerFiles error:", err);
+    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--red);font-size:13px;padding:40px">⚠ Failed to load explorer directory items.</div>`;
+  }
+};
+
+window.navigateIntoFolder = function(id, name) {
+  explorerBreadcrumbs.push({ id, name });
+  currentExplorerFolderId = id;
+  loadExplorerFiles();
+};
+
+window.navigateBreadcrumb = function(index) {
+  explorerBreadcrumbs = explorerBreadcrumbs.slice(0, index + 1);
+  currentExplorerFolderId = explorerBreadcrumbs[index].id;
+  loadExplorerFiles();
+};
+
+function renderExplorerBreadcrumbs() {
+  const el = document.getElementById("mydrive-breadcrumbs");
+  if (!el) return;
+
+  el.innerHTML = explorerBreadcrumbs.map((b, idx) => {
+    const isLast = idx === explorerBreadcrumbs.length - 1;
+    if (isLast) {
+      return '<span style="color:var(--gold)">' + escHtml(b.name) + '</span>';
+    }
+    return '<span onclick="navigateBreadcrumb(' + idx + ')" style="cursor:pointer;color:var(--text-muted);text-decoration:underline" onmouseover="this.style.color=\'var(--text)\'" onmouseout="this.style.color=\'var(--text-muted)\'">' + escHtml(b.name) + '</span> <span style="font-size:11px;opacity:0.4">/</span>';
+  }).join(" ");
 }
 
 function openMyDriveFolder() {
