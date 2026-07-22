@@ -29,7 +29,6 @@
       Type <strong id="del-confirm-target-text" style="color:var(--red)">DELETE</strong> to confirm
     </div>
     
-    <!-- Styled Input with Direct Event Handler -->
     <input type="text" id="del-confirm-input" oninput="checkDeleteInput()" placeholder="Type DELETE" 
            style="width:100%;text-align:center;font-weight:700;letter-spacing:2px;margin:16px 0;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:12px 14px;box-sizing:border-box;outline:none;font-size:15px;" autocomplete="off"/>
     
@@ -37,6 +36,21 @@
     <div style="display:flex;gap:12px;justify-content:center">
       <button class="btn btn-ghost" type="button" onclick="closeDeleteModal()">Cancel</button>
       <button class="btn btn-danger" type="button" id="del-confirm-btn" onclick="executeDelete()" disabled style="opacity:0.5;cursor:not-allowed">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Google Drive Disconnected Warning Modal Popup -->
+<div id="drive-warning-modal" class="modal-overlay hidden" style="z-index: 10003;">
+  <div class="modal-box" style="max-width: 420px; text-align: center;">
+    <div style="font-size:36px;margin-bottom:8px">☁️</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Google Drive Not Connected</div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px">
+      Your case details will be saved to the database, but attached documents won't sync to the cloud until you authorize Google Drive.
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn btn-ghost" type="button" onclick="closeDriveWarningModal()">Continue Anyway</button>
+      <button class="btn btn-primary" type="button" onclick="closeDriveWarningModal(); navTo('myprofile');">Connect Drive Now</button>
     </div>
   </div>
 </div>
