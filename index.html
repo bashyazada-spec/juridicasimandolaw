@@ -55,6 +55,63 @@
   </div>
 </div>
 
+<!-- Bulk Mark Busy / Unavailable Modal -->
+<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
+  <div class="modal-box" style="max-width: 480px;">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      🚫 Mark Busy / Out of Office
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px;line-height:1.5">
+      Bulk block single or multiple dates on your calendar when you are in court, on leave, or unavailable.
+    </div>
+    
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
+      <div>
+        <label class="field-label">Reason / Label *</label>
+        <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court Hearing / Vacation / Out of Office" autocomplete="off"/>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label class="field-label">Start Date *</label>
+          <input type="date" class="field-input" id="busy-start-date"/>
+        </div>
+        <div>
+          <label class="field-label">End Date *</label>
+          <input type="date" class="field-input" id="busy-end-date"/>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-top:2px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer">
+          <input type="checkbox" id="busy-all-day" checked onchange="toggleBusyTimeInputs(this.checked)" style="accent-color:var(--gold)"/> All Day
+        </label>
+      </div>
+
+      <div class="grid2" id="busy-time-container" style="display:none">
+        <div>
+          <label class="field-label">Start Time</label>
+          <input type="time" class="field-input" id="busy-start-time" value="08:00"/>
+        </div>
+        <div>
+          <label class="field-label">End Time</label>
+          <input type="time" class="field-input" id="busy-end-time" value="17:00"/>
+        </div>
+      </div>
+
+      <div>
+        <label class="field-label">Brief Description / Notes (Optional)</label>
+        <input type="text" class="field-input" id="busy-notes" placeholder="e.g. RTC Branch 20 Hearing"/>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" onclick="submitBusyDates()">Block Selected Dates</button>
+    </div>
+  </div>
+</div>
+
 <!-- Share Case Modal -->
 <div id="share-modal" class="modal-overlay hidden" style="z-index:10000">
   <div class="modal-box">
@@ -287,13 +344,15 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW WITH INTERACTIVE MONTH GRID ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW WITH INTERACTIVE MONTH GRID & BULK BUSY BUTTON ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
           <div class="page-title">Firm Schedule</div>
           <div class="page-sub">Interactive calendar, pressable dates, and appointments schedule</div>
         </div>
+        <!-- Bulk Mark Busy Button -->
+        <button class="btn btn-primary" onclick="openBusyModal()">🚫 Mark Busy / Out of Office</button>
       </div>
       
       <div class="grid4" style="margin-bottom:20px">
@@ -317,9 +376,7 @@
             </div>
           </div>
           
-          <div class="cal-grid" id="calendar-grid-container">
-            <!-- Rendered dynamically by renderMonthlyCalendarGrid() -->
-          </div>
+          <div class="cal-grid" id="calendar-grid-container"></div>
         </div>
 
         <!-- RIGHT: Selected Day Agenda & Approved Appointments -->
