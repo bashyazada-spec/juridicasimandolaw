@@ -805,7 +805,7 @@ function todayCalMonth() {
 
 function selectCalDay(dateStr) {
   if (selectedCalDate === dateStr) {
-    selectedCalDate = null; // Toggle off if clicked again
+    selectedCalDate = null;
   } else {
     selectedCalDate = dateStr;
   }
@@ -848,7 +848,12 @@ function renderMonthlyCalendarGrid() {
 
   activeAppts.forEach(a => {
     if (!eventsByDate[a.date]) eventsByDate[a.date] = [];
-    eventsByDate[a.date].push({ type: "appt", title: a.title, badge: "🤝 " + (a.time || "Appt") });
+    const isBusy = a.type === "busy";
+    eventsByDate[a.date].push({ 
+      type: isBusy ? "busy" : "appt", 
+      title: a.title, 
+      badge: isBusy ? (a.title || "🚫 Busy") : ("🤝 " + (a.time || "Appt"))
+    });
   });
 
   const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
@@ -886,11 +891,15 @@ function renderMonthlyCalendarGrid() {
     let dotsHtml = "";
     if (dayEvents.length > 0) {
       dotsHtml = `<div class="cal-day-dots">` + 
-        dayEvents.slice(0, 2).map(e => `
-          <div class="cal-dot-pill" style="background:${e.type==='case'?'rgba(201,168,76,0.18)':'rgba(129,140,248,0.18)'};color:${e.type==='case'?'var(--gold)':'var(--violet)'}">
+        dayEvents.slice(0, 2).map(e => {
+          let bg = 'rgba(129,140,248,0.18)';
+          let col = 'var(--violet)';
+          if (e.type === 'case') { bg = 'rgba(201,168,76,0.18)'; col = 'var(--gold)'; }
+          if (e.type === 'busy') { bg = 'rgba(239,68,68,0.18)'; col = 'var(--red)'; }
+          return `<div class="cal-dot-pill" style="background:${bg};color:${col}">
             ${escHtml(e.badge)}
-          </div>
-        `).join("") + 
+          </div>`;
+        }).join("") + 
         (dayEvents.length > 2 ? `<div style="font-size:9px;color:var(--text-dim);font-weight:700">+${dayEvents.length - 2} more</div>` : "") +
       `</div>`;
     }
@@ -960,14 +969,17 @@ function renderCalendarTimeline() {
   }
 
   activeAppts.forEach(appt => {
+    const isBusy = appt.type === "busy";
     timelineEvents.push({
-      type: "appointment",
+      type: isBusy ? "busy" : "appointment",
       title: appt.title || "Appointment Sync",
-      sub: "Proposer: " + appt.requesterName + " · Host: " + appt.targetName + (appt.description ? "\n\"" + appt.description + "\"" : ""),
+      sub: isBusy 
+        ? "Status: Out of Office / Busy" + (appt.description ? "\n\"" + appt.description + "\"" : "")
+        : "Proposer: " + appt.requesterName + " · Host: " + appt.targetName + (appt.description ? "\n\"" + appt.description + "\"" : ""),
       date: appt.date,
       time: appt.time,
-      label: "Appointment 🤝",
-      color: "var(--violet)"
+      label: isBusy ? "Unavailable 🚫" : "Appointment 🤝",
+      color: isBusy ? "var(--red)" : "var(--violet)"
     });
   });
 
@@ -1003,7 +1015,7 @@ function renderApprovedAppointments() {
   const apptEl = document.getElementById("calendar-approved-list");
   if (!apptEl) return;
 
-  const approved = appointments.filter(a => a.status === "accepted");
+  const approved = appointments.filter(a => a.status === "accepted" && a.type !== "busy");
   if (approved.length === 0) {
     apptEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🤝</div><div>No upcoming appointments.</div></div>`;
     return;
