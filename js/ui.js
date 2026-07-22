@@ -53,7 +53,6 @@ function initPasswordStrengthChecker() {
     }
   });
 
-  // Hide the requirements container if input loses focus and is empty
   passInput.addEventListener("blur", () => {
     if (!passInput.value) {
       reqContainer.style.display = "none";
@@ -82,11 +81,11 @@ function updateThemeIcon(theme) {
 //  NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
-  document.querySelectorAll(".view").forEach(v=>v.classList.add("hidden"));
-  const el = document.getElementById("view-"+name);
+  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+  const el = document.getElementById("view-" + name);
   if (el) el.classList.remove("hidden");
   currentView = name;
-  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   if (["dashboard","profiles","allcases","myprofile","calendar","notifications","mydrive"].includes(name)) {
     const btn = document.querySelector(`.nav-btn[data-nav="${name}"]`);
     if (btn) btn.classList.add("active");
@@ -98,20 +97,20 @@ function navTo(view) {
   const ac = document.getElementById("ac-search");
   if (pd) pd.value = "";
   if (ac) ac.value = "";
-  ["pd-status","pd-category","pd-type","ac-status","ac-category","ac-type"].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value="All";
+  ["pd-status","pd-category","pd-type","ac-status","ac-category","ac-type"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "All";
   });
-  ["pd-sort","ac-sort"].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.value="asc";
+  ["pd-sort","ac-sort"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "asc";
   });
   showView(view);
-  if (view==="dashboard") renderDashboard();
-  if (view==="profiles")  renderProfiles();
-  if (view==="allcases")  renderAllCases();
-  if (view==="myprofile") renderMyProfile();
-  if (view==="calendar")  renderCalendarView();
-  if (view==="notifications") renderNotificationsView();
-  if (view==="mydrive") initDriveExplorer();
+  if (view === "dashboard") renderDashboard();
+  if (view === "profiles")  renderProfiles();
+  if (view === "allcases")  renderAllCases();
+  if (view === "myprofile") renderMyProfile();
+  if (view === "calendar")  renderCalendarView();
+  if (view === "notifications") renderNotificationsView();
+  if (view === "mydrive") initDriveExplorer();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -130,21 +129,21 @@ function renderDashboard() {
 
   if (statProfilesEl) statProfilesEl.textContent = profiles.length;
   if (statTotalEl) statTotalEl.textContent = cases.length;
-  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c=>c.status==="On-going").length;
-  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c=>c.status==="Completed").length;
+  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c => c.status === "On-going").length;
+  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c => c.status === "Completed").length;
 
   renderDashProfiles();
 
   const dcEl = document.getElementById("dash-cases");
   if (!dcEl) return;
 
-  const displayCases = cases.slice(0,6);
+  const displayCases = cases.slice(0, 6);
 
-  dcEl.innerHTML = displayCases.length===0
+  dcEl.innerHTML = displayCases.length === 0
     ? '<div class="empty-state"><div class="empty-state-icon">📁</div><div>No cases yet.</div></div>'
-    : displayCases.map(c=>{
-      const p = profiles.find(x=>x.id===c.profileId);
-      const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate)-new Date())/(1000*60*60*24)) : null;
+    : displayCases.map(c => {
+      const p = profiles.find(x => x.id === c.profileId);
+      const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
       const urgency = daysLeft !== null
         ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
          : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
@@ -153,56 +152,50 @@ function renderDashboard() {
          :                  {col:"var(--text-dim)",label:daysLeft + "d left"})
         : null;
       return `<div class="flex-center gap-10" style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="openCase('${c.id}')" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
-        ${p?avatarDiv(p.name,p.avatarColor,30,p.photoUrl):""}
+        ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.title}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${p?.name||""} · ${c.type}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${p?.name || ""} · ${c.type || c.category || "Case"}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-          ${badge(c.status,statusColor(c.status))}
+          ${badge(c.status, statusColor(c.status))}
           ${urgency ? '<span style="font-size:10px;font-weight:600;color:' + urgency.col + '">' + urgency.label + '</span>' : ""}
         </div>
       </div>`;
     }).join("");
 
   renderQuickAccess();
-  fetchAndRenderGoogleCalendarEvents();
-}
-
-function getNearestDueCase(profileId) {
-  const active = cases.filter(c=>
-    c.profileId===profileId && c.dueDate &&
-    !["Completed","Dismissed","Settled"].includes(c.status)
-  ).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate));
-  return active[0] || null;
+  if (typeof fetchAndRenderGoogleCalendarEvents === "function") {
+    fetchAndRenderGoogleCalendarEvents();
+  }
 }
 
 function renderDashProfiles() {
-  const q = (document.getElementById("dash-profile-search")?.value||"").toLowerCase().trim();
+  const q = (document.getElementById("dash-profile-search")?.value || "").toLowerCase().trim();
   const dpEl = document.getElementById("dash-profiles");
   if (!dpEl) return;
 
-  const filtered = profiles.filter(p=>
-    !q || p.name.toLowerCase().includes(q) || (p.role||"").toLowerCase().includes(q)
+  const filtered = profiles.filter(p =>
+    !q || p.name.toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q)
   );
 
-  if (profiles.length===0) {
-    dpEl.innerHTML='<div class="empty-state"><div class="empty-state-icon">⚖️</div><div>No attorneys yet. Add your first attorney profile.</div></div>';
+  if (profiles.length === 0) {
+    dpEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚖️</div><div>No attorneys yet. Add your first attorney profile.</div></div>';
     return;
   }
-  if (filtered.length===0) {
-    dpEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px">No attorneys match your search.</div>';
+  if (filtered.length === 0) {
+    dpEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px">No attorneys match your search.</div>';
     return;
   }
 
-  dpEl.innerHTML = filtered.slice(0,8).map(p=>{
-    const pc = cases.filter(c=>c.profileId===p.id);
+  dpEl.innerHTML = filtered.slice(0, 8).map(p => {
+    const pc = cases.filter(c => c.profileId === p.id);
     return `<div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;margin-bottom:10px;cursor:pointer;transition:all 0.2s" onclick="openProfile('${p.id}')" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
       <div style="display:flex;align-items:center;gap:12px">
         ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text)">${p.name}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${p.role||"Attorney"} · ${pc.length} case${pc.length!==1?"s":""}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${p.role || "Attorney"} · ${pc.length} case${pc.length !== 1 ? "s" : ""}</div>
         </div>
       </div>
     </div>`;
@@ -210,14 +203,14 @@ function renderDashProfiles() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES (UNIFIED DIRECTORY GRID WITH "YOU" TAG)
+//  PROFILES
 // ═══════════════════════════════════════════════════════════════
 function renderProfiles() {
   const u = window._currentUser;
   if (!u) return;
 
   const countEl = document.getElementById("profiles-count");
-  if (countEl) countEl.textContent = `${profiles.length} profile${profiles.length!==1?"s":""} total`;
+  if (countEl) countEl.textContent = `${profiles.length} profile${profiles.length !== 1 ? "s" : ""} total`;
 
   const el = document.getElementById("profiles-grid");
   if (!el) return;
@@ -244,11 +237,11 @@ function renderProfiles() {
           </div>
         </div>
         <hr class="divider"/>
-        ${p.email?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>`:""}
-        ${p.contact?`<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>`:""}
+        ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>` : ""}
+        ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>` : ""}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:13px;color:var(--text-dim)">Private Files</span>
-          ${ongoing>0?badge(ongoing+" active",statusColor("On-going")):""}
+          ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
         </div>
       </div>
     `;
@@ -294,8 +287,8 @@ function renderProfileDetail() {
         <div style="font-size:24px;font-weight:700;color:var(--text)">${p.name}</div>
         <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${p.role}</div>
         <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
-          ${p.email?`<span style="font-size:12px;color:var(--text-dim)">✉ ${p.email}</span>`:""}
-          ${p.contact?`<span style="font-size:12px;color:var(--text-dim)">📞 ${p.contact}</span>`:""}
+          ${p.email ? `<span style="font-size:12px;color:var(--text-dim)">✉ ${p.email}</span>` : ""}
+          ${p.contact ? `<span style="font-size:12px;color:var(--text-dim)">📞 ${p.contact}</span>` : ""}
           <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
           ${driveChip}
         </div>
@@ -315,15 +308,15 @@ function renderProfileDetail() {
     if (sectionEl) sectionEl.style.display = "block";
     if (statsEl) {
       statsEl.style.display = "grid";
-      const pc=cases.filter(c=>c.profileId===p.id);
-      const docs=pc.reduce((a,c)=>a+(c.documents?.length||0),0);
+      const pc = cases.filter(c => c.profileId === p.id);
+      const docs = pc.reduce((a, c) => a + (c.documents?.length || 0), 0);
 
       statsEl.innerHTML = [
-        ["Total Cases",pc.length,"var(--violet)"],
-        ["Active",pc.filter(c=>c.status==="On-going").length,"var(--amber)"],
-        ["Resolved",pc.filter(c=>c.status==="Completed").length,"var(--green)"],
-        ["Documents",docs,"var(--gold)"]
-      ].map(([l,n,c])=>`
+        ["Total Cases", pc.length, "var(--violet)"],
+        ["Active", pc.filter(c => c.status === "On-going").length, "var(--amber)"],
+        ["Resolved", pc.filter(c => c.status === "Completed").length, "var(--green)"],
+        ["Documents", docs, "var(--gold)"]
+      ].map(([l, n, c]) => `
         <div class="stat-card" style="--accent:${c};padding:16px 18px">
           <div class="stat-number" style="color:${c};font-size:32px">${n}</div>
           <div class="stat-label">${l}</div>
@@ -342,42 +335,42 @@ function renderProfileDetail() {
 function renderProfileCases() {
   const p = selProfile;
   if (!p) return;
-  const q      = (document.getElementById("pd-search")?.value||"").toLowerCase();
-  const status = document.getElementById("pd-status")?.value || "All";
+  const q        = (document.getElementById("pd-search")?.value || "").toLowerCase();
+  const status   = document.getElementById("pd-status")?.value || "All";
   const category = document.getElementById("pd-category")?.value || "All";
-  const type   = document.getElementById("pd-type")?.value   || "All";
-  const sort = document.getElementById("pd-sort")?.value || "asc";
-  const pc     = cases.filter(c=>c.profileId===p.id);
+  const type     = document.getElementById("pd-type")?.value || "All";
+  const sort     = document.getElementById("pd-sort")?.value || "asc";
+  const pc       = cases.filter(c => c.profileId === p.id);
 
-  let filtered = pc.filter(c=>
-    (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)) &&
-    (status==="All"||c.status===status) &&
-    (category==="All"||c.category===category) &&
-    (type==="All"||c.type===type)
+  let filtered = pc.filter(c =>
+    (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q)) &&
+    (status === "All" || c.status === status) &&
+    (category === "All" || c.category === category) &&
+    (type === "All" || c.type === type)
   );
   filtered = sortCasesByDue(filtered, sort);
 
   const el = document.getElementById("profile-cases-list");
   if (!el) return;
 
-  if (filtered.length===0) {
-    el.innerHTML=`<div class="empty-state">${pc.length===0
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state">${pc.length === 0
       ? '<div class="empty-state-icon">⚖️</div><div>No cases yet</div>'
       : '<div class="empty-state-icon">🔍</div><div>No cases match your filters.</div>'
     }</div>`;
     return;
   }
-  el.innerHTML = filtered.map(c=>`
+  el.innerHTML = filtered.map(c => `
     <div class="case-row" onclick="openCase('${c.id}')">
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${c.title}</div>
-        <div style="font-size:13px;color:var(--text-dim)">${c.type} · ${c.venue}</div>
-        <div style="font-size:13px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.parties}</div>
+        <div style="font-size:13px;color:var(--text-dim)">${c.type || c.category || "Case"} · ${c.venue || "No Venue"}</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.parties || ""}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-        ${badge(c.status,statusColor(c.status))}
+        ${badge(c.status, statusColor(c.status))}
         ${dueBadge(c.dueDate)}
-        <span style="font-size:11px;color:var(--text-dim)">${c.documents?.length||0} doc${c.documents?.length!==1?"s":""}</span>
+        <span style="font-size:11px;color:var(--text-dim)">${c.documents?.length || 0} doc${c.documents?.length !== 1 ? "s" : ""}</span>
       </div>
     </div>`).join("");
 }
@@ -387,42 +380,42 @@ function renderProfileCases() {
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
   updateAllFilterDropdowns(); 
-  const q      = (document.getElementById("ac-search")?.value||"").toLowerCase();
-  const status = document.getElementById("ac-status")?.value || "All";
+  const q        = (document.getElementById("ac-search")?.value || "").toLowerCase();
+  const status   = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
-  const type   = document.getElementById("ac-type")?.value   || "All";
-  const sort   = document.getElementById("ac-sort")?.value   || "asc";
+  const type     = document.getElementById("ac-type")?.value || "All";
+  const sort     = document.getElementById("ac-sort")?.value || "asc";
 
-  let filtered = cases.filter(c=>{
-    const p=profiles.find(x=>x.id===c.profileId);
-    return (c.title.toLowerCase().includes(q)||c.parties.toLowerCase().includes(q)||(p&&p.name.toLowerCase().includes(q))) &&
-      (status==="All"||c.status===status) &&
-      (category==="All"||c.category===category) &&
-      (type==="All"||c.type===type);
+  let filtered = cases.filter(c => {
+    const p = profiles.find(x => x.id === c.profileId);
+    return (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (p && p.name.toLowerCase().includes(q))) &&
+      (status === "All" || c.status === status) &&
+      (category === "All" || c.category === category) &&
+      (type === "All" || c.type === type);
   });
   filtered = sortCasesByDue(filtered, sort);
 
   const countEl = document.getElementById("allcases-count");
-  if (countEl) countEl.textContent = `${filtered.length} case${filtered.length!==1?"s":""} found`;
+  if (countEl) countEl.textContent = `${filtered.length} case${filtered.length !== 1 ? "s" : ""} found`;
 
   const el = document.getElementById("all-cases-list");
   if (!el) return;
 
-  if (filtered.length===0) {
-    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No cases match your filters.</div></div>';
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No cases match your filters.</div></div>';
     return;
   }
-  el.innerHTML = filtered.map(c=>{
-    const p=profiles.find(x=>x.id===c.profileId);
+  el.innerHTML = filtered.map(c => {
+    const p = profiles.find(x => x.id === c.profileId);
     return `<div class="case-row" onclick="openCase('${c.id}')">
-      ${p?avatarDiv(p.name,p.avatarColor,40,p.photoUrl):""}
+      ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${c.title}</div>
-        <div style="font-size:13px;color:var(--text-dim)">${p?.name||""} · ${c.type} · ${c.venue}</div>
-        <div style="font-size:13px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.parties}</div>
+        <div style="font-size:13px;color:var(--text-dim)">${p?.name || ""} · ${c.type || c.category || "Case"} · ${c.venue || "No Venue"}</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.parties || ""}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-        ${badge(c.status,statusColor(c.status))}
+        ${badge(c.status, statusColor(c.status))}
         ${dueBadge(c.dueDate)}
       </div>
     </div>`;
@@ -430,19 +423,16 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (Visualizing split categorized Inbound vs. Outbound documents)
+//  CASE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
-  const p = profiles.find(x=>x.id===c.profileId);
+  if (!c) return;
+
+  const p = profiles.find(x => x.id === c.profileId);
 
   const titleEl = document.getElementById("cd-title");
   if (titleEl) titleEl.textContent = c.title;
-
-  const backBtn = document.getElementById("cd-back-btn");
-  if (backBtn) {
-    backBtn.onclick = ()=>{ showView("profileDetail"); renderProfileDetail(); };
-  }
 
   const isOwner = c.ownerUid === window._currentUser?.uid;
 
@@ -462,16 +452,16 @@ function renderCaseDetail() {
       ${actionButtons}
     `;
     const reBoundBackBtn = document.getElementById("cd-back-btn");
-    if (reBoundBackBtn) reBoundBackBtn.onclick = ()=>{ showView("profileDetail"); renderProfileDetail(); };
+    if (reBoundBackBtn) reBoundBackBtn.onclick = () => { showView("profileDetail"); renderProfileDetail(); };
   }
 
   const chip = document.getElementById("cd-profile-chip");
   if (chip) {
     if (p) {
-      chip.innerHTML = `${avatarDiv(p.name,p.avatarColor,28,p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:12px;color:var(--text-dim)">${p.role}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
-      chip.style.display="inline-flex";
+      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:12px;color:var(--text-dim)">${p.role}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
+      chip.style.display = "inline-flex";
     } else {
-      chip.style.display="none";
+      chip.style.display = "none";
     }
   }
 
@@ -479,31 +469,29 @@ function renderCaseDetail() {
   if (infoEl) {
     infoEl.innerHTML = `
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${badge(c.status,statusColor(c.status))} ${badge(c.type,"#6366f1")}
+        ${badge(c.status, statusColor(c.status))} ${badge(c.type || c.category || "Case", "#6366f1")}
       </div>
       <hr class="divider"/>
       ${[
-        ["Parties", c.parties],
-        ["Venue", c.venue],
+        ["Parties", c.parties || "None"],
+        ["Venue", c.venue || "N/A"],
         ["Date Case Filed", formatDate(c.filedDate)],
         ["Due Date", c.dueDate ? formatDate(c.dueDate) : "Not set"],
-        ["Added", c.createdAt]
-      ].map(([l,v])=>`
+        ["Added", c.createdAt || "N/A"]
+      ].map(([l, v]) => `
         <div style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
           <div style="font-size:15px;color:var(--text)">${v}</div>
         </div>`).join("")}
       <div>
         <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
-        <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${c.narrative}</div>
+        <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${c.narrative || ""}</div>
       </div>`;
   }
 
-  const docs = c.documents||[];
+  const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
-    
-    <!-- Instant upload Type selector -->
     <div style="display:inline-flex;align-items:center;gap:12px">
       <div style="display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px 12px">
         <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
@@ -517,21 +505,21 @@ function renderCaseDetail() {
     </div>
   </div>`;
 
-  if (docs.length===0) {
-    docsHtml+=`<div class="upload-area" onclick="addDocToCase()"><div style="font-size:28px;margin-bottom:6px">📎</div><div>Click to attach a document</div></div>`;
+  if (docs.length === 0) {
+    docsHtml += `<div class="upload-area" onclick="addDocToCase()"><div style="font-size:28px;margin-bottom:6px">📎</div><div>Click to attach a document</div></div>`;
   } else {
-    // Categorize case documents
     const inboundDocs = docs.filter(d => d.fileType === "Inbound");
     const outboundDocs = docs.filter(d => d.fileType === "Outbound");
     const otherDocs = docs.filter(d => d.fileType !== "Inbound" && d.fileType !== "Outbound");
 
-    const renderDocRow = (doc, realIndex) => {
+    const renderDocRow = (doc) => {
+      const realIdx = docs.findIndex(x => x === doc || (x.driveFileId && x.driveFileId === doc.driveFileId && x.name === doc.name));
       return `
         <div class="doc-item" style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
             <div>
               <div style="font-size:13px;color:var(--text);font-weight:600">
-                <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g,"&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
+                <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
                   📄 ${doc.name}
                 </span>
               </div>
@@ -539,7 +527,7 @@ function renderCaseDetail() {
                 ${doc.size} · ${doc.date}${doc.driveFileId ? " · ✅ Drive" : ""}
               </div>
             </div>
-            <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIndex})">×</button>
+            <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})">×</button>
           </div>
         </div>
       `;
@@ -547,29 +535,20 @@ function renderCaseDetail() {
 
     if (inboundDocs.length > 0) {
       docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
-      inboundDocs.forEach(d => {
-        const realIdx = docs.findIndex(x => x.driveFileId === d.driveFileId && x.name === d.name);
-        docsHtml += renderDocRow(d, realIdx);
-      });
+      inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
       docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
-      outboundDocs.forEach(d => {
-        const realIdx = docs.findIndex(x => x.driveFileId === d.driveFileId && x.name === d.name);
-        docsHtml += renderDocRow(d, realIdx);
-      });
+      outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
       docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
-      otherDocs.forEach(d => {
-        const realIdx = docs.findIndex(x => x.driveFileId === d.driveFileId && x.name === d.name);
-        docsHtml += renderDocRow(d, realIdx);
-      });
+      otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
-    docsHtml+=`<div class="upload-area" style="margin-top:16px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
+    docsHtml += `<div class="upload-area" style="margin-top:16px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
   }
   
   const docsEl = document.getElementById("cd-docs");
@@ -579,17 +558,17 @@ function renderCaseDetail() {
   if (statusPanelEl) {
     statusPanelEl.innerHTML = `
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
-      ${STATUS_OPTIONS.map(st=>`
-        <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status===st?statusColor(st):"var(--border)"};background:${c.status===st?statusColor(st)+"18":"transparent"};color:${c.status===st?statusColor(st):"var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status===st?700:500};transition:all 0.2s">
-          ${c.status===st?"✓ ":""}${st}
+      ${STATUS_OPTIONS.map(st => `
+        <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
+          ${c.status === st ? "✓ " : ""}${st}
         </button>`).join("")}`;
   }
 }
 
 async function updateCaseStatus(st) {
   try {
-    const upd = {...selCase, status:st};
-    await dbUpdateCase(selCase.id, {status:st});
+    const upd = { ...selCase, status: st };
+    await dbUpdateCase(selCase.id, { status: st });
     selCase = upd;
     renderCaseDetail();
     showToast(`Status updated to "${st}"`);
@@ -606,9 +585,9 @@ async function removeDocFromCase(idx) {
     if (doc && doc.driveFileId && typeof deleteDriveFile === "function") {
       await deleteDriveFile(doc.driveFileId);
     }
-    const updDocs = docs.filter((_,i) => i !== idx);
-    await dbUpdateCase(selCase.id, {documents: updDocs});
-    selCase = {...selCase, documents: updDocs};
+    const updDocs = docs.filter((_, i) => i !== idx);
+    await dbUpdateCase(selCase.id, { documents: updDocs });
+    selCase = { ...selCase, documents: updDocs };
     renderCaseDetail();
     showToast("Document removed");
   } catch (err) {
@@ -625,12 +604,12 @@ function renderQuickAccess() {
   const ql = document.getElementById("quick-list");
   if (!qa || !ql) return;
   
-  if (profiles.length===0) { qa.style.display="none"; return; }
-  qa.style.display="block";
-  ql.innerHTML = profiles.slice(0,7).map(p=>`
-    <button class="nav-btn ${selProfile?.id===p.id?'active':''}" style="gap:10px;padding:10px 24px" onclick="openProfile('${p.id}')">
+  if (profiles.length === 0) { qa.style.display = "none"; return; }
+  qa.style.display = "block";
+  ql.innerHTML = profiles.slice(0, 7).map(p => `
+    <button class="nav-btn ${selProfile?.id === p.id ? 'active' : ''}" style="gap:10px;padding:10px 24px" onclick="openProfile('${p.id}')">
       ${p.photoUrl
-        ? `<img src="${p.photoUrl}" alt="${initials(p.name)}" class="quick-avatar" style="object-fit:cover;border:2px solid ${p.avatarColor||'#c9a84c'}">`
+        ? `<img src="${p.photoUrl}" alt="${initials(p.name)}" class="quick-avatar" style="object-fit:cover;border:2px solid ${p.avatarColor || '#c9a84c'}">`
         : `<span class="quick-avatar" style="background:${p.avatarColor}22;border:2px solid ${p.avatarColor};color:${p.avatarColor}">${initials(p.name)}</span>`
       }
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${p.name}</span>
@@ -641,17 +620,17 @@ function renderQuickAccess() {
 //  OPEN HELPERS
 // ═══════════════════════════════════════════════════════════════
 function openProfile(id) {
-  selProfile = profiles.find(p=>p.id===id);
+  selProfile = profiles.find(p => p.id === id);
   if (!selProfile) return;
   showView("profileDetail");
   renderProfileDetail();
 }
 
 function openCase(id) {
-  selCase = cases.find(c=>c.id===id);
+  selCase = cases.find(c => c.id === id);
   if (!selCase) return;
-  const p=profiles.find(x=>x.id===selCase.profileId);
-  if (p) selProfile=p;
+  const p = profiles.find(x => x.id === selCase.profileId);
+  if (p) selProfile = p;
   showView("caseDetail");
   renderCaseDetail();
 }
@@ -684,7 +663,6 @@ function renderSidebarUser() {
   `;
   chip.style.display = "flex";
 
-  // Dynamically show admin panel controls for authorized attorneys
   if (adminSection) {
     if (myProf.role === "admin") {
       adminSection.style.display = "block";
@@ -715,9 +693,9 @@ function sortCasesByDue(arr, dir) {
 
 function dueBadge(dueDate) {
   if (!dueDate) return '<span style="font-size:11px;color:var(--text-dim)">No due date</span>';
-  const days = Math.ceil((new Date(dueDate) - new Date()) / (1000*60*60*24));
+  const days = Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
   const formatted = formatDate(dueDate);
-  if (days < 0)  return `<span style="font-size:11px;font-weight:700;color:var(--red)">⚠ Overdue (${formatted})</span>`;
+  if (days < 0)   return `<span style="font-size:11px;font-weight:700;color:var(--red)">⚠ Overdue (${formatted})</span>`;
   if (days === 0) return `<span style="font-size:11px;font-weight:700;color:var(--red)">⚠ Due today</span>`;
   if (days <= 7)  return `<span style="font-size:11px;font-weight:700;color:var(--amber)">⚡ ${days}d left (${formatted})</span>`;
   if (days <= 30) return `<span style="font-size:11px;font-weight:600;color:var(--gold)">📅 ${days}d (${formatted})</span>`;
@@ -795,13 +773,21 @@ function renderMyProfile() {
   const myProf = profiles.find(p => p.ownerUid === u.uid);
   if (!myProf) return;
 
-  document.getElementById("setting-name").value    = myProf.name || "";
-  document.getElementById("setting-role").value    = myProf.role || "Attorney";
-  document.getElementById("setting-contact").value = myProf.contact || "";
-  document.getElementById("setting-email").value   = u.email || "";
-  document.getElementById("setting-password").value = "";
-  document.getElementById("setting-current-password").value = "";
-  document.getElementById("setting-reauth-panel").style.display = "none";
+  const nameEl = document.getElementById("setting-name");
+  const roleEl = document.getElementById("setting-role");
+  const contactEl = document.getElementById("setting-contact");
+  const emailEl = document.getElementById("setting-email");
+  const passEl = document.getElementById("setting-password");
+  const curPassEl = document.getElementById("setting-current-password");
+  const reauthEl = document.getElementById("setting-reauth-panel");
+
+  if (nameEl) nameEl.value = myProf.name || "";
+  if (roleEl) roleEl.value = myProf.role || "Attorney";
+  if (contactEl) contactEl.value = myProf.contact || "";
+  if (emailEl) emailEl.value = u.email || "";
+  if (passEl) passEl.value = "";
+  if (curPassEl) curPassEl.value = "";
+  if (reauthEl) reauthEl.style.display = "none";
 
   settingsPhotoDataUrl = myProf.photoUrl || null;
   if (settingsPhotoDataUrl) {
@@ -865,18 +851,27 @@ async function connectDriveFromSettings() {
 }
 
 function showSettingsPhotoPreview(url, name, role) {
-  document.getElementById("setting-photo-dropzone").style.display = "none";
+  const dropzone = document.getElementById("setting-photo-dropzone");
   const wrap = document.getElementById("setting-photo-preview-wrap");
-  wrap.style.display = "flex";
-  document.getElementById("setting-photo-preview-img").src = url;
-  document.getElementById("setting-name-preview").textContent = name || "Attorney Name";
-  document.getElementById("setting-role-preview").textContent = role || "Role";
+  const img = document.getElementById("setting-photo-preview-img");
+  const namePrev = document.getElementById("setting-name-preview");
+  const rolePrev = document.getElementById("setting-role-preview");
+
+  if (dropzone) dropzone.style.display = "none";
+  if (wrap) wrap.style.display = "flex";
+  if (img) img.src = url;
+  if (namePrev) namePrev.textContent = name || "Attorney Name";
+  if (rolePrev) rolePrev.textContent = role || "Role";
 }
 
 function resetSettingsPhotoUpload() {
-  document.getElementById("setting-photo-dropzone").style.display = "block";
-  document.getElementById("setting-photo-preview-wrap").style.display = "none";
-  document.getElementById("setting-photo-input").value = "";
+  const dropzone = document.getElementById("setting-photo-dropzone");
+  const wrap = document.getElementById("setting-photo-preview-wrap");
+  const input = document.getElementById("setting-photo-input");
+
+  if (dropzone) dropzone.style.display = "block";
+  if (wrap) wrap.style.display = "none";
+  if (input) input.value = "";
   settingsPhotoDataUrl = null;
 }
 
@@ -890,7 +885,9 @@ function handleSettingsPhotoUpload(event) {
   const reader = new FileReader();
   reader.onload = (e) => {
     settingsPhotoDataUrl = e.target.result;
-    showSettingsPhotoPreview(settingsPhotoDataUrl, document.getElementById("setting-name").value, document.getElementById("setting-role").value);
+    const nameVal = document.getElementById("setting-name")?.value || "";
+    const roleVal = document.getElementById("setting-role")?.value || "";
+    showSettingsPhotoPreview(settingsPhotoDataUrl, nameVal, roleVal);
   };
   reader.readAsDataURL(file);
 }
@@ -906,9 +903,9 @@ async function saveUserSettings() {
   const myProf = profiles.find(p => p.ownerUid === u.uid);
   if (!myProf) return;
 
-  const name = document.getElementById("setting-name").value.trim();
-  const role = document.getElementById("setting-role").value.trim();
-  const contact = document.getElementById("setting-contact").value.trim();
+  const name = (document.getElementById("setting-name")?.value || "").trim();
+  const role = (document.getElementById("setting-role")?.value || "").trim();
+  const contact = (document.getElementById("setting-contact")?.value || "").trim();
 
   if (!name || !role) {
     showToast("Name and Role are required.", "error");
@@ -957,9 +954,9 @@ async function saveSecuritySettings() {
   const u = window._currentUser;
   if (!u) return;
 
-  const email = document.getElementById("setting-email").value.trim();
-  const pass = document.getElementById("setting-password").value;
-  const currentPass = document.getElementById("setting-current-password").value;
+  const email = (document.getElementById("setting-email")?.value || "").trim();
+  const pass = document.getElementById("setting-password")?.value || "";
+  const currentPass = document.getElementById("setting-current-password")?.value || "";
 
   if (email === u.email && !pass) {
     showToast("No security modifications requested.");
@@ -979,7 +976,7 @@ async function saveSecuritySettings() {
   }
 
   const reauthPanel = document.getElementById("setting-reauth-panel");
-  if (reauthPanel.style.display === "none") {
+  if (reauthPanel && reauthPanel.style.display === "none") {
     reauthPanel.style.display = "block";
     showToast("Enter your current password to verify identity.", "error");
     return;
@@ -1008,10 +1005,13 @@ async function saveSecuritySettings() {
     }
 
     showToast("Credentials updated successfully!");
-    reauthPanel.style.display = "none";
-    document.getElementById("setting-password").value = "";
-    document.getElementById("setting-current-password").value = "";
-    document.getElementById("password-requirements").style.display = "none"; 
+    if (reauthPanel) reauthPanel.style.display = "none";
+    const passInp = document.getElementById("setting-password");
+    const curPassInp = document.getElementById("setting-current-password");
+    const reqsBox = document.getElementById("password-requirements");
+    if (passInp) passInp.value = "";
+    if (curPassInp) curPassInp.value = "";
+    if (reqsBox) reqsBox.style.display = "none"; 
   } catch (err) {
     console.error("Credentials update failed:", err);
     showToast("Verification failed: " + err.message, "error");
@@ -1025,13 +1025,19 @@ function confirmDeleteUserAccount() {
   const pending = { type: "account_delete", email: u.email };
   _pendingDeleteTarget = pending;
 
-  document.getElementById("del-title").textContent = "Delete Your Account?";
-  document.getElementById("del-body").innerHTML = 
-    `You are about to permanently delete your account, attorney profile, and all cases.<br>This cannot be undone. To proceed, please type your email address exactly:<br><strong>${u.email}</strong>`;
-  
+  const delTitle = document.getElementById("del-title");
+  const delBody = document.getElementById("del-body");
   const label = document.getElementById("del-confirm-target-text");
-  label.textContent = u.email;
-  label.style.color = "var(--red)";
+
+  if (delTitle) delTitle.textContent = "Delete Your Account?";
+  if (delBody) {
+    delBody.innerHTML = 
+      `You are about to permanently delete your account, attorney profile, and all cases.<br>This cannot be undone. To proceed, please type your email address exactly:<br><strong>${u.email}</strong>`;
+  }
+  if (label) {
+    label.textContent = u.email;
+    label.style.color = "var(--red)";
+  }
 
   openDeleteModal();
 }
@@ -1044,8 +1050,8 @@ async function executeDeleteAccountWipe() {
     showToast("Purging your files & database records...");
 
     const myProf = profiles.find(p => p.ownerUid === u.uid);
-    
     const myCases = cases.filter(c => c.ownerUid === u.uid);
+
     for (const c of myCases) {
       if (c.documents) {
         for (const doc of c.documents) {
@@ -1095,7 +1101,6 @@ async function handleLogout() {
   }
 }
 
-// Helper to escape HTML safely inside the dashboard
 function escHtml(str) {
   return String(str || "")
     .replace(/&/g, "&amp;")
@@ -1105,13 +1110,9 @@ function escHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  GOOGLE CALENDAR RFC3339 TIMEZONE-PRESERVING DATE PARSER
-// ═══════════════════════════════════════════════════════════════
 function parseGoogleDateTime(isoString) {
   if (!isoString) return { dateStr: "", timeStr: "", dateObj: new Date(), isAllDay: false };
 
-  // 1. Process All-Day Events (formatted as YYYY-MM-DD)
   if (isoString.length === 10 && !isoString.includes("T")) {
     const parts = isoString.split("-");
     const yr = parseInt(parts[0], 10);
@@ -1122,8 +1123,6 @@ function parseGoogleDateTime(isoString) {
     return { dateStr, timeStr: "All Day", dateObj, isAllDay: true };
   }
 
-  // 2. Process DateTime Events (formatted as YYYY-MM-DDTHH:MM:SS...)
-  // Extracts original hours/minutes from the string directly to preserve calendar timeline offsets
   const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
   if (!match) {
     const d = new Date(isoString);
@@ -1151,9 +1150,6 @@ function parseGoogleDateTime(isoString) {
   return { dateStr, timeStr, dateObj, isAllDay: false };
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  GOOGLE CALENDAR EVENT INTERACTIVE DETAIL MODAL HANDLERS
-// ═══════════════════════════════════════════════════════════════
 window.openCalendarEventModal = function(index) {
   const events = window._fetchedCalendarEvents;
   if (!events || !events[index]) return;
@@ -1184,16 +1180,18 @@ window.openCalendarEventModal = function(index) {
     timeString += " (All Day)";
   }
 
-  titleEl.innerHTML = `📅 ${escHtml(ev.summary || "No Title")}`;
-  timeEl.textContent = timeString;
-  locationEl.textContent = ev.location || "No venue/location specified";
-  descEl.textContent = ev.description || "No description provided.";
+  if (titleEl) titleEl.innerHTML = `📅 ${escHtml(ev.summary || "No Title")}`;
+  if (timeEl) timeEl.textContent = timeString;
+  if (locationEl) locationEl.textContent = ev.location || "No venue/location specified";
+  if (descEl) descEl.textContent = ev.description || "No description provided.";
   
-  if (ev.htmlLink) {
-    linkEl.href = ev.htmlLink;
-    linkEl.style.display = "inline-flex";
-  } else {
-    linkEl.style.display = "none";
+  if (linkEl) {
+    if (ev.htmlLink) {
+      linkEl.href = ev.htmlLink;
+      linkEl.style.display = "inline-flex";
+    } else {
+      linkEl.style.display = "none";
+    }
   }
 
   modal.classList.remove("hidden");
@@ -1204,9 +1202,6 @@ window.closeCalendarModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  DYNAMIC AGENDA LOADER FROM GOOGLE CALENDAR API
-// ═══════════════════════════════════════════════════════════════
 async function fetchAndRenderGoogleCalendarEvents() {
   const card = document.getElementById("dash-calendar-card");
   if (!card) return;
@@ -1229,15 +1224,12 @@ async function fetchAndRenderGoogleCalendarEvents() {
   }
 
   try {
-    // Show temporary inline spinner state
     card.innerHTML = html + `<div style="text-align:center;padding:20px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
     
-    // Aligns boundary to 00:00:00 (midnight) of current local day so earlier-today events remain visible
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const timeMin = today.toISOString();
     
-    // Pull up to 10 events to ensure comprehensive dashboard coverage
     const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=6`;
     
     const res = await fetch(url, {
@@ -1253,7 +1245,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
 
     const data = await res.json();
     const events = data.items || [];
-    window._fetchedCalendarEvents = events; // Store events globally to resolve for interactive detail popups
+    window._fetchedCalendarEvents = events;
 
     if (events.length === 0) {
       html += `<div style="text-align:center;padding:24px 12px;color:var(--text-dim);border:1px dashed var(--border);border-radius:10px;font-size:12px">
@@ -1269,11 +1261,9 @@ async function fetchAndRenderGoogleCalendarEvents() {
         const timeStr   = parsedStart.timeStr;
         const eventDate = parsedStart.dateObj;
         
-        // Expose location metadata and short description snippet directly onto the dashboard agenda cards
         const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;display:flex;align-items:center;gap:4px">📍 ${escHtml(ev.location)}</div>` : "";
         const descriptionMarkup = ev.description ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic">"${escHtml(ev.description.slice(0, 50))}${ev.description.length > 50 ? '...' : ''}"</div>` : "";
 
-        // Standardize local time representation without parsing errors
         const weekdayStr = eventDate.toLocaleDateString("en-US", { weekday: "short" });
 
         html += `
@@ -1296,12 +1286,10 @@ async function fetchAndRenderGoogleCalendarEvents() {
   } catch (err) {
     console.error("fetchAndRenderGoogleCalendarEvents error:", err);
     
-    // Self-healing: if token is rejected/expired on Google's side, clear the local session state
     if (err.status === 401) {
       if (typeof clearPersistedToken === "function") {
         clearPersistedToken();
       }
-      // Re-render immediately to present the "Not Connected" setup state
       fetchAndRenderGoogleCalendarEvents();
       return;
     }
@@ -1320,7 +1308,6 @@ async function fetchAndRenderGoogleCalendarEvents() {
   card.innerHTML = html;
 }
 
-// Background auto-refresh interval: updates the calendar events dynamically every 15 seconds if active
 if (!window._calendarIntervalId) {
   window._calendarIntervalId = setInterval(() => {
     if (currentView === "dashboard" && hasValidToken() && document.visibilityState === "visible" && typeof fetchAndRenderGoogleCalendarEvents === "function") {
@@ -1330,7 +1317,7 @@ if (!window._calendarIntervalId) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REAL-TIME NOTIFICATIONS SYSTEM RENDERERS & ACTIONS
+//  REAL-TIME NOTIFICATIONS SYSTEM
 // ═══════════════════════════════════════════════════════════════
 function updateNotificationBadge() {
   const badgeEl = document.getElementById("global-notif-badge");
@@ -1372,7 +1359,7 @@ function renderNotificationsView() {
         </div>
       `;
     } else if (n.type === "appointment_request") {
-      const statusText = n.appointmentStatus.toUpperCase();
+      const statusText = (n.appointmentStatus || "").toUpperCase();
       const colorVal = n.appointmentStatus === "accepted" ? "var(--green)" : "var(--red)";
       actions = `<div style="font-size:11px;font-weight:700;color:${colorVal};margin-top:10px">● PROPOSAL ${statusText}</div>`;
     }
@@ -1425,25 +1412,33 @@ window.openAppointmentModal = function(profileId) {
   if (!p) return;
   targetApptProfile = p;
 
-  document.getElementById("appt-title").value = "";
-  document.getElementById("appt-date").value = "";
-  document.getElementById("appt-time").value = "";
-  document.getElementById("appt-desc").value = "";
+  const titleInp = document.getElementById("appt-title");
+  const dateInp = document.getElementById("appt-date");
+  const timeInp = document.getElementById("appt-time");
+  const descInp = document.getElementById("appt-desc");
+  const modalSub = document.getElementById("appointment-modal-sub");
+
+  if (titleInp) titleInp.value = "";
+  if (dateInp) dateInp.value = "";
+  if (timeInp) timeInp.value = "";
+  if (descInp) descInp.value = "";
+  if (modalSub) modalSub.textContent = `Propose an appointment or schedule date with ${p.name}`;
   
-  document.getElementById("appointment-modal-sub").textContent = `Propose an appointment or schedule date with ${p.name}`;
-  document.getElementById("appointment-modal").classList.remove("hidden");
+  const modal = document.getElementById("appointment-modal");
+  if (modal) modal.classList.remove("hidden");
 };
 
 window.closeAppointmentModal = function() {
-  document.getElementById("appointment-modal").classList.add("hidden");
+  const modal = document.getElementById("appointment-modal");
+  if (modal) modal.classList.add("hidden");
   targetApptProfile = null;
 };
 
 window.submitAppointmentRequest = async function() {
-  const title = document.getElementById("appt-title").value.trim();
-  const date = document.getElementById("appt-date").value;
-  const time = document.getElementById("appt-time").value;
-  const desc = document.getElementById("appt-desc").value.trim();
+  const title = (document.getElementById("appt-title")?.value || "").trim();
+  const date = document.getElementById("appt-date")?.value || "";
+  const time = document.getElementById("appt-time")?.value || "";
+  const desc = (document.getElementById("appt-desc")?.value || "").trim();
 
   if (!title || !date || !time) {
     showToast("Please fill in all required fields.", "error");
@@ -1457,7 +1452,6 @@ window.submitAppointmentRequest = async function() {
   try {
     showToast("Sending request...");
     
-    // 1. Create Appointment Document in Firestore
     const apptData = {
       title,
       date,
@@ -1471,7 +1465,6 @@ window.submitAppointmentRequest = async function() {
     };
     const apptId = await dbAddAppointment(apptData);
 
-    // 2. Create Notification Document in Firestore targeting recipient
     const notifData = {
       toUid: targetApptProfile.ownerUid,
       fromUid: u.uid,
@@ -1499,7 +1492,6 @@ window.acceptAppointmentRequest = async function(notifId, apptId) {
     await dbUpdateAppointment(apptId, { status: "accepted" });
     await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" });
     
-    // Notify the requester back
     const appt = appointments.find(a => a.id === apptId);
     if (appt) {
       await dbAddNotification({
@@ -1565,37 +1557,33 @@ function renderCalendarTimeline() {
   const timelineEl = document.getElementById("calendar-timeline-list");
   if (!timelineEl) return;
 
-  // 1. Gather Case Deadlines
   let activeCases = cases.filter(c => c.dueDate);
   if (filter !== "Everyone") {
     const matchedProf = profiles.find(p => p.ownerUid === filter);
     activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
   }
 
-  // Convert Case Deadlines to Timeline events
   const timelineEvents = activeCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
     return {
       type: "case_deadline",
       title: c.title,
-      sub: `${p?.name || "Unassigned"} · ${c.type}`,
+      sub: `${p?.name || "Unassigned"} · ${c.type || c.category || "Case"}`,
       date: c.dueDate,
       label: "Case Deadline ⚖️",
       color: "var(--gold)"
     };
   });
 
-  // 2. Gather Accepted Appointments
   let activeAppts = appointments.filter(a => a.status === "accepted");
   if (filter !== "Everyone") {
     activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
   }
 
-  // Convert appointments to Timeline events
   activeAppts.forEach(appt => {
     timelineEvents.push({
       type: "appointment",
-      title: apptTitleStr(appt),
+      title: appt.title || "Appointment Sync",
       sub: "Proposer: " + appt.requesterName + " · Host: " + appt.targetName + (appt.description ? "\n\"" + appt.description + "\"" : ""),
       date: appt.date,
       time: appt.time,
@@ -1604,11 +1592,6 @@ function renderCalendarTimeline() {
     });
   });
 
-  function apptTitleStr(appt) {
-    return appt.title || "Appointment Sync";
-  }
-
-  // Sort chronically by date
   timelineEvents.sort((a,b) => new Date(a.date) - new Date(b.date));
 
   if (timelineEvents.length === 0) {
@@ -1617,8 +1600,7 @@ function renderCalendarTimeline() {
   }
 
   timelineEl.innerHTML = timelineEvents.map(ev => {
-    const d = new Date(ev.date);
-    const dateStr = d.toLocaleDateString("en-PH", { month: "short", day: "numeric", weekday: "short" });
+    const d = new Date(ev.date + 'T00:00:00');
     return `
       <div class="case-row" style="cursor:default">
         <div style="text-align:center;background:rgba(201,168,76,0.06);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:54px;margin-right:8px">
@@ -1659,7 +1641,7 @@ function renderApprovedAppointments() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA CONTROLLER & RENDERING
+//  GOOGLE DRIVE EXPLORER REPLICA
 // ═══════════════════════════════════════════════════════════════
 let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
@@ -1788,13 +1770,11 @@ function openMyDriveFolder() {
 window.openFilePreview = function(doc) {
   if (!doc) return;
 
-  // Scenario 1: Google Drive Sync'd Document
   if (doc.driveLink) {
     window.open(doc.driveLink, "_blank");
     return;
   }
 
-  // Scenario 2: Staged Local Document
   if (doc._localTempId && typeof pendingLocalFiles !== "undefined") {
     const file = pendingLocalFiles[doc._localTempId];
     if (file) {
@@ -1804,7 +1784,6 @@ window.openFilePreview = function(doc) {
     }
   }
 
-  // Fallback state
   showToast("File link not found.", "error");
 };
 
