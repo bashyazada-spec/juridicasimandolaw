@@ -888,25 +888,31 @@ function renderMonthlyCalendarGrid() {
     const isSelected = fullDateStr === selectedCalDate;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
+    const hasBusy = dayEvents.some(e => e.type === "busy");
+    const hasCase = dayEvents.some(e => e.type === "case");
+    const hasAppt = dayEvents.some(e => e.type === "appt");
+
+    let cellStyle = "";
+    if (isSelected) {
+      cellStyle = "border-color:var(--gold) !important; background:rgba(201,168,76,0.15) !important;";
+    } else if (hasBusy) {
+      cellStyle = "border-color:rgba(248,113,113,0.4) !important; background:rgba(248,113,113,0.12) !important;";
+    }
+
     let dotsHtml = "";
     if (dayEvents.length > 0) {
-      dotsHtml = `<div class="cal-day-dots">` + 
-        dayEvents.slice(0, 2).map(e => {
-          let bg = 'rgba(129,140,248,0.18)';
-          let col = 'var(--violet)';
-          if (e.type === 'case') { bg = 'rgba(201,168,76,0.18)'; col = 'var(--gold)'; }
-          if (e.type === 'busy') { bg = 'rgba(239,68,68,0.18)'; col = 'var(--red)'; }
-          return `<div class="cal-dot-pill" style="background:${bg};color:${col}">
-            ${escHtml(e.badge)}
-          </div>`;
-        }).join("") + 
-        (dayEvents.length > 2 ? `<div style="font-size:9px;color:var(--text-dim);font-weight:700">+${dayEvents.length - 2} more</div>` : "") +
-      `</div>`;
+      dotsHtml = `<div style="display:flex;gap:4px;margin-top:auto;padding-top:4px;justify-content:center">`;
+      if (hasBusy) dotsHtml += `<span title="Busy / Out of Office" style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span>`;
+      if (hasCase) dotsHtml += `<span title="Case Deadline" style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block"></span>`;
+      if (hasAppt) dotsHtml += `<span title="Appointment" style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block"></span>`;
+      dotsHtml += `</div>`;
     }
 
     html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" onclick="selectCalDay('${fullDateStr}')">
-        <span class="cal-day-num" style="${isSelected?'color:var(--gold)':''}">${day}</span>
+      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" 
+           style="${cellStyle}" 
+           onclick="selectCalDay('${fullDateStr}')">
+        <span class="cal-day-num" style="${hasBusy ? 'color:var(--red);font-weight:700' : ''}">${day}</span>
         ${dotsHtml}
       </div>
     `;
