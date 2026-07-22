@@ -37,7 +37,7 @@ const statusColor = (status) => {
   }
 };
 
-const initials = name => name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const initials = name => name ? name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase() : "?";
 
 const badge = (label, color) =>
   `<span class="badge" style="background:${color}22;color:${color}">${label}</span>`;
@@ -136,25 +136,35 @@ async function dbLoad() {
     });
 
     // ── Real-Time Sync: Notifications (Targeted to Active User) ─────────────
-    const notifColRef = window._fbCol(db, "notifications");
-    const notifQuery = window._fbQuery(notifColRef, window._fbWhere("toUid", "==", window._currentUser.uid));
-    notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
-      notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-      refreshCurrentView();
-    }, (error) => {
-      console.error("Notifications sync error:", error);
-    });
+    try {
+      const notifColRef = window._fbCol(db, "notifications");
+      const notifQuery = window._fbQuery(notifColRef, window._fbWhere("toUid", "==", window._currentUser.uid));
+      notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
+        notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        refreshCurrentView();
+      }, (error) => {
+        console.warn("Notifications sync permission notice:", error.message);
+        notifications = [];
+      });
+    } catch (e) {
+      console.warn("Notifications listener setup skipped:", e.message);
+    }
 
     // ── Real-Time Sync: Appointment Proposals (Requester or Target) ─────────────
-    const apptColRef = window._fbCol(db, "appointments");
-    appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
-      const allAppts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const u = window._currentUser;
-      appointments = allAppts.filter(a => a.targetUid === u.uid || a.requesterUid === u.uid);
-      refreshCurrentView();
-    }, (error) => {
-      console.error("Appointments sync error:", error);
-    });
+    try {
+      const apptColRef = window._fbCol(db, "appointments");
+      appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
+        const allAppts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const u = window._currentUser;
+        appointments = allAppts.filter(a => a.targetUid === u.uid || a.requesterUid === u.uid);
+        refreshCurrentView();
+      }, (error) => {
+        console.warn("Appointments sync permission notice:", error.message);
+        appointments = [];
+      });
+    } catch (e) {
+      console.warn("Appointments listener setup skipped:", e.message);
+    }
 
   } catch(e) {
     console.error("Firestore database connection error:", e);
@@ -163,7 +173,6 @@ async function dbLoad() {
   }
 }
 
-// ── Refresh router for real-time changes ────────────────────────────────────
 function refreshCurrentView() {
   if (!dbReady) return;
 
@@ -237,7 +246,6 @@ async function dbDeleteCase(id) {
   cases = cases.filter(c=>c.id!==id);
 }
 
-// ── Notifications CRUD ──
 async function dbAddNotification(data) {
   if (localMode || !window._db) return;
   data.createdAt = new Date().toISOString();
@@ -252,7 +260,6 @@ async function dbDeleteNotification(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "notifications", id));
 }
 
-// ── Appointments CRUD ──
 async function dbAddAppointment(data) {
   if (localMode || !window._db) return null;
   data.createdAt = new Date().toISOString();
