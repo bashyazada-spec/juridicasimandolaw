@@ -703,4 +703,547 @@ async function saveProfile() {
       renderProfileDetail();
     }
   } catch (err) {
-    console.error("saveProfile error:", e
+    console.error("saveProfile error:", err);
+    showToast("Failed to save profile: " + (err.message || "Unknown error"), "error");
+  }
+}
+
+async function createProfileFolderManual() {
+  if (!selProfile) return;
+  if (!selProfile.driveFolderId && accessToken) {
+    showToast("Creating Drive folder...");
+    const folderId = await createDriveFolder(`Simando Law — ${selProfile.name}`, DRIVE_FOLDER_ID || null);
+    if (folderId) {
+      await dbUpdateProfile(selProfile.id, { driveFolderId: folderId });
+      selProfile.driveFolderId = folderId;
+      showToast("Drive folder created!");
+      renderProfileDetail();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CASE FORM
+// ═══════════════════════════════════════════════════════════════
+let cfPetitioners = [];
+let cfRespondents = [];
+
+function addParty(role) {
+  const inputId = role === "petitioner" ? "cf-petitioner-input" : "cf-respondent-input";
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  if (role === "petitioner") { cfPetitioners.push(name); }
+  else                       { cfRespondents.push(name); }
+  input.value = "";
+  input.focus();
+  renderPartyLists();
+  serializeParties();
+}
+
+function removeParty(role, idx) {
+  if (role === "petitioner") cfPetitioners.splice(idx, 1);
+  else                       cfRespondents.splice(idx, 1);
+  renderPartyLists();
+  serializeParties();
+}
+
+function renderPartyLists() {
+  const chipStyle = (color, bg) =>
+    `display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:500;background:${bg};border:1px solid ${color};color:${color};margin-bottom:6px;margin-right:4px`;
+  const removeBtn = (role, i) =>
+    `<button type="button" onclick="removeParty('${role}',${i})" style="background:none;border:none;cursor:pointer;padding:0;line-height:1;font-size:14px;opacity:0.6" title="Remove">×</button>`;
+
+  const petEl = document.getElementById("cf-petitioners-list");
+  if (petEl) {
+    petEl.innerHTML =
+      cfPetitioners.length === 0
+        ? `<div style="font-size:12px;color:var(--text-dim);font-style:italic;padding:2px 0">None added yet</div>`
+        : cfPetitioners.map((n,i) => `<span style="${chipStyle("var(--gold)","rgba(201,165,92,0.1)")}">${n} ${removeBtn("petitioner",i)}</span>`).join("");
+  }
+
+  const resEl = document.getElementById("cf-respondents-list");
+  if (resEl) {
+    resEl.innerHTML =
+      cfRespondents.length === 0
+        ? `<div style="font-size:12px;color:var(--text-dim);font-style:italic;padding:2px 0">None added yet</div>`
+        : cfRespondents.map((n,i) => `<span style="${chipStyle("var(--violet)","rgba(129,140,248,0.1)")}">${n} ${removeBtn("respondent",i)}</span>`).join("");
+  }
+}
+
+function serializeParties() {
+  const parts = [];
+  if (cfPetitioners.length) parts.push("Petitioner: " + cfPetitioners.join(", "));
+  if (cfRespondents.length) parts.push("Respondent: " + cfRespondents.join(", "));
+  setElVal("cf-parties", parts.join(" | "));
+}
+
+function parsePartiesString(str) {
+  cfPetitioners = [];
+  cfRespondents = [];
+  if (!str) return;
+  str.split("|").forEach(seg => {
+    seg = seg.trim();
+    if (seg.toLowerCase().startsWith("petitioner:")) {
+      cfPetitioners = seg.slice(11).split(",").map(s=>s.trim()).filter(Boolean);
+    } else if (seg.toLowerCase().startsWith("respondent:")) {
+      cfRespondents = seg.slice(11).split(",").map(s=>s.trim()).filter(Boolean);
+    } else if (seg) {
+      cfRespondents = [seg];
+    }
+  });
+}
+
+function onVenueChange(sel) {
+  const manual = document.getElementById("cf-venue-manual");
+  if (!manual) return;
+  if (sel.value === "Other (specify)") {
+    manual.style.display = "block";
+    manual.required = true;
+    manual.focus();
+  } else {
+    manual.style.display = "none";
+    manual.required = false;
+    manual.value = "";
+  }
+}
+
+function getVenueValue() {
+  const sel = document.getElementById("cf-venue");
+  if (!sel) return "Other";
+  if (sel.value === "Other (specify)") {
+    const manual = document.getElementById("cf-venue-manual");
+    return (manual?.value || "").trim() || "Other";
+  }
+  return sel.value;
+}
+
+function setVenueValue(val) {
+  const sel = document.getElementById("cf-venue");
+  const manual = document.getElementById("cf-venue-manual");
+  if (!sel) return;
+  const match = VENUES.find(v => v === val);
+  if (match) {
+    sel.value = match;
+    if (manual) manual.style.display = "none";
+  } else if (val) {
+    sel.value = "Other (specify)";
+    if (manual) {
+      manual.style.display = "block";
+      manual.value = val;
+    }
+  }
+}
+
+let _caseTypeSuggestions = [];
+
+async function loadCaseTypesForCategory(category) {
+  _caseTypeSuggestions = [];
+  if (!window._db || !category) return;
+  try {
+    const snap = await window._fbGetDocs(window._fbQuery(
+      window._fbCol(window._db, "caseTypes"),
+      window._fbWhere("category", "==", category)
+    ));
+    _caseTypeSuggestions = snap.docs.map(d => d.data().name).filter(Boolean);
+  } catch(e) { console.warn("loadCaseTypes error:", e); }
+}
+
+async function saveCaseTypeIfNew(category, typeName) {
+  if (!typeName || !category || !window._db) return;
+  const name = typeName.trim();
+  if (!name || _caseTypeSuggestions.includes(name)) return;
+  try {
+    await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), { category, name, createdAt: new Date().toISOString() });
+    _caseTypeSuggestions.push(name);
+  } catch(e) { console.warn("saveCaseType error:", e); }
+}
+
+function filterCaseTypeSuggestions(val) {
+  const dd = document.getElementById("cf-type-dropdown");
+  if (!dd) return;
+  const q = val.trim().toLowerCase();
+  const filtered = q ? _caseTypeSuggestions.filter(s => s.toLowerCase().includes(q)) : _caseTypeSuggestions;
+  if (!filtered.length) { dd.style.display = "none"; return; }
+  dd.innerHTML = filtered.map(s =>
+    `<div onclick="selectCaseType('${s.replace(/'/g,"\'")}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s" onmouseover="this.style.background='rgba(201,165,92,0.08)'" onmouseout="this.style.background=''">${s}</div>`
+  ).join("");
+  dd.style.display = "block";
+}
+
+function showCaseTypeSuggestions() {
+  const inp = document.getElementById("cf-type-input");
+  filterCaseTypeSuggestions(inp?.value || "");
+}
+
+function hideCaseTypeSuggestions() {
+  const dd = document.getElementById("cf-type-dropdown");
+  if (dd) dd.style.display = "none";
+}
+
+function selectCaseType(name) {
+  setElVal("cf-type-input", name);
+  hideCaseTypeSuggestions();
+}
+
+function onCaseTypeKeydown(e) {
+  if (e.key === "Escape") hideCaseTypeSuggestions();
+}
+
+async function onCategoryChange(category) {
+  const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
+  const aLabel = document.getElementById("cf-party-a-label");
+  const bLabel = document.getElementById("cf-party-b-label");
+  if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
+  if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
+  await loadCaseTypesForCategory(category);
+  setElVal("cf-type-input", "");
+  hideCaseTypeSuggestions();
+}
+
+function populateCaseSelects() {
+  const catSel = document.getElementById("cf-category");
+  const statusSel = document.getElementById("cf-status");
+  const venueSel = document.getElementById("cf-venue");
+  
+  if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  if (statusSel) statusSel.innerHTML = STATUS_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join("");
+  if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
+}
+
+async function openAddCase() {
+  caseFormOrigin = currentView;
+  
+  const u = window._currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  if (!myProf) {
+    showToast("Your attorney profile is still loading. Please wait a moment.", "error");
+    return;
+  }
+
+  // Trigger Google Drive Warning Popup if not authorized
+  if (typeof hasValidToken === "function" && !hasValidToken()) {
+    openDriveWarningModal();
+  }
+
+  selProfile = myProf;
+  caseFormMode = "add";
+  pendingDocs = [];
+  cfPetitioners = selProfile.name ? [selProfile.name] : [];
+  cfRespondents = [];
+  populateCaseSelects();
+
+  setElText("cf-title", "New Case");
+  setElText("cf-save-btn", "Add Case");
+  setElVal("cf-case-title", "");
+  setElVal("cf-narrative", "");
+  setElVal("cf-filed", "");
+  setElVal("cf-due", "");
+  setElVal("cf-case-number", "");
+  setElVal("cf-doc-type", "");
+  setElVal("cf-type-input", "");
+  setElVal("cf-status", STATUS_OPTIONS[0]);
+  setVenueValue(VENUES[0]);
+  setElText("drive-status", "");
+  
+  const backBtn = document.getElementById("cf-back-btn");
+  if (backBtn) backBtn.onclick = () => navTo(caseFormOrigin);
+
+  const cancelBtn = document.getElementById("cf-cancel-btn");
+  if (cancelBtn) cancelBtn.onclick = () => navTo(caseFormOrigin);
+  
+  const firstCat = CASE_CATEGORIES[0];
+  setElVal("cf-category", firstCat);
+  await onCategoryChange(firstCat);
+  renderPartyLists();
+  serializeParties();
+  renderPendingDocs();
+  clearCaseErrors();
+  updateCfChip();
+  updateDriveFolderChip();
+  showView("caseForm");
+}
+
+async function openEditCase() {
+  const c = selCase;
+  if (!c) return;
+  caseFormMode = "edit";
+  pendingDocs = [...(c.documents || [])];
+  parsePartiesString(c.parties);
+  populateCaseSelects();
+
+  setElText("cf-title", "Edit Case");
+  setElText("cf-save-btn", "Save Changes");
+  setElVal("cf-case-title", c.title);
+  setElVal("cf-narrative", c.narrative);
+  setElVal("cf-filed", c.filedDate || "");
+  setElVal("cf-due", c.dueDate || "");
+  setElVal("cf-case-number", c.caseNumber || "");
+  setElVal("cf-doc-type", c.docType || "");
+  setVenueValue(c.venue);
+  
+  const cat = c.category || CASE_CATEGORIES[0];
+  setElVal("cf-category", cat);
+  await onCategoryChange(cat);
+  setElVal("cf-type-input", c.type || "");
+  
+  setElText("drive-status", pendingDocs.length ? `${pendingDocs.length} file(s)` : "");
+
+  const backBtn = document.getElementById("cf-back-btn");
+  if (backBtn) backBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
+
+  const cancelBtn = document.getElementById("cf-cancel-btn");
+  if (cancelBtn) cancelBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
+
+  renderPartyLists();
+  serializeParties();
+  renderPendingDocs();
+  clearCaseErrors();
+  updateCfChip();
+  updateDriveFolderChip();
+  showView("caseForm");
+}
+
+function updateCfChip() {
+  const chip = document.getElementById("cf-profile-chip");
+  if (!chip) return;
+  if (selProfile) {
+    chip.innerHTML = `${avatarDiv(selProfile.name, selProfile.avatarColor, 24, selProfile.photoUrl)}<span style="font-size:13px;color:var(--text-muted)">${selProfile.name}</span>`;
+    chip.style.display = "flex";
+  } else {
+    chip.style.display = "none";
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+function enterLocalMode(reason) {
+  localMode = true;
+  const banner = document.getElementById("config-banner");
+  if (banner) {
+    banner.textContent = "⚠️ " + (reason || "Firebase not connected. Data is stored in memory only and will be lost on refresh.");
+    banner.classList.add("show");
+  }
+  showToast("Running in local mode — data will not persist", "error");
+}
+
+function initAppUI() {
+  const loader = document.getElementById("loading-screen");
+  if (loader) loader.style.display = "none";
+  initTheme();
+  bindProfileInputs();
+  initPasswordStrengthChecker();
+  showView("dashboard");
+  renderDashboard();
+}
+
+async function connectDatabase() {
+  if (typeof window._fbReady !== "undefined" && window._fbReady && window._db) {
+    localMode = false;
+    const banner = document.getElementById("config-banner");
+    if (banner) banner.classList.remove("show");
+
+    if (!window._currentUser) {
+      window.location.replace("login.html");
+      return;
+    }
+
+    try {
+      await dbLoad();
+    } catch (err) {
+      console.error("Database load failed:", err);
+      enterLocalMode("Database connection failed.");
+    }
+  } else {
+    enterLocalMode("Firebase initialization failed.");
+  }
+}
+
+let uiBooted = false;
+let dbConnected = false;
+
+document.addEventListener("firebase-ready", () => {
+  if (!uiBooted) {
+    uiBooted = true;
+    initAppUI();
+  }
+  if (!dbConnected) {
+    dbConnected = true;
+    connectDatabase();
+  }
+});
+
+setTimeout(() => {
+  if (!uiBooted) {
+    uiBooted = true;
+    initAppUI();
+  }
+}, 2000);
+
+setTimeout(() => {
+  if (!dbConnected) {
+    dbConnected = true;
+    enterLocalMode("Firebase failed to load. Check your config and network.");
+  }
+}, 6000);
+
+function clearCaseErrors() {
+  ["cf-title-err","cf-filed-err","cf-parties-err","cf-narrative-err"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+  ["cf-case-title","cf-filed","cf-narrative"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("err");
+  });
+}
+
+async function saveCase() {
+  serializeParties();
+  const title = (document.getElementById("cf-case-title")?.value || "").trim();
+  const filed = document.getElementById("cf-filed")?.value || "";
+  const due = document.getElementById("cf-due")?.value || "";
+  const parties = (document.getElementById("cf-parties")?.value || "").trim();
+  const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
+  
+  let valid = true;
+  if (!title) {
+    const err = document.getElementById("cf-title-err");
+    const inp = document.getElementById("cf-case-title");
+    if (err) err.classList.remove("hidden");
+    if (inp) inp.classList.add("err");
+    valid = false;
+  }
+  if (!filed) {
+    const err = document.getElementById("cf-filed-err");
+    const inp = document.getElementById("cf-filed");
+    if (err) err.classList.remove("hidden");
+    if (inp) inp.classList.add("err");
+    valid = false;
+  }
+  if (cfPetitioners.length === 0 || cfRespondents.length === 0) {
+    const err = document.getElementById("cf-parties-err");
+    if (err) err.classList.remove("hidden");
+    valid = false;
+  }
+  if (!narrative) {
+    const err = document.getElementById("cf-narrative-err");
+    const inp = document.getElementById("cf-narrative");
+    if (err) err.classList.remove("hidden");
+    if (inp) inp.classList.add("err");
+    valid = false;
+  }
+  if (!valid) return;
+
+  const saveBtn = document.getElementById("cf-save-btn");
+  if (saveBtn) {
+    if (saveBtn.disabled) return;
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+  }
+
+  const category = document.getElementById("cf-category")?.value || CASE_CATEGORIES[0];
+  const caseType = (document.getElementById("cf-type-input")?.value || "").trim();
+  if (caseType) await saveCaseTypeIfNew(category, caseType);
+
+  const data = {
+    title,
+    filedDate: filed,
+    dueDate: due || null,
+    parties,
+    narrative,
+    category,
+    type: caseType,
+    caseNumber: (document.getElementById("cf-case-number")?.value || "").trim(),
+    docType: (document.getElementById("cf-doc-type")?.value || "").trim(),
+    status: document.getElementById("cf-status")?.value || STATUS_OPTIONS[0],
+    venue: getVenueValue(),
+    documents: pendingDocs,
+  };
+
+  try {
+    const caseCategory = data.category || "Other";
+    const cType = data.type || "Other";
+    const caseTitle = data.title || "Untitled";
+    const profileFolderId = selProfile?.driveFolderId || null;
+    const hadLocalFiles = pendingDocs.some(d => d._localTempId);
+
+    if (typeof syncPendingFilesToDrive === "function") {
+      const syncedDocs = await syncPendingFilesToDrive(caseCategory, cType, caseTitle, profileFolderId);
+      data.documents = syncedDocs.map(d => {
+        const clean = { ...d };
+        delete clean._localTempId;
+        return clean;
+      });
+      const stillLocal = data.documents.some(d => !d.driveFileId && d.name);
+      if (hadLocalFiles && stillLocal) {
+        showToast("Case saved locally — Drive session expired.", "error");
+      }
+    }
+
+    if (hasValidToken() && typeof createOrUpdateCalendarEvent === "function") {
+      showToast("Syncing with Google Calendar...");
+      if (caseFormMode === "edit" && selCase?.calendarEventId) {
+        data.calendarEventId = selCase.calendarEventId;
+      }
+      const eventId = await createOrUpdateCalendarEvent(data);
+      if (eventId) {
+        data.calendarEventId = eventId;
+      }
+    }
+
+    if (caseFormMode === "add") {
+      data.profileId = selProfile.id;
+      data.createdAt = new Date().toISOString().slice(0, 10);
+      data.ownerUid = window._currentUser.uid;
+      data.sharedWith = [];
+      data.allowedUids = [window._currentUser.uid];
+      
+      const newCaseObj = await dbAddCase(data);
+      
+      if (newCaseObj && !cases.some(c => c.id === newCaseObj.id)) {
+        cases.unshift(newCaseObj);
+      } else if (!cases.some(c => c.title === data.title && c.filedDate === data.filedDate)) {
+        cases.unshift(data);
+      }
+
+      showToast("Case added!");
+    } else {
+      if (selCase) {
+        data.ownerUid = selCase.ownerUid || window._currentUser.uid;
+        data.sharedWith = selCase.sharedWith || [];
+        data.allowedUids = selCase.allowedUids || [data.ownerUid];
+      }
+      await dbUpdateCase(selCase.id, data);
+      
+      const idx = cases.findIndex(c => c.id === selCase.id);
+      if (idx >= 0) cases[idx] = { ...cases[idx], ...data };
+      selCase = { ...selCase, ...data };
+
+      showToast("Case updated!");
+    }
+
+    pendingDocs = [];
+
+    renderDashboard();
+    renderAllCases();
+    if (caseFormOrigin === "profileDetail" && selProfile) {
+      renderProfileDetail();
+    }
+
+    navTo(caseFormMode === "add" ? caseFormOrigin : "caseDetail");
+    if (caseFormMode === "edit") renderCaseDetail();
+
+  } catch (err) {
+    console.error("saveCase error:", err);
+    showToast("Failed to save case: " + (err.message || "Unknown error"), "error");
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = caseFormMode === "add" ? "Add Case" : "Save Changes";
+    }
+  }
+}
