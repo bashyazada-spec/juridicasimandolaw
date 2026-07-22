@@ -27,15 +27,21 @@ window.closeDriveWarningModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  BULK MARK BUSY / UNAVAILABLE DATES CONTROLLERS
+//  CLICK-TO-SELECT BULK BUSY DATES PICKER
 // ═══════════════════════════════════════════════════════════════
+let selectedBusyDatesSet = new Set();
+let modalCalYear = new Date().getFullYear();
+let modalCalMonth = new Date().getMonth();
+
 window.openBusyModal = function() {
   const modal = document.getElementById("busy-modal");
   if (!modal) return;
 
+  selectedBusyDatesSet.clear();
+  modalCalYear = new Date().getFullYear();
+  modalCalMonth = new Date().getMonth();
+
   setElVal("busy-title", "In Court / Out of Office");
-  setElVal("busy-start-date", "");
-  setElVal("busy-end-date", "");
   setElVal("busy-notes", "");
 
   const allDayCb = document.getElementById("busy-all-day");
@@ -44,12 +50,119 @@ window.openBusyModal = function() {
     toggleBusyTimeInputs(true);
   }
 
+  renderModalCalendarGrid();
   modal.classList.remove("hidden");
 };
 
 window.closeBusyModal = function() {
   const modal = document.getElementById("busy-modal");
   if (modal) modal.classList.add("hidden");
+};
+
+window.prevModalCalMonth = function() {
+  modalCalMonth--;
+  if (modalCalMonth < 0) {
+    modalCalMonth = 11;
+    modalCalYear--;
+  }
+  renderModalCalendarGrid();
+};
+
+window.nextModalCalMonth = function() {
+  modalCalMonth++;
+  if (modalCalMonth > 11) {
+    modalCalMonth = 0;
+    modalCalYear++;
+  }
+  renderModalCalendarGrid();
+};
+
+window.todayModalCalMonth = function() {
+  const now = new Date();
+  modalCalYear = now.getFullYear();
+  modalCalMonth = now.getMonth();
+  renderModalCalendarGrid();
+};
+
+window.toggleModalBusyDate = function(dateStr) {
+  if (selectedBusyDatesSet.has(dateStr)) {
+    selectedBusyDatesSet.delete(dateStr);
+  } else {
+    selectedBusyDatesSet.add(dateStr);
+  }
+  renderModalCalendarGrid();
+};
+
+window.renderModalCalendarGrid = function() {
+  const titleEl = document.getElementById("modal-cal-month-title");
+  const gridEl = document.getElementById("modal-calendar-grid");
+  const countLabel = document.getElementById("modal-busy-count-label");
+  const submitBtn = document.getElementById("busy-submit-btn");
+
+  if (!gridEl) return;
+
+  const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  if (titleEl) {
+    titleEl.textContent = `${monthNames[modalCalMonth]} ${modalCalYear}`;
+  }
+
+  const selectedCount = selectedBusyDatesSet.size;
+  if (countLabel) {
+    countLabel.textContent = `${selectedCount} date${selectedCount !== 1 ? 's' : ''} selected`;
+  }
+  if (submitBtn) {
+    submitBtn.textContent = `Block Selected Dates (${selectedCount})`;
+  }
+
+  const firstDayObj = new Date(modalCalYear, modalCalMonth, 1);
+  const startingDayOfWeek = firstDayObj.getDay();
+  const daysInMonth = new Date(modalCalYear, modalCalMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(modalCalYear, modalCalMonth, 0).getDate();
+
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+
+  let html = `
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Sun</div>
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Mon</div>
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Tue</div>
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Wed</div>
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Thu</div>
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Fri</div>
+    <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Sat</div>
+  `;
+
+  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+    const dayNum = prevMonthDays - i;
+    html += `<div class="cal-day-cell other-month" style="min-height:38px;padding:4px"><span class="cal-day-num" style="font-size:11px">${dayNum}</span></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const mStr = String(modalCalMonth + 1).padStart(2, '0');
+    const dStr = String(day).padStart(2, '0');
+    const fullDateStr = `${modalCalYear}-${mStr}-${dStr}`;
+
+    const isToday = fullDateStr === todayStr;
+    const isSelected = selectedBusyDatesSet.has(fullDateStr);
+
+    html += `
+      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" 
+           style="min-height:38px;padding:4px;cursor:pointer;align-items:center;justify-content:center;${isSelected ? 'background:rgba(239, 68, 68, 0.22) !important;border-color:var(--red) !important;' : ''}" 
+           onclick="toggleModalBusyDate('${fullDateStr}')">
+        <span class="cal-day-num" style="font-size:12px;${isSelected ? 'color:var(--red);font-weight:800' : ''}">
+          ${day} ${isSelected ? '🚫' : ''}
+        </span>
+      </div>
+    `;
+  }
+
+  const totalCells = startingDayOfWeek + daysInMonth;
+  const remainingCells = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remainingCells; i++) {
+    html += `<div class="cal-day-cell other-month" style="min-height:38px;padding:4px"><span class="cal-day-num" style="font-size:11px">${i}</span></div>`;
+  }
+
+  gridEl.innerHTML = html;
 };
 
 window.toggleBusyTimeInputs = function(isAllDay) {
@@ -61,15 +174,18 @@ window.toggleBusyTimeInputs = function(isAllDay) {
 
 window.submitBusyDates = async function() {
   const title = (document.getElementById("busy-title")?.value || "").trim();
-  const startDateStr = document.getElementById("busy-start-date")?.value || "";
-  const endDateStr = document.getElementById("busy-end-date")?.value || "";
   const isAllDay = document.getElementById("busy-all-day")?.checked || false;
   const startTime = document.getElementById("busy-start-time")?.value || "08:00";
   const endTime = document.getElementById("busy-end-time")?.value || "17:00";
   const notes = (document.getElementById("busy-notes")?.value || "").trim();
 
-  if (!title || !startDateStr || !endDateStr) {
-    showToast("Please provide a title and valid start and end dates.", "error");
+  if (!title) {
+    showToast("Please enter a title or reason.", "error");
+    return;
+  }
+
+  if (selectedBusyDatesSet.size === 0) {
+    showToast("Please click and select at least one date on the calendar.", "error");
     return;
   }
 
@@ -80,28 +196,13 @@ window.submitBusyDates = async function() {
     return;
   }
 
-  const startD = new Date(startDateStr + "T00:00:00");
-  const endD = new Date(endDateStr + "T00:00:00");
-
-  if (startD > endD) {
-    showToast("End date must be on or after start date.", "error");
-    return;
-  }
-
   try {
     showToast("Blocking dates on schedule...");
 
-    const cur = new Date(startD);
+    const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
     let addedCount = 0;
 
-    while (cur <= endD) {
-      const year = cur.getFullYear();
-      const month = String(cur.getMonth() + 1).padStart(2, "0");
-      const day = String(cur.getDate()).padStart(2, "0");
-      const dateStr = `${year}-${month}-${day}`;
-
-      const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
-
+    for (const dateStr of selectedBusyDatesSet) {
       const apptData = {
         title: "🚫 " + title,
         date: dateStr,
@@ -123,9 +224,7 @@ window.submitBusyDates = async function() {
         apptData.id = "local_busy_" + Date.now() + "_" + Math.random().toString(36).slice(2);
         appointments.push(apptData);
       }
-
       addedCount++;
-      cur.setDate(cur.getDate() + 1);
     }
 
     showToast(`${addedCount} day(s) blocked as Busy!`);
