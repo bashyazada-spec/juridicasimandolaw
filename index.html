@@ -287,37 +287,59 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW WITH INTERACTIVE MONTH GRID ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
           <div class="page-title">Firm Schedule</div>
-          <div class="page-sub">Comprehensive timeline and appointments calendar across the firm</div>
+          <div class="page-sub">Interactive calendar, pressable dates, and appointments schedule</div>
         </div>
       </div>
       
-      <div class="grid4" style="margin-bottom:24px">
+      <div class="grid4" style="margin-bottom:20px">
         <div style="grid-column: 1/3">
           <label class="field-label">View Schedule For</label>
-          <select class="field-input" id="calendar-filter-select" onchange="renderCalendarTimeline()">
+          <select class="field-input" id="calendar-filter-select" onchange="renderCalendarView()">
             <option value="Everyone">Everyone (Firm Overview)</option>
           </select>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns: 1.5fr 1fr;gap:24px">
-        <div class="card">
-          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px">
-            🗓️ Scheduled Timeline
+        <!-- LEFT: Interactive Monthly Calendar Grid Card -->
+        <div class="card" id="calendar-month-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div style="font-size:18px;font-weight:700;color:var(--text)" id="cal-month-title">Month Year</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄ Prev</button>
+              <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
+              <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">Next ►</button>
+            </div>
           </div>
-          <div id="calendar-timeline-list"></div>
+          
+          <div class="cal-grid" id="calendar-grid-container">
+            <!-- Rendered dynamically by renderMonthlyCalendarGrid() -->
+          </div>
         </div>
-        
-        <div class="card">
-          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px">
-            🤝 Approved Appointments
+
+        <!-- RIGHT: Selected Day Agenda & Approved Appointments -->
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div style="font-size:15px;font-weight:700;color:var(--text)" id="calendar-selected-date-title">
+                🗓️ All Scheduled Events
+              </div>
+              <button class="btn btn-ghost btn-sm" id="cal-clear-date-btn" onclick="clearSelectedCalDate()" style="display:none;font-size:11px;padding:2px 8px">Show All</button>
+            </div>
+            <div id="calendar-timeline-list"></div>
           </div>
-          <div id="calendar-approved-list"></div>
+          
+          <div class="card">
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+              🤝 Approved Appointments
+            </div>
+            <div id="calendar-approved-list"></div>
+          </div>
         </div>
       </div>
     </div>
