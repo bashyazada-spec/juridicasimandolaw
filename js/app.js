@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  DELETE CONFIRMATION — TYPE VERIFICATION TO CONFIRM
-//  CRITICAL: Store target in a closure variable, NOT global deleteTarget
+//  DELETE CONFIRMATION SYSTEM
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
 let caseFormOrigin = "profileDetail"; // Router state to track form arrival
@@ -17,6 +16,7 @@ function setElVal(id, val) {
 }
 
 function confirmDeleteProfile() {
+  if (!selProfile) return;
   const cnt = cases.filter(c => c.profileId === selProfile.id).length;
   _pendingDeleteTarget = { type: "profile", id: selProfile.id, name: selProfile.name, caseCount: cnt };
 
@@ -37,6 +37,7 @@ function confirmDeleteProfile() {
 }
 
 function confirmDeleteCase() {
+  if (!selCase) return;
   _pendingDeleteTarget = { 
     type: "case", 
     id: selCase.id, 
@@ -65,50 +66,59 @@ function openDeleteModal() {
   const input = document.getElementById("del-confirm-input");
   const btn = document.getElementById("del-confirm-btn");
   const err = document.getElementById("del-input-err");
-  if (!modal) return;
+  if (!modal || !input || !btn) return;
 
   const targetLabel = document.getElementById("del-confirm-target-text");
   const targetText = targetLabel ? targetLabel.textContent.trim() : "DELETE";
 
-  if (input) input.value = "";
-  if (btn) {
-    btn.disabled = true;
-    btn.style.opacity = "0.5";
-  }
+  input.value = "";
+  btn.disabled = true;
+  btn.style.opacity = "0.5";
+  btn.style.cursor = "not-allowed";
   if (err) err.classList.add("hidden");
 
-  if (btn && btn.parentNode) {
-    const newBtn = btn.cloneNode(true);
+  // Rebind clean button node to remove leftover click listeners
+  const newBtn = btn.cloneNode(true);
+  if (btn.parentNode) {
     btn.parentNode.replaceChild(newBtn, btn);
-
-    if (input) {
-      input.oninput = () => {
-        const val = input.value.trim();
-        const expected = targetText;
-        const isMatched = expected.includes("@") ? (val === expected) : (val.toUpperCase() === "DELETE");
-
-        if (isMatched) {
-          newBtn.disabled = false;
-          newBtn.style.opacity = "1";
-          if (err) err.classList.add("hidden");
-        } else {
-          newBtn.disabled = true;
-          newBtn.style.opacity = "0.5";
-        }
-      };
-
-      input.onkeydown = (e) => {
-        if (e.key === "Enter" && !newBtn.disabled) {
-          executeDelete();
-        }
-      };
-    }
-
-    newBtn.onclick = () => executeDelete();
   }
 
+  const checkMatch = () => {
+    const val = input.value.trim();
+    const expected = targetText.trim();
+    
+    // Accepts 'delete' in any case (e.g., 'delete', 'Delete', 'DELETE') or email
+    const isMatched = expected.includes("@") 
+      ? (val.toLowerCase() === expected.toLowerCase())
+      : (val.toUpperCase() === "DELETE");
+
+    if (isMatched) {
+      newBtn.disabled = false;
+      newBtn.style.opacity = "1";
+      newBtn.style.cursor = "pointer";
+      if (err) err.classList.add("hidden");
+    } else {
+      newBtn.disabled = true;
+      newBtn.style.opacity = "0.5";
+      newBtn.style.cursor = "not-allowed";
+    }
+  };
+
+  input.oninput = checkMatch;
+  input.onkeyup = checkMatch;
+
+  input.onkeydown = (e) => {
+    if (e.key === "Enter" && !newBtn.disabled) {
+      executeDelete();
+    }
+  };
+
+  newBtn.onclick = () => {
+    if (!newBtn.disabled) executeDelete();
+  };
+
   modal.classList.remove("hidden");
-  if (input) setTimeout(() => input.focus(), 50);
+  setTimeout(() => input.focus(), 50);
 }
 
 function closeDeleteModal() {
