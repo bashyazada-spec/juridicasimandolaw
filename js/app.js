@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  DELETE CONFIRMATION SYSTEM
+//  DELETE CONFIRMATION & DRIVE WARNING MODAL CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
 let caseFormOrigin = "profileDetail"; // Router state to track form arrival
@@ -14,6 +14,17 @@ function setElVal(id, val) {
   const el = document.getElementById(id);
   if (el) el.value = val;
 }
+
+// Global Google Drive Disconnected Warning Modal helpers
+window.openDriveWarningModal = function() {
+  const modal = document.getElementById("drive-warning-modal");
+  if (modal) modal.classList.remove("hidden");
+};
+
+window.closeDriveWarningModal = function() {
+  const modal = document.getElementById("drive-warning-modal");
+  if (modal) modal.classList.add("hidden");
+};
 
 // Global function called on every keypress inside the delete input
 window.checkDeleteInput = function() {
@@ -138,6 +149,10 @@ async function executeDelete() {
       cases = cases.filter(c => c.id !== target.id);
       selCase = null;
       showToast("Case deleted successfully", "error");
+      
+      // Auto-update screens
+      renderDashboard();
+      renderAllCases();
       showView("profileDetail");
       renderProfileDetail();
     } else if (target.type === "profile") {
@@ -796,6 +811,11 @@ async function openAddCase() {
     return;
   }
 
+  // Trigger Google Drive Warning Popup if not authorized
+  if (typeof hasValidToken === "function" && !hasValidToken()) {
+    openDriveWarningModal();
+  }
+
   selProfile = myProf;
   caseFormMode = "add";
   pendingDocs = [];
@@ -1069,10 +1089,17 @@ async function saveCase() {
       data.ownerUid = window._currentUser.uid;
       data.sharedWith = [];
       data.allowedUids = [window._currentUser.uid];
-      await dbAddCase(data);
+      
+      const newCaseObj = await dbAddCase(data);
+      
+      // Instantly insert into local cases array so UI updates without page refresh
+      if (newCaseObj && !cases.some(c => c.id === newCaseObj.id)) {
+        cases.unshift(newCaseObj);
+      } else if (!cases.some(c => c.title === data.title && c.filedDate === data.filedDate)) {
+        cases.unshift(data);
+      }
+
       showToast("Case added!");
-      showView(caseFormOrigin);
-      if (caseFormOrigin === "profileDetail") renderProfileDetail();
     } else {
       if (selCase) {
         data.ownerUid = selCase.ownerUid || window._currentUser.uid;
@@ -1080,12 +1107,27 @@ async function saveCase() {
         data.allowedUids = selCase.allowedUids || [data.ownerUid];
       }
       await dbUpdateCase(selCase.id, data);
+      
+      // Instantly update local array entry
+      const idx = cases.findIndex(c => c.id === selCase.id);
+      if (idx >= 0) cases[idx] = { ...cases[idx], ...data };
       selCase = { ...selCase, ...data };
+
       showToast("Case updated!");
-      showView("caseDetail");
-      renderCaseDetail();
     }
+
     pendingDocs = [];
+
+    // Instant UI View updates without requiring page reload
+    renderDashboard();
+    renderAllCases();
+    if (caseFormOrigin === "profileDetail" && selProfile) {
+      renderProfileDetail();
+    }
+
+    navTo(caseFormMode === "add" ? caseFormOrigin : "caseDetail");
+    if (caseFormMode === "edit") renderCaseDetail();
+
   } catch (err) {
     console.error("saveCase error:", err);
     showToast("Failed to save case: " + (err.message || "Unknown error"), "error");
