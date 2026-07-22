@@ -15,6 +15,33 @@ function setElVal(id, val) {
   if (el) el.value = val;
 }
 
+// Global function called on every keypress inside the delete input
+window.checkDeleteInput = function() {
+  const input = document.getElementById("del-confirm-input");
+  const btn = document.getElementById("del-confirm-btn");
+  const err = document.getElementById("del-input-err");
+  const targetLabel = document.getElementById("del-confirm-target-text");
+  if (!input || !btn) return;
+
+  const val = input.value.trim();
+  const expected = targetLabel ? targetLabel.textContent.trim() : "DELETE";
+
+  const isMatched = expected.includes("@") 
+    ? (val.toLowerCase() === expected.toLowerCase())
+    : (val.toUpperCase() === "DELETE");
+
+  if (isMatched) {
+    btn.disabled = false;
+    btn.style.opacity = "1";
+    btn.style.cursor = "pointer";
+    if (err) err.classList.add("hidden");
+  } else {
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.style.cursor = "not-allowed";
+  }
+};
+
 function confirmDeleteProfile() {
   if (!selProfile) return;
   const cnt = cases.filter(c => c.profileId === selProfile.id).length;
@@ -66,59 +93,26 @@ function openDeleteModal() {
   const input = document.getElementById("del-confirm-input");
   const btn = document.getElementById("del-confirm-btn");
   const err = document.getElementById("del-input-err");
-  if (!modal || !input || !btn) return;
+  if (!modal) return;
 
-  const targetLabel = document.getElementById("del-confirm-target-text");
-  const targetText = targetLabel ? targetLabel.textContent.trim() : "DELETE";
-
-  input.value = "";
-  btn.disabled = true;
-  btn.style.opacity = "0.5";
-  btn.style.cursor = "not-allowed";
+  if (input) input.value = "";
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.style.cursor = "not-allowed";
+  }
   if (err) err.classList.add("hidden");
 
-  // Rebind clean button node to remove leftover click listeners
-  const newBtn = btn.cloneNode(true);
-  if (btn.parentNode) {
-    btn.parentNode.replaceChild(newBtn, btn);
+  if (input) {
+    input.onkeydown = (e) => {
+      if (e.key === "Enter" && btn && !btn.disabled) {
+        executeDelete();
+      }
+    };
   }
 
-  const checkMatch = () => {
-    const val = input.value.trim();
-    const expected = targetText.trim();
-    
-    // Accepts 'delete' in any case (e.g., 'delete', 'Delete', 'DELETE') or email
-    const isMatched = expected.includes("@") 
-      ? (val.toLowerCase() === expected.toLowerCase())
-      : (val.toUpperCase() === "DELETE");
-
-    if (isMatched) {
-      newBtn.disabled = false;
-      newBtn.style.opacity = "1";
-      newBtn.style.cursor = "pointer";
-      if (err) err.classList.add("hidden");
-    } else {
-      newBtn.disabled = true;
-      newBtn.style.opacity = "0.5";
-      newBtn.style.cursor = "not-allowed";
-    }
-  };
-
-  input.oninput = checkMatch;
-  input.onkeyup = checkMatch;
-
-  input.onkeydown = (e) => {
-    if (e.key === "Enter" && !newBtn.disabled) {
-      executeDelete();
-    }
-  };
-
-  newBtn.onclick = () => {
-    if (!newBtn.disabled) executeDelete();
-  };
-
   modal.classList.remove("hidden");
-  setTimeout(() => input.focus(), 50);
+  if (input) setTimeout(() => input.focus(), 50);
 }
 
 function closeDeleteModal() {
