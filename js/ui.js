@@ -753,7 +753,7 @@ function onFilterCategoryChange(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  INTERACTIVE MONTHLY CALENDAR GRID & TIMELINE
+//  INTERACTIVE MONTHLY CALENDAR GRID & DIRECT 1-CLICK TOGGLE
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth(); // 0-indexed
@@ -803,15 +803,59 @@ function todayCalMonth() {
   renderCalendarTimeline();
 }
 
-function selectCalDay(dateStr) {
-  if (selectedCalDate === dateStr) {
-    selectedCalDate = null;
+// 1-Click Toggle: 1st Click turns RED (Busy), 2nd Click removes RED (Unblocks)
+window.selectCalDay = async function(dateStr) {
+  const u = window._currentUser;
+  if (!u) return;
+
+  const myBusyAppt = appointments.find(a => 
+    a.type === "busy" && 
+    (a.targetUid === u.uid || a.requesterUid === u.uid) && 
+    a.date === dateStr
+  );
+
+  if (myBusyAppt) {
+    showToast("Unblocking date...");
+    if (myBusyAppt.id && !myBusyAppt.id.startsWith("local_") && typeof dbDeleteAppointment === "function") {
+      await dbDeleteAppointment(myBusyAppt.id).catch(err => console.warn("Delete appt warning:", err));
+    }
+    appointments = appointments.filter(a => a.id !== myBusyAppt.id);
+    showToast("Date unblocked!");
   } else {
-    selectedCalDate = dateStr;
+    const myProf = profiles.find(p => p.ownerUid === u.uid) || { name: u.displayName || u.email || "Attorney" };
+    const apptData = {
+      title: "🚫 In Court / Out of Office",
+      date: dateStr,
+      time: "All Day",
+      description: "Unavailable / Busy",
+      requesterUid: u.uid,
+      requesterName: myProf.name,
+      targetUid: u.uid,
+      targetName: myProf.name,
+      status: "accepted",
+      type: "busy"
+    };
+
+    let apptId = null;
+    try {
+      if (typeof dbAddAppointment === "function") {
+        apptId = await dbAddAppointment(apptData);
+      }
+    } catch (err) {
+      console.warn("Firestore busy date write warning:", err);
+    }
+
+    if (apptId) apptData.id = apptId;
+    else apptData.id = "local_busy_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+
+    appointments.push(apptData);
+    showToast("Date marked as Busy! 🚫");
   }
+
+  selectedCalDate = dateStr;
   renderMonthlyCalendarGrid();
   renderCalendarTimeline();
-}
+};
 
 function clearSelectedCalDate() {
   selectedCalDate = null;
@@ -896,7 +940,7 @@ function renderMonthlyCalendarGrid() {
     if (isSelected) {
       cellStyle = "border-color:var(--gold) !important; background:rgba(201,168,76,0.15) !important;";
     } else if (hasBusy) {
-      cellStyle = "border-color:rgba(248,113,113,0.4) !important; background:rgba(248,113,113,0.12) !important;";
+      cellStyle = "border-color:rgba(248,113,113,0.5) !important; background:rgba(248,113,113,0.16) !important;";
     }
 
     let dotsHtml = "";
@@ -912,7 +956,7 @@ function renderMonthlyCalendarGrid() {
       <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" 
            style="${cellStyle}" 
            onclick="selectCalDay('${fullDateStr}')">
-        <span class="cal-day-num" style="${hasBusy ? 'color:var(--red);font-weight:700' : ''}">${day}</span>
+        <span class="cal-day-num" style="${hasBusy ? 'color:var(--red);font-weight:800' : ''}">${day}</span>
         ${dotsHtml}
       </div>
     `;
@@ -977,10 +1021,11 @@ function renderCalendarTimeline() {
   activeAppts.forEach(appt => {
     const isBusy = appt.type === "busy";
     timelineEvents.push({
+      id: appt.id,
       type: isBusy ? "busy" : "appointment",
       title: appt.title || "Appointment Sync",
       sub: isBusy 
-        ? "Status: Out of Office / Busy" + (appt.description ? "\n\"" + appt.description + "\"" : "")
+        ? "Status: Out of Office / Busy (Click date again to unblock)" + (appt.description ? "\n\"" + appt.description + "\"" : "")
         : "Proposer: " + appt.requesterName + " · Host: " + appt.targetName + (appt.description ? "\n\"" + appt.description + "\"" : ""),
       date: appt.date,
       time: appt.time,
@@ -998,6 +1043,8 @@ function renderCalendarTimeline() {
 
   timelineEl.innerHTML = timelineEvents.map(ev => {
     const d = new Date(ev.date + 'T00:00:00');
+    const deleteBtn = ev.type === "busy" ? `<button onclick="deleteBusySlot('${ev.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="Unblock Date">🗑️</button>` : "";
+
     return `
       <div class="case-row" style="cursor:default;margin-bottom:10px">
         <div style="text-align:center;background:rgba(201,168,76,0.06);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:54px;margin-right:8px">
@@ -1005,9 +1052,12 @@ function renderCalendarTimeline() {
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px">${d.getDate()}</div>
         </div>
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${ev.color}15;color:${ev.color}">${ev.label}</span>
-            ${ev.time ? '<span style="font-size:11px;color:var(--text-dim)">⏰ ' + ev.time + '</span>' : ""}
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${ev.color}15;color:${ev.color}">${ev.label}</span>
+              ${ev.time ? '<span style="font-size:11px;color:var(--text-dim)">⏰ ' + ev.time + '</span>' : ""}
+            </div>
+            ${deleteBtn}
           </div>
           <div style="font-weight:700;font-size:14px;color:var(--text);margin-top:6px">${escHtml(ev.title)}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px;white-space:pre-wrap">${escHtml(ev.sub)}</div>
