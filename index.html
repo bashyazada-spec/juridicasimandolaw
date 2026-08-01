@@ -72,7 +72,6 @@
         <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office / Vacation" value="In Court / Out of Office" autocomplete="off"/>
       </div>
 
-      <!-- Modal Interactive Calendar Picker -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:14px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -219,9 +218,6 @@
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
     <div class="logo-wrap">
-      <!-- Retract Sidebar Button inside header -->
-      <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="Retract Sidebar">◀</button>
-
       <svg class="logo-img" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
         <rect x="10" y="10" width="80" height="100" rx="4" fill="none" stroke="#c9a84c" stroke-width="2"/>
         <line x1="50" y1="20" x2="50" y2="100" stroke="#c9a84c" stroke-width="2"/>
@@ -236,7 +232,6 @@
       </svg>
       <div class="logo-sub">Case Management System</div>
     </div>
-
     <div style="flex:1">
       <div class="nav-section">Overview</div>
       <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')">⚖️&nbsp;&nbsp;Dashboard</button>
@@ -291,8 +286,8 @@
   <!-- ══════ MAIN ══════ -->
   <div id="main">
 
-    <!-- Floating Hamburger Button when Sidebar is Retracted -->
-    <button id="floating-sidebar-btn" class="floating-sidebar-btn" onclick="toggleSidebar()" title="Expand Sidebar">☰</button>
+    <!-- Single Hamburger Toggle Button Positioned Outside Sidebar -->
+    <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">☰</button>
 
     <!-- ── DASHBOARD ── -->
     <div id="view-dashboard" class="view hidden">
