@@ -1,4 +1,25 @@
 // ═══════════════════════════════════════════════════════════════
+//  GLOBAL SIDEBAR TOGGLE & RETRACTION STATE
+// ═══════════════════════════════════════════════════════════════
+window.toggleSidebar = function() {
+  document.body.classList.toggle("sidebar-collapsed");
+  const isCollapsed = document.body.classList.contains("sidebar-collapsed");
+  try {
+    localStorage.setItem("simando-sidebar-collapsed", isCollapsed ? "true" : "false");
+  } catch (e) { /* ignore */ }
+};
+
+// Auto-restore saved sidebar state on load
+(function restoreSidebarState() {
+  try {
+    const saved = localStorage.getItem("simando-sidebar-collapsed");
+    if (saved === "true") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  } catch (e) { /* ignore */ }
+})();
+
+// ═══════════════════════════════════════════════════════════════
 //  DELETE CONFIRMATION & MODAL CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
@@ -1075,7 +1096,6 @@ async function openAddCase() {
     return;
   }
 
-  // Trigger Google Drive Warning Popup if not authorized
   if (typeof hasValidToken === "function" && !hasValidToken()) {
     openDriveWarningModal();
   }
