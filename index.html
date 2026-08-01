@@ -213,8 +213,17 @@
   </div>
 </div>
 
+<!-- Top bar with menu toggle -->
+<div id="topbar">
+  <button id="sidebar-toggle" class="burger-btn" type="button" onclick="toggleSidebar()" aria-label="Toggle menu" aria-expanded="true">
+    <span class="burger-lines"><span></span><span></span><span></span></span>
+  </button>
+  <div class="topbar-brand"><span class="tb-full">Simando</span><span class="tb-law">Law</span></div>
+</div>
+
 <!-- Main App -->
 <div id="app">
+  <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
 
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
@@ -832,6 +841,7 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
+<script src="js/sidebar.js"></script>
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/drive.js"></script>
