@@ -10,29 +10,26 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy:        #0a1520;
-      --gold:        #c9a55c;
-      --gold-light:  #e0c080;
-      --gold-pale:   #f5e6c4;
-      --gold-dim:    rgba(201,165,92,0.09);
-      --gold-border: rgba(201,165,92,0.26);
-      --gold-border2:rgba(201,165,92,0.14);
-      --bg:          #060c13;
-      --bg2:         #08111a;
-      --surface:     #0c1826;
-      --surface2:    #091422;
-      --border:      #162033;
-      --border-soft: #1c2d3f;
-      --text:        #d8e4f0;
-      --text-muted:  #6b82a0;
-      --text-dim:    #344556;
-      --red:         #f87171;
+      --gold:        #b8905a;
+      --gold-light:  #d3ac7b;
+      --gold-pale:   #ecdcc4;
+      --gold-dim:    rgba(184,144,90,0.08);
+      --gold-border: rgba(184,144,90,0.30);
+      --gold-border2:rgba(184,144,90,0.16);
+      --bg:          #0d0d0f;
+      --surface:     #17181b;
+      --surface2:    #1b1c20;
+      --border:      #26272b;
+      --border-soft: #2c2d32;
+      --text:        #ebeae7;
+      --text-muted:  #8d8d93;
+      --text-dim:    #57575d;
+      --red:         #f27272;
       --font-display:'Cormorant Garamond', Georgia, serif;
       --font-body:   'DM Sans', system-ui, sans-serif;
-      --radius:      10px;
-      --radius-lg:   16px;
-      --shadow:      0 12px 48px rgba(0,0,0,0.6);
-      --shadow-gold: 0 4px 24px rgba(201,165,92,0.18);
+      --radius:      8px;
+      --radius-lg:   12px;
+      --shadow:      0 16px 40px rgba(0,0,0,0.4);
     }
 
     html, body { height: 100%; }
@@ -46,132 +43,54 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
       position: relative;
-    }
-
-    /* ── Atmospheric background ── */
-    .bg-layer {
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    }
-    .bg-gradient {
-      position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(201,165,92,0.06) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 80% at 80% 90%, rgba(10,21,32,0.8) 0%, transparent 70%),
-        linear-gradient(160deg, #060c13 0%, #08111a 50%, #060a10 100%);
-    }
-    .bg-grid {
-      position: absolute; inset: 0; opacity: 0.025;
-      background-image:
-        linear-gradient(rgba(201,165,92,0.5) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(201,165,92,0.5) 1px, transparent 1px);
-      background-size: 48px 48px;
-    }
-    .bg-orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      animation: orbFloat 12s ease-in-out infinite;
-    }
-    .bg-orb-1 {
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(201,165,92,0.07) 0%, transparent 70%);
-      top: -200px; left: -100px;
-      animation-delay: 0s;
-    }
-    .bg-orb-2 {
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(10,21,32,0.9) 0%, transparent 70%);
-      bottom: -150px; right: -100px;
-      animation-delay: -6s;
-    }
-    @keyframes orbFloat {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%       { transform: translate(30px, -20px) scale(1.05); }
-      66%       { transform: translate(-20px, 15px) scale(0.97); }
-    }
-
-    /* ── Scale lines (decorative) ── */
-    .scale-line {
-      position: absolute;
-      width: 1px;
-      background: linear-gradient(to bottom, transparent, rgba(201,165,92,0.15), transparent);
-      animation: scalePulse 4s ease-in-out infinite;
-    }
-    .scale-line-l { height: 200px; top: 50%; left: 10%; transform: translateY(-50%); animation-delay: 0s; }
-    .scale-line-r { height: 200px; top: 50%; right: 10%; transform: translateY(-50%); animation-delay: -2s; }
-    @keyframes scalePulse {
-      0%, 100% { opacity: 0.3; }
-      50%       { opacity: 0.8; }
+      padding: 20px;
     }
 
     /* ── Card ── */
     .card {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 420px;
-      margin: 1rem;
-      background: linear-gradient(145deg, rgba(12,24,38,0.95) 0%, rgba(8,17,26,0.98) 100%);
-      border: 1px solid var(--gold-border2);
-      border-radius: 20px;
-      padding: 44px 40px 40px;
-      box-shadow: var(--shadow), 0 0 0 1px rgba(201,165,92,0.05), inset 0 1px 0 rgba(201,165,92,0.08);
-      animation: cardReveal 0.7s cubic-bezier(0.22,1,0.36,1) both;
+      width: 100%; max-width: 400px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 36px 36px;
+      box-shadow: var(--shadow);
     }
-    @keyframes cardReveal {
-      from { opacity: 0; transform: translateY(24px) scale(0.97); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    /* ── Corner accents ── */
-    .card::before, .card::after {
-      content: '';
-      position: absolute;
-      width: 20px; height: 20px;
-      border-color: var(--gold);
-      border-style: solid;
-      opacity: 0.4;
-    }
-    .card::before { top: 16px; left: 16px; border-width: 1px 0 0 1px; border-radius: 4px 0 0 0; }
-    .card::after  { bottom: 16px; right: 16px; border-width: 0 1px 1px 0; border-radius: 0 0 4px 0; }
 
     /* ── Logo ── */
     .logo-wrap {
       display: flex; align-items: center; gap: 12px;
-      margin-bottom: 32px;
-      animation: fadeUp 0.6s 0.15s both;
+      margin-bottom: 30px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--border);
     }
     .logo-icon {
-      width: 40px; height: 40px;
+      width: 38px; height: 38px;
       background: var(--gold-dim);
       border: 1px solid var(--gold-border);
-      border-radius: 10px;
+      border-radius: var(--radius);
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
+      font-size: 18px; flex-shrink: 0;
     }
     .logo-text { display: flex; flex-direction: column; line-height: 1; }
     .logo-name {
       font-family: var(--font-display);
       font-size: 18px; font-weight: 600;
-      color: var(--gold-pale);
-      letter-spacing: 0.04em;
+      color: var(--text);
+      letter-spacing: 0.02em;
     }
     .logo-sub {
       font-size: 9px; font-weight: 500;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--text-muted); margin-top: 3px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--text-dim); margin-top: 4px;
     }
 
     /* ── Heading ── */
-    .heading {
-      animation: fadeUp 0.6s 0.2s both;
-      margin-bottom: 28px;
-    }
+    .heading { margin-bottom: 26px; }
     .heading h1 {
       font-family: var(--font-display);
-      font-size: 28px; font-weight: 500;
+      font-size: 26px; font-weight: 500;
       color: var(--text);
-      letter-spacing: 0.01em;
       line-height: 1.2;
     }
     .heading p {
@@ -180,17 +99,12 @@
     }
 
     /* ── Form ── */
-    .form-group {
-      margin-bottom: 16px;
-      animation: fadeUp 0.6s both;
-    }
-    .form-group:nth-child(1) { animation-delay: 0.25s; }
-    .form-group:nth-child(2) { animation-delay: 0.30s; }
+    .form-group { margin-bottom: 16px; }
 
     label {
       display: block;
-      font-size: 11px; font-weight: 500;
-      letter-spacing: 0.1em; text-transform: uppercase;
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.09em; text-transform: uppercase;
       color: var(--text-muted);
       margin-bottom: 7px;
     }
@@ -198,34 +112,33 @@
     .input-wrap { position: relative; }
     .input-icon {
       position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
-      font-size: 15px; opacity: 0.45; pointer-events: none;
+      font-size: 14px; opacity: 0.4; pointer-events: none;
     }
     .input-toggle {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
       background: none; border: none; cursor: pointer;
-      font-size: 15px; opacity: 0.4; padding: 4px;
-      color: var(--text-muted); transition: opacity 0.2s;
+      font-size: 14px; opacity: 0.4; padding: 4px;
+      color: var(--text-muted); transition: opacity 0.15s;
     }
     .input-toggle:hover { opacity: 0.8; }
 
     input[type="email"], input[type="password"], input[type="text"] {
       width: 100%;
-      background: rgba(6,12,19,0.7);
-      border: 1px solid var(--border-soft);
+      background: var(--surface2);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
       color: var(--text);
       font-family: var(--font-body);
       font-size: 14px;
-      padding: 11px 40px 11px 38px;
+      padding: 10px 38px 10px 36px;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
     input:focus {
-      border-color: var(--gold-border);
-      background: rgba(201,165,92,0.03);
-      box-shadow: 0 0 0 3px rgba(201,165,92,0.07);
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px var(--gold-dim);
     }
-    input.err { border-color: rgba(248,113,113,0.5); }
+    input.err { border-color: rgba(242,114,114,0.5); }
     input::placeholder { color: var(--text-dim); }
 
     .field-err {
@@ -236,86 +149,56 @@
     /* ── Buttons ── */
     .btn-primary {
       width: 100%;
-      background: linear-gradient(135deg, #c9a55c 0%, #b8913f 100%);
+      background: var(--gold);
       border: none; border-radius: var(--radius);
-      color: #060c13;
+      color: #0d0d0f;
       font-family: var(--font-body);
       font-size: 14px; font-weight: 600;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.01em;
       padding: 12px;
       cursor: pointer;
-      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-      box-shadow: var(--shadow-gold);
-      animation: fadeUp 0.6s 0.4s both;
+      transition: background 0.15s;
     }
-    .btn-primary:hover:not(:disabled) {
-      opacity: 0.92;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 28px rgba(201,165,92,0.28);
-    }
-    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:hover:not(:disabled) { background: var(--gold-light); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Error banner ── */
     .error-banner {
-      background: rgba(248,113,113,0.08);
-      border: 1px solid rgba(248,113,113,0.25);
+      background: transparent;
+      border: 1px solid rgba(242,114,114,0.3);
       border-radius: var(--radius);
-      color: #fca5a5;
+      color: #f7a8a8;
       font-size: 13px;
       padding: 10px 14px;
       margin-bottom: 16px;
       display: none;
-      animation: shake 0.4s ease;
     }
     .error-banner.show { display: block; }
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      20%       { transform: translateX(-6px); }
-      40%       { transform: translateX(6px); }
-      60%       { transform: translateX(-4px); }
-      80%       { transform: translateX(4px); }
-    }
 
     /* ── Footer links ── */
     .footer-links {
-      margin-top: 24px; text-align: center;
+      margin-top: 22px; text-align: center;
       font-size: 12px; color: var(--text-muted);
-      animation: fadeUp 0.6s 0.5s both;
     }
     .footer-links a {
       color: var(--gold); text-decoration: none;
-      transition: color 0.2s;
+      transition: color 0.15s;
     }
     .footer-links a:hover { color: var(--gold-light); }
 
     /* ── Spinner ── */
     .spinner {
       width: 16px; height: 16px;
-      border: 2px solid rgba(6,12,19,0.3);
-      border-top-color: #060c13;
+      border: 2px solid rgba(13,13,15,0.3);
+      border-top-color: #0d0d0f;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       display: inline-block; vertical-align: middle;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
   </style>
 </head>
 <body>
-
-<div class="bg-layer">
-  <div class="bg-gradient"></div>
-  <div class="bg-grid"></div>
-  <div class="bg-orb bg-orb-1"></div>
-  <div class="bg-orb bg-orb-2"></div>
-  <div class="scale-line scale-line-l"></div>
-  <div class="scale-line scale-line-r"></div>
-</div>
 
 <div class="card">
   <div class="logo-wrap">
@@ -397,8 +280,6 @@
     const el = document.getElementById("error-banner");
     el.textContent = msg;
     el.classList.add("show");
-    el.style.animation = "none";
-    requestAnimationFrame(() => { el.style.animation = "shake 0.4s ease"; });
   }
 
   function clearErrors() {
