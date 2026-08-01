@@ -1,4 +1,32 @@
 // ═══════════════════════════════════════════════════════════════
+//  AUTOMATIC DEVICE DETECTION (MOBILE / TABLET / DESKTOP)
+// ═══════════════════════════════════════════════════════════════
+function autoDetectDevice() {
+  const w = window.innerWidth;
+  const ua = navigator.userAgent;
+  const isTouch = navigator.maxTouchPoints > 0;
+  
+  document.body.classList.remove("device-mobile", "device-tablet", "device-desktop");
+
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua) || (w >= 600 && w <= 1024 && isTouch)) {
+    document.body.classList.add("device-tablet");
+    window.deviceType = "tablet";
+  } else if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile/i.test(ua) || w < 600) {
+    document.body.classList.add("device-mobile");
+    if (!document.body.classList.contains("sidebar-collapsed")) {
+      document.body.classList.add("sidebar-collapsed");
+    }
+    window.deviceType = "mobile";
+  } else {
+    document.body.classList.add("device-desktop");
+    window.deviceType = "desktop";
+  }
+}
+
+window.addEventListener("DOMContentLoaded", autoDetectDevice);
+window.addEventListener("resize", autoDetectDevice);
+
+// ═══════════════════════════════════════════════════════════════
 //  THEME TOGGLE
 // ═══════════════════════════════════════════════════════════════
 function initTheme() {
@@ -756,8 +784,8 @@ function onFilterCategoryChange(prefix) {
 //  INTERACTIVE MONTHLY CALENDAR GRID
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
-let currentCalMonth = new Date().getMonth(); // 0-indexed
-let selectedCalDate = null; // YYYY-MM-DD or null
+let currentCalMonth = new Date().getMonth();
+let selectedCalDate = null;
 
 function renderCalendarView() {
   const select = document.getElementById("calendar-filter-select");
@@ -803,12 +831,11 @@ function todayCalMonth() {
   renderCalendarTimeline();
 }
 
-// Selecting a day on the main calendar ONLY selects the date to view its agenda
 function selectCalDay(dateStr) {
   if (selectedCalDate === dateStr) {
-    selectedCalDate = null; // Deselect / show all events
+    selectedCalDate = null;
   } else {
-    selectedCalDate = dateStr; // Select date to filter right-hand agenda
+    selectedCalDate = dateStr;
   }
   renderMonthlyCalendarGrid();
   renderCalendarTimeline();
