@@ -55,14 +55,15 @@
   </div>
 </div>
 
-<!-- Interactive Click-to-Select Busy Dates Modal with Redo / Unblock Option -->
+<!-- Interactive Click-to-Toggle Set Availability Modal -->
 <div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
   <div class="modal-box" style="max-width: 520px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      🚫 Mark Busy / Out of Office
+      📅 Set Availability
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Click on the dates on the calendar below to block or unblock unavailable days.
+      Click dates on the calendar below to toggle your availability.<br>
+      <span style="color:var(--red)">Red</span> = Busy / Out of Office. Click again to clear.
     </div>
     
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px">
@@ -71,7 +72,7 @@
         <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office / Vacation" value="In Court / Out of Office" autocomplete="off"/>
       </div>
 
-      <!-- Interactive Modal Calendar Picker -->
+      <!-- Modal Interactive Calendar Picker -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:14px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -86,7 +87,7 @@
         <div class="cal-grid" id="modal-calendar-grid" style="gap:4px"></div>
         
         <div style="font-size:11px;color:var(--text-dim);margin-top:10px;text-align:right;font-weight:600" id="modal-busy-count-label">
-          0 dates selected
+          0 busy dates selected
         </div>
       </div>
 
@@ -113,11 +114,9 @@
       </div>
     </div>
 
-    <!-- Action Controls: Block Dates OR Unblock / Redo Selected Dates -->
-    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+    <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
-      <button class="btn btn-danger btn-sm" type="button" id="busy-unblock-btn" onclick="unblockBusyDates()">🔓 Unblock Selected</button>
-      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Block Selected Dates (0)</button>
+      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Availability</button>
     </div>
   </div>
 </div>
@@ -236,7 +235,7 @@
     </div>
     <div style="flex:1">
       <div class="nav-section">Overview</div>
-      <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')">⚖️&nbsp;&nbsp;Dashboard</button>
+      <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')">秤&nbsp;&nbsp;Dashboard</button>
       <button class="nav-btn" data-nav="notifications" onclick="navTo('notifications')">
         🔔&nbsp;&nbsp;Notifications
         <span id="global-notif-badge" class="badge" style="background:var(--red);color:#fff;margin-left:auto;display:none;padding:2px 8px;font-size:10px;border-radius:10px;line-height:1">0</span>
@@ -354,14 +353,13 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW WITH INTERACTIVE MONTH GRID & BULK BUSY BUTTON ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW WITH SET AVAILABILITY BUTTON INSIDE CARD ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
           <div class="page-title">Firm Schedule</div>
           <div class="page-sub">Interactive calendar, pressable dates, and appointments schedule</div>
         </div>
-        <button class="btn btn-primary" onclick="openBusyModal()">🚫 Mark Busy / Out of Office</button>
       </div>
       
       <div class="grid4" style="margin-bottom:20px">
@@ -374,19 +372,23 @@
       </div>
 
       <div style="display:grid;grid-template-columns: 1.5fr 1fr;gap:24px">
+        <!-- LEFT: Interactive Monthly Calendar Card -->
         <div class="card" id="calendar-month-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
             <div style="font-size:18px;font-weight:700;color:var(--text)" id="cal-month-title">Month Year</div>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center">
               <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄ Prev</button>
               <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
               <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">Next ►</button>
+              <!-- Set Availability Button placed right next to calendar controls -->
+              <button class="btn btn-primary btn-sm" onclick="openBusyModal()" style="margin-left:4px">📅 Set Availability</button>
             </div>
           </div>
           
           <div class="cal-grid" id="calendar-grid-container"></div>
         </div>
 
+        <!-- RIGHT: Selected Day Agenda & Approved Appointments -->
         <div style="display:flex;flex-direction:column;gap:20px">
           <div class="card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
