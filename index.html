@@ -72,6 +72,7 @@
         <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office / Vacation" value="In Court / Out of Office" autocomplete="off"/>
       </div>
 
+      <!-- Modal Interactive Calendar Picker -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:14px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -315,7 +316,9 @@
           <div class="stat-label">Resolved</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:24px">
+
+      <!-- Responsive Command Center Grid (dashboard-content-grid) -->
+      <div class="dashboard-content-grid">
         <div>
           <div class="card">
             <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px">
@@ -374,7 +377,6 @@
       </div>
 
       <div style="display:grid;grid-template-columns: 1.5fr 1fr;gap:24px">
-        <!-- LEFT: Interactive Monthly Calendar Card -->
         <div class="card" id="calendar-month-card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
             <div style="font-size:18px;font-weight:700;color:var(--text)" id="cal-month-title">Month Year</div>
@@ -389,7 +391,6 @@
           <div class="cal-grid" id="calendar-grid-container"></div>
         </div>
 
-        <!-- RIGHT: Selected Day Agenda & Approved Appointments -->
         <div style="display:flex;flex-direction:column;gap:20px">
           <div class="card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
