@@ -27,7 +27,7 @@ window.closeDriveWarningModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CLICK-TO-SELECT BULK BUSY DATES PICKER
+//  CLICK-TO-TOGGLE SET AVAILABILITY MODAL CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let selectedBusyDatesSet = new Set();
 let modalCalYear = new Date().getFullYear();
@@ -40,6 +40,15 @@ window.openBusyModal = function() {
   selectedBusyDatesSet.clear();
   modalCalYear = new Date().getFullYear();
   modalCalMonth = new Date().getMonth();
+
+  const u = window._currentUser;
+  if (u && Array.isArray(appointments)) {
+    appointments.forEach(a => {
+      if (a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid) && a.date) {
+        selectedBusyDatesSet.add(a.date);
+      }
+    });
+  }
 
   setElVal("busy-title", "In Court / Out of Office");
   setElVal("busy-notes", "");
@@ -114,10 +123,10 @@ window.renderModalCalendarGrid = function() {
 
   const selectedCount = selectedBusyDatesSet.size;
   if (countLabel) {
-    countLabel.textContent = `${selectedCount} date${selectedCount !== 1 ? 's' : ''} selected`;
+    countLabel.textContent = `${selectedCount} busy date${selectedCount !== 1 ? 's' : ''} selected`;
   }
   if (submitBtn) {
-    submitBtn.textContent = `Block Selected Dates (${selectedCount})`;
+    submitBtn.textContent = `Save Availability (${selectedCount})`;
   }
 
   const firstDayObj = new Date(modalCalYear, modalCalMonth, 1);
@@ -190,54 +199,67 @@ window.submitBusyDates = async function() {
     return;
   }
 
-  if (selectedBusyDatesSet.size === 0) {
-    showToast("Please click and select at least one date on the calendar.", "error");
-    return;
-  }
-
   const u = window._currentUser;
   const myProf = profiles.find(p => p.ownerUid === u?.uid) || { name: u?.displayName || u?.email || "Attorney" };
 
   try {
-    showToast("Blocking dates on schedule...");
+    showToast("Saving availability settings...");
 
     const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
-    let addedCount = 0;
+    
+    // Clear unselected busy dates
+    const existingBusyAppts = appointments.filter(a => 
+      a.type === "busy" && (a.targetUid === u?.uid || a.requesterUid === u?.uid)
+    );
 
-    for (const dateStr of selectedBusyDatesSet) {
-      const apptData = {
-        title: "🚫 " + title,
-        date: dateStr,
-        time: timeLabel,
-        description: notes || "Unavailable / Busy",
-        requesterUid: u?.uid || "local",
-        requesterName: myProf.name,
-        targetUid: u?.uid || "local",
-        targetName: myProf.name,
-        status: "accepted",
-        type: "busy"
-      };
-
-      let apptId = null;
-      try {
-        if (typeof dbAddAppointment === "function") {
-          apptId = await dbAddAppointment(apptData);
+    for (const oldAppt of existingBusyAppts) {
+      if (!selectedBusyDatesSet.has(oldAppt.date)) {
+        if (oldAppt.id && !oldAppt.id.startsWith("local_") && typeof dbDeleteAppointment === "function") {
+          await dbDeleteAppointment(oldAppt.id).catch(err => console.warn("Delete appt error:", err));
         }
-      } catch (dbErr) {
-        console.warn("Firestore write permission warning:", dbErr.message);
+        appointments = appointments.filter(a => a.id !== oldAppt.id);
       }
-
-      if (apptId) {
-        apptData.id = apptId;
-        appointments.push(apptData);
-      } else {
-        apptData.id = "local_busy_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-        appointments.push(apptData);
-      }
-      addedCount++;
     }
 
-    showToast(`${addedCount} day(s) blocked as Busy!`);
+    // Add newly selected busy dates
+    let addedCount = 0;
+    for (const dateStr of selectedBusyDatesSet) {
+      const alreadyExists = appointments.some(a => 
+        a.type === "busy" && (a.targetUid === u?.uid || a.requesterUid === u?.uid) && a.date === dateStr
+      );
+
+      if (!alreadyExists) {
+        const apptData = {
+          title: "🚫 " + title,
+          date: dateStr,
+          time: timeLabel,
+          description: notes || "Unavailable / Busy",
+          requesterUid: u?.uid || "local",
+          requesterName: myProf.name,
+          targetUid: u?.uid || "local",
+          targetName: myProf.name,
+          status: "accepted",
+          type: "busy"
+        };
+
+        let apptId = null;
+        try {
+          if (typeof dbAddAppointment === "function") {
+            apptId = await dbAddAppointment(apptData);
+          }
+        } catch (dbErr) {
+          console.warn("Firestore write permission warning:", dbErr.message);
+        }
+
+        if (apptId) apptData.id = apptId;
+        else apptData.id = "local_busy_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+
+        appointments.push(apptData);
+        addedCount++;
+      }
+    }
+
+    showToast("Availability settings saved!");
     closeBusyModal();
 
     if (typeof renderCalendarView === "function") {
@@ -245,49 +267,7 @@ window.submitBusyDates = async function() {
     }
   } catch (err) {
     console.error("submitBusyDates error:", err);
-    showToast("Failed to save busy dates: " + err.message, "error");
-  }
-};
-
-window.unblockBusyDates = async function() {
-  if (selectedBusyDatesSet.size === 0) {
-    showToast("Please click and select at least one date on the calendar to unblock.", "error");
-    return;
-  }
-
-  const u = window._currentUser;
-  if (!u) return;
-
-  try {
-    showToast("Unblocking selected dates...");
-
-    let unblockedCount = 0;
-    const toRemove = [];
-
-    for (const appt of appointments) {
-      if (appt.type === "busy" && (appt.targetUid === u.uid || appt.requesterUid === u.uid) && selectedBusyDatesSet.has(appt.date)) {
-        toRemove.push(appt);
-      }
-    }
-
-    for (const appt of toRemove) {
-      if (appt.id && !appt.id.startsWith("local_") && typeof dbDeleteAppointment === "function") {
-        await dbDeleteAppointment(appt.id).catch(err => console.warn("Delete appt error:", err));
-      }
-      appointments = appointments.filter(a => a.id !== appt.id);
-      unblockedCount++;
-    }
-
-    selectedBusyDatesSet.clear();
-    showToast(`Unblocked ${unblockedCount} date slot(s)!`);
-    closeBusyModal();
-
-    if (typeof renderCalendarView === "function") {
-      renderCalendarView();
-    }
-  } catch (err) {
-    console.error("unblockBusyDates error:", err);
-    showToast("Failed to unblock dates: " + err.message, "error");
+    showToast("Failed to save availability: " + err.message, "error");
   }
 };
 
@@ -1095,6 +1075,7 @@ async function openAddCase() {
     return;
   }
 
+  // Trigger Google Drive Warning Popup if not authorized
   if (typeof hasValidToken === "function" && !hasValidToken()) {
     openDriveWarningModal();
   }
