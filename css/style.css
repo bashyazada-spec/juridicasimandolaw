@@ -156,7 +156,6 @@ body.sidebar-collapsed #main {
   transform: scale(1.06); box-shadow: var(--shadow-gold);
 }
 
-/* Moves smoothly to far-left edge when sidebar retracts */
 body.sidebar-collapsed .hamburger-toggle-btn {
   left: 22px !important;
 }
@@ -298,6 +297,13 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 2px;
   background: linear-gradient(90deg, var(--accent, var(--gold)), transparent);
+}
+
+/* ── DASHBOARD COMMAND CENTER GRID ── */
+.dashboard-content-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 24px;
 }
 
 /* ── CASE ROWS ── */
@@ -566,54 +572,65 @@ select.field-input {
 .filter-select:hover { border-color: var(--gold-border); color: var(--text); }
 
 /* ═══════════════════════════════════════════════════════════════
-   DEVICE AUTO-DETECTION ADAPTIVE STYLES
+   DEVICE AUTO-DETECTION & MOBILE OVERRIDES
    ═══════════════════════════════════════════════════════════════ */
 
-/* Mobile Phones (device-mobile) */
-body.device-mobile #main {
-  padding: 16px 12px !important;
-  margin-left: 0 !important;
-}
+/* Mobile Phones (<900px / device-mobile) */
+@media (max-width: 900px) {
+  #app { flex-direction: column; }
+  #sidebar {
+    width: 100% !important; position: sticky; top: 0;
+    flex-direction: row !important; align-items: center !important; justify-content: space-between !important;
+    padding: 12px 16px !important; z-index: 999;
+  }
+  #sidebar .logo-sub, #sidebar .nav-section, #sidebar .sidebar-footer { display: none !important; }
+  #sidebar div[style*="flex:1"] { display: flex !important; flex-direction: row !important; overflow-x: auto; gap: 6px !important; }
+  #sidebar .nav-btn { padding: 8px 12px !important; font-size: 12px !important; white-space: nowrap !important; }
+  
+  #main {
+    margin-left: 0 !important; width: 100% !important;
+    padding: 68px 16px 40px 16px !important; /* Top padding clears hamburger button */
+  }
 
-body.device-mobile .grid4,
-body.device-mobile .grid2 {
-  grid-template-columns: 1fr !important;
-  gap: 12px !important;
-}
+  .grid4, .grid3, .grid2, .dashboard-content-grid {
+    grid-template-columns: 1fr !important; gap: 16px !important;
+  }
 
-body.device-mobile .page-hdr {
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 12px !important;
-}
+  .page-hdr { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
 
-body.device-mobile .btn {
-  justify-content: center !important;
-  width: 100% !important;
-}
+  .hamburger-toggle-btn {
+    top: 14px !important; left: 14px !important;
+    width: 38px !important; height: 38px !important;
+  }
 
-body.device-mobile .hamburger-toggle-btn {
-  top: 14px !important;
-  left: 14px !important;
-  width: 38px !important;
-  height: 38px !important;
+  .case-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .case-row > div:last-child {
+    align-items: flex-start !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+  }
+
+  /* Keep floating chat bubble above mobile content */
+  #chat-bubble {
+    bottom: 20px !important; right: 20px !important;
+  }
+
+  .chat-panel {
+    width: calc(100vw - 32px) !important;
+    right: 16px !important;
+    bottom: 80px !important;
+  }
 }
 
 /* Tablets / iPads (device-tablet) */
-body.device-tablet .grid4 {
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 16px !important;
-}
-
-body.device-tablet #main {
-  padding: 28px 24px 28px 74px !important;
-}
-
-body.device-tablet .cal-day-cell {
-  min-height: 80px !important;
-}
+body.device-tablet .grid4 { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
+body.device-tablet #main { padding: 28px 24px 28px 84px !important; }
+body.device-tablet .cal-day-cell { min-height: 80px !important; }
 
 /* Laptops / Desktops (device-desktop) */
-body.device-desktop .grid4 {
-  grid-template-columns: repeat(4, 1fr) !important;
-}
+body.device-desktop .grid4 { grid-template-columns: repeat(4, 1fr) !important; }
