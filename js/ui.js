@@ -753,7 +753,7 @@ function onFilterCategoryChange(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  INTERACTIVE MONTHLY CALENDAR GRID & DIRECT 1-CLICK TOGGLE
+//  INTERACTIVE MONTHLY CALENDAR GRID
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth(); // 0-indexed
@@ -803,59 +803,16 @@ function todayCalMonth() {
   renderCalendarTimeline();
 }
 
-// 1-Click Toggle: 1st Click turns RED (Busy), 2nd Click removes RED (Unblocks)
-window.selectCalDay = async function(dateStr) {
-  const u = window._currentUser;
-  if (!u) return;
-
-  const myBusyAppt = appointments.find(a => 
-    a.type === "busy" && 
-    (a.targetUid === u.uid || a.requesterUid === u.uid) && 
-    a.date === dateStr
-  );
-
-  if (myBusyAppt) {
-    showToast("Unblocking date...");
-    if (myBusyAppt.id && !myBusyAppt.id.startsWith("local_") && typeof dbDeleteAppointment === "function") {
-      await dbDeleteAppointment(myBusyAppt.id).catch(err => console.warn("Delete appt warning:", err));
-    }
-    appointments = appointments.filter(a => a.id !== myBusyAppt.id);
-    showToast("Date unblocked!");
+// Selecting a day on the main calendar ONLY selects the date to view its agenda
+function selectCalDay(dateStr) {
+  if (selectedCalDate === dateStr) {
+    selectedCalDate = null; // Deselect / show all events
   } else {
-    const myProf = profiles.find(p => p.ownerUid === u.uid) || { name: u.displayName || u.email || "Attorney" };
-    const apptData = {
-      title: "🚫 In Court / Out of Office",
-      date: dateStr,
-      time: "All Day",
-      description: "Unavailable / Busy",
-      requesterUid: u.uid,
-      requesterName: myProf.name,
-      targetUid: u.uid,
-      targetName: myProf.name,
-      status: "accepted",
-      type: "busy"
-    };
-
-    let apptId = null;
-    try {
-      if (typeof dbAddAppointment === "function") {
-        apptId = await dbAddAppointment(apptData);
-      }
-    } catch (err) {
-      console.warn("Firestore busy date write warning:", err);
-    }
-
-    if (apptId) apptData.id = apptId;
-    else apptData.id = "local_busy_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-
-    appointments.push(apptData);
-    showToast("Date marked as Busy! 🚫");
+    selectedCalDate = dateStr; // Select date to filter right-hand agenda
   }
-
-  selectedCalDate = dateStr;
   renderMonthlyCalendarGrid();
   renderCalendarTimeline();
-};
+}
 
 function clearSelectedCalDate() {
   selectedCalDate = null;
@@ -1025,7 +982,7 @@ function renderCalendarTimeline() {
       type: isBusy ? "busy" : "appointment",
       title: appt.title || "Appointment Sync",
       sub: isBusy 
-        ? "Status: Out of Office / Busy (Click date again to unblock)" + (appt.description ? "\n\"" + appt.description + "\"" : "")
+        ? "Status: Out of Office / Busy" + (appt.description ? "\n\"" + appt.description + "\"" : "")
         : "Proposer: " + appt.requesterName + " · Host: " + appt.targetName + (appt.description ? "\n\"" + appt.description + "\"" : ""),
       date: appt.date,
       time: appt.time,
@@ -1850,7 +1807,7 @@ window.declineAppointmentRequest = async function(notifId, apptId) {
         fromUid: window._currentUser.uid,
         fromName: appt.targetName,
         title: "Appointment Declined ❌",
-        message: `${appt.targetName} declined your proposed date "${appt.title}" on ${formatDate(appt.date)}.`,
+        message: `${appt.targetName} declined your proposed date "${appt.title}" on ${formatDate(a.date)}.`,
         type: "appointment_update",
         relatedId: apptId,
         status: "unread"
