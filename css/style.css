@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   SIMANDO LAW — CASE MANAGER  ·  Elevated UI v2
+   SIMANDO LAW — CASE MANAGER  ·  ADAPTIVE DEVICE DESIGN SYSTEM
    Refined legal luxury · Deep obsidian · Burnished gold
    ═══════════════════════════════════════════════════════════════ */
 
@@ -126,7 +126,7 @@ a { color: inherit; text-decoration: none; }
   padding: 40px 48px 40px 84px;
   min-height: 100vh;
   background: var(--bg);
-  transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
+  transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease, background 0.3s;
 }
 
 /* COLLAPSED SIDEBAR STATE */
@@ -514,7 +514,7 @@ select.field-input {
 
 /* ── SPINNER ── */
 .spinner {
-  width: 34px; height: 34px; border: 1.5px solid rgba(201,165,92,0.1);
+  width: 34px; height: 34px; border: 1.5px solid rgba(201,168,76,0.1);
   border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -524,7 +524,7 @@ select.field-input {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 26px; cursor: pointer; transition: all 0.25s;
 }
-.profile-card:hover { border-color: rgba(201,165,92,0.22); transform: translateY(-4px); }
+.profile-card:hover { border-color: rgba(201,168,76,0.22); transform: translateY(-4px); }
 
 /* ── CONFIG BANNER ── */
 #config-banner {
@@ -565,19 +565,55 @@ select.field-input {
 }
 .filter-select:hover { border-color: var(--gold-border); color: var(--text); }
 
-/* ── RESPONSIVE OVERRIDES ── */
-@media (max-width: 900px) {
-  #app { flex-direction: column; }
-  #sidebar {
-    width: 100% !important; position: sticky; top: 0;
-    flex-direction: row !important; align-items: center !important; justify-content: space-between !important;
-    padding: 12px 16px !important; z-index: 999;
-  }
-  #sidebar .logo-sub, #sidebar .nav-section, #sidebar .sidebar-footer { display: none !important; }
-  #sidebar div[style*="flex:1"] { display: flex !important; flex-direction: row !important; overflow-x: auto; gap: 6px !important; }
-  #sidebar .nav-btn { padding: 8px 12px !important; font-size: 12px !important; white-space: nowrap !important; }
-  #main { margin-left: 0 !important; width: 100% !important; padding: 16px !important; }
-  .grid4, .grid3, .grid2 { grid-template-columns: 1fr !important; gap: 16px !important; }
-  .page-hdr { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
-  .hamburger-toggle-btn { display: none !important; }
+/* ═══════════════════════════════════════════════════════════════
+   DEVICE AUTO-DETECTION ADAPTIVE STYLES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Mobile Phones (device-mobile) */
+body.device-mobile #main {
+  padding: 16px 12px !important;
+  margin-left: 0 !important;
+}
+
+body.device-mobile .grid4,
+body.device-mobile .grid2 {
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+body.device-mobile .page-hdr {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+}
+
+body.device-mobile .btn {
+  justify-content: center !important;
+  width: 100% !important;
+}
+
+body.device-mobile .hamburger-toggle-btn {
+  top: 14px !important;
+  left: 14px !important;
+  width: 38px !important;
+  height: 38px !important;
+}
+
+/* Tablets / iPads (device-tablet) */
+body.device-tablet .grid4 {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+}
+
+body.device-tablet #main {
+  padding: 28px 24px 28px 74px !important;
+}
+
+body.device-tablet .cal-day-cell {
+  min-height: 80px !important;
+}
+
+/* Laptops / Desktops (device-desktop) */
+body.device-desktop .grid4 {
+  grid-template-columns: repeat(4, 1fr) !important;
 }
