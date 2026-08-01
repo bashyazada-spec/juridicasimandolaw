@@ -55,14 +55,14 @@
   </div>
 </div>
 
-<!-- Interactive Click-to-Select Busy Dates Modal -->
+<!-- Interactive Click-to-Select Busy Dates Modal with Redo / Unblock Option -->
 <div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
   <div class="modal-box" style="max-width: 520px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
       🚫 Mark Busy / Out of Office
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Click on the dates on the calendar below to select or deselect days you are unavailable.
+      Click on the dates on the calendar below to block or unblock unavailable days.
     </div>
     
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px">
@@ -79,6 +79,7 @@
             <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="prevModalCalMonth()">◄</button>
             <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="todayModalCalMonth()">Today</button>
             <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="nextModalCalMonth()">►</button>
+            <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px;color:var(--amber)" onclick="resetBusySelection()" title="Reset selected dates">🔄 Reset</button>
           </div>
         </div>
         
@@ -112,8 +113,10 @@
       </div>
     </div>
 
-    <div style="display:flex;gap:12px;justify-content:flex-end">
+    <!-- Action Controls: Block Dates OR Unblock / Redo Selected Dates -->
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
       <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" type="button" id="busy-unblock-btn" onclick="unblockBusyDates()">🔓 Unblock Selected</button>
       <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Block Selected Dates (0)</button>
     </div>
   </div>
