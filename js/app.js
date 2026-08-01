@@ -59,6 +59,12 @@ window.closeBusyModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
+window.resetBusySelection = function() {
+  selectedBusyDatesSet.clear();
+  renderModalCalendarGrid();
+  showToast("Selection reset.");
+};
+
 window.prevModalCalMonth = function() {
   modalCalMonth--;
   if (modalCalMonth < 0) {
@@ -240,6 +246,68 @@ window.submitBusyDates = async function() {
   } catch (err) {
     console.error("submitBusyDates error:", err);
     showToast("Failed to save busy dates: " + err.message, "error");
+  }
+};
+
+window.unblockBusyDates = async function() {
+  if (selectedBusyDatesSet.size === 0) {
+    showToast("Please click and select at least one date on the calendar to unblock.", "error");
+    return;
+  }
+
+  const u = window._currentUser;
+  if (!u) return;
+
+  try {
+    showToast("Unblocking selected dates...");
+
+    let unblockedCount = 0;
+    const toRemove = [];
+
+    for (const appt of appointments) {
+      if (appt.type === "busy" && (appt.targetUid === u.uid || appt.requesterUid === u.uid) && selectedBusyDatesSet.has(appt.date)) {
+        toRemove.push(appt);
+      }
+    }
+
+    for (const appt of toRemove) {
+      if (appt.id && !appt.id.startsWith("local_") && typeof dbDeleteAppointment === "function") {
+        await dbDeleteAppointment(appt.id).catch(err => console.warn("Delete appt error:", err));
+      }
+      appointments = appointments.filter(a => a.id !== appt.id);
+      unblockedCount++;
+    }
+
+    selectedBusyDatesSet.clear();
+    showToast(`Unblocked ${unblockedCount} date slot(s)!`);
+    closeBusyModal();
+
+    if (typeof renderCalendarView === "function") {
+      renderCalendarView();
+    }
+  } catch (err) {
+    console.error("unblockBusyDates error:", err);
+    showToast("Failed to unblock dates: " + err.message, "error");
+  }
+};
+
+window.deleteBusySlot = async function(apptId) {
+  if (!apptId) return;
+
+  try {
+    showToast("Removing busy slot...");
+    if (!apptId.startsWith("local_") && typeof dbDeleteAppointment === "function") {
+      await dbDeleteAppointment(apptId).catch(err => console.warn("Delete appt error:", err));
+    }
+    appointments = appointments.filter(a => a.id !== apptId);
+    showToast("Busy slot removed!");
+
+    if (typeof renderCalendarView === "function") {
+      renderCalendarView();
+    }
+  } catch (err) {
+    console.error("deleteBusySlot error:", err);
+    showToast("Failed to remove busy slot: " + err.message, "error");
   }
 };
 
@@ -1027,7 +1095,6 @@ async function openAddCase() {
     return;
   }
 
-  // Trigger Google Drive Warning Popup if not authorized
   if (typeof hasValidToken === "function" && !hasValidToken()) {
     openDriveWarningModal();
   }
