@@ -21,24 +21,24 @@ try {
   window._auth = auth;
 
   // Firestore helpers
-  window._fbCol       = collection;
-  window._fbAddDoc    = addDoc;
-  window._fbGetDocs   = getDocs;
-  window._fbDoc       = doc;
-  window._fbUpdate    = updateDoc;
-  window._fbDelete    = deleteDoc;
-  window._fbQuery     = query;
-  window._fbOrderBy   = orderBy;
+  window._fbCol        = collection;
+  window._fbAddDoc     = addDoc;
+  window._fbGetDocs    = getDocs;
+  window._fbDoc        = doc;
+  window._fbUpdate     = updateDoc;
+  window._fbDelete     = deleteDoc;
+  window._fbQuery      = query;
+  window._fbOrderBy    = orderBy;
   window._fbOnSnapshot = onSnapshot;
-  window._fbLimit     = limit;
-  window._fbServerTs  = serverTimestamp;
-  window._fbWhere     = where;
+  window._fbLimit      = limit;
+  window._fbServerTs   = serverTimestamp;
+  window._fbWhere      = where;
 
   // Auth helpers
-  window._fbOnAuth    = onAuthStateChanged;
-  window._fbSignIn    = signInWithPopup;
+  window._fbOnAuth         = onAuthStateChanged;
+  window._fbSignIn         = signInWithPopup;
   window._fbGoogleProvider = new GoogleAuthProvider();
-  window._fbSignOut   = signOut;
+  window._fbSignOut        = signOut;
   
   // Auth Settings Management helpers
   window._fbUpdateProfile  = updateProfile;
@@ -48,13 +48,20 @@ try {
   window._fbReauth         = reauthenticateWithCredential;
   window._fbEmailCred      = EmailAuthProvider.credential;
 
+  // Set ready status IMMEDIATELY after initialization
   window._fbReady = true;
 
+  // Dispatch readiness signal immediately for scripts already listening
+  if (!window._firebaseReadyFired) {
+    window._firebaseReadyFired = true;
+    document.dispatchEvent(new Event("firebase-ready"));
+  }
+
+  // Dynamic Auth State Monitor
   onAuthStateChanged(auth, user => {
     window._currentUser = user || null;
-    if (!window._firebaseReadyFired) {
-      window._firebaseReadyFired = true;
-      document.dispatchEvent(new Event("firebase-ready"));
+    if (typeof window.refreshCurrentView === "function") {
+      window.refreshCurrentView();
     }
   });
 
