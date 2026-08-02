@@ -9,7 +9,6 @@ window.toggleSidebar = function() {
   } catch (e) { /* ignore */ }
 };
 
-// Auto-restore saved sidebar state on load
 (function restoreSidebarState() {
   try {
     const saved = localStorage.getItem("simando-sidebar-collapsed");
@@ -25,7 +24,6 @@ window.toggleSidebar = function() {
 let _pendingDeleteTarget = null;
 let caseFormOrigin = "profileDetail"; // Router state to track form arrival
 
-// Helper functions for safe DOM interaction
 function setElText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -36,7 +34,6 @@ function setElVal(id, val) {
   if (el) el.value = val;
 }
 
-// Global Google Drive Disconnected Warning Modal helpers
 window.openDriveWarningModal = function() {
   const modal = document.getElementById("drive-warning-modal");
   if (modal) modal.classList.remove("hidden");
@@ -62,7 +59,7 @@ window.openBusyModal = function() {
   modalCalYear = new Date().getFullYear();
   modalCalMonth = new Date().getMonth();
 
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (u && Array.isArray(appointments)) {
     appointments.forEach(a => {
       if (a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid) && a.date) {
@@ -220,7 +217,7 @@ window.submitBusyDates = async function() {
     return;
   }
 
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   const myProf = profiles.find(p => p.ownerUid === u?.uid) || { name: u?.displayName || u?.email || "Attorney" };
 
   try {
@@ -228,7 +225,6 @@ window.submitBusyDates = async function() {
 
     const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
     
-    // Clear unselected busy dates
     const existingBusyAppts = appointments.filter(a => 
       a.type === "busy" && (a.targetUid === u?.uid || a.requesterUid === u?.uid)
     );
@@ -242,7 +238,6 @@ window.submitBusyDates = async function() {
       }
     }
 
-    // Add newly selected busy dates
     let addedCount = 0;
     for (const dateStr of selectedBusyDatesSet) {
       const alreadyExists = appointments.some(a => 
@@ -312,7 +307,6 @@ window.deleteBusySlot = async function(apptId) {
   }
 };
 
-// Global function called on every keypress inside the delete input
 window.checkDeleteInput = function() {
   const input = document.getElementById("del-confirm-input");
   const btn = document.getElementById("del-confirm-btn");
@@ -1087,7 +1081,7 @@ function populateCaseSelects() {
 async function openAddCase() {
   caseFormOrigin = currentView;
   
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
 
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
@@ -1205,9 +1199,9 @@ function enterLocalMode(reason) {
 function initAppUI() {
   const loader = document.getElementById("loading-screen");
   if (loader) loader.style.display = "none";
-  initTheme();
-  bindProfileInputs();
-  initPasswordStrengthChecker();
+  if (typeof initTheme === "function") initTheme();
+  if (typeof bindProfileInputs === "function") bindProfileInputs();
+  if (typeof initPasswordStrengthChecker === "function") initPasswordStrengthChecker();
   showView("dashboard");
   renderDashboard();
 }
@@ -1218,7 +1212,8 @@ async function connectDatabase() {
     const banner = document.getElementById("config-banner");
     if (banner) banner.classList.remove("show");
 
-    if (!window._currentUser) {
+    const u = window._currentUser || window._auth?.currentUser;
+    if (!u) {
       window.location.replace("login.html");
       return;
     }
@@ -1248,6 +1243,17 @@ document.addEventListener("firebase-ready", () => {
   }
 });
 
+if (window._fbReady) {
+  if (!uiBooted) {
+    uiBooted = true;
+    initAppUI();
+  }
+  if (!dbConnected) {
+    dbConnected = true;
+    connectDatabase();
+  }
+}
+
 setTimeout(() => {
   if (!uiBooted) {
     uiBooted = true;
@@ -1258,9 +1264,9 @@ setTimeout(() => {
 setTimeout(() => {
   if (!dbConnected) {
     dbConnected = true;
-    enterLocalMode("Firebase failed to load. Check your config and network.");
+    connectDatabase();
   }
-}, 6000);
+}, 8000);
 
 function clearCaseErrors() {
   ["cf-title-err","cf-filed-err","cf-parties-err","cf-narrative-err"].forEach(id => {
