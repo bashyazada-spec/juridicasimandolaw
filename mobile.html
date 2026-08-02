@@ -412,6 +412,152 @@
       </div>
     </div>
 
+    <!-- ── PROFILE FORM (CREATE / EDIT) ── -->
+    <div id="view-profileForm" class="view hidden">
+      <div class="flex-center gap-10 mb-16">
+        <button class="btn btn-ghost btn-sm" id="pf-back-btn">← Cancel</button>
+        <div style="font-size:18px;font-weight:700;color:var(--text)" id="pf-title">New Attorney Profile</div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div id="pf-drive-section" style="margin-bottom:16px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:600;color:var(--text)">Google Drive Integration *</span>
+            <span id="pf-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
+          </div>
+          <button type="button" class="gdrive-btn" id="pf-connect-drive-btn" onclick="connectDriveForProfile()" style="width:100%;justify-content:center;padding:10px">
+            <span id="pf-connect-drive-text">Connect Google Drive Account</span>
+          </button>
+          <div id="pf-drive-error" class="field-err hidden" style="margin-top:6px"></div>
+        </div>
+
+        <div id="pf-details-section">
+          <label class="field-label">Full Name *</label>
+          <input class="field-input mb-12" id="pf-name" placeholder="e.g. Atty. Juan Dela Cruz"/>
+          <div id="pf-name-err" class="field-err hidden">Full name is required</div>
+
+          <label class="field-label">Role / Title *</label>
+          <input class="field-input mb-12" id="pf-role" placeholder="e.g. Senior Associate"/>
+          <div id="pf-role-err" class="field-err hidden">Role is required</div>
+
+          <label class="field-label">Contact Number</label>
+          <input class="field-input mb-12" id="pf-contact" placeholder="0917-XXX-XXXX"/>
+
+          <label class="field-label">Email Address</label>
+          <input class="field-input mb-16" id="pf-email" placeholder="attorney@simandolaw.com"/>
+          
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()"><span id="pf-save-btn-text">Create Profile</span></button>
+            <button class="btn btn-ghost" id="pf-cancel-btn">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CASE FORM (CREATE / EDIT) ── -->
+    <div id="view-caseForm" class="view hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" id="cf-back-btn">← Cancel</button>
+        <div style="font-size:18px;font-weight:700;color:var(--text)" id="cf-title">New Case</div>
+        <div></div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div id="cf-profile-chip" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:16px"></div>
+        
+        <label class="field-label">Case Title *</label>
+        <input class="field-input mb-12" id="cf-case-title" placeholder="e.g. People of the Philippines vs. Dela Cruz"/>
+        <div id="cf-title-err" class="field-err hidden">Case title is required</div>
+
+        <label class="field-label">Category *</label>
+        <select class="field-input mb-12" id="cf-category" onchange="onCategoryChange(this.value)"></select>
+
+        <label class="field-label">Case Type / Sub-Category</label>
+        <div style="position:relative" class="mb-12">
+          <input class="field-input" id="cf-type-input" placeholder="Type or select..." oninput="filterCaseTypeSuggestions(this.value)" onfocus="showCaseTypeSuggestions()" onkeydown="onCaseTypeKeydown(event)"/>
+          <div id="cf-type-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:160px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+        </div>
+
+        <label class="field-label">Date Case Filed *</label>
+        <input type="date" class="field-input mb-12" id="cf-filed"/>
+        <div id="cf-filed-err" class="field-err hidden">Filed date is required</div>
+
+        <label class="field-label">Case / Docket Number</label>
+        <input class="field-input mb-12" id="cf-case-number" placeholder="e.g. Civil Case No. 2026-104"/>
+
+        <label class="field-label">Status</label>
+        <select class="field-input mb-12" id="cf-status"></select>
+
+        <label class="field-label">Venue / Court</label>
+        <select class="field-input mb-12" id="cf-venue" onchange="onVenueChange(this)"></select>
+        <input class="field-input mb-12" id="cf-venue-manual" placeholder="Specify other venue..." style="display:none"/>
+
+        <!-- Parties Card -->
+        <div class="card mb-12" style="background:var(--surface2);padding:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Parties Involved *</div>
+          <input type="hidden" id="cf-parties"/>
+          
+          <div class="mb-12">
+            <label class="field-label" id="cf-party-a-label">Petitioner / Plaintiff</label>
+            <div style="display:flex;gap:6px">
+              <input class="field-input" id="cf-petitioner-input" placeholder="Name..." onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('petitioner');}"/>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('petitioner')">+</button>
+            </div>
+            <div id="cf-petitioners-list" style="margin-top:6px"></div>
+          </div>
+
+          <div>
+            <label class="field-label" id="cf-party-b-label">Respondent / Defendant</label>
+            <div style="display:flex;gap:6px">
+              <input class="field-input" id="cf-respondent-input" placeholder="Name..." onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('respondent');}"/>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('respondent')">+</button>
+            </div>
+            <div id="cf-respondents-list" style="margin-top:6px"></div>
+          </div>
+          <div id="cf-parties-err" class="field-err hidden">At least one party on both sides is required</div>
+        </div>
+
+        <label class="field-label">Due Date / Next Hearing (Optional)</label>
+        <input type="date" class="field-input mb-12" id="cf-due"/>
+
+        <label class="field-label">Document Type / Subtype (Optional)</label>
+        <input class="field-input mb-12" id="cf-doc-type" placeholder="e.g. Complaint, Answer, Motion"/>
+
+        <label class="field-label">Case Narrative / Summary *</label>
+        <textarea class="field-input mb-12" id="cf-narrative" rows="3" placeholder="Briefly summarize background and claims..."></textarea>
+        <div id="cf-narrative-err" class="field-err hidden">Narrative summary is required</div>
+
+        <!-- Documents Upload Card -->
+        <div class="card mb-16" style="background:var(--surface2);padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">Attach Documents</span>
+            <span id="drive-status" style="font-size:10px;color:var(--text-dim)"></span>
+          </div>
+          
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer">
+              <input type="radio" name="cf-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> 📥 Inbound
+            </label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer">
+              <input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold)"/> 📤 Outbound
+            </label>
+          </div>
+
+          <div class="upload-area" onclick="triggerLocalAttach()" style="padding:14px">
+            <div style="font-size:20px;margin-bottom:2px">📁</div>
+            <div style="font-size:11px">Click to select files</div>
+          </div>
+          <input type="file" id="local-file-input" multiple style="display:none" onchange="handleLocalAttach(event)"/>
+          
+          <div id="cf-docs-list" style="margin-top:10px"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-primary" id="cf-save-btn" onclick="saveCase()">Add Case</button>
+          <button class="btn btn-ghost" id="cf-cancel-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ── CASE DETAIL ── -->
     <div id="view-caseDetail" class="view hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
