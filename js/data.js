@@ -73,8 +73,9 @@ function dbUnsubscribe() {
 async function dbLoad() {
   if (localMode || !window._db) return;
 
-  if (!window._currentUser) {
-    console.warn("dbLoad: no authenticated user, skipping load");
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) {
+    console.warn("dbLoad: waiting for user authentication state...");
     return;
   }
 
@@ -87,32 +88,32 @@ async function dbLoad() {
     profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
       profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      const u = window._currentUser;
-      if (u) {
-        let myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+      const currentUser = window._currentUser || window._auth?.currentUser;
+      if (currentUser) {
+        let myProf = profiles.find(p => p.ownerUid === currentUser.uid || (p.email && p.email.toLowerCase() === currentUser.email.toLowerCase()));
 
         if (myProf) {
           if (!myProf.ownerUid) {
-            dbUpdateProfile(myProf.id, { ownerUid: u.uid });
-            myProf.ownerUid = u.uid;
+            dbUpdateProfile(myProf.id, { ownerUid: currentUser.uid });
+            myProf.ownerUid = currentUser.uid;
           }
-          const isConfiguredAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+          const isConfiguredAdmin = currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
           if (isConfiguredAdmin && myProf.role !== "admin") {
             dbUpdateProfile(myProf.id, { role: "admin" });
             myProf.role = "admin";
           }
         } else {
-          const defaultName = u.displayName || u.email;
-          const isConfiguredAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+          const defaultName = currentUser.displayName || currentUser.email;
+          const isConfiguredAdmin = currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
           
           const defaultData = {
             name: defaultName,
             role: isConfiguredAdmin ? "admin" : "Attorney",
             contact: "",
-            email: u.email,
-            avatarColor: ADMIN_EMAILS.includes(u.email.toLowerCase()) ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
-            photoUrl: u.photoURL || null,
-            ownerUid: u.uid,
+            email: currentUser.email,
+            avatarColor: ADMIN_EMAILS.includes(currentUser.email.toLowerCase()) ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+            photoUrl: currentUser.photoURL || null,
+            ownerUid: currentUser.uid,
             createdAt: new Date().toISOString().slice(0,10)
           };
           dbAddProfile(defaultData);
@@ -126,44 +127,50 @@ async function dbLoad() {
     });
 
     // ── Real-Time Sync: Cases ─────────────
-    const cColRef = window._fbCol(db, "cases");
-    const cQuery = window._fbQuery(cColRef, window._fbWhere("allowedUids", "array-contains", window._currentUser.uid));
-    casesUnsub = window._fbOnSnapshot(cQuery, (snap) => {
-      cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      refreshCurrentView();
-    }, (error) => {
-      console.error("Cases real-time connection error:", error);
-    });
-
-    // ── Real-Time Sync: Notifications (Targeted to Active User) ─────────────
-    try {
-      const notifColRef = window._fbCol(db, "notifications");
-      const notifQuery = window._fbQuery(notifColRef, window._fbWhere("toUid", "==", window._currentUser.uid));
-      notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
-        notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
+    if (activeUid) {
+      const cColRef = window._fbCol(db, "cases");
+      const cQuery = window._fbQuery(cColRef, window._fbWhere("allowedUids", "array-contains", activeUid));
+      casesUnsub = window._fbOnSnapshot(cQuery, (snap) => {
+        cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         refreshCurrentView();
       }, (error) => {
-        console.warn("Notifications sync permission notice:", error.message);
-        notifications = [];
+        console.error("Cases real-time connection error:", error);
       });
-    } catch (e) {
-      console.warn("Notifications listener setup skipped:", e.message);
     }
 
-    // ── Real-Time Sync: Appointment Proposals (Requester or Target) ─────────────
-    try {
-      const apptColRef = window._fbCol(db, "appointments");
-      appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
-        const allAppts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const u = window._currentUser;
-        appointments = allAppts.filter(a => a.targetUid === u.uid || a.requesterUid === u.uid);
-        refreshCurrentView();
-      }, (error) => {
-        console.warn("Appointments sync permission notice:", error.message);
-        appointments = [];
-      });
-    } catch (e) {
-      console.warn("Appointments listener setup skipped:", e.message);
+    // ── Real-Time Sync: Notifications ─────────────
+    if (activeUid) {
+      try {
+        const notifColRef = window._fbCol(db, "notifications");
+        const notifQuery = window._fbQuery(notifColRef, window._fbWhere("toUid", "==", activeUid));
+        notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
+          notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+          refreshCurrentView();
+        }, (error) => {
+          console.warn("Notifications sync permission notice:", error.message);
+          notifications = [];
+        });
+      } catch (e) {
+        console.warn("Notifications listener setup skipped:", e.message);
+      }
+    }
+
+    // ── Real-Time Sync: Appointments ─────────────
+    if (activeUid) {
+      try {
+        const apptColRef = window._fbCol(db, "appointments");
+        appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
+          const allAppts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          appointments = allAppts.filter(a => a.targetUid === activeUid || a.requesterUid === activeUid);
+          refreshCurrentView();
+        }, (error) => {
+          console.warn("Appointments sync permission notice:", error.message);
+          appointments = [];
+        });
+      } catch (e) {
+        console.warn("Appointments listener setup skipped:", e.message);
+      }
     }
 
   } catch(e) {
@@ -204,7 +211,7 @@ async function dbAddProfile(data) {
     profiles.unshift(data); 
     return data; 
   }
-  data.ownerUid = window._currentUser?.uid || null;
+  data.ownerUid = window._currentUser?.uid || window._auth?.currentUser?.uid || null;
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"profiles"), data);
   data.id = ref.id;
@@ -228,7 +235,7 @@ async function dbAddCase(data) {
     cases.unshift(data); 
     return data; 
   }
-  data.ownerUid = window._currentUser?.uid || null;
+  data.ownerUid = window._currentUser?.uid || window._auth?.currentUser?.uid || null;
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
   data.id = ref.id;
