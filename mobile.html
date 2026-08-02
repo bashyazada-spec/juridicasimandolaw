@@ -5,172 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Simando Law — Mobile Case Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="css/style.css"/>
+<link rel="stylesheet" href="css/mobile.css"/>
 <script src="js/redirect.js"></script>
 <script type="module" src="js/firebase-init.js"></script>
 <base target="_blank">
-
-<style>
-  /* ═════════════════════════════════════════════════════════════
-     CENTERED SMARTPHONE MOBILE UI STYLES (NO HAMBURGER / NO DRAWERS)
-     ═════════════════════════════════════════════════════════════ */
-  html, body {
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-    touch-action: pan-y !important; /* Locks touch to vertical only */
-    position: relative;
-    padding-bottom: 70px !important;
-    margin: 0 !important;
-  }
-
-  * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  #sidebar, .hamburger-toggle-btn, .sidebar-collapse-btn { 
-    display: none !important; 
-  }
-
-  /* Centered Main Content Area */
-  #main {
-    margin: 0 auto !important;
-    padding: 16px 16px 80px 16px !important; /* Equal 16px left and right padding */
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Mobile Top Header Bar */
-  .mobile-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 900;
-    backdrop-filter: blur(12px);
-    width: 100% !important;
-  }
-
-  .mobile-top-logo {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-display);
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--gold-light);
-  }
-
-  /* Fixed Bottom Navigation Bar */
-  .mobile-bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    z-index: 990;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-    backdrop-filter: blur(16px);
-    width: 100% !important;
-  }
-
-  .mobile-nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    color: var(--text-dim);
-    font-size: 10px;
-    font-weight: 600;
-    text-decoration: none;
-    background: none;
-    border: none;
-    flex: 1;
-    height: 100%;
-  }
-
-  .mobile-nav-item.active {
-    color: var(--gold-light);
-  }
-
-  .mobile-nav-item-icon {
-    font-size: 18px;
-    line-height: 1;
-  }
-
-  /* Centered 1-Column Layout Overrides */
-  .grid4, .grid2, .dashboard-content-grid, .card {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .page-hdr {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-    margin-bottom: 18px !important;
-    text-align: center;
-  }
-
-  .page-title {
-    font-family: var(--font-display);
-    font-size: 26px !important;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .btn {
-    width: 100% !important;
-    justify-content: center !important;
-    padding: 11px 14px !important;
-  }
-
-  .case-row {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 8px !important;
-    padding: 12px !important;
-    width: 100% !important;
-  }
-
-  .case-row > div:last-child {
-    align-items: flex-start !important;
-    flex-direction: row !important;
-    gap: 8px !important;
-    width: 100% !important;
-    justify-content: space-between !important;
-  }
-
-  /* Chat Floating Bubble Position on Mobile */
-  #chat-bubble {
-    bottom: 72px !important;
-    right: 14px !important;
-    width: 46px !important;
-    height: 46px !important;
-  }
-
-  .chat-panel {
-    width: calc(100vw - 20px) !important;
-    right: 10px !important;
-    bottom: 126px !important;
-    height: 400px !important;
-  }
-</style>
 </head>
 <body>
 
@@ -278,6 +116,98 @@
   </div>
 </div>
 
+<!-- Share Case Modal -->
+<div id="share-modal" class="modal-overlay hidden" style="z-index:10000">
+  <div class="modal-box">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      👥 Share Case Access
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
+      Select which associate attorneys can view and collaborate on this case and its files.
+    </div>
+    <div id="share-modal-list" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:20px;padding-right:4px"></div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeShareModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveShareSettings()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- File preview modal -->
+<div id="file-preview-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;flex-direction:column">
+  <div style="position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px)">
+    <div id="fpm-title" style="font-size:14px;font-weight:600;color:#fff;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a id="fpm-download" download style="font-size:12px;color:#c9a84c;text-decoration:none;padding:6px 14px;border:1px solid #c9a84c;border-radius:6px;font-weight:600">⬇ Download</a>
+      <button onclick="closeFilePreview()" style="background:transparent;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0 4px">×</button>
+    </div>
+  </div>
+  <div id="fpm-body" style="margin-top:56px;width:100%;height:calc(100vh - 56px);overflow:auto;display:flex;align-items:center;justify-content:center"></div>
+</div>
+
+<!-- Google Calendar Event Detail Modal -->
+<div id="calendar-event-modal" class="modal-overlay hidden" style="z-index: 10001;">
+  <div class="modal-box" style="max-width: 500px;">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px" id="cem-title">
+      📅 Event Details
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Time & Date</div>
+        <div id="cem-time" style="font-size:14px;color:var(--text);margin-top:2px"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Location / Venue</div>
+        <div id="cem-location" style="font-size:14px;color:var(--text);margin-top:2px"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Details / Description</div>
+        <div id="cem-desc" style="font-size:13px;color:var(--text-muted);line-height:1.6;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:180px;overflow-y:auto;white-space:pre-wrap;margin-top:2px"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeCalendarModal()">Close</button>
+      <a id="cem-link" class="btn btn-primary" href="#" target="_blank">Open in Google Calendar</a>
+    </div>
+  </div>
+</div>
+
+<!-- Appointment Proposal Modal -->
+<div id="appointment-modal" class="modal-overlay hidden" style="z-index:10002">
+  <div class="modal-box" style="max-width:460px">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      🤝 Request Appointment Date
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px;line-height:1.5" id="appointment-modal-sub">
+      Propose a schedule date with attorney
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+      <div>
+        <label class="field-label">Purpose / Title *</label>
+        <input type="text" class="field-input" id="appt-title" placeholder="e.g. Case Strategy Sync" autocomplete="off"/>
+      </div>
+      <div class="grid2">
+        <div>
+          <label class="field-label">Date *</label>
+          <input type="date" class="field-input" id="appt-date"/>
+        </div>
+        <div>
+          <label class="field-label">Time *</label>
+          <input type="time" class="field-input" id="appt-time"/>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Brief Description / Notes</label>
+        <textarea class="field-input" id="appt-desc" style="min-height:80px;resize:vertical" placeholder="Enter notes or topics for the session..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeAppointmentModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAppointmentRequest()">Send Request</button>
+    </div>
+  </div>
+</div>
+
 <!-- Main Mobile App Area -->
 <div id="app">
   <div id="main">
@@ -289,24 +219,24 @@
           <div class="page-title">Command Center</div>
           <div class="page-sub" id="today-date"></div>
         </div>
-        <button class="btn btn-primary" onclick="openAddCase()">+ Quick Add Case</button>
+        <button class="btn btn-primary mt-8" onclick="openAddCase()">+ Quick Add Case</button>
       </div>
 
       <div class="grid4" style="grid-template-columns:1fr 1fr !important; gap:10px !important; margin-bottom:18px">
         <div class="stat-card" style="padding:14px">
-          <div id="stat-profiles" class="stat-number" style="color:var(--gold);font-size:30px">0</div>
+          <div id="stat-profiles" class="stat-number" style="color:var(--gold)">0</div>
           <div class="stat-label">Attorneys</div>
         </div>
         <div class="stat-card" style="padding:14px">
-          <div id="stat-total" class="stat-number" style="color:var(--violet);font-size:30px">0</div>
+          <div id="stat-total" class="stat-number" style="color:var(--violet)">0</div>
           <div class="stat-label">Total Cases</div>
         </div>
         <div class="stat-card" style="padding:14px">
-          <div id="stat-ongoing" class="stat-number" style="color:var(--amber);font-size:30px">0</div>
+          <div id="stat-ongoing" class="stat-number" style="color:var(--amber)">0</div>
           <div class="stat-label">Active</div>
         </div>
         <div class="stat-card" style="padding:14px">
-          <div id="stat-completed" class="stat-number" style="color:var(--green);font-size:30px">0</div>
+          <div id="stat-completed" class="stat-number" style="color:var(--green)">0</div>
           <div class="stat-label">Resolved</div>
         </div>
       </div>
@@ -314,14 +244,14 @@
       <div class="dashboard-content-grid">
         <div>
           <div class="card" style="padding:14px">
-            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">📁 Recent Active Cases</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
             <div id="dash-cases"></div>
           </div>
           <div class="card mt-16" id="dash-calendar-card" style="padding:14px"></div>
         </div>
 
         <div class="card mt-16" style="padding:14px">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">👥 Attorney Roster</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
           <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorneys…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
           <div id="dash-profiles"></div>
         </div>
@@ -335,7 +265,7 @@
           <div class="page-title">Notifications</div>
           <div class="page-sub" id="notif-count-sub">System updates</div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="markAllNotificationsAsRead()">Mark read</button>
+        <button class="btn btn-secondary btn-sm mt-8" onclick="markAllNotificationsAsRead()">Mark read</button>
       </div>
       <div class="card" style="padding:14px">
         <div id="notifications-list"></div>
@@ -349,7 +279,14 @@
           <div class="page-title">Firm Schedule</div>
           <div class="page-sub">Timeline & events</div>
         </div>
-        <button class="btn btn-primary" onclick="openBusyModal()">📅 Set Availability</button>
+        <button class="btn btn-primary mt-8" onclick="openBusyModal()">📅 Set Availability</button>
+      </div>
+
+      <div class="card mb-12" style="padding:12px">
+        <label class="field-label">View Schedule For</label>
+        <select class="field-input" id="calendar-filter-select" onchange="renderCalendarView()">
+          <option value="Everyone">Everyone (Firm Overview)</option>
+        </select>
       </div>
 
       <div class="card mb-16" id="calendar-month-card" style="padding:14px">
@@ -364,9 +301,17 @@
         <div class="cal-grid" id="calendar-grid-container" style="gap:2px"></div>
       </div>
 
-      <div class="card" style="padding:14px">
-        <div id="calendar-selected-date-title" style="font-size:14px;font-weight:700;margin-bottom:10px">🗓️ Scheduled Events</div>
+      <div class="card mb-16" style="padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div id="calendar-selected-date-title" style="font-size:14px;font-weight:700">🗓️ Scheduled Events</div>
+          <button class="btn btn-ghost btn-sm" id="cal-clear-date-btn" onclick="clearSelectedCalDate()" style="display:none;font-size:11px;padding:2px 8px">Show All</button>
+        </div>
         <div id="calendar-timeline-list"></div>
+      </div>
+
+      <div class="card" style="padding:14px">
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">🤝 Approved Appointments</div>
+        <div id="calendar-approved-list"></div>
       </div>
     </div>
 
@@ -377,27 +322,58 @@
           <div class="page-title">All Cases</div>
           <div class="page-sub" id="allcases-count"></div>
         </div>
-        <button class="btn btn-primary" onclick="openAddCase()">+ New Case</button>
+        <button class="btn btn-primary mt-8" onclick="openAddCase()">+ New Case</button>
       </div>
-      <input class="field-input mb-12" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
+
+      <div class="card mb-12" style="padding:12px">
+        <input class="field-input mb-8" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <select class="filter-select" id="ac-status" onchange="renderAllCases()">
+            <option value="All">All Statuses</option>
+          </select>
+          <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')">
+            <option value="All">All Categories</option>
+          </select>
+          <select class="filter-select" id="ac-type" onchange="renderAllCases()">
+            <option value="All">All Types</option>
+          </select>
+          <select class="filter-select" id="ac-sort" onchange="renderAllCases()">
+            <option value="asc">Due: Soonest</option>
+            <option value="desc">Due: Furthest</option>
+            <option value="none">Date Added</option>
+          </select>
+        </div>
+      </div>
+
       <div id="all-cases-list"></div>
     </div>
 
     <!-- ── FIRM DRIVE ── -->
     <div id="view-mydrive" class="view hidden">
       <div class="page-hdr">
-        <div class="page-title">Firm Drive</div>
+        <div>
+          <div class="page-title">Firm Drive</div>
+          <div class="page-sub">Direct, secure replica of system Drive</div>
+        </div>
+        <a id="mydrive-open-native-btn" class="btn btn-secondary btn-sm mt-8" href="#" target="_blank" style="display:none">Open in Google Drive ↗</a>
       </div>
       <div class="card" style="padding:14px">
         <div id="mydrive-breadcrumbs" class="mb-12"></div>
         <div id="mydrive-explorer-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+        <div id="mydrive-empty-state" class="empty-state hidden">
+          <div class="empty-state-icon">📁</div>
+          <div style="font-size:13px">This folder is empty.</div>
+        </div>
       </div>
     </div>
 
     <!-- ── ALL PROFILES ── -->
     <div id="view-profiles" class="view hidden">
       <div class="page-hdr">
-        <div class="page-title">Attorneys</div>
+        <div>
+          <div class="page-title">Attorneys</div>
+          <div class="page-sub" id="profiles-count"></div>
+        </div>
       </div>
       <div id="profiles-grid" style="display:grid;grid-template-columns:1fr;gap:12px"></div>
     </div>
@@ -406,34 +382,143 @@
     <div id="view-profileDetail" class="view hidden">
       <button class="btn btn-ghost btn-sm mb-12" onclick="navTo('profiles')">← Back to Attorneys</button>
       <div class="card mb-12" id="profile-header-card" style="padding:16px"></div>
-      <div id="profile-cases-list"></div>
+      <div class="grid4 mb-12" style="grid-template-columns:1fr 1fr !important; gap:8px !important;" id="profile-stats-row"></div>
+      <div id="profile-restricted-notice" class="card mb-12" style="display:none;text-align:center;padding:24px;border-color:var(--border)">
+        <span style="font-size:28px">🔒</span>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-top:8px">Access Restricted</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px">For privacy reasons, you can only access documents and cases belonging to your own account.</div>
+      </div>
+      <div id="profile-cases-section">
+        <div class="card mb-12" style="padding:10px">
+          <input class="field-input mb-8" placeholder="🔍 Search cases…" id="pd-search" oninput="renderProfileCases()"/>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <select class="filter-select" id="pd-status" onchange="renderProfileCases()">
+              <option value="All">All Statuses</option>
+            </select>
+            <select class="filter-select" id="pd-category" onchange="onFilterCategoryChange('pd')">
+              <option value="All">All Categories</option>
+            </select>
+            <select class="filter-select" id="pd-type" onchange="renderProfileCases()">
+              <option value="All">All Types</option>
+            </select>
+            <select class="filter-select" id="pd-sort" onchange="renderProfileCases()">
+              <option value="asc">Due: Soonest</option>
+              <option value="desc">Due: Furthest</option>
+              <option value="none">Date Added</option>
+            </select>
+          </div>
+        </div>
+        <div id="profile-cases-list"></div>
+      </div>
     </div>
 
     <!-- ── CASE DETAIL ── -->
     <div id="view-caseDetail" class="view hidden">
-      <button class="btn btn-ghost btn-sm mb-12" id="cd-back-btn">← Back</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" id="cd-back-btn">← Back</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" onclick="openEditCase()">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()">🗑 Delete</button>
+        </div>
+      </div>
+      <div style="font-weight:700;font-size:20px;color:var(--text);margin-bottom:12px" id="cd-title"></div>
+      <div id="cd-profile-chip" style="display:inline-flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;cursor:pointer" onclick="openCurrentProfile()"></div>
       <div class="card mb-12" id="cd-info" style="padding:16px"></div>
-      <div class="card" id="cd-docs" style="padding:16px"></div>
+      <div class="card mb-12" id="cd-docs" style="padding:16px"></div>
+      <div class="card" id="cd-status-panel" style="padding:16px"></div>
     </div>
 
     <!-- ── MY USER SETTINGS ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
+        <div class="page-sub">Personal profile, Drive connection, & security</div>
       </div>
+
+      <!-- Profile Details Card -->
       <div class="card mb-16" style="padding:16px">
         <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">👤 Profile Details</div>
         <label class="field-label">Display Name *</label>
-        <input class="field-input mb-12" id="setting-name"/>
-        <label class="field-label">Role *</label>
-        <input class="field-input mb-12" id="setting-role"/>
-        <label class="field-label">Contact</label>
-        <input class="field-input mb-16" id="setting-contact"/>
-        <button class="btn btn-primary" onclick="saveUserSettings()">Save Settings</button>
+        <input class="field-input mb-12" id="setting-name" placeholder="e.g. Atty. Maria Garcia"/>
+        <label class="field-label">Role / Designation *</label>
+        <input class="field-input mb-12" id="setting-role" placeholder="e.g. Senior Partner"/>
+        <label class="field-label">Contact Number</label>
+        <input class="field-input mb-12" id="setting-contact" placeholder="09XX-XXX-XXXX"/>
+
+        <label class="field-label">Attorney Profile Photo</label>
+        <div id="setting-photo-upload-area" style="margin-top:4px;margin-bottom:16px">
+          <div id="setting-photo-dropzone" onclick="document.getElementById('setting-photo-input').click()" style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--bg)">
+            <div style="font-size:20px;margin-bottom:4px">📷</div>
+            <div style="font-size:12px;color:var(--text-muted);font-weight:500">Click to upload photo</div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:2px">Max size: 2MB</div>
+          </div>
+          <input type="file" id="setting-photo-input" accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
+          
+          <div id="setting-photo-preview-wrap" style="display:none;align-items:center;gap:12px;margin-top:10px;padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+            <img id="setting-photo-preview-img" src="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>
+            <div style="flex:1;min-width:0">
+              <div id="setting-name-preview" style="font-size:13px;font-weight:600;color:var(--text)">Name</div>
+              <div id="setting-role-preview" style="font-size:11px;color:var(--text-dim)">Role</div>
+            </div>
+            <button onclick="removeSettingsPhoto()" class="btn btn-ghost btn-sm" style="padding:3px 6px;font-size:10px">Remove</button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveUserSettings()">Save Profile Settings</button>
       </div>
 
+      <!-- Google Drive Connection Card -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">☁️ Google Drive Connection</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-bottom:12px">
+          Connect your Google Drive account to enable document uploads, file storage, and profile photo syncing.
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:12px;font-weight:600">Status:</span>
+          <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
+        </div>
+        <button class="gdrive-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()" style="width:100%;justify-content:center;padding:10px">
+          <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+            <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+            <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+            <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+            <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+            <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+            <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+          </svg>
+          <span id="settings-connect-drive-text">Connect Google Drive</span>
+        </button>
+      </div>
+
+      <!-- Login & Security Card -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login & Security</div>
+        
+        <label class="field-label">Email Address</label>
+        <input class="field-input mb-12" id="setting-email" placeholder="email@address.com"/>
+        
+        <label class="field-label">New Password (optional)</label>
+        <input type="password" class="field-input mb-12" id="setting-password" placeholder="••••••••"/>
+        
+        <div id="password-requirements" style="display:none;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px">
+          <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase">Password Requirements</div>
+          <div id="req-length" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> Min. 6 characters</div>
+          <div id="req-upper" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> One uppercase letter (A-Z)</div>
+          <div id="req-number" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> One number (0-9)</div>
+          <div id="req-special" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> One special character</div>
+        </div>
+
+        <div id="setting-reauth-panel" style="display:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold-border);border-radius:10px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:4px">Verification Required</div>
+          <input type="password" class="field-input" id="setting-current-password" placeholder="Current Password"/>
+        </div>
+
+        <button class="btn btn-secondary" onclick="saveSecuritySettings()" style="width:100%">Update Credentials</button>
+      </div>
+
+      <!-- Sign Out / Danger Zone -->
       <div class="card" style="padding:16px">
-        <button class="btn btn-danger" onclick="handleLogout()">🚪 Sign Out</button>
+        <button class="btn btn-danger" onclick="handleLogout()" style="width:100%">🚪 Sign Out</button>
       </div>
     </div>
 
