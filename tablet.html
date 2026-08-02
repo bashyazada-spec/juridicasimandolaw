@@ -4,40 +4,15 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Simando Law — Tablet Case Manager</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="css/style.css"/>
+
+<!-- 1. Instant 0ms Device Router -->
 <script src="js/redirect.js"></script>
+
+<!-- 2. Firebase & Tablet Stylesheet -->
 <script type="module" src="js/firebase-init.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/tablet.css"/>
 <base target="_blank">
-
-<style>
-  /* ═════════════════════════════════════════════════════════════
-     DEDICATED TABLET / IPAD TOUCH UI STYLES
-     ═════════════════════════════════════════════════════════════ */
-  #main {
-    padding: 28px 24px 28px 84px !important;
-  }
-
-  /* 2-Column Responsive Touch Grid for Tablets */
-  .grid4, .dashboard-content-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 16px !important;
-  }
-
-  .cal-day-cell {
-    min-height: 84px !important;
-    padding: 8px !important;
-  }
-
-  .btn {
-    padding: 11px 20px !important;
-    font-size: 13.5px !important;
-  }
-
-  .case-row {
-    padding: 16px 18px !important;
-  }
-</style>
 </head>
 <body>
 
@@ -85,7 +60,7 @@
   </div>
 </div>
 
-<!-- Set Availability Modal -->
+<!-- Interactive Click-to-Toggle Set Availability Modal -->
 <div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
   <div class="modal-box" style="max-width: 520px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
@@ -102,6 +77,7 @@
         <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office / Vacation" value="In Court / Out of Office" autocomplete="off"/>
       </div>
 
+      <!-- Modal Interactive Calendar Picker -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:14px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -332,7 +308,7 @@
       <div class="grid4" style="margin-bottom:28px">
         <div class="stat-card" style="--accent:var(--gold)">
           <div id="stat-profiles" class="stat-number" style="color:var(--gold)">0</div>
-          <div class="stat-label">Attorney Profiles</div>
+          <div class="stat-label">Attorney Directory</div>
         </div>
         <div class="stat-card" style="--accent:var(--violet)">
           <div id="stat-total" class="stat-number" style="color:var(--violet)">0</div>
