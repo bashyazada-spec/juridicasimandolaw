@@ -70,6 +70,40 @@ function dbUnsubscribe() {
   if (appointmentsUnsub) { appointmentsUnsub(); appointmentsUnsub = null; }
 }
 
+function enterLocalMode(reason) {
+  localMode = true;
+  const banner = document.getElementById("config-banner");
+  if (banner) {
+    banner.textContent = "⚠️ " + (reason || "Firebase not connected. Data is stored in memory only and will be lost on refresh.");
+    banner.classList.add("show");
+    banner.style.display = "block";
+  }
+  showToast("Running in local mode — data will not persist", "error");
+}
+
+function connectDatabase() {
+  if (typeof window._fbReady !== "undefined" && window._fbReady && window._db) {
+    localMode = false;
+    const banner = document.getElementById("config-banner");
+    if (banner) {
+      banner.classList.remove("show");
+      banner.style.display = "none";
+    }
+
+    const u = window._currentUser || window._auth?.currentUser;
+    if (u) {
+      try {
+        dbLoad();
+      } catch (err) {
+        console.error("Database load failed:", err);
+        enterLocalMode("Database connection failed.");
+      }
+    }
+  } else {
+    enterLocalMode("Firebase initialization failed.");
+  }
+}
+
 async function dbLoad() {
   if (localMode || !window._db) return;
 
