@@ -4,9 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Simando Law — Case Manager</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="css/style.css"/>
+
+<!-- 1. Instant 0ms Device Redirector (Executes before Firebase loads) -->
+<script src="js/redirect.js"></script>
+
+<!-- 2. Firebase Initialization & Desktop Stylesheet -->
 <script type="module" src="js/firebase-init.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/desktop.css"/>
 <base target="_blank">
 </head>
 <body>
@@ -317,7 +322,6 @@
         </div>
       </div>
 
-      <!-- Responsive Command Center Grid (dashboard-content-grid) -->
       <div class="dashboard-content-grid">
         <div>
           <div class="card">
