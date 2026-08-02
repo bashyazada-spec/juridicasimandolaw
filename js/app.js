@@ -1184,7 +1184,7 @@ function updateCfChip() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BOOT
+//  BOOT LOGIC WITH SAFE LOOP-FREE AUTH LISTENER
 // ═══════════════════════════════════════════════════════════════
 function enterLocalMode(reason) {
   localMode = true;
@@ -1213,16 +1213,13 @@ async function connectDatabase() {
     if (banner) banner.classList.remove("show");
 
     const u = window._currentUser || window._auth?.currentUser;
-    if (!u) {
-      window.location.replace("login.html");
-      return;
-    }
-
-    try {
-      await dbLoad();
-    } catch (err) {
-      console.error("Database load failed:", err);
-      enterLocalMode("Database connection failed.");
+    if (u) {
+      try {
+        await dbLoad();
+      } catch (err) {
+        console.error("Database load failed:", err);
+        enterLocalMode("Database connection failed.");
+      }
     }
   } else {
     enterLocalMode("Firebase initialization failed.");
@@ -1237,9 +1234,23 @@ document.addEventListener("firebase-ready", () => {
     uiBooted = true;
     initAppUI();
   }
-  if (!dbConnected) {
-    dbConnected = true;
-    connectDatabase();
+
+  // Attach Loop-Free Auth Listener
+  if (window._auth && typeof window._fbOnAuth === "function") {
+    window._fbOnAuth(window._auth, (user) => {
+      window._currentUser = user;
+      if (user) {
+        if (!dbConnected) {
+          dbConnected = true;
+          connectDatabase();
+        }
+      } else {
+        // Redirect to login ONLY if definitively confirmed not logged in
+        if (window.location.pathname.indexOf("login.html") === -1) {
+          window.location.replace("login.html");
+        }
+      }
+    });
   }
 });
 
@@ -1248,7 +1259,7 @@ if (window._fbReady) {
     uiBooted = true;
     initAppUI();
   }
-  if (!dbConnected) {
+  if (!dbConnected && window._currentUser) {
     dbConnected = true;
     connectDatabase();
   }
@@ -1262,7 +1273,7 @@ setTimeout(() => {
 }, 2000);
 
 setTimeout(() => {
-  if (!dbConnected) {
+  if (!dbConnected && window._currentUser) {
     dbConnected = true;
     connectDatabase();
   }
