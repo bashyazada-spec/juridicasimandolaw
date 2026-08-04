@@ -77,6 +77,27 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 input, select, textarea { font-family: var(--font-body); }
 a { color: inherit; text-decoration: none; }
 
+/* OVERRIDE FOR NOTIFICATION DROPDOWN POPUP WIDGET */
+#notif-dropdown {
+  position: absolute !important;
+  top: 50px !important;
+  right: 0 !important;
+  width: 340px !important;
+  max-width: 380px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border-soft) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow) !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#notif-dropdown.hidden {
+  display: none !important;
+}
+
 /* TABLET LAYOUT & SIDEBAR STRUCTURE */
 #app { display: flex; min-height: 100vh; position: relative; }
 
