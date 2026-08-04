@@ -18,10 +18,23 @@
     ⚖️ <span>Simando Law</span>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
-    <button onclick="navTo('notifications')" style="position:relative;font-size:20px;background:none;border:none;color:var(--text);padding:4px">
-      🔔
-      <span id="global-notif-badge" class="badge" style="position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;display:none;padding:2px 5px;font-size:9px;border-radius:10px">0</span>
-    </button>
+    <!-- Notification Bell & Dropdown Widget for Mobile -->
+    <div style="position:relative">
+      <button onclick="toggleNotifDropdown()" style="position:relative;font-size:20px;background:none;border:none;color:var(--text);padding:4px" title="Notifications">
+        🔔
+        <span id="global-notif-badge" class="badge" style="position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;display:none;padding:2px 5px;font-size:9px;border-radius:10px">0</span>
+      </button>
+
+      <!-- Dropdown Popup Widget for Mobile -->
+      <div id="notif-dropdown" class="hidden" style="position:absolute;top:38px;right:0;width:290px;max-height:380px;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:1000;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">🔔 Notifications</span>
+          <button onclick="markAllNotificationsAsRead()" style="font-size:10.5px;color:var(--gold);background:none;border:none;cursor:pointer;font-weight:600">Mark all read</button>
+        </div>
+        <div id="notifications-list" style="overflow-y:auto;max-height:320px;padding:8px"></div>
+      </div>
+    </div>
+
     <div id="sidebar-user-chip" onclick="navTo('myprofile')" style="display:flex;align-items:center;cursor:pointer"></div>
   </div>
 </div>
@@ -258,20 +271,6 @@
       </div>
     </div>
 
-    <!-- ── NOTIFICATIONS VIEW ── -->
-    <div id="view-notifications" class="view hidden">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title">Notifications</div>
-          <div class="page-sub" id="notif-count-sub">System updates</div>
-        </div>
-        <button class="btn btn-secondary btn-sm mt-8" onclick="markAllNotificationsAsRead()">Mark read</button>
-      </div>
-      <div class="card" style="padding:14px">
-        <div id="notifications-list"></div>
-      </div>
-    </div>
-
     <!-- ── SCHEDULE / CALENDAR VIEW ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
@@ -355,7 +354,7 @@
           <div class="page-title">Firm Drive</div>
           <div class="page-sub">Direct, secure replica of system Drive</div>
         </div>
-        <a id="mydrive-open-native-btn" class="btn btn-secondary btn-sm mt-8" href="#" target="_blank" style="display:none">Open in Google Drive ↗</a>
+        <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm mt-8" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px">📁 Open in Google Drive ↗</a>
       </div>
       <div class="card" style="padding:14px">
         <div id="mydrive-breadcrumbs" class="mb-12"></div>
