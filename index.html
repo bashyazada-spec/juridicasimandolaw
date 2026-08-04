@@ -246,7 +246,7 @@
         <span id="global-notif-badge" class="badge" style="background:var(--red);color:#fff;margin-left:auto;display:none;padding:2px 8px;font-size:10px;border-radius:10px;line-height:1">0</span>
       </button>
       <button class="nav-btn" data-nav="calendar" onclick="navTo('calendar')">📅&nbsp;&nbsp;Schedule / Calendar</button>
-      <button class="nav-btn" onclick="openMyDriveFolder()">📁&nbsp;&nbsp;Go to Google Drive ↗</button>
+      <button class="nav-btn" data-nav="mydrive" onclick="navTo('mydrive')">📁&nbsp;&nbsp;Firm Drive</button>
       <div class="nav-section">Clients</div>
       <button class="nav-btn" data-nav="profiles" onclick="navTo('profiles')">👥&nbsp;&nbsp;Attorneys</button>
       <div class="nav-section">Cases</div>
@@ -419,7 +419,7 @@
           <div class="page-title">Firm Drive</div>
           <div class="page-sub">Direct, secure replica of your system Google Drive storage space</div>
         </div>
-        <a id="mydrive-open-native-btn" class="btn btn-secondary btn-sm" href="#" target="_blank" style="display:none">Open in Google Drive ↗</a>
+        <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px">📁 Open in Google Drive ↗</a>
       </div>
 
       <div class="card">
