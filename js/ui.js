@@ -1655,8 +1655,25 @@ if (!window._calendarIntervalId) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REAL-TIME NOTIFICATIONS SYSTEM
+//  REAL-TIME NOTIFICATIONS SYSTEM & DROPDOWN WIDGET
 // ═══════════════════════════════════════════════════════════════
+window.toggleNotifDropdown = function() {
+  const dropdown = document.getElementById("notif-dropdown");
+  if (!dropdown) return;
+  dropdown.classList.toggle("hidden");
+  if (!dropdown.classList.contains("hidden")) {
+    renderNotificationsView();
+  }
+};
+
+document.addEventListener("click", (e) => {
+  const container = document.getElementById("top-hdr-actions");
+  const dropdown = document.getElementById("notif-dropdown");
+  if (container && dropdown && !container.contains(e.target)) {
+    dropdown.classList.add("hidden");
+  }
+});
+
 function updateNotificationBadge() {
   const badgeEl = document.getElementById("global-notif-badge");
   if (!badgeEl) return;
@@ -1670,17 +1687,11 @@ function updateNotificationBadge() {
 }
 
 function renderNotificationsView() {
-  const countEl = document.getElementById("notif-count-sub");
-  const unreadCount = notifications.filter(n => n.status === "unread").length;
-  if (countEl) {
-    countEl.textContent = `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`;
-  }
-
   const listEl = document.getElementById("notifications-list");
   if (!listEl) return;
 
   if (notifications.length === 0) {
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔔</div><div>No notifications found.</div></div>`;
+    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px">🔔</div><div style="font-size:12px;color:var(--text-dim)">No notifications found.</div></div>`;
     return;
   }
 
@@ -1691,27 +1702,27 @@ function renderNotificationsView() {
     let actions = "";
     if (n.type === "appointment_request" && n.appointmentStatus === "pending") {
       actions = `
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn btn-primary btn-sm" onclick="acceptAppointmentRequest('${n.id}', '${n.relatedId}')">Accept Proposal</button>
-          <button class="btn btn-danger btn-sm" onclick="declineAppointmentRequest('${n.id}', '${n.relatedId}')">Decline</button>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:10px" onclick="acceptAppointmentRequest('${n.id}', '${n.relatedId}')">Accept Proposal</button>
+          <button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:10px" onclick="declineAppointmentRequest('${n.id}', '${n.relatedId}')">Decline</button>
         </div>
       `;
     } else if (n.type === "appointment_request") {
       const statusText = (n.appointmentStatus || "").toUpperCase();
       const colorVal = n.appointmentStatus === "accepted" ? "var(--green)" : "var(--red)";
-      actions = `<div style="font-size:11px;font-weight:700;color:${colorVal};margin-top:10px">● PROPOSAL ${statusText}</div>`;
+      actions = `<div style="font-size:10px;font-weight:700;color:${colorVal};margin-top:6px">● PROPOSAL ${statusText}</div>`;
     }
 
     return `
-      <div class="doc-item" style="border-left: 3px solid ${isUnread ? 'var(--gold)' : 'var(--border)'}; background: ${isUnread ? 'var(--surface2)' : 'transparent'}; margin-bottom: 12px; padding: 16px;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:14px;color:var(--text);margin-bottom:4px">${escHtml(n.title)}</div>
-            <div style="font-size:13px;color:var(--text-muted)">${escHtml(n.message)}</div>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:6px">${dateStr}</div>
+      <div class="doc-item" style="border-left: 3px solid ${isUnread ? 'var(--gold)' : 'var(--border)'}; background: ${isUnread ? 'var(--surface2)' : 'transparent'}; margin-bottom: 8px; padding: 10px 12px; font-size: 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
+          <div style="flex:1;min-width:0;padding-right:6px">
+            <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:2px">${escHtml(n.title)}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4">${escHtml(n.message)}</div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${dateStr}</div>
             ${actions}
           </div>
-          ${isUnread ? '<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;flex-shrink:0" onclick="markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
+          ${isUnread ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;flex-shrink:0" onclick="markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
         </div>
       </div>
     `;
