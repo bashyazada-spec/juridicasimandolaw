@@ -1881,7 +1881,11 @@ let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
 
 window.initDriveExplorer = function() {
-  currentExplorerFolderId = DRIVE_FOLDER_ID || "root";
+  const u = window._currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+  const startFolder = (myProf && myProf.driveFolderId) ? myProf.driveFolderId : (DRIVE_FOLDER_ID || "root");
+
+  currentExplorerFolderId = startFolder;
   explorerBreadcrumbs = [{ id: currentExplorerFolderId, name: "Firm Drive" }];
   loadExplorerFiles();
 };
@@ -1896,11 +1900,18 @@ window.loadExplorerFiles = async function() {
   renderExplorerBreadcrumbs();
 
   if (nativeBtn) {
-    if (currentExplorerFolderId && currentExplorerFolderId !== "root") {
-      nativeBtn.href = "https://drive.google.com/drive/folders/" + currentExplorerFolderId;
+    const u = window._currentUser;
+    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+    const targetFolder = (currentExplorerFolderId && currentExplorerFolderId !== "root") 
+      ? currentExplorerFolderId 
+      : (myProf?.driveFolderId || DRIVE_FOLDER_ID || "");
+
+    if (targetFolder) {
+      nativeBtn.href = "https://drive.google.com/drive/folders/" + targetFolder;
       nativeBtn.style.display = "inline-flex";
     } else {
-      nativeBtn.style.display = "none";
+      nativeBtn.href = "https://drive.google.com";
+      nativeBtn.style.display = "inline-flex";
     }
   }
 
