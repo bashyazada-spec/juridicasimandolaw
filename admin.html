@@ -175,12 +175,21 @@
   let db, auth;
   let adminProfiles = [];
 
-  document.addEventListener("firebase-ready", async () => {
+  function bounceUser(msg) {
+    const el = document.getElementById("gate-message");
+    if (el) el.innerHTML = `<span style="color:var(--red)">❌ ${msg}</span><br><br><a href="index.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
+    showToast(msg, "error");
+    setTimeout(() => {
+      window.location.replace("index.html");
+    }, 2800);
+  }
+
+  async function runAdminVerification() {
     db = window._db;
     auth = window._auth;
 
-    if (!auth) {
-      bounceUser("Identity Provider Connection Error");
+    if (!auth || !db) {
+      setTimeout(runAdminVerification, 300);
       return;
     }
 
@@ -191,45 +200,66 @@
       }
 
       try {
-        // Verify current attorney profile has administrative access
+        const userEmail = (user.email || "").toLowerCase();
+        const isEmailAdmin = typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
+
+        // 1. Direct doc check by user.uid
         const docRef = doc(db, "profiles", user.uid);
         const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists() && docSnap.data().role === "admin") {
+        let isAdmin = false;
+
+        if (docSnap.exists() && (docSnap.data().role === "admin" || isEmailAdmin)) {
+          isAdmin = true;
+        } else {
+          // 2. Query collection for ownerUid or email match
+          const pSnap = await getDocs(collection(db, "profiles"));
+          const matched = pSnap.docs.find(d => {
+            const data = d.data();
+            return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) &&
+                   (data.role === "admin" || isEmailAdmin);
+          });
+          if (matched || isEmailAdmin) {
+            isAdmin = true;
+          }
+        }
+
+        if (isAdmin) {
           const loader = document.getElementById("loading-screen");
           if (loader) loader.style.display = "none";
           showToast("Admin Session Verified");
           initAdminConsole();
         } else {
-          // Fallback search for custom claims/overwritten profiles using imported 'query'
-          const q = query(collection(db, "profiles"));
-          const snap = await getDocs(q);
-          const matched = snap.docs.find(d => d.data().ownerUid === user.uid && d.data().role === "admin");
-          
-          if (matched) {
-            const loader = document.getElementById("loading-screen");
-            if (loader) loader.style.display = "none";
-            showToast("Admin Session Verified");
-            initAdminConsole();
-          } else {
-            bounceUser("Unauthorized. You do not possess administrative permissions.");
-          }
+          bounceUser("Unauthorized. You do not possess administrative permissions.");
         }
       } catch (err) {
         console.error("Admin verification failed:", err);
-        bounceUser("Security verification failed: " + err.message);
+        const userEmail = (user.email || "").toLowerCase();
+        if (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail)) {
+          const loader = document.getElementById("loading-screen");
+          if (loader) loader.style.display = "none";
+          showToast("Admin Session Verified (Config)");
+          initAdminConsole();
+        } else {
+          bounceUser("Security verification failed: " + err.message);
+        }
       }
     });
-  });
-
-  function bounceUser(msg) {
-    const el = document.getElementById("gate-message");
-    if (el) el.innerHTML = `<span style="color:var(--red)">❌ ${msg}</span><br><br><a href="index.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
-    showToast(msg, "error");
-    setTimeout(() => {
-      window.location.replace("index.html");
-    }, 2800);
   }
+
+  // Safe Loop-Free Execution
+  if (window._fbReady) {
+    runAdminVerification();
+  } else {
+    document.addEventListener("firebase-ready", runAdminVerification);
+  }
+
+  // Fallback safety trigger in case of event race conditions
+  setTimeout(() => {
+    if (document.getElementById("loading-screen")?.style.display !== "none" && window._db) {
+      runAdminVerification();
+    }
+  }, 1200);
 
   // ═══════════════════════════════════════════════════════════════
   //  DIRECTORY RENDERERS
@@ -324,7 +354,6 @@
     document.getElementById("create-modal").classList.add("hidden");
   };
 
-  // Maps technical Auth error codes to descriptive localized statements
   const translateAuthError = (code) => {
     switch (code) {
       case "auth/email-already-in-use":
@@ -361,17 +390,13 @@
 
     let secondaryApp;
     try {
-      // Initialize a isolated Firebase instance specifically for registration
-      // This prevents the administrator's active session from being logged out
       const secondaryAppName = "SimandoLawRegistrationApp_" + Date.now();
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
 
-      // Create credential record in authentication
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
       const user = userCredential.user;
 
-      // Assign visual layout details
       const colors = ["#c9a84c", "#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#06b6d4", "#a855f7", "#ec4899"];
       const randColor = colors[Math.floor(Math.random() * colors.length)];
 
@@ -386,19 +411,16 @@
         createdAt: new Date().toISOString().slice(0, 10)
       };
 
-      // Set profile database document
       await setDoc(doc(db, "profiles", user.uid), newProfile);
 
       showToast("Account successfully registered.");
       closeCreateModal();
 
-      // Refresh directory
       await loadDirectoryProfiles();
       renderAttorneyDirectory();
 
     } catch (err) {
       console.error("Account creation process failed:", err);
-      // Display localized friendly error mapping to the admin
       const friendlyMsg = err.code ? translateAuthError(err.code) : err.message;
       showToast(friendlyMsg, "error");
     } finally {
