@@ -4,42 +4,100 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Privacy Policy — Simando Law</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{max-width:720px;margin:60px auto;padding:0 24px;font-family:'DM Sans',system-ui,sans-serif;line-height:1.7;color:#334155;background:#f8fafc}
-h1{font-family:'Playfair Display',Georgia,serif;font-size:32px;color:#0f172a;margin-bottom:8px}
-.sub{color:#64748b;font-size:14px;margin-bottom:32px}
-h2{font-size:18px;color:#1e293b;margin:28px 0 10px;font-weight:600}
-p{margin-bottom:14px;font-size:15px}
-ul{margin:0 0 14px 20px}
-li{margin-bottom:6px}
-.footer{margin-top:48px;padding-top:20px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:12px}
-a{color:#c9a84c;text-decoration:none}
-a:hover{text-decoration:underline}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    line-height: 1.7;
+    color: #d8e4f0;
+    background: #060c13;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 36px;
+    color: #f5e6c4;
+    margin-bottom: 6px;
+  }
+  .sub { color: #6b82a0; font-size: 14px; margin-bottom: 36px; font-weight: 500; }
+  h2 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px;
+    color: #c9a55c;
+    margin: 32px 0 12px;
+    font-weight: 600;
+    border-bottom: 1px solid #162033;
+    padding-bottom: 6px;
+  }
+  p { margin-bottom: 14px; font-size: 14.5px; color: #a0aec0; }
+  ul { margin: 0 0 16px 22px; color: #a0aec0; font-size: 14.5px; }
+  li { margin-bottom: 8px; }
+  .box {
+    background: #0c1826;
+    border: 1px solid #1c2d3f;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+  }
+  .footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid #162033;
+    color: #6b82a0;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  a { color: #c9a55c; text-decoration: none; font-weight: 500; }
+  a:hover { text-decoration: underline; color: #e0c080; }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 </head>
 <body>
+
 <h1>Privacy Policy</h1>
-<p class="sub">Simando Law Case Manager</p>
+<p class="sub">Simando Law — Case Management System</p>
+
+<div class="box">
+  <p style="margin:0;color:#d8e4f0"><strong>Summary:</strong> Simando Law respects attorney and client confidentiality. We collect only the data necessary to provide secure case management and document organization. We do not sell, share, or monetize your personal or legal data.</p>
+</div>
 
 <h2>1. Information We Collect</h2>
-<p>We collect only the information necessary to provide our case management services, including client names, contact details, and case-related documents. All data is stored securely in Firebase and Google Drive under your control.</p>
+<p>To operate our legal case management system, we collect and process the following information:</p>
+<ul>
+  <li><strong>Account Credentials:</strong> Full name, professional role/title, contact number, and email address provided during account registration.</li>
+  <li><strong>Case Details:</strong> Case titles, docket numbers, filing dates, category/sub-categories, court venues, parties involved, and narrative case summaries.</li>
+  <li><strong>Attached Documents:</strong> Case-related files uploaded by attorneys and associates.</li>
+  <li><strong>Google Integration Data:</strong> Access tokens and folder references when you authorize Google Drive or Google Calendar integration.</li>
+</ul>
 
-<h2>2. How We Use Your Information</h2>
-<p>Your information is used solely for managing legal cases and client relationships. We do not sell, rent, or share your data with third parties for marketing purposes.</p>
+<h2>2. How We Use Google User Data & OAuth Scopes</h2>
+<p>When you explicitly connect your Google Account, our system requests access to specific restricted scopes for the following purposes:</p>
+<ul>
+  <li><strong>Google Drive (`drive.file`):</strong> Used exclusively to create dedicated case storage folders, upload case attachments, and store attorney profile photos. We access only files created or managed by this application.</li>
+  <li><strong>Google Calendar (`calendar.events` & `calendar.readonly`):</strong> Used exclusively to display upcoming court hearings, deadlines, and schedule events on your dashboard agenda, and to automatically sync case due dates.</li>
+</ul>
+<p>We do not access, scan, or read any unrelated files or calendar events in your Google Account.</p>
 
-<h2>3. Data Storage</h2>
-<p>Client data is stored in Google Firebase. Documents are stored in your own Google Drive account. We do not maintain separate copies of your files.</p>
+<h2>3. Data Storage & Security</h2>
+<p>User profiles, case metadata, appointments, and real-time notifications are stored securely in Google Firebase Firestore. Uploaded case files reside directly inside your own authorized Google Drive storage folders. We implement industry-standard encryption, SSL/TLS data transit protection, and strict authentication checks.</p>
 
-<h2>4. Your Rights</h2>
-<p>You may request deletion of your data at any time by removing profiles and cases from the application.</p>
+<h2>4. Data Sharing & Confidentiality</h2>
+<p>Consistent with legal ethics and client confidentiality rules, all case details and attached documents are restricted to the designated attorney and authorized associates specified via case-sharing settings. We never sell, rent, or trade attorney or client information to third parties.</p>
 
-<h2>5. Contact</h2>
-<p>For privacy concerns, contact your system administrator.</p>
+<h2>5. Your Rights & Data Retention</h2>
+<p>You retain full ownership of all data entered into Simando Law. You may update your profile details, edit case records, remove files, or permanently delete your account and all associated records at any time through the <strong>My Settings</strong> menu.</p>
+
+<h2>6. Contact & Inquiries</h2>
+<p>For questions or concerns regarding this Privacy Policy, please contact your system administrator or reach out directly at <a href="mailto:admin@simandolaw.com">admin@simandolaw.com</a>.</p>
 
 <div class="footer">
-  <p>Last updated: 2026 · <a href="index.html">← Back to Simando Law</a></p>
+  <span>Last updated: 2026 · Simando Law v5.0</span>
+  <a href="login.html" target="_self">← Back to Sign In</a>
 </div>
+
 </body>
 </html>
