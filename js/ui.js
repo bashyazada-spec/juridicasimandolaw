@@ -1170,14 +1170,18 @@ async function connectDriveFromSettings() {
     renderMyProfile();
     
     const u = window._currentUser;
-    const myProf = profiles.find(p => p.ownerUid === u.uid);
+    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
     if (myProf && !myProf.driveFolderId) {
       showToast("Initializing attorney Drive storage folder...");
-      const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
-      if (folderId) {
-        await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
-        myProf.driveFolderId = folderId;
-        showToast("Storage folder created!");
+      try {
+        const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
+        if (folderId) {
+          await dbUpdateProfile(myProf.id, { driveFolderId: folderId }).catch(e => console.warn("Profile update note:", e));
+          myProf.driveFolderId = folderId;
+          showToast("Storage folder created!");
+        }
+      } catch (folderErr) {
+        console.warn("Folder initialization notice:", folderErr);
       }
     }
   } catch (err) {
