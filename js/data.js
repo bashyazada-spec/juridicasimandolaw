@@ -27,6 +27,45 @@ let profilesUnsub  = null;
 let casesUnsub     = null;
 let notificationsUnsub = null;
 let appointmentsUnsub = null;
+let prevNotifCount = 0;
+
+// ── WEB AUDIO SYNTHESIZER FOR NOTIFICATIONS & CHAT ──────────────
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) { /* ignore autoplay restrictions */ }
+}
+
+function playChatSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
+    osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.12); // E5
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  } catch (e) { /* ignore autoplay restrictions */ }
+}
+
+window.playNotificationSound = playNotificationSound;
+window.playChatSound = playChatSound;
 
 const statusColor = (status) => {
   switch (status) {
@@ -164,9 +203,9 @@ async function dbLoad() {
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
       const cColRef = window._fbCol(db, "cases");
-      const cQuery = window._fbQuery(cColRef, window._fbWhere("allowedUids", "array-contains", activeUid));
-      casesUnsub = window._fbOnSnapshot(cQuery, (snap) => {
+      casesUnsub = window._fbOnSnapshot(cColRef, (snap) => {
         cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        checkCaseDueNotifications();
         refreshCurrentView();
       }, (error) => {
         console.error("Cases real-time connection error:", error);
@@ -177,9 +216,18 @@ async function dbLoad() {
     if (activeUid) {
       try {
         const notifColRef = window._fbCol(db, "notifications");
-        const notifQuery = window._fbQuery(notifColRef, window._fbWhere("toUid", "==", activeUid));
-        notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
-          notifications = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        notificationsUnsub = window._fbOnSnapshot(notifColRef, (snap) => {
+          const allNotifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          notifications = allNotifs
+            .filter(n => n.toUid === activeUid)
+            .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+          const unreadCount = notifications.filter(n => n.status === "unread").length;
+          if (unreadCount > prevNotifCount) {
+            playNotificationSound();
+          }
+          prevNotifCount = unreadCount;
+
           refreshCurrentView();
         }, (error) => {
           console.warn("Notifications sync permission notice:", error.message);
@@ -212,6 +260,47 @@ async function dbLoad() {
     dbReady = false;
     showToast("Real-time sync connection failed", "error");
   }
+}
+
+// ── AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──────────────
+function checkCaseDueNotifications() {
+  const activeUid = window._currentUser?.uid;
+  if (!activeUid || !cases.length) return;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  cases.forEach(c => {
+    if (!c.dueDate) return;
+    const dueObj = new Date(c.dueDate + "T00:00:00");
+    const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 3) {
+      const isAssigned = c.ownerUid === activeUid || (c.allowedUids && c.allowedUids.includes(activeUid));
+      if (!isAssigned) return;
+
+      const alreadyNotified = notifications.some(n => 
+        n.type === "case_due" && n.relatedId === c.id && n.status === "unread"
+      );
+
+      if (!alreadyNotified) {
+        let msgStr = `Case "${c.title}" is due on ${formatDate(c.dueDate)}.`;
+        if (diffDays < 0) msgStr = `⚠️ OVERDUE: Case "${c.title}" was due on ${formatDate(c.dueDate)}.`;
+        else if (diffDays === 0) msgStr = `⚡ DUE TODAY: Case "${c.title}" has a deadline today!`;
+
+        dbAddNotification({
+          toUid: activeUid,
+          fromUid: "system",
+          fromName: "Simando Law Calendar",
+          title: diffDays <= 0 ? "⚡ Urgent Case Deadline" : "📅 Upcoming Case Due Date",
+          message: msgStr,
+          type: "case_due",
+          relatedId: c.id,
+          status: "unread"
+        });
+      }
+    }
+  });
 }
 
 function refreshCurrentView() {
