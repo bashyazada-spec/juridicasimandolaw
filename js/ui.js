@@ -479,7 +479,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL
+//  CASE DETAIL (ENFORCING VIEWER VS EDITOR PERMISSIONS)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -490,25 +490,30 @@ function renderCaseDetail() {
   const titleEl = document.getElementById("cd-title");
   if (titleEl) titleEl.textContent = c.title;
 
-  const isOwner = c.ownerUid === window._currentUser?.uid;
+  const currentUid = window._currentUser?.uid;
+  const isOwner = c.ownerUid === currentUid;
+  const isGroupAdmin = profiles.some(p => p.ownerUid === currentUid && p.role === "admin");
+  const userPerm = isOwner || isGroupAdmin 
+    ? "owner" 
+    : ((c.permissions && c.permissions[currentUid]) || (c.sharedWith?.includes(currentUid) ? "viewer" : "none"));
 
-  let actionButtons = `<button class="btn btn-secondary btn-sm" onclick="openEditCase()">✏️ Edit</button>`;
-  if (isOwner) {
-    actionButtons += `
-      <button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()">👥 Share</button>
-      <button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()">🗑 Delete</button>
-    `;
-  }
+  const canEdit = isOwner || isGroupAdmin || userPerm === "editor";
+  const canShare = isOwner || isGroupAdmin;
+  const canDelete = isOwner || isGroupAdmin;
+
+  let actionButtons = "";
+  if (canEdit) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()">✏️ Edit</button>`;
+  if (canShare) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()">👥 Share</button>`;
+  if (canDelete) actionButtons += `<button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()">🗑 Delete</button>`;
+  if (userPerm === "viewer") actionButtons += `<span class="badge" style="background:rgba(129,140,248,0.15);color:#818cf8;padding:6px 12px;font-size:12px">👁 Viewer Access</span>`;
+
+  const wrapEl = document.getElementById("cd-action-buttons-wrap");
+  if (wrapEl) wrapEl.innerHTML = actionButtons;
 
   const detailHeaderActions = document.querySelector("#view-caseDetail .flex-center.gap-10");
   if (detailHeaderActions) {
-    detailHeaderActions.innerHTML = `
-      <button class="btn btn-ghost" id="cd-back-btn">← Back</button>
-      <div style="flex:1;font-weight:700;font-size:22px;color:var(--text)" id="cd-title">${c.title}</div>
-      ${actionButtons}
-    `;
-    const reBoundBackBtn = document.getElementById("cd-back-btn");
-    if (reBoundBackBtn) reBoundBackBtn.onclick = () => { showView("profileDetail"); renderProfileDetail(); };
+    const backBtn = document.getElementById("cd-back-btn");
+    if (backBtn) backBtn.onclick = () => { showView("profileDetail"); renderProfileDetail(); };
   }
 
   const chip = document.getElementById("cd-profile-chip");
@@ -548,21 +553,23 @@ function renderCaseDetail() {
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
-    <div style="display:inline-flex;align-items:center;gap:12px">
-      <div style="display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px 12px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-          <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 In
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-          <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
-        </label>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload</button>
-    </div>
+    ${canEdit ? `
+      <div style="display:inline-flex;align-items:center;gap:12px">
+        <div style="display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px 12px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
+            <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 In
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
+            <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
+          </label>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload</button>
+      </div>` : `<span style="font-size:11px;color:var(--text-dim)">Protected File Repository</span>`
+    }
   </div>`;
 
   if (docs.length === 0) {
-    docsHtml += `<div class="upload-area" onclick="addDocToCase()"><div style="font-size:28px;margin-bottom:6px">📎</div><div>Click to attach a document</div></div>`;
+    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:28px;margin-bottom:6px">📎</div><div>${canEdit ? 'Click to attach a document' : 'No document records uploaded'}</div></div>`;
   } else {
     const inboundDocs = docs.filter(d => d.fileType === "Inbound");
     const outboundDocs = docs.filter(d => d.fileType === "Outbound");
@@ -583,7 +590,7 @@ function renderCaseDetail() {
                 ${doc.size} · ${doc.date}${doc.driveFileId ? " · ✅ Drive" : ""}
               </div>
             </div>
-            <button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})">×</button>
+            ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})">×</button>` : ""}
           </div>
         </div>
       `;
@@ -604,7 +611,9 @@ function renderCaseDetail() {
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
-    docsHtml += `<div class="upload-area" style="margin-top:16px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
+    if (canEdit) {
+      docsHtml += `<div class="upload-area" style="margin-top:16px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
+    }
   }
   
   const docsEl = document.getElementById("cd-docs");
@@ -612,12 +621,20 @@ function renderCaseDetail() {
 
   const statusPanelEl = document.getElementById("cd-status-panel");
   if (statusPanelEl) {
-    statusPanelEl.innerHTML = `
-      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
-      ${STATUS_OPTIONS.map(st => `
-        <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
-          ${c.status === st ? "✓ " : ""}${st}
-        </button>`).join("")}`;
+    if (canEdit) {
+      statusPanelEl.innerHTML = `
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
+        ${STATUS_OPTIONS.map(st => `
+          <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
+            ${c.status === st ? "✓ " : ""}${st}
+          </button>`).join("")}`;
+    } else {
+      statusPanelEl.innerHTML = `
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">Current Status</div>
+        ${badge(c.status, statusColor(c.status))}
+        <div style="font-size:11.5px;color:var(--text-dim);margin-top:8px">You have Viewer access for this case. Status modifications are restricted to Editors & Owners.</div>
+      `;
+    }
   }
 }
 
@@ -1888,6 +1905,113 @@ window.declineAppointmentRequest = async function(notifId, apptId) {
     console.error("declineAppointmentRequest error:", err);
   }
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  CASE SHARING SYSTEM (VIEWER VS EDITOR PERMISSIONS)
+// ═══════════════════════════════════════════════════════════════
+function openShareCaseModal() {
+  if (!selCase) return;
+  const listEl = document.getElementById("share-modal-list");
+  if (!listEl) return;
+
+  const sharedUids = selCase.sharedWith || [];
+  const permissions = selCase.permissions || {};
+  const currentUid = window._currentUser?.uid;
+
+  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
+
+  if (associates.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:16px">No other associate attorneys are currently registered in the system.</div>`;
+  } else {
+    listEl.innerHTML = associates.map(p => {
+      const isChecked = sharedUids.includes(p.ownerUid);
+      const role = permissions[p.ownerUid] || "viewer";
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0;margin:0">
+            <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked ? 'checked' : ''} onchange="toggleShareRoleSelect('${p.ownerUid}', this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
+            ${avatarDiv(p.name, p.avatarColor, 30, p.photoUrl)}
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.email}</div>
+            </div>
+          </label>
+          <select id="share-role-${p.ownerUid}" class="filter-select" style="width:105px;padding:4px 22px 4px 8px;font-size:11.5px;margin-left:8px;${!isChecked ? 'opacity:0.4;pointer-events:none' : ''}">
+            <option value="viewer" ${role === 'viewer' ? 'selected' : ''}>👁 Viewer</option>
+            <option value="editor" ${role === 'editor' ? 'selected' : ''}>✏️ Editor</option>
+          </select>
+        </div>
+      `;
+    }).join("");
+  }
+
+  const modal = document.getElementById("share-modal");
+  if (modal) modal.classList.remove("hidden");
+}
+
+function toggleShareRoleSelect(uid, isChecked) {
+  const select = document.getElementById(`share-role-${uid}`);
+  if (select) {
+    select.style.opacity = isChecked ? "1" : "0.4";
+    select.style.pointerEvents = isChecked ? "all" : "none";
+  }
+}
+
+async function saveShareSettings() {
+  if (!selCase) return;
+  const checkboxes = document.querySelectorAll('input[name="share-associate-checkbox"]');
+  const selectedUids = [];
+  const permissions = {};
+
+  checkboxes.forEach(cb => {
+    if (cb.checked) {
+      const uid = cb.value;
+      selectedUids.push(uid);
+      const roleSel = document.getElementById(`share-role-${uid}`);
+      permissions[uid] = roleSel ? roleSel.value : "viewer";
+    }
+  });
+
+  const ownerUid = selCase.ownerUid || window._currentUser.uid;
+  const allowedUids = [ownerUid, ...selectedUids];
+
+  try {
+    showToast("Updating share settings...");
+    await dbUpdateCase(selCase.id, {
+      sharedWith: selectedUids,
+      allowedUids: allowedUids,
+      permissions: permissions
+    });
+
+    const myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
+    for (const sharedUid of selectedUids) {
+      if (!selCase.sharedWith || !selCase.sharedWith.includes(sharedUid)) {
+        const permRole = permissions[sharedUid] === "editor" ? "Editor ✏️" : "Viewer 👁";
+        await dbAddNotification({
+          toUid: sharedUid,
+          fromUid: window._currentUser.uid,
+          fromName: myProf?.name || "Attorney",
+          title: "📁 Case Shared With You",
+          message: `${myProf?.name || "An attorney"} granted you ${permRole} access to case "${selCase.title}".`,
+          type: "case_share",
+          relatedId: selCase.id,
+          status: "unread"
+        });
+      }
+    }
+
+    selCase.sharedWith = selectedUids;
+    selCase.allowedUids = allowedUids;
+    selCase.permissions = permissions;
+
+    closeShareModal();
+    renderCaseDetail();
+    showToast("Share settings & permissions saved!");
+  } catch (err) {
+    console.error("saveShareSettings error:", err);
+    showToast("Failed to share case: " + err.message, "error");
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  GOOGLE DRIVE EXPLORER REPLICA
