@@ -208,7 +208,11 @@
       updateBadge();
     } else {
       loadPeerList();
-      if (activeDmPeer) subscribeDm(activeDmPeer.uid);
+      if (activeDmPeer) {
+        subscribeDm(activeDmPeer.uid);
+        unreadDm = 0;
+        updateBadge();
+      }
     }
   }
 
@@ -237,7 +241,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  AVAILABILITY PICKER TOGGLE & SEND
+  //  AVAILABILITY PICKER TOGGLE & SEND (SENDS NOTIFICATION TOO)
   // ═══════════════════════════════════════════════════════════
   function toggleAvailPicker(target) {
     const el = document.getElementById(`chat-avail-picker-${target}`);
@@ -281,16 +285,45 @@
     try {
       if (target === "group") {
         await window._fbAddDoc(window._fbCol(window._db, COLLECTION_GROUP), payload);
+
+        // Send real-time notification to all other attorneys
+        if (typeof window.profiles !== "undefined" && typeof window.dbAddNotification === "function") {
+          const others = window.profiles.filter(p => p.ownerUid && p.ownerUid !== myUid);
+          for (const p of others) {
+            await window.dbAddNotification({
+              toUid: p.ownerUid,
+              fromUid: myUid,
+              fromName: myName,
+              title: "📅 Availability Request",
+              message: `${myName} requested availability for "${title}" on ${date} at ${time}.`,
+              type: "availability_request",
+              status: "unread"
+            });
+          }
+        }
       } else if (target === "dm" && activeDmPeer) {
         payload.peerUid  = activeDmPeer.uid;
         payload.peerName = activeDmPeer.name;
         const channelId = dmChannelId(myUid, activeDmPeer.uid);
         await window._fbAddDoc(window._fbCol(window._db, COLLECTION_DM + "_" + channelId), payload);
+
+        // Send real-time notification to DM target
+        if (typeof window.dbAddNotification === "function") {
+          await window.dbAddNotification({
+            toUid: activeDmPeer.uid,
+            fromUid: myUid,
+            fromName: myName,
+            title: "📅 Direct Availability Request",
+            message: `${myName} sent you an availability request for "${title}" on ${date} at ${time}.`,
+            type: "availability_request",
+            status: "unread"
+          });
+        }
       }
 
       toggleAvailPicker(target);
       if (titleInp) titleInp.value = "";
-      if (window.showToast) window.showToast("Availability request card sent!");
+      if (window.showToast) window.showToast("Availability request card sent & notified! 📅");
     } catch (err) {
       console.error("sendAvailRequest error:", err);
       if (window.showToast) window.showToast("Failed to send request: " + err.message, "error");
@@ -337,6 +370,19 @@
           if (typeof window.dbAddAppointment === "function") {
             await window.dbAddAppointment(apptData);
           }
+
+          // Notify proposer
+          if (typeof window.dbAddNotification === "function") {
+            await window.dbAddNotification({
+              toUid: msgData.uid,
+              fromUid: myUid,
+              fromName: myName,
+              title: "Availability Confirmed ✅",
+              message: `${myName} confirmed availability for "${msgData.reqTitle || 'Meeting'}" on ${msgData.reqDate}.`,
+              type: "availability_confirmed",
+              status: "unread"
+            });
+          }
         }
         if (window.showToast) window.showToast("Confirmed & added to Firm Calendar! 📅");
       } else {
@@ -349,7 +395,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  GROUP & DM LISTENERS
+  //  GROUP & DM LISTENERS WITH AUDIO & BADGE LOGIC
   // ═══════════════════════════════════════════════════════════
   function subscribeGroup() {
     if (groupUnsub) return; 
@@ -366,14 +412,18 @@
       const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderMessages("chat-messages-group", msgs, false, true, "");
 
-      if (!chatOpen || activeTab !== "group") {
-        const newFromOthers = snap.docChanges()
-          .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
-        if (newFromOthers > 0) {
+      const newFromOthers = snap.docChanges()
+        .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
+
+      if (newFromOthers > 0) {
+        if (typeof window.playChatSound === "function") {
+          window.playChatSound();
+        }
+        if (!chatOpen || activeTab !== "group") {
           unreadGroup += newFromOthers;
           updateBadge();
         }
-      } else {
+      } else if (chatOpen && activeTab === "group") {
         unreadGroup = 0;
         updateBadge();
       }
@@ -436,6 +486,8 @@
     document.getElementById("dm-conv-title").textContent = peerName;
     document.getElementById("chat-input-dm").placeholder = `Message ${peerName}…`;
     subscribeDm(peerUid);
+    unreadDm = 0;
+    updateBadge();
     document.getElementById("chat-input-dm").focus();
   }
 
@@ -464,14 +516,18 @@
       const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderMessages("chat-messages-dm", msgs, true, false, channelId);
 
-      if (!chatOpen || activeTab !== "dm" || !activeDmPeer) {
-        const newFromOthers = snap.docChanges()
-          .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
-        if (newFromOthers > 0) {
+      const newFromOthers = snap.docChanges()
+        .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
+
+      if (newFromOthers > 0) {
+        if (typeof window.playChatSound === "function") {
+          window.playChatSound();
+        }
+        if (!chatOpen || activeTab !== "dm" || !activeDmPeer || activeDmPeer.uid !== peerUid) {
           unreadDm += newFromOthers;
           updateBadge();
         }
-      } else {
+      } else if (chatOpen && activeTab === "dm" && activeDmPeer && activeDmPeer.uid === peerUid) {
         unreadDm = 0;
         updateBadge();
       }
