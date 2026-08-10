@@ -244,7 +244,6 @@
     if (!el) return;
     el.classList.toggle("hidden");
     
-    // Set default tomorrow date
     if (!el.classList.contains("hidden")) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -315,16 +314,22 @@
 
       // If accepted, automatically sync to calendar appointments
       if (status === "accepted") {
-        const snap = await window._fbGetDocs(window._fbQuery(window._fbCol(db, colName), window._fbWhere("__name__", "==", msgId)));
-        if (!snap.empty) {
-          const m = snap.docs[0].data();
+        let msgData = null;
+        if (typeof window._fbGetDoc === "function") {
+          const docSnap = await window._fbGetDoc(msgRef);
+          if (docSnap && docSnap.exists()) {
+            msgData = docSnap.data();
+          }
+        }
+
+        if (msgData) {
           const apptData = {
-            title: "🤝 " + (m.reqTitle || "Chat Meeting"),
-            date: m.reqDate,
-            time: m.reqTime || "All Day",
+            title: "🤝 " + (msgData.reqTitle || "Chat Meeting"),
+            date: msgData.reqDate,
+            time: msgData.reqTime || "All Day",
             description: `Confirmed in Chat by ${myName}`,
-            requesterUid: m.uid,
-            requesterName: m.name,
+            requesterUid: msgData.uid,
+            requesterName: msgData.name,
             targetUid: myUid,
             targetName: myName,
             status: "accepted"
