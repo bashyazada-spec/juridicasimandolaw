@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -25,6 +25,7 @@ try {
   window._fbAddDoc     = addDoc;
   window._fbGetDocs    = getDocs;
   window._fbDoc        = doc;
+  window._fbGetDoc     = getDoc;
   window._fbUpdate     = updateDoc;
   window._fbDelete     = deleteDoc;
   window._fbQuery      = query;
