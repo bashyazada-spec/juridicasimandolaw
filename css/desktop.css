@@ -285,6 +285,11 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
   padding-right: 64px !important; /* Reserves space so header buttons stop before the notification bell */
 }
 
+/* Ensure Case Detail header also reserves padding for the bell */
+#view-caseDetail .flex-center.gap-10 {
+  padding-right: 64px !important;
+}
+
 .page-title { font-family: var(--font-display); font-size: 34px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; line-height: 1.1; }
 .page-sub { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
