@@ -178,25 +178,27 @@ function renderDashboard() {
     todayDateEl.textContent = new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
   }
 
+  const userCases = getAccessibleCases();
+
   const statProfilesEl = document.getElementById("stat-profiles");
   const statTotalEl = document.getElementById("stat-total");
   const statOngoingEl = document.getElementById("stat-ongoing");
   const statCompletedEl = document.getElementById("stat-completed");
 
   if (statProfilesEl) statProfilesEl.textContent = profiles.length;
-  if (statTotalEl) statTotalEl.textContent = cases.length;
-  if (statOngoingEl) statOngoingEl.textContent = cases.filter(c => c.status === "On-going").length;
-  if (statCompletedEl) statCompletedEl.textContent = cases.filter(c => c.status === "Completed").length;
+  if (statTotalEl) statTotalEl.textContent = userCases.length;
+  if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
+  if (statCompletedEl) statCompletedEl.textContent = userCases.filter(c => c.status === "Completed").length;
 
   renderDashProfiles();
 
   const dcEl = document.getElementById("dash-cases");
   if (!dcEl) return;
 
-  const displayCases = cases.slice(0, 6);
+  const displayCases = userCases.slice(0, 6);
 
   dcEl.innerHTML = displayCases.length === 0
-    ? '<div class="empty-state"><div class="empty-state-icon">📁</div><div>No cases yet.</div></div>'
+    ? '<div class="empty-state"><div class="empty-state-icon">📁</div><div>No active cases yet.</div></div>'
     : displayCases.map(c => {
       const p = profiles.find(x => x.id === c.profileId);
       const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
@@ -231,6 +233,8 @@ function renderDashProfiles() {
   const dpEl = document.getElementById("dash-profiles");
   if (!dpEl) return;
 
+  const userCases = getAccessibleCases();
+
   const filtered = profiles.filter(p =>
     !q || p.name.toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q)
   );
@@ -245,7 +249,7 @@ function renderDashProfiles() {
   }
 
   dpEl.innerHTML = filtered.slice(0, 8).map(p => {
-    const pc = cases.filter(c => c.profileId === p.id);
+    const pc = userCases.filter(c => c.profileId === p.id);
     return `<div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;margin-bottom:10px;cursor:pointer;transition:all 0.2s" onclick="openProfile('${p.id}')" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
       <div style="display:flex;align-items:center;gap:12px">
         ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
@@ -271,13 +275,15 @@ function renderProfiles() {
   const el = document.getElementById("profiles-grid");
   if (!el) return;
 
+  const userCases = getAccessibleCases();
+
   if (profiles.length === 0) {
     el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👥</div><div style="font-size:13px;color:var(--text-dim)">No associate attorneys are currently registered.</div></div>`;
     return;
   }
 
   el.innerHTML = profiles.map(p => {
-    const pc = cases.filter(c => c.profileId === p.id);
+    const pc = userCases.filter(c => c.profileId === p.id);
     const ongoing = pc.filter(c => c.status === "On-going").length;
     const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
     
@@ -296,7 +302,7 @@ function renderProfiles() {
         ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>` : ""}
         ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>` : ""}
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:var(--text-dim)">Private Files</span>
+          <span style="font-size:13px;color:var(--text-dim)">Cases Accessible</span>
           ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
         </div>
       </div>
@@ -311,7 +317,8 @@ function renderProfileDetail() {
   const p = selProfile;
   if (!p) return;
 
-  const isOwner = p.ownerUid === window._currentUser?.uid;
+  const currentUid = window._currentUser?.uid;
+  const isOwner = p.ownerUid === currentUid;
 
   let actionButtons = "";
   let driveChip = "";
@@ -359,16 +366,17 @@ function renderProfileDetail() {
   const sectionEl = document.getElementById("profile-cases-section");
   const statsEl = document.getElementById("profile-stats-row");
 
-  if (isOwner) {
+  const pc = getAccessibleCases().filter(c => c.profileId === p.id);
+
+  if (isOwner || pc.length > 0) {
     if (noticeEl) noticeEl.style.display = "none";
     if (sectionEl) sectionEl.style.display = "block";
     if (statsEl) {
       statsEl.style.display = "grid";
-      const pc = cases.filter(c => c.profileId === p.id);
       const docs = pc.reduce((a, c) => a + (c.documents?.length || 0), 0);
 
       statsEl.innerHTML = [
-        ["Total Cases", pc.length, "var(--violet)"],
+        ["Accessible Cases", pc.length, "var(--violet)"],
         ["Active", pc.filter(c => c.status === "On-going").length, "var(--amber)"],
         ["Resolved", pc.filter(c => c.status === "Completed").length, "var(--green)"],
         ["Documents", docs, "var(--gold)"]
@@ -396,7 +404,8 @@ function renderProfileCases() {
   const category = document.getElementById("pd-category")?.value || "All";
   const type     = document.getElementById("pd-type")?.value || "All";
   const sort     = document.getElementById("pd-sort")?.value || "asc";
-  const pc       = cases.filter(c => c.profileId === p.id);
+
+  const pc = getAccessibleCases().filter(c => c.profileId === p.id);
 
   let filtered = pc.filter(c =>
     (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q)) &&
@@ -411,7 +420,7 @@ function renderProfileCases() {
 
   if (filtered.length === 0) {
     el.innerHTML = `<div class="empty-state">${pc.length === 0
-      ? '<div class="empty-state-icon">⚖️</div><div>No cases yet</div>'
+      ? '<div class="empty-state-icon">⚖️</div><div>No accessible cases yet</div>'
       : '<div class="empty-state-icon">🔍</div><div>No cases match your filters.</div>'
     }</div>`;
     return;
@@ -432,7 +441,7 @@ function renderProfileCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ALL CASES
+//  ALL CASES (STRICT PRIVACY FILTERING)
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
   updateAllFilterDropdowns(); 
@@ -442,7 +451,9 @@ function renderAllCases() {
   const type     = document.getElementById("ac-type")?.value || "All";
   const sort     = document.getElementById("ac-sort")?.value || "asc";
 
-  let filtered = cases.filter(c => {
+  const accessible = getAccessibleCases();
+
+  let filtered = accessible.filter(c => {
     const p = profiles.find(x => x.id === c.profileId);
     return (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (p && p.name.toLowerCase().includes(q))) &&
       (status === "All" || c.status === status) &&
@@ -452,13 +463,13 @@ function renderAllCases() {
   filtered = sortCasesByDue(filtered, sort);
 
   const countEl = document.getElementById("allcases-count");
-  if (countEl) countEl.textContent = `${filtered.length} case${filtered.length !== 1 ? "s" : ""} found`;
+  if (countEl) countEl.textContent = `${filtered.length} accessible case${filtered.length !== 1 ? "s" : ""} found`;
 
   const el = document.getElementById("all-cases-list");
   if (!el) return;
 
   if (filtered.length === 0) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No cases match your filters.</div></div>';
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No cases match your access permissions or filters.</div></div>';
     return;
   }
   el.innerHTML = filtered.map(c => {
@@ -904,7 +915,7 @@ function renderMonthlyCalendarGrid() {
 
   const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
 
-  let activeCases = cases.filter(c => c.dueDate);
+  let activeCases = getAccessibleCases().filter(c => c.dueDate);
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
   if (filter !== "Everyone") {
@@ -1016,7 +1027,7 @@ function renderCalendarTimeline() {
     if (clearBtn) clearBtn.style.display = "none";
   }
 
-  let activeCases = cases.filter(c => c.dueDate);
+  let activeCases = getAccessibleCases().filter(c => c.dueDate);
   if (filter !== "Everyone") {
     const matchedProf = profiles.find(p => p.ownerUid === filter);
     activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
