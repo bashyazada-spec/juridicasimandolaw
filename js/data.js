@@ -29,6 +29,29 @@ let notificationsUnsub = null;
 let appointmentsUnsub = null;
 let prevNotifCount = 0;
 
+// ── ACCESSIBLE CASES FILTER (STRICT PRIVACY & SHARING CONTROL) ──
+function getAccessibleCases() {
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return [];
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  
+  // Firm Administrators can view all cases across the firm
+  if (myProf && myProf.role === "admin") {
+    return cases;
+  }
+
+  // Regular attorneys can ONLY view cases they own or cases shared with them
+  return cases.filter(c => {
+    const isOwner = c.ownerUid === u.uid;
+    const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
+    const isShared = c.sharedWith && Array.isArray(c.sharedWith) && c.sharedWith.includes(u.uid);
+    return isOwner || isAllowed || isShared;
+  });
+}
+
+window.getAccessibleCases = getAccessibleCases;
+
 // ── WEB AUDIO SYNTHESIZER FOR NOTIFICATIONS & CHAT ──────────────
 function playNotificationSound() {
   try {
@@ -199,7 +222,7 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases ─────────────
+    // ── Real-Time Sync: Cases (Filtered by Access) ─────────────
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
       const cColRef = window._fbCol(db, "cases");
@@ -265,20 +288,18 @@ async function dbLoad() {
 // ── AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──────────────
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
-  if (!activeUid || !cases.length) return;
+  if (!activeUid) return;
 
+  const userCases = getAccessibleCases();
   const today = new Date();
   today.setHours(0,0,0,0);
 
-  cases.forEach(c => {
+  userCases.forEach(c => {
     if (!c.dueDate) return;
     const dueObj = new Date(c.dueDate + "T00:00:00");
     const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 3) {
-      const isAssigned = c.ownerUid === activeUid || (c.allowedUids && c.allowedUids.includes(activeUid));
-      if (!isAssigned) return;
-
       const alreadyNotified = notifications.some(n => 
         n.type === "case_due" && n.relatedId === c.id && n.status === "unread"
       );
