@@ -1,26 +1,39 @@
 // ═══════════════════════════════════════════════════════════════
-//  LEX FIRMA — INTERNAL CHAT WITH INTERACTIVE AVAILABILITY CARDS
-//  Group chat + Direct Messages + Availability Requests
+//  SIMANDO LAW — MESSENGER-STYLE CHAT DOCK & CONVERSATIONS
+//  Bottom-docked Bar + Recent Chats + Colored Avail Cards + Unseen Badges
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
-  // ── State ────────────────────────────────────────────────────
-  let chatOpen       = false;
-  let activeTab      = "group";   // "group" | "dm"
-  let activeDmPeer   = null;      // { uid, name } of selected DM peer
-  let groupUnsub     = null;      // Firestore listener unsubscribe fn
+  let isExpanded     = false;
+  let activeChannel  = "group"; // "group" | peerUid
+  let activePeerName = "";
+  let groupUnsub     = null;
   let dmUnsub        = null;
-  let unreadGroup    = 0;
-  let unreadDm       = 0;
   let myUid          = null;      
   let myName         = null;
 
+  let groupMessages = [];
+  let dmMessagesMap = {}; // channelId -> msgs array
+  let peersList     = [];
+
   const COLLECTION_GROUP = "chat_group";
   const COLLECTION_DM    = "chat_dm";
-  const MSG_LIMIT        = 80;
+  const MSG_LIMIT        = 60;
 
   function dmChannelId(uidA, uidB) {
     return [uidA, uidB].sort().join("__");
+  }
+
+  // Local storage keys for tracking unseen message timestamps per account
+  function getSeenTimestamp(channelId) {
+    if (!myUid) return 0;
+    const val = localStorage.getItem(`chat_seen_${myUid}_${channelId}`);
+    return val ? parseInt(val, 10) : 0;
+  }
+
+  function setSeenTimestamp(channelId) {
+    if (!myUid) return;
+    localStorage.setItem(`chat_seen_${myUid}_${channelId}`, Date.now().toString());
   }
 
   // ── Bootstrap ────────────────────────────────────────────────
@@ -34,6 +47,8 @@
           myUid = user.uid;
           myName = user.displayName || user.email;
           announcePeer();
+          subscribeGroup();
+          loadPeerList();
         } else {
           myUid = null;
           myName = null;
@@ -51,169 +66,123 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD
+  //  UI BUILD — FACEBOOK-STYLE BOTTOM DOCK BAR & PANEL
   // ═══════════════════════════════════════════════════════════
   function buildUI() {
-    const bubble = document.createElement("div");
-    bubble.id = "chat-bubble";
-    bubble.innerHTML = `
-      💬
-      <span id="chat-badge" class="chat-badge hidden">0</span>
+    // 1. Bottom Docked Horizontal Rectangular Bar (Minimized State)
+    const dockBar = document.createElement("div");
+    dockBar.id = "chat-dock-bar";
+    dockBar.onclick = toggleDock;
+    dockBar.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:15px">💬</span>
+        <span style="font-weight:700;font-size:13px;color:var(--text, #eee)">Messages</span>
+        <span id="chat-dock-badge" class="chat-badge hidden">0</span>
+      </div>
+      <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c)">▲</span>
     `;
-    bubble.addEventListener("click", toggleChat);
-    document.body.appendChild(bubble);
+    document.body.appendChild(dockBar);
 
+    // 2. Chat Panel (Expanded State)
     const panel = document.createElement("div");
     panel.id = "chat-panel";
     panel.className = "chat-panel hidden";
     panel.innerHTML = `
+      <!-- Header -->
       <div class="chat-header">
-        <div class="chat-header-left">
+        <div class="chat-header-left" id="chat-header-title-wrap" onclick="toggleDock()" style="cursor:pointer">
           <span class="chat-header-icon">⚖️</span>
-          <span class="chat-header-title">Internal Chat</span>
+          <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
         </div>
         <div class="chat-header-actions">
-          <button class="chat-icon-btn" id="chat-close-btn" title="Close">✕</button>
+          <button class="chat-icon-btn" title="Minimize" onclick="toggleDock()">─</button>
         </div>
       </div>
 
-      <div class="chat-tabs">
-        <button class="chat-tab active" id="tab-group" onclick="window._chat.switchTab('group')">
-          Group
-          <span id="tab-group-badge" class="tab-badge hidden"></span>
-        </button>
-        <button class="chat-tab" id="tab-dm" onclick="window._chat.switchTab('dm')">
-          Direct
-          <span id="tab-dm-badge" class="tab-badge hidden"></span>
-        </button>
+      <!-- Conversations List View -->
+      <div id="chat-view-list" class="chat-view">
+        <div id="chat-recent-conversations" class="chat-conversations-list"></div>
       </div>
 
-      <!-- Group pane -->
-      <div id="chat-pane-group" class="chat-pane">
-        <div id="chat-messages-group" class="chat-messages"></div>
-        
-        <!-- Inline Availability Picker (Hidden by default) -->
-        <div id="chat-avail-picker-group" class="chat-avail-picker hidden">
+      <!-- Single Chat Messages View -->
+      <div id="chat-view-single" class="chat-view hidden">
+        <div class="dm-conv-header">
+          <button class="dm-back-btn" onclick="window._chat.backToList()">← Back to Chats</button>
+          <span id="dm-conv-title" style="font-weight:700;font-size:13px;color:var(--text,#eee)"></span>
+        </div>
+
+        <div id="chat-messages-container" class="chat-messages"></div>
+
+        <!-- Inline Availability Picker -->
+        <div id="chat-avail-picker" class="chat-avail-picker hidden">
           <div style="font-size:12px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:8px">📅 Ask Availability</div>
-          <input id="avail-title-group" class="chat-input" style="margin-bottom:6px" placeholder="Purpose (e.g. Case Strategy Sync)" autocomplete="off"/>
+          <input id="avail-title-input" class="chat-input" style="margin-bottom:6px" placeholder="Purpose (e.g. Case Strategy Sync)" autocomplete="off"/>
           <div style="display:flex;gap:6px;margin-bottom:8px">
-            <input id="avail-date-group" type="date" class="chat-input"/>
-            <input id="avail-time-group" type="time" class="chat-input" value="14:00"/>
+            <input id="avail-date-input" type="date" class="chat-input"/>
+            <input id="avail-time-input" type="time" class="chat-input" value="14:00"/>
           </div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
-            <button class="chat-icon-btn" onclick="window._chat.toggleAvailPicker('group')">Cancel</button>
-            <button class="chat-send-btn" onclick="window._chat.sendAvailRequest('group')">Send Card</button>
+            <button class="chat-icon-btn" onclick="window._chat.toggleAvailPicker()">Cancel</button>
+            <button class="chat-send-btn" onclick="window._chat.sendAvailRequest()">Send Card</button>
           </div>
         </div>
 
+        <!-- Input Row -->
         <div class="chat-input-row">
-          <button class="chat-avail-btn" title="Ask Availability" onclick="window._chat.toggleAvailPicker('group')">📅</button>
-          <input id="chat-input-group" class="chat-input" type="text" placeholder="Message the team…" maxlength="1000"/>
-          <button class="chat-send-btn" id="chat-send-group">Send</button>
-        </div>
-      </div>
-
-      <!-- DM pane -->
-      <div id="chat-pane-dm" class="chat-pane hidden">
-        <div id="dm-peer-list" class="dm-peer-list"></div>
-        <div id="dm-conversation" class="dm-conversation hidden">
-          <div class="dm-conv-header">
-            <button class="dm-back-btn" onclick="window._chat.backToPeerList()">← Back</button>
-            <span id="dm-conv-title"></span>
-          </div>
-          <div id="chat-messages-dm" class="chat-messages"></div>
-
-          <!-- Inline Availability Picker for DM -->
-          <div id="chat-avail-picker-dm" class="chat-avail-picker hidden">
-            <div style="font-size:12px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:8px">📅 Ask Availability</div>
-            <input id="avail-title-dm" class="chat-input" style="margin-bottom:6px" placeholder="Purpose (e.g. Case Strategy Sync)" autocomplete="off"/>
-            <div style="display:flex;gap:6px;margin-bottom:8px">
-              <input id="avail-date-dm" type="date" class="chat-input"/>
-              <input id="avail-time-dm" type="time" class="chat-input" value="14:00"/>
-            </div>
-            <div style="display:flex;gap:6px;justify-content:flex-end">
-              <button class="chat-icon-btn" onclick="window._chat.toggleAvailPicker('dm')">Cancel</button>
-              <button class="chat-send-btn" onclick="window._chat.sendAvailRequest('dm')">Send Card</button>
-            </div>
-          </div>
-
-          <div class="chat-input-row">
-            <button class="chat-avail-btn" title="Ask Availability" onclick="window._chat.toggleAvailPicker('dm')">📅</button>
-            <input id="chat-input-dm" class="chat-input" type="text" placeholder="Direct message…" maxlength="1000"/>
-            <button class="chat-send-btn" id="chat-send-dm">Send</button>
-          </div>
+          <button class="chat-avail-btn" title="Ask Availability" onclick="window._chat.toggleAvailPicker()">📅</button>
+          <input id="chat-msg-input" class="chat-input" type="text" placeholder="Type a message…" maxlength="1000"/>
+          <button class="chat-send-btn" id="chat-send-btn">Send</button>
         </div>
       </div>
     `;
     document.body.appendChild(panel);
 
-    document.getElementById("chat-close-btn").addEventListener("click", toggleChat);
-    document.getElementById("chat-send-group").addEventListener("click", sendGroup);
-    document.getElementById("chat-send-dm").addEventListener("click", sendDm);
-
-    document.getElementById("chat-input-group").addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendGroup(); }
-    });
-    document.getElementById("chat-input-dm").addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendDm(); }
+    document.getElementById("chat-send-btn").addEventListener("click", sendMessage);
+    document.getElementById("chat-msg-input").addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  TOGGLE / OPEN / CLOSE
+  //  MINIMIZE / EXPAND CHAT DOCK
   // ═══════════════════════════════════════════════════════════
-  function toggleChat() {
-    chatOpen ? closeChat() : openChat();
+  function toggleDock() {
+    isExpanded ? minimizeDock() : expandDock();
   }
 
-  function openChat() {
+  function expandDock() {
     if (!myUid || !myName) {
       if (window.showToast) window.showToast("Please wait for account authorization to load.", "error");
       return;
     }
-    chatOpen = true;
+    isExpanded = true;
     document.getElementById("chat-panel").classList.remove("hidden");
-    document.getElementById("chat-panel").classList.add("open");
+    document.getElementById("chat-dock-arrow").textContent = "▼";
 
-    if (activeTab === "group") {
-      subscribeGroup();
-      unreadGroup = 0;
-      updateBadge();
-    } else {
-      if (activeDmPeer) {
-        subscribeDm(activeDmPeer.uid);
-        unreadDm = 0;
-        updateBadge();
-      }
-      loadPeerList();
+    loadPeerList();
+    renderConversationsList();
+
+    if (activeChannel !== "group" && activeChannel) {
+      setSeenTimestamp(dmChannelId(myUid, activeChannel));
+    } else if (activeChannel === "group") {
+      setSeenTimestamp("group");
     }
+    updateGlobalDockBadge();
   }
 
-  function closeChat() {
-    chatOpen = false;
+  function minimizeDock() {
+    isExpanded = false;
     document.getElementById("chat-panel").classList.add("hidden");
-    document.getElementById("chat-panel").classList.remove("open");
+    document.getElementById("chat-dock-arrow").textContent = "▲";
   }
 
-  function switchTab(tab) {
-    activeTab = tab;
-    document.getElementById("tab-group").classList.toggle("active", tab === "group");
-    document.getElementById("tab-dm").classList.toggle("active", tab === "dm");
-    document.getElementById("chat-pane-group").classList.toggle("hidden", tab !== "group");
-    document.getElementById("chat-pane-dm").classList.toggle("hidden", tab !== "dm");
-
-    if (tab === "group") {
-      subscribeGroup();
-      unreadGroup = 0;
-      updateBadge();
-    } else {
-      loadPeerList();
-      if (activeDmPeer) {
-        subscribeDm(activeDmPeer.uid);
-        unreadDm = 0;
-        updateBadge();
-      }
-    }
+  function backToList() {
+    activeChannel = null;
+    document.getElementById("chat-view-list").classList.remove("hidden");
+    document.getElementById("chat-view-single").classList.add("hidden");
+    document.getElementById("chat-header-title").textContent = "Recent Chats";
+    loadPeerList();
+    renderConversationsList();
   }
 
   async function announcePeer() {
@@ -241,25 +210,243 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  AVAILABILITY PICKER TOGGLE & SEND (SENDS NOTIFICATION TOO)
+  //  RECENT CONVERSATIONS LIST (SORTED BY MOST RECENT MESSAGE)
   // ═══════════════════════════════════════════════════════════
-  function toggleAvailPicker(target) {
-    const el = document.getElementById(`chat-avail-picker-${target}`);
+  async function loadPeerList() {
+    if (!window._db || !myUid) return;
+    announcePeer();
+
+    try {
+      const db   = window._db;
+      const snap = await window._fbGetDocs(window._fbCol(db, "chat_peers"));
+      peersList = snap.docs
+        .map(d => d.data())
+        .filter(p => p.uid && p.uid !== myUid && p.name);
+
+      renderConversationsList();
+    } catch (e) {
+      console.error("loadPeerList error:", e);
+    }
+  }
+
+  function renderConversationsList() {
+    const listEl = document.getElementById("chat-recent-conversations");
+    if (!listEl) return;
+
+    // 1. Group Chat Summary
+    const latestGroupMsg = groupMessages[groupMessages.length - 1];
+    const groupTimeMs = latestGroupMsg?.ts?.toDate ? latestGroupMsg.ts.toDate().getTime() : 0;
+    const groupLastSeen = getSeenTimestamp("group");
+    const groupUnread = latestGroupMsg && latestGroupMsg.uid !== myUid && groupTimeMs > groupLastSeen;
+
+    let groupPreview = "No messages yet";
+    if (latestGroupMsg) {
+      if (latestGroupMsg.cardType === "availability_request") {
+        groupPreview = `<span style="color:var(--gold,#c9a84c);font-weight:700">📅 Availability Request: "${escHtml(latestGroupMsg.reqTitle || 'Meeting')}"</span>`;
+      } else {
+        groupPreview = `${escHtml(latestGroupMsg.name || 'User')}: ${escHtml(latestGroupMsg.text)}`;
+      }
+    }
+
+    const conversations = [
+      {
+        id: "group",
+        name: "📢 Firm Group Chat",
+        avatar: "⚖️",
+        isGroup: true,
+        timeMs: groupTimeMs,
+        preview: groupPreview,
+        unread: groupUnread
+      }
+    ];
+
+    // 2. Attorney Direct Message Summaries
+    peersList.forEach(p => {
+      const channelId = dmChannelId(myUid, p.uid);
+      const msgs = dmMessagesMap[channelId] || [];
+      const lastMsg = msgs[msgs.length - 1];
+      const timeMs = lastMsg?.ts?.toDate ? lastMsg.ts.toDate().getTime() : 0;
+      const lastSeen = getSeenTimestamp(channelId);
+      const unread = lastMsg && lastMsg.uid !== myUid && timeMs > lastSeen;
+
+      let preview = "Start conversation…";
+      if (lastMsg) {
+        if (lastMsg.cardType === "availability_request") {
+          preview = `<span style="color:var(--gold,#c9a84c);font-weight:700">📅 Availability Request: "${escHtml(lastMsg.reqTitle || 'Meeting')}"</span>`;
+        } else {
+          preview = escHtml(lastMsg.text);
+        }
+      }
+
+      conversations.push({
+        id: p.uid,
+        name: p.name,
+        avatar: initials(p.name),
+        isGroup: false,
+        timeMs: timeMs,
+        preview: preview,
+        unread: unread
+      });
+    });
+
+    // Sort by Most Recent Message First!
+    conversations.sort((a, b) => b.timeMs - a.timeMs);
+
+    listEl.innerHTML = conversations.map(c => `
+      <div class="chat-conv-item ${c.unread ? 'unread' : ''}" onclick="window._chat.openConversation('${c.id}', '${escHtml(c.name)}', ${c.isGroup})">
+        <div class="chat-conv-avatar">${c.avatar}</div>
+        <div class="chat-conv-info">
+          <div class="chat-conv-name-row">
+            <span class="chat-conv-name ${c.unread ? 'bold' : ''}">${escHtml(c.name)}</span>
+            ${c.timeMs ? '<span class="chat-conv-time">' + formatTime(new Date(c.timeMs)) + '</span>' : ''}
+          </div>
+          <div class="chat-conv-preview ${c.unread ? 'bold' : ''}">${c.preview}</div>
+        </div>
+        ${c.unread ? '<span class="chat-unseen-dot" title="Unread message">●</span>' : ''}
+      </div>
+    `).join("");
+
+    updateGlobalDockBadge();
+  }
+
+  function openConversation(id, name, isGroup) {
+    activeChannel = id;
+    activePeerName = name;
+
+    document.getElementById("chat-view-list").classList.add("hidden");
+    document.getElementById("chat-view-single").classList.remove("hidden");
+    document.getElementById("dm-conv-title").textContent = name;
+    document.getElementById("chat-header-title").textContent = name;
+    document.getElementById("chat-msg-input").placeholder = `Message ${name}…`;
+
+    if (isGroup) {
+      setSeenTimestamp("group");
+      subscribeGroup();
+    } else {
+      setSeenTimestamp(dmChannelId(myUid, id));
+      subscribeDm(id);
+    }
+
+    renderConversationsList();
+    document.getElementById("chat-msg-input").focus();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  MESSAGES & REAL-TIME LISTENERS
+  // ═══════════════════════════════════════════════════════════
+  function subscribeGroup() {
+    if (groupUnsub) return;
+    if (!window._db) return;
+
+    const db = window._db;
+    const q  = window._fbQuery(
+      window._fbCol(db, COLLECTION_GROUP),
+      window._fbOrderBy("ts", "asc"),
+      window._fbLimit(MSG_LIMIT)
+    );
+
+    groupUnsub = window._fbOnSnapshot(q, snap => {
+      groupMessages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      if (activeChannel === "group" && isExpanded) {
+        setSeenTimestamp("group");
+        renderMessages("chat-messages-container", groupMessages, false, true, "");
+      }
+
+      const newFromOthers = snap.docChanges()
+        .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
+
+      if (newFromOthers > 0 && typeof window.playChatSound === "function") {
+        window.playChatSound();
+      }
+
+      renderConversationsList();
+    });
+  }
+
+  function subscribeDm(peerUid) {
+    if (dmUnsub) { dmUnsub(); dmUnsub = null; }
+    if (!window._db) return;
+
+    const channelId = dmChannelId(myUid, peerUid);
+    const db = window._db;
+    const q  = window._fbQuery(
+      window._fbCol(db, COLLECTION_DM + "_" + channelId),
+      window._fbOrderBy("ts", "asc"),
+      window._fbLimit(MSG_LIMIT)
+    );
+
+    dmUnsub = window._fbOnSnapshot(q, snap => {
+      const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      dmMessagesMap[channelId] = msgs;
+
+      if (activeChannel === peerUid && isExpanded) {
+        setSeenTimestamp(channelId);
+        renderMessages("chat-messages-container", msgs, true, false, channelId);
+      }
+
+      const newFromOthers = snap.docChanges()
+        .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
+
+      if (newFromOthers > 0 && typeof window.playChatSound === "function") {
+        window.playChatSound();
+      }
+
+      renderConversationsList();
+    });
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById("chat-msg-input");
+    const text  = input.value.trim();
+    if (!text || !window._db || !myUid || !myName) return;
+    input.value = "";
+
+    try {
+      if (activeChannel === "group") {
+        await window._fbAddDoc(window._fbCol(window._db, COLLECTION_GROUP), {
+          text,
+          uid:  myUid,
+          name: myName,
+          ts:   window._fbServerTs()
+        });
+        setSeenTimestamp("group");
+      } else if (activeChannel) {
+        const channelId = dmChannelId(myUid, activeChannel);
+        await window._fbAddDoc(window._fbCol(window._db, COLLECTION_DM + "_" + channelId), {
+          text,
+          uid:      myUid,
+          name:     myName,
+          peerUid:  activeChannel,
+          peerName: activePeerName,
+          ts:       window._fbServerTs()
+        });
+        setSeenTimestamp(channelId);
+      }
+    } catch (e) {
+      console.error("sendMessage error:", e);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  AVAILABILITY CARDS & NOTIFICATIONS
+  // ═══════════════════════════════════════════════════════════
+  function toggleAvailPicker() {
+    const el = document.getElementById("chat-avail-picker");
     if (!el) return;
     el.classList.toggle("hidden");
-    
     if (!el.classList.contains("hidden")) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateInp = document.getElementById(`avail-date-${target}`);
+      const dateInp = document.getElementById("avail-date-input");
       if (dateInp) dateInp.value = tomorrow.toISOString().split("T")[0];
     }
   }
 
-  async function sendAvailRequest(target) {
-    const titleInp = document.getElementById(`avail-title-${target}`);
-    const dateInp  = document.getElementById(`avail-date-${target}`);
-    const timeInp  = document.getElementById(`avail-time-${target}`);
+  async function sendAvailRequest() {
+    const titleInp = document.getElementById("avail-title-input");
+    const dateInp  = document.getElementById("avail-date-input");
+    const timeInp  = document.getElementById("avail-time-input");
 
     const title = (titleInp?.value || "").trim() || "Case Sync Meeting";
     const date  = dateInp?.value || "";
@@ -283,10 +470,9 @@
     };
 
     try {
-      if (target === "group") {
+      if (activeChannel === "group") {
         await window._fbAddDoc(window._fbCol(window._db, COLLECTION_GROUP), payload);
 
-        // Send real-time notification to all other attorneys
         if (typeof window.profiles !== "undefined" && typeof window.dbAddNotification === "function") {
           const others = window.profiles.filter(p => p.ownerUid && p.ownerUid !== myUid);
           for (const p of others) {
@@ -301,16 +487,15 @@
             });
           }
         }
-      } else if (target === "dm" && activeDmPeer) {
-        payload.peerUid  = activeDmPeer.uid;
-        payload.peerName = activeDmPeer.name;
-        const channelId = dmChannelId(myUid, activeDmPeer.uid);
+      } else if (activeChannel) {
+        payload.peerUid  = activeChannel;
+        payload.peerName = activePeerName;
+        const channelId  = dmChannelId(myUid, activeChannel);
         await window._fbAddDoc(window._fbCol(window._db, COLLECTION_DM + "_" + channelId), payload);
 
-        // Send real-time notification to DM target
         if (typeof window.dbAddNotification === "function") {
           await window.dbAddNotification({
-            toUid: activeDmPeer.uid,
+            toUid: activeChannel,
             fromUid: myUid,
             fromName: myName,
             title: "📅 Direct Availability Request",
@@ -321,7 +506,7 @@
         }
       }
 
-      toggleAvailPicker(target);
+      toggleAvailPicker();
       if (titleInp) titleInp.value = "";
       if (window.showToast) window.showToast("Availability request card sent & notified! 📅");
     } catch (err) {
@@ -330,7 +515,6 @@
     }
   }
 
-  // Respond to availability request card inside chat stream
   async function respondAvailCard(msgId, isGroup, channelId, status) {
     if (!window._db || !msgId) return;
 
@@ -345,7 +529,6 @@
         respondedByName: myName
       });
 
-      // If accepted, automatically sync to calendar appointments
       if (status === "accepted") {
         let msgData = null;
         if (typeof window._fbGetDoc === "function") {
@@ -371,7 +554,6 @@
             await window.dbAddAppointment(apptData);
           }
 
-          // Notify proposer
           if (typeof window.dbAddNotification === "function") {
             await window.dbAddNotification({
               toUid: msgData.uid,
@@ -395,169 +577,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  GROUP & DM LISTENERS WITH AUDIO & BADGE LOGIC
-  // ═══════════════════════════════════════════════════════════
-  function subscribeGroup() {
-    if (groupUnsub) return; 
-    if (!window._db) return;
-
-    const db = window._db;
-    const q  = window._fbQuery(
-      window._fbCol(db, COLLECTION_GROUP),
-      window._fbOrderBy("ts", "asc"),
-      window._fbLimit(MSG_LIMIT)
-    );
-
-    groupUnsub = window._fbOnSnapshot(q, snap => {
-      const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      renderMessages("chat-messages-group", msgs, false, true, "");
-
-      const newFromOthers = snap.docChanges()
-        .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
-
-      if (newFromOthers > 0) {
-        if (typeof window.playChatSound === "function") {
-          window.playChatSound();
-        }
-        if (!chatOpen || activeTab !== "group") {
-          unreadGroup += newFromOthers;
-          updateBadge();
-        }
-      } else if (chatOpen && activeTab === "group") {
-        unreadGroup = 0;
-        updateBadge();
-      }
-    });
-  }
-
-  async function sendGroup() {
-    const input = document.getElementById("chat-input-group");
-    const text  = input.value.trim();
-    if (!text || !window._db || !myUid || !myName) return;
-    input.value = "";
-    try {
-      await window._fbAddDoc(window._fbCol(window._db, COLLECTION_GROUP), {
-        text,
-        uid:  myUid,
-        name: myName,
-        ts:   window._fbServerTs()
-      });
-      announcePeer();
-    } catch (e) {
-      console.error("Group send error:", e);
-    }
-  }
-
-  async function loadPeerList() {
-    if (!window._db || !myUid) return;
-    announcePeer();
-
-    try {
-      const db   = window._db;
-      const snap = await window._fbGetDocs(window._fbCol(db, "chat_peers"));
-      const peers = snap.docs
-        .map(d => d.data())
-        .filter(p => p.uid && p.uid !== myUid && p.name);
-
-      const el = document.getElementById("dm-peer-list");
-      if (!el) return;
-
-      if (peers.length === 0) {
-        el.innerHTML = `<div class="dm-empty">No other attorneys online yet.<br><span style="font-size:11px;opacity:.6">They appear here once they log in.</span></div>`;
-        return;
-      }
-
-      el.innerHTML = peers.map(p => `
-        <div class="dm-peer-item" onclick="window._chat.openDm('${p.uid}', '${escHtml(p.name)}')">
-          <div class="dm-peer-avatar">${initials(p.name)}</div>
-          <div class="dm-peer-name">${escHtml(p.name)}</div>
-          <div class="dm-peer-arrow">→</div>
-        </div>
-      `).join("");
-    } catch (e) {
-      console.error("loadPeerList error:", e);
-    }
-  }
-
-  function openDm(peerUid, peerName) {
-    activeDmPeer = { uid: peerUid, name: peerName };
-    document.getElementById("dm-peer-list").classList.add("hidden");
-    document.getElementById("dm-conversation").classList.remove("hidden");
-    document.getElementById("dm-conv-title").textContent = peerName;
-    document.getElementById("chat-input-dm").placeholder = `Message ${peerName}…`;
-    subscribeDm(peerUid);
-    unreadDm = 0;
-    updateBadge();
-    document.getElementById("chat-input-dm").focus();
-  }
-
-  function backToPeerList() {
-    if (dmUnsub) { dmUnsub(); dmUnsub = null; }
-    activeDmPeer = null;
-    document.getElementById("dm-peer-list").classList.remove("hidden");
-    document.getElementById("dm-conversation").classList.add("hidden");
-    document.getElementById("chat-messages-dm").innerHTML = "";
-    loadPeerList();
-  }
-
-  function subscribeDm(peerUid) {
-    if (dmUnsub) { dmUnsub(); dmUnsub = null; }
-    if (!window._db) return;
-
-    const channelId = dmChannelId(myUid, peerUid);
-    const db = window._db;
-    const q  = window._fbQuery(
-      window._fbCol(db, COLLECTION_DM + "_" + channelId),
-      window._fbOrderBy("ts", "asc"),
-      window._fbLimit(MSG_LIMIT)
-    );
-
-    dmUnsub = window._fbOnSnapshot(q, snap => {
-      const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      renderMessages("chat-messages-dm", msgs, true, false, channelId);
-
-      const newFromOthers = snap.docChanges()
-        .filter(c => c.type === "added" && c.doc.data().uid !== myUid).length;
-
-      if (newFromOthers > 0) {
-        if (typeof window.playChatSound === "function") {
-          window.playChatSound();
-        }
-        if (!chatOpen || activeTab !== "dm" || !activeDmPeer || activeDmPeer.uid !== peerUid) {
-          unreadDm += newFromOthers;
-          updateBadge();
-        }
-      } else if (chatOpen && activeTab === "dm" && activeDmPeer && activeDmPeer.uid === peerUid) {
-        unreadDm = 0;
-        updateBadge();
-      }
-    });
-  }
-
-  async function sendDm() {
-    if (!activeDmPeer) return;
-    const input = document.getElementById("chat-input-dm");
-    const text  = input.value.trim();
-    if (!text || !window._db || !myUid || !myName) return;
-    input.value = "";
-
-    const channelId = dmChannelId(myUid, activeDmPeer.uid);
-    try {
-      await window._fbAddDoc(window._fbCol(window._db, COLLECTION_DM + "_" + channelId), {
-        text,
-        uid:      myUid,
-        name:     myName,
-        peerUid:  activeDmPeer.uid,
-        peerName: activeDmPeer.name,
-        ts:       window._fbServerTs()
-      });
-    } catch (e) {
-      console.error("DM send error:", e);
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  RENDER MESSAGES & AVAILABILITY CARDS
+  //  RENDER MESSAGES & UNSEEN BADGES
   // ═══════════════════════════════════════════════════════════
   function renderMessages(containerId, msgs, isDm, isGroup, channelId) {
     const el = document.getElementById(containerId);
@@ -573,7 +593,6 @@
       const ts       = m.ts?.toDate ? formatTime(m.ts.toDate()) : "";
       const showName = !isMine && (i === 0 || msgs[i - 1].uid !== m.uid);
 
-      // Render Interactive Availability Card
       if (m.cardType === "availability_request") {
         const reqStatus = m.reqStatus || "pending";
         let statusBadge = `<span class="avail-badge pending">⏳ Pending</span>`;
@@ -605,7 +624,6 @@
         `;
       }
 
-      // Standard Text Bubble
       return `
         <div class="chat-msg-wrap ${isMine ? "mine" : "theirs"}">
           ${showName ? `<div class="chat-msg-sender">${escHtml(m.name || "Unknown")}</div>` : ""}
@@ -620,23 +638,29 @@
     el.scrollTop = el.scrollHeight;
   }
 
-  function updateBadge() {
-    const total  = unreadGroup + unreadDm;
-    const badge  = document.getElementById("chat-badge");
-    const gBadge = document.getElementById("tab-group-badge");
-    const dBadge = document.getElementById("tab-dm-badge");
+  function updateGlobalDockBadge() {
+    let totalUnread = 0;
 
+    const latestGroupMsg = groupMessages[groupMessages.length - 1];
+    if (latestGroupMsg && latestGroupMsg.uid !== myUid) {
+      const gTimeMs = latestGroupMsg.ts?.toDate ? latestGroupMsg.ts.toDate().getTime() : 0;
+      if (gTimeMs > getSeenTimestamp("group")) totalUnread++;
+    }
+
+    peersList.forEach(p => {
+      const channelId = dmChannelId(myUid, p.uid);
+      const msgs = dmMessagesMap[channelId] || [];
+      const lastMsg = msgs[msgs.length - 1];
+      if (lastMsg && lastMsg.uid !== myUid) {
+        const timeMs = lastMsg.ts?.toDate ? lastMsg.ts.toDate().getTime() : 0;
+        if (timeMs > getSeenTimestamp(channelId)) totalUnread++;
+      }
+    });
+
+    const badge = document.getElementById("chat-dock-badge");
     if (badge) {
-      badge.textContent = total > 9 ? "9+" : total;
-      badge.classList.toggle("hidden", total === 0);
-    }
-    if (gBadge) {
-      gBadge.textContent = unreadGroup;
-      gBadge.classList.toggle("hidden", unreadGroup === 0);
-    }
-    if (dBadge) {
-      dBadge.textContent = unreadDm;
-      dBadge.classList.toggle("hidden", unreadDm === 0);
+      badge.textContent = totalUnread > 9 ? "9+" : totalUnread;
+      badge.classList.toggle("hidden", totalUnread === 0);
     }
   }
 
@@ -649,7 +673,8 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function formatTime(date) {
@@ -662,8 +687,7 @@
     }
     const sameDay = date.toDateString() === now.toDateString();
     if (sameDay) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    return date.toLocaleDateString([], { month: "short", day: "numeric" }) + " " +
-           date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -672,71 +696,93 @@
   function injectStyles() {
     const s = document.createElement("style");
     s.textContent = `
-      #chat-bubble {
-        position: fixed; bottom: 24px; right: 24px;
-        width: 52px; height: 52px; border-radius: 50%;
-        background: var(--gold, #c9a84c); color: #1a1a1a;
-        font-size: 22px; display: flex; align-items: center; justify-content: center;
-        cursor: pointer; z-index: 9000; box-shadow: 0 4px 20px rgba(0,0,0,0.45);
-        transition: transform .15s, box-shadow .15s; user-select: none;
+      /* Bottom Dock Bar */
+      #chat-dock-bar {
+        position: fixed; bottom: 0; right: 24px;
+        height: 40px; padding: 0 16px;
+        background: var(--surface, #0c1826);
+        border: 1px solid var(--gold-border, rgba(201,165,92,0.3));
+        border-bottom: none; border-radius: 12px 12px 0 0;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; cursor: pointer; z-index: 9000;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+        transition: all 0.2s ease; user-select: none; min-width: 170px;
       }
-      #chat-bubble:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(0,0,0,0.55); }
+      #chat-dock-bar:hover {
+        background: var(--surface2, #091422); border-color: var(--gold, #c9a84c);
+      }
 
       .chat-badge {
-        position: absolute; top: -4px; right: -4px; background: #e53e3e; color: #fff;
+        background: #e53e3e; color: #fff;
         font-size: 10px; font-weight: 700; min-width: 18px; height: 18px;
         border-radius: 9px; display: flex; align-items: center; justify-content: center;
-        padding: 0 4px; border: 2px solid var(--bg, #111);
+        padding: 0 5px; line-height: 1;
       }
       .chat-badge.hidden { display: none; }
 
       .chat-panel {
-        position: fixed; bottom: 88px; right: 24px;
-        width: 350px; height: 500px; background: var(--surface, #1c1c1c);
-        border: 1px solid var(--border, #2a2a2a); border-radius: 16px;
-        display: flex; flex-direction: column; z-index: 8999;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.6); overflow: hidden; animation: chatSlideIn .2s ease;
+        position: fixed; bottom: 40px; right: 24px;
+        width: 360px; height: 490px; background: var(--surface, #0c1826);
+        border: 1px solid var(--gold-border, rgba(201,165,92,0.3));
+        border-radius: 14px 14px 0 0; display: flex; flex-direction: column;
+        z-index: 8999; box-shadow: 0 -8px 40px rgba(0,0,0,0.65);
+        overflow: hidden; animation: chatDockExpand .22s cubic-bezier(0.4, 0, 0.2, 1);
       }
       .chat-panel.hidden { display: none; }
-      @keyframes chatSlideIn {
-        from { opacity: 0; transform: translateY(16px) scale(.97); }
-        to   { opacity: 1; transform: translateY(0) scale(1); }
+
+      @keyframes chatDockExpand {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
 
       .chat-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 12px 14px; background: var(--surface-raised, #222);
-        border-bottom: 1px solid var(--border, #2a2a2a); flex-shrink: 0;
+        padding: 10px 14px; background: var(--surface2, #091422);
+        border-bottom: 1px solid var(--border, #162033); flex-shrink: 0;
       }
       .chat-header-left { display: flex; align-items: center; gap: 8px; }
       .chat-header-icon { font-size: 16px; }
-      .chat-header-title { font-size: 13px; font-weight: 700; color: var(--text, #eee); letter-spacing: .3px; }
+      .chat-header-title { font-size: 13px; font-weight: 700; color: var(--text, #eee); }
       .chat-header-actions { display: flex; gap: 6px; }
       .chat-icon-btn {
         background: transparent; border: none; color: var(--text-dim, #888);
-        font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+        font-size: 13px; cursor: pointer; padding: 3px 6px; border-radius: 6px;
         transition: background .15s, color .15s;
       }
-      .chat-icon-btn:hover { background: var(--border, #2a2a2a); color: var(--text, #eee); }
+      .chat-icon-btn:hover { background: var(--border, #162033); color: var(--text, #eee); }
 
-      .chat-tabs { display: flex; border-bottom: 1px solid var(--border, #2a2a2a); flex-shrink: 0; }
-      .chat-tab {
-        flex: 1; padding: 9px 0; background: transparent; border: none;
-        font-size: 12px; font-weight: 600; color: var(--text-dim, #888);
-        cursor: pointer; position: relative; letter-spacing: .4px; transition: color .15s;
-      }
-      .chat-tab.active { color: var(--gold, #c9a84c); border-bottom: 2px solid var(--gold, #c9a84c); }
+      .chat-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+      .chat-view.hidden { display: none; }
+
+      .chat-conversations-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
       
-      .tab-badge {
-        display: inline-flex; align-items: center; justify-content: center;
-        background: #e53e3e; color: #fff; font-size: 9px; font-weight: 700;
-        min-width: 15px; height: 15px; border-radius: 8px; padding: 0 3px; margin-left: 4px;
+      /* Conversation List Item */
+      .chat-conv-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px; border-radius: 10px; cursor: pointer;
+        transition: background .15s; background: var(--surface2, #091422);
+        border: 1px solid var(--border, #162033); position: relative;
       }
-      .tab-badge.hidden { display: none; }
+      .chat-conv-item:hover { background: var(--surface3, #10202e); border-color: var(--gold-border, rgba(201,165,92,0.3)); }
+      .chat-conv-item.unread { border-left: 3px solid var(--gold, #c9a84c); background: rgba(201,165,92,0.06); }
 
-      .chat-pane { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-      .chat-pane.hidden { display: none; }
+      .chat-conv-avatar {
+        width: 36px; height: 36px; border-radius: 50%; background: rgba(201,165,92,0.15);
+        border: 1.5px solid var(--gold, #c9a84c); color: var(--gold-light, #e0c080);
+        font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
 
+      .chat-conv-info { flex: 1; min-width: 0; }
+      .chat-conv-name-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
+      .chat-conv-name { font-size: 13px; font-weight: 600; color: var(--text, #eee); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chat-conv-name.bold { font-weight: 800; color: #fff; }
+      .chat-conv-time { font-size: 10px; color: var(--text-dim, #666); flex-shrink: 0; }
+      .chat-conv-preview { font-size: 11.5px; color: var(--text-muted, #aaa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chat-conv-preview.bold { color: var(--text, #eee); font-weight: 600; }
+
+      .chat-unseen-dot { color: var(--gold, #c9a84c); font-size: 12px; margin-left: 4px; flex-shrink: 0; }
+
+      /* Messages View */
       .chat-messages {
         flex: 1; overflow-y: auto; padding: 12px 12px 6px;
         display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;
@@ -753,12 +799,12 @@
         font-size: 13px; line-height: 1.45; word-break: break-word; position: relative;
       }
       .chat-bubble-msg.mine { background: var(--gold, #c9a84c); color: #111; border-bottom-right-radius: 4px; }
-      .chat-bubble-msg.theirs { background: var(--surface-raised, #2a2a2a); color: var(--text, #eee); border-bottom-left-radius: 4px; border: 1px solid var(--border, #333); }
+      .chat-bubble-msg.theirs { background: var(--surface2, #091422); color: var(--text, #eee); border-bottom-left-radius: 4px; border: 1px solid var(--border, #162033); }
 
-      /* ── AVAILABILITY CARD STYLES ── */
+      /* Availability Card */
       .chat-avail-card {
         max-width: 88%; padding: 12px 14px; border-radius: 12px;
-        background: var(--surface2, #181818); border: 1px solid var(--gold-border, rgba(201,168,76,0.3));
+        background: var(--surface2, #091422); border: 1px solid var(--gold-border, rgba(201,168,76,0.3));
         box-shadow: 0 4px 14px rgba(0,0,0,0.3); position: relative;
       }
       .avail-badge {
@@ -778,20 +824,20 @@
       .chat-card-btn:hover { opacity: .85; }
 
       .chat-avail-picker {
-        background: var(--surface2, #222); border-top: 1px solid var(--gold-border, rgba(201,168,76,0.3));
+        background: var(--surface2, #091422); border-top: 1px solid var(--gold-border, rgba(201,168,76,0.3));
         padding: 12px; border-radius: 10px 10px 0 0;
       }
 
       .chat-avail-btn {
-        background: transparent; border: 1px solid var(--border, #2a2a2a);
+        background: transparent; border: 1px solid var(--border, #162033);
         color: var(--gold, #c9a84c); font-size: 15px; border-radius: 10px;
         padding: 6px 10px; cursor: pointer; transition: background .15s;
       }
       .chat-avail-btn:hover { background: rgba(201,168,76,0.1); }
 
-      .chat-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border, #2a2a2a); flex-shrink: 0; }
+      .chat-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border, #162033); flex-shrink: 0; }
       .chat-input {
-        flex: 1; background: var(--input-bg, #111); border: 1px solid var(--border, #2a2a2a);
+        flex: 1; background: var(--bg, #060c13); border: 1px solid var(--border, #162033);
         border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--text, #eee); outline: none;
       }
       .chat-input:focus { border-color: var(--gold, #c9a84c); }
@@ -803,31 +849,24 @@
       }
       .chat-send-btn:hover { opacity: .85; }
 
-      .dm-peer-list { flex: 1; overflow-y: auto; padding: 10px; }
-      .dm-peer-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
-      .dm-peer-item:hover { background: var(--surface-raised, #2a2a2a); }
-      .dm-peer-avatar {
-        width: 36px; height: 36px; border-radius: 50%; background: var(--gold, #c9a84c);
-        color: #111; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-      }
-      .dm-peer-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text, #eee); }
-      .dm-peer-arrow { color: var(--text-dim, #888); font-size: 14px; }
-      .dm-empty { text-align: center; color: var(--text-dim, #888); font-size: 12px; padding: 30px 16px; line-height: 1.6; }
-
-      .dm-conversation { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-      .dm-conv-header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border, #2a2a2a); }
+      .dm-conv-header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border, #162033); }
       .dm-back-btn { background: transparent; border: none; color: var(--gold, #c9a84c); font-size: 12px; cursor: pointer; padding: 4px 8px; font-weight: 600; }
-      #dm-conv-title { font-size: 13px; font-weight: 700; color: var(--text, #eee); }
       .chat-ts { font-size: 9px; opacity: .55; margin-left: 8px; vertical-align: bottom; }
+
+      /* Smartphone Adjustment */
+      @media (max-width: 600px) {
+        #chat-dock-bar { right: 10px; bottom: 60px; min-width: 150px; }
+        .chat-panel { right: 10px; width: calc(100vw - 20px); bottom: 100px; height: 420px; }
+      }
     `;
     document.head.appendChild(s);
   }
 
   // ── Expose Public API ─────────────────────────────────────────
   window._chat = { 
-    switchTab, 
-    openDm, 
-    backToPeerList, 
+    toggleDock,
+    openConversation, 
+    backToList, 
     toggleAvailPicker, 
     sendAvailRequest, 
     respondAvailCard 
