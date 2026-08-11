@@ -29,6 +29,24 @@ let notificationsUnsub = null;
 let appointmentsUnsub = null;
 let prevNotifCount = 0;
 
+// Shared AudioContext instance
+let sharedAudioCtx = null;
+
+function getAudioContext() {
+  if (!sharedAudioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+// Unlock audio context on first user click/tap
+document.addEventListener("click", () => { getAudioContext(); }, { once: true });
+document.addEventListener("keydown", () => { getAudioContext(); }, { once: true });
+
 // ── ACCESSIBLE CASES FILTER (STRICT PRIVACY & SHARING CONTROL) ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
@@ -55,7 +73,8 @@ window.getAccessibleCases = getAccessibleCases;
 // ── WEB AUDIO SYNTHESIZER FOR NOTIFICATIONS & CHAT ──────────────
 function playNotificationSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== "running") return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
@@ -72,7 +91,8 @@ function playNotificationSound() {
 
 function playChatSound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== "running") return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "triangle";
@@ -300,10 +320,8 @@ function checkCaseDueNotifications() {
     const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 3) {
-      // Unique key per case and due date
       const notifKey = `case_due_${c.id}_${c.dueDate}`;
 
-      // STRICT DEDUPLICATION: Check if notification already exists in memory or Firestore
       const alreadyNotified = notifications.some(n => 
         (n.type === "case_due" && n.relatedId === c.id) || n.notifKey === notifKey
       );
