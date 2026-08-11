@@ -285,7 +285,7 @@ async function dbLoad() {
   }
 }
 
-// ── AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──────────────
+// ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
   if (!activeUid) return;
@@ -300,14 +300,18 @@ function checkCaseDueNotifications() {
     const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 3) {
+      // Unique key per case and due date
+      const notifKey = `case_due_${c.id}_${c.dueDate}`;
+
+      // STRICT DEDUPLICATION: Check if notification already exists in memory or Firestore
       const alreadyNotified = notifications.some(n => 
-        n.type === "case_due" && n.relatedId === c.id && n.status === "unread"
+        (n.type === "case_due" && n.relatedId === c.id) || n.notifKey === notifKey
       );
 
       if (!alreadyNotified) {
-        let msgStr = `Case "${c.title}" is due on ${formatDate(c.dueDate)}.`;
-        if (diffDays < 0) msgStr = `⚠️ OVERDUE: Case "${c.title}" was due on ${formatDate(c.dueDate)}.`;
-        else if (diffDays === 0) msgStr = `⚡ DUE TODAY: Case "${c.title}" has a deadline today!`;
+        let msgStr = `Case "${c.title}" is due on ${formatDate(c.dueDate)}. Click to view case details.`;
+        if (diffDays < 0) msgStr = `⚠️ OVERDUE: Case "${c.title}" was due on ${formatDate(c.dueDate)}. Click to view details.`;
+        else if (diffDays === 0) msgStr = `⚡ DUE TODAY: Case "${c.title}" has a deadline today! Click to view details.`;
 
         dbAddNotification({
           toUid: activeUid,
@@ -317,6 +321,7 @@ function checkCaseDueNotifications() {
           message: msgStr,
           type: "case_due",
           relatedId: c.id,
+          notifKey: notifKey,
           status: "unread"
         });
       }
