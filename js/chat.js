@@ -144,7 +144,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  MINIMIZE / EXPAND CHAT DOCK
+  //  MINIMIZE / EXPAND CHAT DOCK (BOUND GLOBALLY & TO _chat)
   // ═══════════════════════════════════════════════════════════
   function toggleDock() {
     isExpanded ? minimizeDock() : expandDock();
@@ -862,7 +862,8 @@
     document.head.appendChild(s);
   }
 
-  // ── Expose Public API ─────────────────────────────────────────
+  // ── Expose Global API ─────────────────────────────────────────
+  window.toggleDock = toggleDock;
   window._chat = { 
     toggleDock,
     openConversation, 
