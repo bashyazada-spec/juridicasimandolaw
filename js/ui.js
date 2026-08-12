@@ -1794,6 +1794,12 @@ function renderNotificationsView() {
 }
 
 window.markNotificationRead = async function(id) {
+  const notif = notifications.find(n => n.id === id);
+  if (notif) {
+    notif.status = "read";
+    updateNotificationBadge();
+    renderNotificationsView();
+  }
   try {
     await dbUpdateNotification(id, { status: "read" });
   } catch (err) {
@@ -1802,12 +1808,14 @@ window.markNotificationRead = async function(id) {
 };
 
 window.markAllNotificationsAsRead = async function() {
+  notifications.forEach(n => { n.status = "read"; });
+  updateNotificationBadge();
+  renderNotificationsView();
+
   try {
     showToast("Clearing alerts...");
     for (const n of notifications) {
-      if (n.status === "unread") {
-        await dbUpdateNotification(n.id, { status: "read" });
-      }
+      await dbUpdateNotification(n.id, { status: "read" });
     }
     showToast("All notifications cleared!");
   } catch (err) {
