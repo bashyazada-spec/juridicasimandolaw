@@ -29,23 +29,7 @@ let notificationsUnsub = null;
 let appointmentsUnsub = null;
 let prevNotifCount = 0;
 
-// Shared AudioContext instance
-let sharedAudioCtx = null;
-
-function getAudioContext() {
-  if (!sharedAudioCtx) {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (AudioCtx) sharedAudioCtx = new AudioCtx();
-  }
-  if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
-    sharedAudioCtx.resume().catch(() => {});
-  }
-  return sharedAudioCtx;
-}
-
-// Unlock audio context on first user click/tap
-document.addEventListener("click", () => { getAudioContext(); }, { once: true });
-document.addEventListener("keydown", () => { getAudioContext(); }, { once: true });
+window._notifsLoaded = false;
 
 // ── ACCESSIBLE CASES FILTER (STRICT PRIVACY & SHARING CONTROL) ──
 function getAccessibleCases() {
@@ -71,6 +55,22 @@ function getAccessibleCases() {
 window.getAccessibleCases = getAccessibleCases;
 
 // ── WEB AUDIO SYNTHESIZER FOR NOTIFICATIONS & CHAT ──────────────
+let sharedAudioCtx = null;
+
+function getAudioContext() {
+  if (!sharedAudioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+document.addEventListener("click", () => { getAudioContext(); }, { once: true });
+document.addEventListener("keydown", () => { getAudioContext(); }, { once: true });
+
 function playNotificationSound() {
   try {
     const ctx = getAudioContext();
@@ -242,13 +242,15 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases (Filtered by Access) ─────────────
+    // ── Real-Time Sync: Cases ─────────────
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
       const cColRef = window._fbCol(db, "cases");
       casesUnsub = window._fbOnSnapshot(cColRef, (snap) => {
         cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        checkCaseDueNotifications();
+        if (window._notifsLoaded) {
+          checkCaseDueNotifications();
+        }
         refreshCurrentView();
       }, (error) => {
         console.error("Cases real-time connection error:", error);
@@ -265,8 +267,11 @@ async function dbLoad() {
             .filter(n => n.toUid === activeUid)
             .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+          window._notifsLoaded = true;
+          checkCaseDueNotifications();
+
           const unreadCount = notifications.filter(n => n.status === "unread").length;
-          if (unreadCount > prevNotifCount) {
+          if (unreadCount > prevNotifCount && prevNotifCount > 0) {
             playNotificationSound();
           }
           prevNotifCount = unreadCount;
@@ -275,9 +280,11 @@ async function dbLoad() {
         }, (error) => {
           console.warn("Notifications sync permission notice:", error.message);
           notifications = [];
+          window._notifsLoaded = true;
         });
       } catch (e) {
         console.warn("Notifications listener setup skipped:", e.message);
+        window._notifsLoaded = true;
       }
     }
 
@@ -308,7 +315,7 @@ async function dbLoad() {
 // ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
-  if (!activeUid) return;
+  if (!activeUid || !window._notifsLoaded) return;
 
   const userCases = getAccessibleCases();
   const today = new Date();
@@ -322,8 +329,10 @@ function checkCaseDueNotifications() {
     if (diffDays <= 3) {
       const notifKey = `case_due_${c.id}_${c.dueDate}`;
 
+      // PERMANENT DEDUPLICATION: Check if notification exists (read OR unread)
       const alreadyNotified = notifications.some(n => 
-        (n.type === "case_due" && n.relatedId === c.id) || n.notifKey === notifKey
+        (n.type === "case_due" && n.relatedId === c.id && n.notifKey === notifKey) ||
+        (n.notifKey === notifKey)
       );
 
       if (!alreadyNotified) {
