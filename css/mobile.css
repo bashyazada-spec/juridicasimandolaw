@@ -282,27 +282,38 @@ a { color: inherit; text-decoration: none; }
 }
 #config-banner.show { display: block; }
 
-/* LARGE ENLARGED TOUCH-FRIENDLY CHAT DOCK BAR FOR MOBILE */
+/* ── NATIVE BUTTON CHAT DOCK BAR (MOBILE ELEVATED 0MS TOUCH RESPONSE) ── */
 #chat-dock-bar {
   position: fixed !important;
-  bottom: 64px !important;
+  bottom: 68px !important;
   right: 12px !important;
-  height: 44px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  min-width: 160px !important;
   padding: 0 16px !important;
   background: var(--surface2, #091422) !important;
   border: 1.5px solid var(--gold-border, rgba(201,165,92,0.4)) !important;
   border-radius: 12px !important;
   z-index: 9995 !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.65) !important;
-  min-width: 160px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: pointer !important;
+  user-select: none !important;
   touch-action: manipulation !important;
   -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+}
+
+#chat-dock-bar:active {
+  transform: scale(0.96) !important;
 }
 
 .chat-panel {
   width: calc(100vw - 20px) !important;
   right: 10px !important; 
-  bottom: 112px !important; 
+  bottom: 116px !important; 
   height: 420px !important;
   z-index: 9996 !important;
 }
