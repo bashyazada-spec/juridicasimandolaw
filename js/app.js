@@ -22,7 +22,7 @@ window.toggleSidebar = function() {
 //  DELETE CONFIRMATION & MODAL CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
-let caseFormOrigin = "profileDetail"; // Router state to track form arrival
+let caseFormOrigin = "profileDetail";
 
 function setElText(id, text) {
   const el = document.getElementById(id);
@@ -45,7 +45,7 @@ window.closeDriveWarningModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CLICK-TO-TOGGLE SET AVAILABILITY MODAL CONTROLLERS
+//  CLICK-TO-TOGGLE SET AVAILABILITY MODAL CONTROLLERS (OWN SCHEDULE ONLY)
 // ═══════════════════════════════════════════════════════════════
 let selectedBusyDatesSet = new Set();
 let modalCalYear = new Date().getFullYear();
@@ -61,8 +61,9 @@ window.openBusyModal = function() {
 
   const u = window._currentUser || window._auth?.currentUser;
   if (u && Array.isArray(appointments)) {
+    // Only pre-select the logged-in user's own availability dates
     appointments.forEach(a => {
-      if (a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid) && a.date) {
+      if (a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid || a.ownerUid === u.uid) && a.date) {
         selectedBusyDatesSet.add(a.date);
       }
     });
@@ -218,18 +219,23 @@ window.submitBusyDates = async function() {
   }
 
   const u = window._currentUser || window._auth?.currentUser;
-  const myProf = profiles.find(p => p.ownerUid === u?.uid) || { name: u?.displayName || u?.email || "Attorney" };
+  if (!u) {
+    showToast("Please sign in first.", "error");
+    return;
+  }
+  const myProf = profiles.find(p => p.ownerUid === u.uid) || { name: u.displayName || u.email || "Attorney" };
 
   try {
-    showToast("Saving availability settings...");
+    showToast("Saving your availability...");
 
     const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
     
-    const existingBusyAppts = appointments.filter(a => 
-      a.type === "busy" && (a.targetUid === u?.uid || a.requesterUid === u?.uid)
+    // Only delete and modify the current logged-in attorney's own busy entries
+    const myExistingBusyAppts = appointments.filter(a => 
+      a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid || a.ownerUid === u.uid)
     );
 
-    for (const oldAppt of existingBusyAppts) {
+    for (const oldAppt of myExistingBusyAppts) {
       if (!selectedBusyDatesSet.has(oldAppt.date)) {
         if (oldAppt.id && !oldAppt.id.startsWith("local_") && typeof dbDeleteAppointment === "function") {
           await dbDeleteAppointment(oldAppt.id).catch(err => console.warn("Delete appt error:", err));
@@ -238,10 +244,9 @@ window.submitBusyDates = async function() {
       }
     }
 
-    let addedCount = 0;
     for (const dateStr of selectedBusyDatesSet) {
       const alreadyExists = appointments.some(a => 
-        a.type === "busy" && (a.targetUid === u?.uid || a.requesterUid === u?.uid) && a.date === dateStr
+        a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid || a.ownerUid === u.uid) && a.date === dateStr
       );
 
       if (!alreadyExists) {
@@ -250,10 +255,11 @@ window.submitBusyDates = async function() {
           date: dateStr,
           time: timeLabel,
           description: notes || "Unavailable / Busy",
-          requesterUid: u?.uid || "local",
+          requesterUid: u.uid,
           requesterName: myProf.name,
-          targetUid: u?.uid || "local",
+          targetUid: u.uid,
           targetName: myProf.name,
+          ownerUid: u.uid,
           status: "accepted",
           type: "busy"
         };
@@ -271,15 +277,14 @@ window.submitBusyDates = async function() {
         else apptData.id = "local_busy_" + Date.now() + "_" + Math.random().toString(36).slice(2);
 
         appointments.push(apptData);
-        addedCount++;
       }
     }
 
     showToast("Availability settings saved!");
     closeBusyModal();
 
-    if (typeof renderCalendarView === "function") {
-      renderCalendarView();
+    if (typeof renderMonthlyCalendarGrid === "function") {
+      renderMonthlyCalendarGrid();
     }
   } catch (err) {
     console.error("submitBusyDates error:", err);
@@ -287,23 +292,36 @@ window.submitBusyDates = async function() {
   }
 };
 
-window.deleteBusySlot = async function(apptId) {
+window.deleteBusySlot = async function(apptId, dateStr = null) {
   if (!apptId) return;
 
+  const u = window._currentUser || window._auth?.currentUser;
+  const slot = appointments.find(a => a.id === apptId);
+  if (slot && u) {
+    const isOwner = slot.ownerUid === u.uid || slot.targetUid === u.uid || slot.requesterUid === u.uid;
+    if (!isOwner) {
+      showToast("You can only modify your own availability.", "error");
+      return;
+    }
+  }
+
   try {
-    showToast("Removing busy slot...");
+    showToast("Removing availability entry...");
     if (!apptId.startsWith("local_") && typeof dbDeleteAppointment === "function") {
       await dbDeleteAppointment(apptId).catch(err => console.warn("Delete appt error:", err));
     }
     appointments = appointments.filter(a => a.id !== apptId);
-    showToast("Busy slot removed!");
+    showToast("Availability removed!");
 
-    if (typeof renderCalendarView === "function") {
-      renderCalendarView();
+    if (dateStr && typeof openDateScheduleModal === "function") {
+      openDateScheduleModal(dateStr);
+    }
+    if (typeof renderMonthlyCalendarGrid === "function") {
+      renderMonthlyCalendarGrid();
     }
   } catch (err) {
     console.error("deleteBusySlot error:", err);
-    showToast("Failed to remove busy slot: " + err.message, "error");
+    showToast("Failed to remove: " + err.message, "error");
   }
 };
 
@@ -528,7 +546,7 @@ async function saveShareSettings() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILE FORM — DRIVE AUTH REQUIRED
+//  PROFILE FORM
 // ═══════════════════════════════════════════════════════════════
 let pfDriveConnected = false;
 
@@ -1068,110 +1086,6 @@ async function onCategoryChange(category) {
   hideCaseTypeSuggestions();
 }
 
-function populateCaseSelects() {
-  const catSel = document.getElementById("cf-category");
-  const statusSel = document.getElementById("cf-status");
-  const venueSel = document.getElementById("cf-venue");
-  
-  if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-  if (statusSel) statusSel.innerHTML = STATUS_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join("");
-  if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
-}
-
-async function openAddCase() {
-  caseFormOrigin = currentView;
-  
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u) return;
-
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf) {
-    showToast("Your attorney profile is still loading. Please wait a moment.", "error");
-    return;
-  }
-
-  if (typeof hasValidToken === "function" && !hasValidToken()) {
-    openDriveWarningModal();
-  }
-
-  selProfile = myProf;
-  caseFormMode = "add";
-  pendingDocs = [];
-  cfPetitioners = selProfile.name ? [selProfile.name] : [];
-  cfRespondents = [];
-  populateCaseSelects();
-
-  setElText("cf-title", "New Case");
-  setElText("cf-save-btn", "Add Case");
-  setElVal("cf-case-title", "");
-  setElVal("cf-narrative", "");
-  setElVal("cf-filed", "");
-  setElVal("cf-due", "");
-  setElVal("cf-case-number", "");
-  setElVal("cf-doc-type", "");
-  setElVal("cf-type-input", "");
-  setElVal("cf-status", STATUS_OPTIONS[0]);
-  setVenueValue(VENUES[0]);
-  setElText("drive-status", "");
-  
-  const backBtn = document.getElementById("cf-back-btn");
-  if (backBtn) backBtn.onclick = () => navTo(caseFormOrigin);
-
-  const cancelBtn = document.getElementById("cf-cancel-btn");
-  if (cancelBtn) cancelBtn.onclick = () => navTo(caseFormOrigin);
-  
-  const firstCat = CASE_CATEGORIES[0];
-  setElVal("cf-category", firstCat);
-  await onCategoryChange(firstCat);
-  renderPartyLists();
-  serializeParties();
-  renderPendingDocs();
-  clearCaseErrors();
-  updateCfChip();
-  updateDriveFolderChip();
-  showView("caseForm");
-}
-
-async function openEditCase() {
-  const c = selCase;
-  if (!c) return;
-  caseFormMode = "edit";
-  pendingDocs = [...(c.documents || [])];
-  parsePartiesString(c.parties);
-  populateCaseSelects();
-
-  setElText("cf-title", "Edit Case");
-  setElText("cf-save-btn", "Save Changes");
-  setElVal("cf-case-title", c.title);
-  setElVal("cf-narrative", c.narrative);
-  setElVal("cf-filed", c.filedDate || "");
-  setElVal("cf-due", c.dueDate || "");
-  setElVal("cf-case-number", c.caseNumber || "");
-  setElVal("cf-doc-type", c.docType || "");
-  setVenueValue(c.venue);
-  
-  const cat = c.category || CASE_CATEGORIES[0];
-  setElVal("cf-category", cat);
-  await onCategoryChange(cat);
-  setElVal("cf-type-input", c.type || "");
-  
-  setElText("drive-status", pendingDocs.length ? `${pendingDocs.length} file(s)` : "");
-
-  const backBtn = document.getElementById("cf-back-btn");
-  if (backBtn) backBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
-
-  const cancelBtn = document.getElementById("cf-cancel-btn");
-  if (cancelBtn) cancelBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
-
-  renderPartyLists();
-  serializeParties();
-  renderPendingDocs();
-  clearCaseErrors();
-  updateCfChip();
-  updateDriveFolderChip();
-  showView("caseForm");
-}
-
 function updateCfChip() {
   const chip = document.getElementById("cf-profile-chip");
   if (!chip) return;
@@ -1245,7 +1159,6 @@ document.addEventListener("firebase-ready", () => {
           connectDatabase();
         }
       } else {
-        // Redirect to login ONLY if definitively confirmed not logged in
         if (window.location.pathname.indexOf("login.html") === -1) {
           window.location.replace("login.html");
         }
