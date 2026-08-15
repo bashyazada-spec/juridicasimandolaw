@@ -185,7 +185,6 @@ a { color: inherit; text-decoration: none; }
   background: linear-gradient(90deg, var(--accent, var(--gold)), transparent);
 }
 
-/* Clean Sans-Serif font for stat numbers on mobile so digits like 10 look crisp */
 .stat-number { 
   font-family: var(--font-body) !important; 
   font-size: 30px !important; 
@@ -205,6 +204,72 @@ a { color: inherit; text-decoration: none; }
 
 .page-title { font-family: var(--font-display); font-size: 26px !important; font-weight: 600; color: var(--text); line-height: 1.1; }
 .page-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+
+/* ── LUXURY SCHEDULE FILTER BAR (MOBILE TOUCH ADAPTED) ── */
+.schedule-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(145deg, rgba(12, 24, 38, 0.95), rgba(9, 20, 34, 0.98));
+  border: 1px solid var(--gold-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  width: 100%;
+}
+
+.schedule-filter-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.schedule-filter-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(201, 165, 92, 0.12);
+  border: 1px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.schedule-filter-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.schedule-filter-sub {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.schedule-filter-select-wrap {
+  width: 100%;
+}
+
+.schedule-filter-select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--surface2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2l4.5 4.5 4.5-4.5' stroke='%23c9a55c' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border: 1.5px solid var(--gold-border);
+  border-radius: 9px;
+  color: var(--gold-light);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 10px 32px 10px 12px;
+  outline: none;
+  cursor: pointer;
+}
 
 .btn {
   width: 100% !important; justify-content: center !important;
@@ -269,7 +334,6 @@ a { color: inherit; text-decoration: none; }
 .drive-status-chip.connected { border-color: rgba(52,211,153,0.28); color: var(--green); background: rgba(52,211,153,0.05); }
 .drive-status-chip.disconnected { border-color: rgba(251,191,36,0.24); color: var(--amber); background: rgba(251,191,36,0.04); }
 
-/* Config Warning Banner */
 #config-banner {
   background: rgba(251,191,36,0.04);
   border: 1px solid rgba(251,191,36,0.18);
@@ -282,7 +346,7 @@ a { color: inherit; text-decoration: none; }
 }
 #config-banner.show { display: block; }
 
-/* ── NATIVE BUTTON CHAT DOCK BAR (MOBILE ELEVATED 0MS TOUCH RESPONSE) ── */
+/* ── NATIVE BUTTON CHAT DOCK BAR ── */
 #chat-dock-bar {
   position: fixed !important;
   bottom: 68px !important;
