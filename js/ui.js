@@ -9,7 +9,6 @@ function initTheme() {
   }
 }
 
-// Explicitly attach to window object to prevent ReferenceErrors
 window.initTheme = initTheme;
 
 // ═══════════════════════════════════════════════════════════════
@@ -490,7 +489,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (ENFORCING VIEWER VS EDITOR PERMISSIONS)
+//  CASE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -837,11 +836,10 @@ function onFilterCategoryChange(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  INTERACTIVE MONTHLY CALENDAR GRID
+//  FIRM SCHEDULE & INTERACTIVE MONTHLY CALENDAR GRID
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
-let currentCalMonth = new Date().getMonth(); // 0-indexed
-let selectedCalDate = null; // YYYY-MM-DD or null
+let currentCalMonth = new Date().getMonth();
 
 function renderCalendarView() {
   const select = document.getElementById("calendar-filter-select");
@@ -853,8 +851,6 @@ function renderCalendarView() {
   }
 
   renderMonthlyCalendarGrid();
-  renderCalendarTimeline();
-  renderApprovedAppointments();
 }
 
 function prevCalMonth() {
@@ -879,28 +875,7 @@ function todayCalMonth() {
   const now = new Date();
   currentCalYear = now.getFullYear();
   currentCalMonth = now.getMonth();
-  const monthStr = String(currentCalMonth + 1).padStart(2, '0');
-  const dayStr = String(now.getDate()).padStart(2, '0');
-  selectedCalDate = `${currentCalYear}-${monthStr}-${dayStr}`;
-  
   renderMonthlyCalendarGrid();
-  renderCalendarTimeline();
-}
-
-function selectCalDay(dateStr) {
-  if (selectedCalDate === dateStr) {
-    selectedCalDate = null;
-  } else {
-    selectedCalDate = dateStr;
-  }
-  renderMonthlyCalendarGrid();
-  renderCalendarTimeline();
-}
-
-function clearSelectedCalDate() {
-  selectedCalDate = null;
-  renderMonthlyCalendarGrid();
-  renderCalendarTimeline();
 }
 
 function renderMonthlyCalendarGrid() {
@@ -927,16 +902,29 @@ function renderMonthlyCalendarGrid() {
   const eventsByDate = {};
   activeCases.forEach(c => {
     if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
-    eventsByDate[c.dueDate].push({ type: "case", title: c.title, badge: "⚖️ " + (c.type || "Case") });
+    eventsByDate[c.dueDate].push({ 
+      id: c.id, 
+      type: "case", 
+      title: c.title, 
+      category: c.category || "Case", 
+      typeName: c.type || "Case", 
+      venue: c.venue || "N/A" 
+    });
   });
 
   activeAppts.forEach(a => {
     if (!eventsByDate[a.date]) eventsByDate[a.date] = [];
     const isBusy = a.type === "busy";
     eventsByDate[a.date].push({ 
+      id: a.id,
       type: isBusy ? "busy" : "appt", 
-      title: a.title, 
-      badge: isBusy ? (a.title || "🚫 Busy") : ("🤝 " + (a.time || "Appt"))
+      title: a.title || (isBusy ? "Out of Office" : "Appointment"), 
+      time: a.time || "All Day",
+      description: a.description || "",
+      requesterName: a.requesterName || "",
+      targetName: a.targetName || "",
+      requesterUid: a.requesterUid || "",
+      targetUid: a.targetUid || ""
     });
   });
 
@@ -969,34 +957,26 @@ function renderMonthlyCalendarGrid() {
     const fullDateStr = `${currentCalYear}-${mStr}-${dStr}`;
 
     const isToday = fullDateStr === todayStr;
-    const isSelected = fullDateStr === selectedCalDate;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
     const hasBusy = dayEvents.some(e => e.type === "busy");
     const hasCase = dayEvents.some(e => e.type === "case");
     const hasAppt = dayEvents.some(e => e.type === "appt");
 
-    let cellStyle = "";
-    if (isSelected) {
-      cellStyle = "border-color:var(--gold) !important; background:rgba(201,168,76,0.15) !important;";
-    } else if (hasBusy) {
-      cellStyle = "border-color:rgba(248,113,113,0.5) !important; background:rgba(248,113,113,0.16) !important;";
-    }
-
     let dotsHtml = "";
     if (dayEvents.length > 0) {
-      dotsHtml = `<div style="display:flex;gap:4px;margin-top:auto;padding-top:4px;justify-content:center">`;
-      if (hasBusy) dotsHtml += `<span title="Busy / Out of Office" style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span>`;
+      dotsHtml = `<div style="display:flex;gap:4px;margin-top:auto;padding-top:4px;justify-content:center;flex-wrap:wrap">`;
+      if (hasBusy) dotsHtml += `<span title="Unavailable / Out of Office" style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span>`;
       if (hasCase) dotsHtml += `<span title="Case Deadline" style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block"></span>`;
-      if (hasAppt) dotsHtml += `<span title="Appointment" style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block"></span>`;
+      if (hasAppt) dotsHtml += `<span title="Appointment / Meeting" style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block"></span>`;
       dotsHtml += `</div>`;
     }
 
     html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" 
-           style="${cellStyle}" 
-           onclick="selectCalDay('${fullDateStr}')">
-        <span class="cal-day-num" style="${hasBusy ? 'color:var(--red);font-weight:800' : ''}">${day}</span>
+      <div class="cal-day-cell ${isToday ? 'is-today' : ''}" 
+           onclick="openDateScheduleModal('${fullDateStr}')" 
+           title="Click to view events for ${fullDateStr}">
+        <span class="cal-day-num">${day}</span>
         ${dotsHtml}
       </div>
     `;
@@ -1011,147 +991,92 @@ function renderMonthlyCalendarGrid() {
   gridEl.innerHTML = html;
 }
 
-function renderCalendarTimeline() {
-  const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
-  const timelineEl = document.getElementById("calendar-timeline-list");
-  const titleEl = document.getElementById("calendar-selected-date-title");
-  const clearBtn = document.getElementById("cal-clear-date-btn");
+// ═══════════════════════════════════════════════════════════════
+//  DATE POPUP MODAL CONTROLLER (SHOWS FULL SCHEDULE WITH DESCRIPTIONS)
+// ═══════════════════════════════════════════════════════════════
+window.openDateScheduleModal = function(dateStr) {
+  const modal = document.getElementById("date-schedule-modal");
+  const titleEl = document.getElementById("dsm-title");
+  const listEl = document.getElementById("dsm-events-list");
 
-  if (!timelineEl) return;
+  if (!modal || !listEl) return;
 
-  if (selectedCalDate) {
-    if (titleEl) titleEl.innerHTML = `🗓️ Agenda: <span style="color:var(--gold)">${formatDate(selectedCalDate)}</span>`;
-    if (clearBtn) clearBtn.style.display = "inline-flex";
-  } else {
-    if (titleEl) titleEl.textContent = `🗓️ All Scheduled Events`;
-    if (clearBtn) clearBtn.style.display = "none";
-  }
+  const formattedDate = formatDate(dateStr);
+  if (titleEl) titleEl.textContent = `📅 Schedule for ${formattedDate}`;
 
-  let activeCases = getAccessibleCases().filter(c => c.dueDate);
-  if (filter !== "Everyone") {
-    const matchedProf = profiles.find(p => p.ownerUid === filter);
-    activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
-  }
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
 
-  if (selectedCalDate) {
-    activeCases = activeCases.filter(c => c.dueDate === selectedCalDate);
-  }
+  const dateCases = getAccessibleCases().filter(c => c.dueDate === dateStr);
+  const dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
 
-  const timelineEvents = activeCases.map(c => {
+  const allItems = [];
+
+  dateCases.forEach(c => {
     const p = profiles.find(x => x.id === c.profileId);
-    return {
-      type: "case_deadline",
+    allItems.push({
+      id: c.id,
+      kind: "case",
+      badgeColor: "var(--gold)",
+      badgeLabel: "⚖️ Case Deadline",
       title: c.title,
-      sub: `${p?.name || "Unassigned"} · ${c.type || c.category || "Case"}`,
-      date: c.dueDate,
-      label: "Case Deadline ⚖️",
-      color: "var(--gold)"
-    };
-  });
-
-  let activeAppts = appointments.filter(a => a.status === "accepted");
-  if (filter !== "Everyone") {
-    activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
-  }
-
-  if (selectedCalDate) {
-    activeAppts = activeAppts.filter(a => a.date === selectedCalDate);
-  }
-
-  activeAppts.forEach(appt => {
-    const isBusy = appt.type === "busy";
-    timelineEvents.push({
-      id: appt.id,
-      type: isBusy ? "busy" : "appointment",
-      title: appt.title || "Appointment Sync",
-      sub: isBusy 
-        ? "Status: Out of Office / Busy" + (appt.description ? "\n\"" + appt.description + "\"" : "")
-        : "Proposer: " + appt.requesterName + " · Host: " + appt.targetName + (appt.description ? "\n\"" + appt.description + "\"" : ""),
-      date: appt.date,
-      time: appt.time,
-      label: isBusy ? "Unavailable 🚫" : "Appointment 🤝",
-      color: isBusy ? "var(--red)" : "var(--violet)"
+      sub: `${p?.name || "Attorney"} · ${c.type || c.category || "Case"} · ${c.venue || "Venue N/A"}`,
+      desc: c.narrative || "No narrative available.",
+      canDelete: false
     });
   });
 
-  timelineEvents.sort((a,b) => new Date(a.date) - new Date(b.date));
+  dateAppts.forEach(a => {
+    const isBusy = a.type === "busy";
+    const isMyBusy = isBusy && (a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid);
 
-  if (timelineEvents.length === 0) {
-    timelineEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🗓️</div><div>${selectedCalDate ? "No events scheduled on " + formatDate(selectedCalDate) : "No scheduled events."}</div></div>`;
-    return;
-  }
+    allItems.push({
+      id: a.id,
+      kind: isBusy ? "busy" : "appt",
+      badgeColor: isBusy ? "var(--red)" : "var(--violet)",
+      badgeLabel: isBusy ? "🚫 Out of Office / Busy" : "🤝 Approved Appointment",
+      title: a.title,
+      time: a.time,
+      sub: isBusy 
+        ? `Attorney: ${a.targetName || a.requesterName || "Firm Attorney"}`
+        : `Proposer: ${a.requesterName} · Host: ${a.targetName}`,
+      desc: a.description || "",
+      canDelete: isMyBusy,
+      dateStr: dateStr
+    });
+  });
 
-  timelineEl.innerHTML = timelineEvents.map(ev => {
-    const d = new Date(ev.date + 'T00:00:00');
-    const deleteBtn = ev.type === "busy" ? `<button onclick="deleteBusySlot('${ev.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="Unblock Date">🗑️</button>` : "";
-
-    return `
-      <div class="case-row" style="cursor:default;margin-bottom:10px">
-        <div style="text-align:center;background:rgba(201,168,76,0.06);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:54px;margin-right:8px">
-          <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase">${d.toLocaleDateString("en-PH", { weekday: "short" })}</div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px">${d.getDate()}</div>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${ev.color}15;color:${ev.color}">${ev.label}</span>
-              ${ev.time ? '<span style="font-size:11px;color:var(--text-dim)">⏰ ' + ev.time + '</span>' : ""}
-            </div>
-            ${deleteBtn}
-          </div>
-          <div style="font-weight:700;font-size:14px;color:var(--text);margin-top:6px">${escHtml(ev.title)}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;white-space:pre-wrap">${escHtml(ev.sub)}</div>
-        </div>
+  if (allItems.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="padding:28px 14px">
+        <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px">☀️</div>
+        <div style="font-size:13px;color:var(--text-muted)">No schedules, appointments, or deadlines for this date.</div>
       </div>
     `;
-  }).join("");
-}
-
-function renderApprovedAppointments() {
-  const apptEl = document.getElementById("calendar-approved-list");
-  if (!apptEl) return;
-
-  const approved = appointments.filter(a => a.status === "accepted" && a.type !== "busy");
-  if (approved.length === 0) {
-    apptEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🤝</div><div>No upcoming appointments.</div></div>`;
-    return;
+  } else {
+    listEl.innerHTML = allItems.map(item => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
+          <span style="font-size:11px;font-weight:700;color:${item.badgeColor};background:${item.badgeColor}18;padding:2px 8px;border-radius:4px">
+            ${item.badgeLabel}
+          </span>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${item.time ? `<span style="font-size:11.5px;color:var(--text-dim);font-weight:600">⏰ ${item.time}</span>` : ""}
+            ${item.canDelete ? `<button onclick="deleteBusySlot('${item.id}', '${item.dateStr}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px" title="Delete your availability entry">🗑️ Remove</button>` : ""}
+          </div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(item.title)}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(item.sub)}</div>
+        ${item.desc ? `<div style="font-size:12px;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;line-height:1.5;white-space:pre-wrap">${escHtml(item.desc)}</div>` : ""}
+      </div>
+    `).join("");
   }
-
-  apptEl.innerHTML = approved.map(a => `
-    <div class="doc-item" style="border-left:3px solid var(--green);padding:14px;margin-bottom:12px;cursor:pointer" onclick="openAppointmentDetailModal('${a.id}')">
-      <div style="font-weight:700;font-size:14px;color:var(--text)">${escHtml(a.title)}</div>
-      <div style="font-size:12px;color:var(--text-dim);margin-top:4px">📅 ${formatDate(a.date)} · ⏰ ${a.time}</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Proposer: ${escHtml(a.requesterName)}<br>Host: ${escHtml(a.targetName)}</div>
-      ${a.description ? '<div style="font-size:11px;color:var(--text-dim);background:var(--surface2);padding:6px;border-radius:6px;margin-top:6px;font-style:italic">"' + escHtml(a.description) + '"</div>' : ""}
-    </div>
-  `).join("");
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  APPOINTMENT DETAIL MODAL CONTROLLER
-// ═══════════════════════════════════════════════════════════════
-window.openAppointmentDetailModal = function(apptId) {
-  const appt = appointments.find(a => a.id === apptId);
-  if (!appt) return;
-
-  const modal = document.getElementById("appointment-detail-modal");
-  if (!modal) return;
-
-  const titleEl = document.getElementById("adm-title");
-  const timeEl = document.getElementById("adm-time");
-  const usersEl = document.getElementById("adm-users");
-  const descEl = document.getElementById("adm-desc");
-
-  if (titleEl) titleEl.textContent = appt.title || "Appointment";
-  if (timeEl) timeEl.textContent = `📅 ${formatDate(appt.date)} at ⏰ ${appt.time || 'All Day'}`;
-  if (usersEl) usersEl.innerHTML = `Proposer: <strong style="color:var(--text)">${escHtml(appt.requesterName)}</strong><br>Host Attorney: <strong style="color:var(--text)">${escHtml(appt.targetName)}</strong>`;
-  if (descEl) descEl.textContent = appt.description || "No additional notes provided.";
 
   modal.classList.remove("hidden");
 };
 
-window.closeAppointmentDetailModal = function() {
-  const modal = document.getElementById("appointment-detail-modal");
+window.closeDateScheduleModal = function() {
+  const modal = document.getElementById("date-schedule-modal");
   if (modal) modal.classList.add("hidden");
 };
 
@@ -1746,17 +1671,14 @@ function updateNotificationBadge() {
   }
 }
 
-// INTERACTIVE NOTIFICATION CLICK HANDLER
 window.handleNotifClick = async function(notifId, type, relatedId, fromUid, fromName) {
   if (notifId) {
     markNotificationRead(notifId);
   }
 
-  // Close notification dropdown widget if open
   const dropdown = document.getElementById("notif-dropdown");
   if (dropdown) dropdown.classList.add("hidden");
 
-  // Jump to specific destination
   if ((type === "case_due" || type === "case_share") && relatedId) {
     openCase(relatedId);
   } else if (type === "availability_request" || type === "availability_confirmed") {
@@ -1995,7 +1917,6 @@ function populateCaseSelects(isEdit = false) {
   
   if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
   
-  // NEW CASES ONLY GET INITIAL ACTIVE STATUSES (Excludes Dismissed, Settled, & Completed)
   const optionsToUse = isEdit ? STATUS_OPTIONS : (typeof NEW_CASE_STATUS_OPTIONS !== "undefined" ? NEW_CASE_STATUS_OPTIONS : ["On-going", "Pending"]);
   if (statusSel) statusSel.innerHTML = optionsToUse.map(t => `<option value="${t}">${t}</option>`).join("");
   
@@ -2024,7 +1945,6 @@ async function openAddCase() {
   cfPetitioners = selProfile.name ? [selProfile.name] : [];
   cfRespondents = [];
   
-  // Pass isEdit = false to exclude Dismissed / Settled
   populateCaseSelects(false);
 
   setElText("cf-title", "New Case");
@@ -2065,7 +1985,6 @@ async function openEditCase() {
   pendingDocs = [...(c.documents || [])];
   parsePartiesString(c.parties);
   
-  // Pass isEdit = true to show all status options (including Dismissed/Settled/Completed)
   populateCaseSelects(true);
 
   setElText("cf-title", "Edit Case");
@@ -2101,7 +2020,7 @@ async function openEditCase() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM (VIEWER VS EDITOR PERMISSIONS)
+//  CASE SHARING SYSTEM
 // ═══════════════════════════════════════════════════════════════
 function openShareCaseModal() {
   if (!selCase) return;
