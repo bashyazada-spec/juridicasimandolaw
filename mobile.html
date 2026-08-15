@@ -139,9 +139,7 @@
       <button onclick="closeDateScheduleModal()" style="font-size:22px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0 4px;line-height:1" title="Close">×</button>
     </div>
 
-    <div id="dsm-events-list" style="max-height:340px;overflow-y:auto;padding-right:2px">
-      <!-- Dynamically populated -->
-    </div>
+    <div id="dsm-events-list" style="max-height:340px;overflow-y:auto;padding-right:2px"></div>
 
     <div style="display:flex;justify-content:flex-end;margin-top:14px;border-top:1px solid var(--border);padding-top:10px">
       <button class="btn btn-ghost btn-sm" onclick="closeDateScheduleModal()">Close</button>
@@ -291,7 +289,7 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW (CLEAN MOBILE GRID) ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW (LUXURY MOBILE CONTROL BAR + CLEAN GRID) ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -301,11 +299,20 @@
         <button class="btn btn-primary mt-8" onclick="openBusyModal()">📅 Set Availability</button>
       </div>
 
-      <div class="card mb-12" style="padding:12px">
-        <label class="field-label">View Schedule For</label>
-        <select class="field-input" id="calendar-filter-select" onchange="renderCalendarView()">
-          <option value="Everyone">Everyone (Firm Overview)</option>
-        </select>
+      <!-- Luxury Mobile Styled Schedule Filter Bar -->
+      <div class="schedule-filter-bar">
+        <div class="schedule-filter-info">
+          <div class="schedule-filter-icon">👥</div>
+          <div>
+            <div class="schedule-filter-label">Filter Calendar View</div>
+            <div class="schedule-filter-sub">Select attorney or full firm overview</div>
+          </div>
+        </div>
+        <div class="schedule-filter-select-wrap">
+          <select class="schedule-filter-select" id="calendar-filter-select" onchange="renderCalendarView()">
+            <option value="Everyone">🌐 Everyone (Firm Overview)</option>
+          </select>
+        </div>
       </div>
 
       <div class="card mb-16" id="calendar-month-card" style="padding:14px">
