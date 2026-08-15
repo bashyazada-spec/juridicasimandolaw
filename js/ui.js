@@ -1118,7 +1118,7 @@ function renderApprovedAppointments() {
   }
 
   apptEl.innerHTML = approved.map(a => `
-    <div class="doc-item" style="border-left:3px solid var(--green);padding:14px;margin-bottom:12px">
+    <div class="doc-item" style="border-left:3px solid var(--green);padding:14px;margin-bottom:12px;cursor:pointer" onclick="openAppointmentDetailModal('${a.id}')">
       <div style="font-weight:700;font-size:14px;color:var(--text)">${escHtml(a.title)}</div>
       <div style="font-size:12px;color:var(--text-dim);margin-top:4px">📅 ${formatDate(a.date)} · ⏰ ${a.time}</div>
       <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Proposer: ${escHtml(a.requesterName)}<br>Host: ${escHtml(a.targetName)}</div>
@@ -1126,6 +1126,34 @@ function renderApprovedAppointments() {
     </div>
   `).join("");
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  APPOINTMENT DETAIL MODAL CONTROLLER
+// ═══════════════════════════════════════════════════════════════
+window.openAppointmentDetailModal = function(apptId) {
+  const appt = appointments.find(a => a.id === apptId);
+  if (!appt) return;
+
+  const modal = document.getElementById("appointment-detail-modal");
+  if (!modal) return;
+
+  const titleEl = document.getElementById("adm-title");
+  const timeEl = document.getElementById("adm-time");
+  const usersEl = document.getElementById("adm-users");
+  const descEl = document.getElementById("adm-desc");
+
+  if (titleEl) titleEl.textContent = appt.title || "Appointment";
+  if (timeEl) timeEl.textContent = `📅 ${formatDate(appt.date)} at ⏰ ${appt.time || 'All Day'}`;
+  if (usersEl) usersEl.innerHTML = `Proposer: <strong style="color:var(--text)">${escHtml(appt.requesterName)}</strong><br>Host Attorney: <strong style="color:var(--text)">${escHtml(appt.targetName)}</strong>`;
+  if (descEl) descEl.textContent = appt.description || "No additional notes provided.";
+
+  modal.classList.remove("hidden");
+};
+
+window.closeAppointmentDetailModal = function() {
+  const modal = document.getElementById("appointment-detail-modal");
+  if (modal) modal.classList.add("hidden");
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  PERSONAL SETTINGS MANAGEMENT
@@ -1956,6 +1984,121 @@ window.declineAppointmentRequest = async function(notifId, apptId) {
     console.error("declineAppointmentRequest error:", err);
   }
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  CASE FORM INITIALIZATION & STATUS POPULATION
+// ═══════════════════════════════════════════════════════════════
+function populateCaseSelects(isEdit = false) {
+  const catSel = document.getElementById("cf-category");
+  const statusSel = document.getElementById("cf-status");
+  const venueSel = document.getElementById("cf-venue");
+  
+  if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+  
+  // NEW CASES ONLY GET INITIAL ACTIVE STATUSES (Excludes Dismissed, Settled, & Completed)
+  const optionsToUse = isEdit ? STATUS_OPTIONS : (typeof NEW_CASE_STATUS_OPTIONS !== "undefined" ? NEW_CASE_STATUS_OPTIONS : ["On-going", "Pending"]);
+  if (statusSel) statusSel.innerHTML = optionsToUse.map(t => `<option value="${t}">${t}</option>`).join("");
+  
+  if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
+}
+
+async function openAddCase() {
+  caseFormOrigin = currentView;
+  
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  if (!myProf) {
+    showToast("Your attorney profile is still loading. Please wait a moment.", "error");
+    return;
+  }
+
+  if (typeof hasValidToken === "function" && !hasValidToken()) {
+    openDriveWarningModal();
+  }
+
+  selProfile = myProf;
+  caseFormMode = "add";
+  pendingDocs = [];
+  cfPetitioners = selProfile.name ? [selProfile.name] : [];
+  cfRespondents = [];
+  
+  // Pass isEdit = false to exclude Dismissed / Settled
+  populateCaseSelects(false);
+
+  setElText("cf-title", "New Case");
+  setElText("cf-save-btn", "Add Case");
+  setElVal("cf-case-title", "");
+  setElVal("cf-narrative", "");
+  setElVal("cf-filed", "");
+  setElVal("cf-due", "");
+  setElVal("cf-case-number", "");
+  setElVal("cf-doc-type", "");
+  setElVal("cf-type-input", "");
+  setElVal("cf-status", "On-going");
+  setVenueValue(VENUES[0]);
+  setElText("drive-status", "");
+  
+  const backBtn = document.getElementById("cf-back-btn");
+  if (backBtn) backBtn.onclick = () => navTo(caseFormOrigin);
+
+  const cancelBtn = document.getElementById("cf-cancel-btn");
+  if (cancelBtn) cancelBtn.onclick = () => navTo(caseFormOrigin);
+  
+  const firstCat = CASE_CATEGORIES[0];
+  setElVal("cf-category", firstCat);
+  await onCategoryChange(firstCat);
+  renderPartyLists();
+  serializeParties();
+  renderPendingDocs();
+  clearCaseErrors();
+  updateCfChip();
+  updateDriveFolderChip();
+  showView("caseForm");
+}
+
+async function openEditCase() {
+  const c = selCase;
+  if (!c) return;
+  caseFormMode = "edit";
+  pendingDocs = [...(c.documents || [])];
+  parsePartiesString(c.parties);
+  
+  // Pass isEdit = true to show all status options (including Dismissed/Settled/Completed)
+  populateCaseSelects(true);
+
+  setElText("cf-title", "Edit Case");
+  setElText("cf-save-btn", "Save Changes");
+  setElVal("cf-case-title", c.title);
+  setElVal("cf-narrative", c.narrative);
+  setElVal("cf-filed", c.filedDate || "");
+  setElVal("cf-due", c.dueDate || "");
+  setElVal("cf-case-number", c.caseNumber || "");
+  setElVal("cf-doc-type", c.docType || "");
+  setVenueValue(c.venue);
+  
+  const cat = c.category || CASE_CATEGORIES[0];
+  setElVal("cf-category", cat);
+  await onCategoryChange(cat);
+  setElVal("cf-type-input", c.type || "");
+  
+  setElText("drive-status", pendingDocs.length ? `${pendingDocs.length} file(s)` : "");
+
+  const backBtn = document.getElementById("cf-back-btn");
+  if (backBtn) backBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
+
+  const cancelBtn = document.getElementById("cf-cancel-btn");
+  if (cancelBtn) cancelBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
+
+  renderPartyLists();
+  serializeParties();
+  renderPendingDocs();
+  clearCaseErrors();
+  updateCfChip();
+  updateDriveFolderChip();
+  showView("caseForm");
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  CASE SHARING SYSTEM (VIEWER VS EDITOR PERMISSIONS)
