@@ -146,6 +146,27 @@
   </div>
 </div>
 
+<!-- Appointment Information Detail Modal -->
+<div id="appointment-detail-modal" class="modal-overlay hidden" style="z-index: 10005;">
+  <div class="modal-box" style="max-width: 440px; padding:20px">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px" id="adm-title">
+      🤝 Appointment Details
+    </div>
+    <div style="font-size:13px;color:var(--gold);margin-bottom:12px;font-weight:600" id="adm-time">
+      Date & Time
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:14px" id="adm-users">
+      Proposer & Host
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:18px;white-space:pre-wrap" id="adm-desc">
+      Notes
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeAppointmentDetailModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- File preview modal -->
 <div id="file-preview-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;flex-direction:column">
   <div style="position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px)">
@@ -575,6 +596,20 @@
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
         <div class="page-sub">Personal profile, Drive connection, & security</div>
+      </div>
+
+      <!-- Theme Switcher Card for Mobile -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
+          <div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme">
+            <div class="theme-switch-track">
+              <span class="theme-switch-icon theme-switch-moon">🌙</span>
+              <span class="theme-switch-icon theme-switch-sun">☀️</span>
+              <div class="theme-switch-thumb"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Profile Details Card -->
