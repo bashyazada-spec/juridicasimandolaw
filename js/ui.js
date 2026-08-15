@@ -607,7 +607,7 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
@@ -845,8 +845,15 @@ function renderCalendarView() {
   const select = document.getElementById("calendar-filter-select");
   if (select) {
     const curVal = select.value;
-    select.innerHTML = `<option value="Everyone">Everyone (Firm Overview)</option>` + 
-      profiles.map(p => `<option value="${p.ownerUid}">${p.name}</option>`).join("");
+    
+    let optionsHtml = `<option value="Everyone">🌐 Everyone (Firm Overview)</option>`;
+    
+    profiles.forEach(p => {
+      const designation = p.role ? ` (${p.role})` : "";
+      optionsHtml += `<option value="${p.ownerUid}">👤 ${p.name}${designation}</option>`;
+    });
+
+    select.innerHTML = optionsHtml;
     select.value = curVal || "Everyone";
   }
 
@@ -992,7 +999,7 @@ function renderMonthlyCalendarGrid() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL CONTROLLER (SHOWS FULL SCHEDULE WITH DESCRIPTIONS)
+//  DATE POPUP MODAL CONTROLLER
 // ═══════════════════════════════════════════════════════════════
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
