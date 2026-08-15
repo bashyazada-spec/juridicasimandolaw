@@ -65,16 +65,14 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD — INSTANT 0MS DOCK BAR & PANEL
+  //  UI BUILD — NATIVE BUTTON DOCK BAR & EXPANDABLE PANEL
   // ═══════════════════════════════════════════════════════════
   function buildUI() {
-    // 1. Bottom Docked Horizontal Rectangular Bar
-    const dockBar = document.createElement("div");
+    // 1. Native HTML Button Dock Bar (Fast cross-platform touch response)
+    const dockBar = document.createElement("button");
     dockBar.id = "chat-dock-bar";
-    
-    // Bind touch/pointer events for 0ms instant response on mobile
-    dockBar.addEventListener("pointerdown", handleDockTouch, { passive: false });
-    
+    dockBar.type = "button";
+    dockBar.onclick = toggleDock;
     dockBar.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;pointer-events:none">
         <span style="font-size:15px">💬</span>
@@ -92,12 +90,12 @@
     panel.innerHTML = `
       <!-- Header -->
       <div class="chat-header">
-        <div class="chat-header-left" id="chat-header-title-wrap" style="cursor:pointer">
+        <div class="chat-header-left" id="chat-header-title-wrap" onclick="toggleDock(event)" style="cursor:pointer">
           <span class="chat-header-icon">⚖️</span>
           <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
         </div>
         <div class="chat-header-actions">
-          <button class="chat-icon-btn" title="Minimize" id="chat-minimize-btn">─</button>
+          <button class="chat-icon-btn" title="Minimize" type="button" onclick="toggleDock(event)">─</button>
         </div>
       </div>
 
@@ -109,7 +107,7 @@
       <!-- Single Chat Messages View -->
       <div id="chat-view-single" class="chat-view hidden">
         <div class="dm-conv-header">
-          <button class="dm-back-btn" onclick="window._chat.backToList()">← Back to Chats</button>
+          <button class="dm-back-btn" type="button" onclick="window._chat.backToList()">← Back to Chats</button>
           <span id="dm-conv-title" style="font-weight:700;font-size:13px;color:var(--text,#eee)"></span>
         </div>
 
@@ -124,8 +122,8 @@
             <input id="avail-time-input" type="time" class="chat-input" value="14:00"/>
           </div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
-            <button class="chat-icon-btn" onclick="window._chat.toggleAvailPicker()">Cancel</button>
-            <button class="chat-send-btn" onclick="window._chat.sendAvailRequest()">Send Card</button>
+            <button class="chat-icon-btn" type="button" onclick="window._chat.toggleAvailPicker()">Cancel</button>
+            <button class="chat-send-btn" type="button" onclick="window._chat.sendAvailRequest()">Send Card</button>
           </div>
         </div>
 
@@ -134,20 +132,14 @@
 
         <!-- Input Row -->
         <div class="chat-input-row">
-          <button class="chat-avail-btn" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()">📎</button>
-          <button class="chat-avail-btn" title="Ask Availability" onclick="window._chat.toggleAvailPicker()">📅</button>
+          <button class="chat-avail-btn" type="button" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()">📎</button>
+          <button class="chat-avail-btn" type="button" title="Ask Availability" onclick="window._chat.toggleAvailPicker()">📅</button>
           <input id="chat-msg-input" class="chat-input" type="text" placeholder="Type a message…" maxlength="1000"/>
-          <button class="chat-send-btn" id="chat-send-btn">Send</button>
+          <button class="chat-send-btn" type="button" id="chat-send-btn">Send</button>
         </div>
       </div>
     `;
     document.body.appendChild(panel);
-
-    const titleWrap = document.getElementById("chat-header-title-wrap");
-    const minBtn = document.getElementById("chat-minimize-btn");
-
-    if (titleWrap) titleWrap.addEventListener("pointerdown", handleDockTouch, { passive: false });
-    if (minBtn) minBtn.addEventListener("pointerdown", handleDockTouch, { passive: false });
 
     document.getElementById("chat-send-btn").addEventListener("click", sendMessage);
     document.getElementById("chat-msg-input").addEventListener("keydown", e => {
@@ -155,13 +147,8 @@
     });
   }
 
-  function handleDockTouch(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    toggleDock();
-  }
-
   // ═══════════════════════════════════════════════════════════
-  //  INSTANT 0MS DOCK TOGGLE (ZERO LATENCY)
+  //  NATIVE DOCK TOGGLE (0MS RESPONSIVENESS)
   // ═══════════════════════════════════════════════════════════
   function toggleDock(e) {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -174,17 +161,13 @@
       return;
     }
 
-    // 1. INSTANT 0ms DOM UI Toggle (No waiting for network)
     isExpanded = true;
     const panel = document.getElementById("chat-panel");
     const arrow = document.getElementById("chat-dock-arrow");
     if (panel) panel.classList.remove("hidden");
     if (arrow) arrow.textContent = "▼";
 
-    // 2. Render immediately from local memory cache in 0ms
     renderConversationsList();
-
-    // 3. Perform background async peer list update without blocking UI
     setTimeout(loadPeerList, 50);
 
     if (activeChannel !== "group" && activeChannel) {
@@ -691,8 +674,8 @@
         if (!isMine && reqStatus === "pending") {
           actionBtns = `
             <div style="display:flex;gap:6px;margin-top:10px">
-              <button class="chat-card-btn confirm" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'accepted')">✅ Confirm Available</button>
-              <button class="chat-card-btn decline" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'declined')">🚫 Busy</button>
+              <button class="chat-card-btn confirm" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'accepted')">✅ Confirm Available</button>
+              <button class="chat-card-btn decline" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'declined')">🚫 Busy</button>
             </div>
           `;
         }
@@ -800,7 +783,7 @@
   function injectStyles() {
     const s = document.createElement("style");
     s.textContent = `
-      /* Bottom Dock Bar */
+      /* Bottom Dock Bar - Native Button Styling */
       #chat-dock-bar {
         position: fixed; bottom: 0; right: 24px;
         height: 42px; padding: 0 16px;
@@ -813,6 +796,10 @@
         transition: all 0.2s ease; user-select: none; min-width: 170px;
         touch-action: manipulation !important;
         -webkit-tap-highlight-color: transparent !important;
+        outline: none;
+      }
+      #chat-dock-bar:active {
+        transform: scale(0.96);
       }
       #chat-dock-bar:hover {
         background: var(--surface2, #091422); border-color: var(--gold, #c9a84c);
@@ -960,8 +947,8 @@
 
       /* Smartphone Adjustment */
       @media (max-width: 600px) {
-        #chat-dock-bar { right: 10px !important; bottom: 64px !important; min-width: 160px !important; height: 44px !important; }
-        .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 112px !important; height: 420px !important; }
+        #chat-dock-bar { right: 12px !important; bottom: 68px !important; min-width: 160px !important; height: 46px !important; }
+        .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 116px !important; height: 420px !important; }
       }
     `;
     document.head.appendChild(s);
