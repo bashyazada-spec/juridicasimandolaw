@@ -31,24 +31,23 @@ let prevNotifCount = 0;
 
 window._notifsLoaded = false;
 
-// ── ACCESSIBLE CASES FILTER (STRICT PRIVACY & SHARING CONTROL) ──
+// ── STRICT ACCESSIBLE CASES FILTER (STRICT 100% PRIVACY CONTROL) ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  
-  // Firm Administrators can view all cases across the firm
-  if (myProf && myProf.role === "admin") {
-    return cases;
-  }
 
-  // Regular attorneys can ONLY view cases they own or cases shared with them
+  // STRICT PRIVACY: Attorneys ONLY see cases they own or cases explicitly shared with them
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
     const isShared = c.sharedWith && Array.isArray(c.sharedWith) && c.sharedWith.includes(u.uid);
-    return isOwner || isAllowed || isShared;
+    
+    // Legacy fallback: match case profileId to user's profile ID if ownerUid wasn't stored
+    const isMyProfileCase = myProf && c.profileId === myProf.id;
+
+    return isOwner || isAllowed || isShared || isMyProfileCase;
   });
 }
 
