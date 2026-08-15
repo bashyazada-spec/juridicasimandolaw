@@ -31,11 +31,15 @@ const CATEGORY_PARTY_LABELS = {
 };
 
 // Case Types are saved per category in Firestore (dynamic)
-// This is just a fallback default
 const CASE_TYPES = [];
 
-const STATUS_OPTIONS = ["On-going","Completed","Pending","Dismissed","Settled"];
-const VENUES         = [
+// Full Status Options for existing cases & status panel updates
+const STATUS_OPTIONS = ["On-going", "Completed", "Pending", "Dismissed", "Settled"];
+
+// Initial Status Options for NEW case creation (Excludes Dismissed, Settled, & Completed)
+const NEW_CASE_STATUS_OPTIONS = ["On-going", "Pending"];
+
+const VENUES = [
   // — Naga City, Camarines Sur —
   "RTC Branch 19, Naga City",
   "RTC Branch 20, Naga City",
@@ -63,4 +67,5 @@ const VENUES         = [
   // — Manual —
   "Other (specify)"
 ];
-const AVATAR_COLORS  = ["#c9a84c","#6366f1","#22c55e","#ef4444","#f59e0b","#06b6d4","#a855f7","#ec4899"];
+
+const AVATAR_COLORS = ["#c9a84c","#6366f1","#22c55e","#ef4444","#f59e0b","#06b6d4","#a855f7","#ec4899"];
