@@ -126,7 +126,27 @@
   </div>
 </div>
 
-<!-- Share Case Modal (Viewer vs Editor Permissions) -->
+<!-- Date Events & Schedule Details Popup Modal -->
+<div id="date-schedule-modal" class="modal-overlay hidden" style="z-index: 10006;">
+  <div class="modal-box" style="max-width: 520px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px">
+      <div style="font-size:17px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px" id="dsm-title">
+        📅 Schedule Details
+      </div>
+      <button onclick="closeDateScheduleModal()" style="font-size:22px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0 4px;line-height:1" title="Close">×</button>
+    </div>
+
+    <div id="dsm-events-list" style="max-height:380px;overflow-y:auto;padding-right:4px">
+      <!-- Dynamically populated -->
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+      <button class="btn btn-ghost btn-sm" onclick="closeDateScheduleModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share Case Modal -->
 <div id="share-modal" class="modal-overlay hidden" style="z-index:10000">
   <div class="modal-box" style="max-width:480px">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
@@ -287,7 +307,7 @@
     <!-- Floating Sidebar Toggle Button -->
     <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">☰</button>
 
-    <!-- Top Right Action Header (Notification Bell & Dropdown Widget) -->
+    <!-- Top Right Action Header -->
     <div id="top-hdr-actions" style="position:fixed;top:22px;right:32px;z-index:950;display:flex;align-items:center;gap:14px">
       <div style="position:relative">
         <button onclick="toggleNotifDropdown()" style="position:relative;font-size:20px;background:var(--surface);border:1px solid var(--gold-border);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--gold);cursor:pointer;box-shadow:var(--shadow-sm);transition:all 0.2s" title="Notifications">
@@ -359,12 +379,12 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW WITH SET AVAILABILITY BUTTON INSIDE CARD ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW (CLEAN FULL-WIDTH GRID) ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
           <div class="page-title">Firm Schedule</div>
-          <div class="page-sub">Interactive calendar, pressable dates, and appointments schedule</div>
+          <div class="page-sub">Interactive calendar with colored event indicators — click any date to view details</div>
         </div>
       </div>
       
@@ -377,39 +397,18 @@
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns: 1.5fr 1fr;gap:24px">
-        <div class="card" id="calendar-month-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-            <div style="font-size:18px;font-weight:700;color:var(--text)" id="cal-month-title">Month Year</div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄ Prev</button>
-              <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
-              <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">Next ►</button>
-              <button class="btn btn-primary btn-sm" onclick="openBusyModal()" style="margin-left:4px">📅 Set Availability</button>
-            </div>
-          </div>
-          
-          <div class="cal-grid" id="calendar-grid-container"></div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:20px">
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-              <div style="font-size:15px;font-weight:700;color:var(--text)" id="calendar-selected-date-title">
-                🗓️ All Scheduled Events
-              </div>
-              <button class="btn btn-ghost btn-sm" id="cal-clear-date-btn" onclick="clearSelectedCalDate()" style="display:none;font-size:11px;padding:2px 8px">Show All</button>
-            </div>
-            <div id="calendar-timeline-list"></div>
-          </div>
-          
-          <div class="card">
-            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px">
-              🤝 Approved Appointments
-            </div>
-            <div id="calendar-approved-list"></div>
+      <div class="card" id="calendar-month-card" style="width:100%;max-width:1100px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div style="font-size:18px;font-weight:700;color:var(--text)" id="cal-month-title">Month Year</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄ Prev</button>
+            <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
+            <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">Next ►</button>
+            <button class="btn btn-primary btn-sm" onclick="openBusyModal()" style="margin-left:4px">📅 Set Availability</button>
           </div>
         </div>
+        
+        <div class="cal-grid" id="calendar-grid-container" style="min-height:480px"></div>
       </div>
     </div>
 
