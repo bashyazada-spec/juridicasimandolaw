@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — MESSENGER-STYLE CHAT DOCK & CONVERSATIONS
-//  Bottom-docked Bar + Recent Chats + Colored Avail Cards + Unseen Badges
+//  Bottom-docked Bar + Recent Chats + File Attachments + Unseen Badges
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -24,7 +24,6 @@
     return [uidA, uidB].sort().join("__");
   }
 
-  // Local storage keys for tracking unseen message timestamps per account
   function getSeenTimestamp(channelId) {
     if (!myUid) return 0;
     const val = localStorage.getItem(`chat_seen_${myUid}_${channelId}`);
@@ -127,8 +126,12 @@
           </div>
         </div>
 
+        <!-- Hidden File Input for Chat Attachments -->
+        <input type="file" id="chat-file-input" style="display:none" onchange="window._chat.handleFileAttachment(event)"/>
+
         <!-- Input Row -->
         <div class="chat-input-row">
+          <button class="chat-avail-btn" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()">📎</button>
           <button class="chat-avail-btn" title="Ask Availability" onclick="window._chat.toggleAvailPicker()">📅</button>
           <input id="chat-msg-input" class="chat-input" type="text" placeholder="Type a message…" maxlength="1000"/>
           <button class="chat-send-btn" id="chat-send-btn">Send</button>
@@ -144,7 +147,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  MINIMIZE / EXPAND CHAT DOCK (BOUND GLOBALLY & TO _chat)
+  //  MINIMIZE / EXPAND CHAT DOCK
   // ═══════════════════════════════════════════════════════════
   function toggleDock() {
     isExpanded ? minimizeDock() : expandDock();
@@ -210,7 +213,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  RECENT CONVERSATIONS LIST (SORTED BY MOST RECENT MESSAGE)
+  //  RECENT CONVERSATIONS LIST
   // ═══════════════════════════════════════════════════════════
   async function loadPeerList() {
     if (!window._db || !myUid) return;
@@ -243,6 +246,8 @@
     if (latestGroupMsg) {
       if (latestGroupMsg.cardType === "availability_request") {
         groupPreview = `<span style="color:var(--gold,#c9a84c);font-weight:700">📅 Availability Request: "${escHtml(latestGroupMsg.reqTitle || 'Meeting')}"</span>`;
+      } else if (latestGroupMsg.cardType === "file_attachment") {
+        groupPreview = `📎 Attached File: ${escHtml(latestGroupMsg.fileName || 'File')}`;
       } else {
         groupPreview = `${escHtml(latestGroupMsg.name || 'User')}: ${escHtml(latestGroupMsg.text)}`;
       }
@@ -273,6 +278,8 @@
       if (lastMsg) {
         if (lastMsg.cardType === "availability_request") {
           preview = `<span style="color:var(--gold,#c9a84c);font-weight:700">📅 Availability Request: "${escHtml(lastMsg.reqTitle || 'Meeting')}"</span>`;
+        } else if (lastMsg.cardType === "file_attachment") {
+          preview = `📎 Attached File: ${escHtml(lastMsg.fileName || 'File')}`;
         } else {
           preview = escHtml(lastMsg.text);
         }
@@ -329,6 +336,64 @@
 
     renderConversationsList();
     document.getElementById("chat-msg-input").focus();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  CHAT FILE ATTACHMENT HANDLER
+  // ═══════════════════════════════════════════════════════════
+  async function handleFileAttachment(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (window.showToast) window.showToast("Attaching file to chat...");
+
+    let driveLink = null;
+    let driveFileId = null;
+
+    try {
+      if (typeof window.hasValidToken === "function" && window.hasValidToken() && typeof window.uploadSingleFileToDrive === "function") {
+        const myProf = window.profiles ? window.profiles.find(p => p.ownerUid === myUid) : null;
+        const targetFolder = myProf?.driveFolderId || "root";
+        const result = await window.uploadSingleFileToDrive(file, targetFolder);
+        if (result) {
+          driveFileId = result.id;
+          driveLink = result.webViewLink;
+        }
+      }
+    } catch (err) {
+      console.warn("Drive chat upload warning:", err);
+    }
+
+    const payload = {
+      text: `📎 Attached File: ${file.name}`,
+      cardType: "file_attachment",
+      fileName: file.name,
+      fileSize: (file.size / 1024).toFixed(1) + " KB",
+      driveLink: driveLink,
+      driveFileId: driveFileId,
+      uid: myUid,
+      name: myName,
+      ts: window._fbServerTs()
+    };
+
+    try {
+      if (activeChannel === "group") {
+        await window._fbAddDoc(window._fbCol(window._db, COLLECTION_GROUP), payload);
+        setSeenTimestamp("group");
+      } else if (activeChannel) {
+        payload.peerUid = activeChannel;
+        payload.peerName = activePeerName;
+        const channelId = dmChannelId(myUid, activeChannel);
+        await window._fbAddDoc(window._fbCol(window._db, COLLECTION_DM + "_" + channelId), payload);
+        setSeenTimestamp(channelId);
+      }
+      if (window.showToast) window.showToast("File sent to chat! 📄");
+    } catch (e) {
+      console.error("handleFileAttachment error:", e);
+      if (window.showToast) window.showToast("Failed to send file: " + e.message, "error");
+    } finally {
+      event.target.value = "";
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -622,6 +687,22 @@
             </div>
           </div>
         `;
+      } else if (m.cardType === "file_attachment") {
+        const linkMarkup = m.driveLink 
+          ? `<a href="${m.driveLink}" target="_blank" style="color:var(--gold,#c9a84c);text-decoration:underline;font-weight:700">📄 ${escHtml(m.fileName)}</a>`
+          : `📄 ${escHtml(m.fileName)}`;
+
+        return `
+          <div class="chat-msg-wrap ${isMine ? "mine" : "theirs"}">
+            ${showName ? `<div class="chat-msg-sender">${escHtml(m.name || "Unknown")}</div>` : ""}
+            <div class="chat-bubble-msg ${isMine ? "mine" : "theirs"}" style="border:1px solid var(--gold-border, rgba(201,165,92,0.3))">
+              <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:2px">📎 File Attachment</div>
+              <div style="font-size:13px">${linkMarkup}</div>
+              <div style="font-size:10px;opacity:.7;margin-top:2px">${m.fileSize || ''}</div>
+              <span class="chat-ts">${ts}</span>
+            </div>
+          </div>
+        `;
       }
 
       return `
@@ -756,7 +837,6 @@
 
       .chat-conversations-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
       
-      /* Conversation List Item */
       .chat-conv-item {
         display: flex; align-items: center; gap: 12px;
         padding: 10px 12px; border-radius: 10px; cursor: pointer;
@@ -782,7 +862,6 @@
 
       .chat-unseen-dot { color: var(--gold, #c9a84c); font-size: 12px; margin-left: 4px; flex-shrink: 0; }
 
-      /* Messages View */
       .chat-messages {
         flex: 1; overflow-y: auto; padding: 12px 12px 6px;
         display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;
@@ -870,7 +949,8 @@
     backToList, 
     toggleAvailPicker, 
     sendAvailRequest, 
-    respondAvailCard 
+    respondAvailCard,
+    handleFileAttachment
   };
 
 })();
