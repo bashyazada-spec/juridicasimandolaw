@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — MESSENGER-STYLE CHAT DOCK & CONVERSATIONS
-//  Bottom-docked Bar + Recent Chats + File Attachments + Unseen Badges
+//  Instant 0ms Mobile Dock + Cached Peer Lists + File Attachments
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -11,7 +11,6 @@
   let dmUnsub        = null;
   let myUid          = null;      
   let myName         = null;
-  let lastToggleTime = 0; // Cooldown to prevent mobile touch double-firing
 
   let groupMessages = [];
   let dmMessagesMap = {}; // channelId -> msgs array
@@ -66,20 +65,23 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD — FACEBOOK-STYLE BOTTOM DOCK BAR & PANEL
+  //  UI BUILD — INSTANT 0MS DOCK BAR & PANEL
   // ═══════════════════════════════════════════════════════════
   function buildUI() {
-    // 1. Bottom Docked Horizontal Rectangular Bar (Minimized State)
+    // 1. Bottom Docked Horizontal Rectangular Bar
     const dockBar = document.createElement("div");
     dockBar.id = "chat-dock-bar";
-    dockBar.onclick = toggleDock;
+    
+    // Bind touch/pointer events for 0ms instant response on mobile
+    dockBar.addEventListener("pointerdown", handleDockTouch, { passive: false });
+    
     dockBar.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;pointer-events:none">
         <span style="font-size:15px">💬</span>
         <span style="font-weight:700;font-size:13px;color:var(--text, #eee)">Messages</span>
         <span id="chat-dock-badge" class="chat-badge hidden">0</span>
       </div>
-      <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c)">▲</span>
+      <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c);pointer-events:none">▲</span>
     `;
     document.body.appendChild(dockBar);
 
@@ -90,12 +92,12 @@
     panel.innerHTML = `
       <!-- Header -->
       <div class="chat-header">
-        <div class="chat-header-left" id="chat-header-title-wrap" onclick="toggleDock(event)" style="cursor:pointer">
+        <div class="chat-header-left" id="chat-header-title-wrap" style="cursor:pointer">
           <span class="chat-header-icon">⚖️</span>
           <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
         </div>
         <div class="chat-header-actions">
-          <button class="chat-icon-btn" title="Minimize" onclick="toggleDock(event)">─</button>
+          <button class="chat-icon-btn" title="Minimize" id="chat-minimize-btn">─</button>
         </div>
       </div>
 
@@ -141,23 +143,28 @@
     `;
     document.body.appendChild(panel);
 
+    const titleWrap = document.getElementById("chat-header-title-wrap");
+    const minBtn = document.getElementById("chat-minimize-btn");
+
+    if (titleWrap) titleWrap.addEventListener("pointerdown", handleDockTouch, { passive: false });
+    if (minBtn) minBtn.addEventListener("pointerdown", handleDockTouch, { passive: false });
+
     document.getElementById("chat-send-btn").addEventListener("click", sendMessage);
     document.getElementById("chat-msg-input").addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
   }
 
+  function handleDockTouch(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    toggleDock();
+  }
+
   // ═══════════════════════════════════════════════════════════
-  //  MINIMIZE / EXPAND CHAT DOCK (TOUCH-DEBOUNCED FOR MOBILE)
+  //  INSTANT 0MS DOCK TOGGLE (ZERO LATENCY)
   // ═══════════════════════════════════════════════════════════
   function toggleDock(e) {
     if (e && e.stopPropagation) e.stopPropagation();
-    
-    // Prevent mobile double-firing (touchstart + click) within 300ms
-    const now = Date.now();
-    if (now - lastToggleTime < 300) return;
-    lastToggleTime = now;
-
     isExpanded ? minimizeDock() : expandDock();
   }
 
@@ -167,16 +174,18 @@
       return;
     }
 
-    // Instantly expand UI in 0ms
+    // 1. INSTANT 0ms DOM UI Toggle (No waiting for network)
     isExpanded = true;
     const panel = document.getElementById("chat-panel");
     const arrow = document.getElementById("chat-dock-arrow");
     if (panel) panel.classList.remove("hidden");
     if (arrow) arrow.textContent = "▼";
 
-    // Asynchronously load data in background
-    loadPeerList();
+    // 2. Render immediately from local memory cache in 0ms
     renderConversationsList();
+
+    // 3. Perform background async peer list update without blocking UI
+    setTimeout(loadPeerList, 50);
 
     if (activeChannel !== "group" && activeChannel) {
       setSeenTimestamp(dmChannelId(myUid, activeChannel));
@@ -199,8 +208,8 @@
     document.getElementById("chat-view-list").classList.remove("hidden");
     document.getElementById("chat-view-single").classList.add("hidden");
     document.getElementById("chat-header-title").textContent = "Recent Chats";
-    loadPeerList();
     renderConversationsList();
+    setTimeout(loadPeerList, 50);
   }
 
   async function announcePeer() {
@@ -232,7 +241,6 @@
   // ═══════════════════════════════════════════════════════════
   async function loadPeerList() {
     if (!window._db || !myUid) return;
-    announcePeer();
 
     try {
       const db   = window._db;
@@ -787,7 +795,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STYLES INJECTION WITH TOUCH OPTIMIZATION
+  //  STYLES INJECTION
   // ═══════════════════════════════════════════════════════════
   function injectStyles() {
     const s = document.createElement("style");
