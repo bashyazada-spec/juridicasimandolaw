@@ -11,6 +11,7 @@
   let dmUnsub        = null;
   let myUid          = null;      
   let myName         = null;
+  let lastToggleTime = 0; // Cooldown to prevent mobile touch double-firing
 
   let groupMessages = [];
   let dmMessagesMap = {}; // channelId -> msgs array
@@ -89,12 +90,12 @@
     panel.innerHTML = `
       <!-- Header -->
       <div class="chat-header">
-        <div class="chat-header-left" id="chat-header-title-wrap" onclick="toggleDock()" style="cursor:pointer">
+        <div class="chat-header-left" id="chat-header-title-wrap" onclick="toggleDock(event)" style="cursor:pointer">
           <span class="chat-header-icon">⚖️</span>
           <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
         </div>
         <div class="chat-header-actions">
-          <button class="chat-icon-btn" title="Minimize" onclick="toggleDock()">─</button>
+          <button class="chat-icon-btn" title="Minimize" onclick="toggleDock(event)">─</button>
         </div>
       </div>
 
@@ -147,9 +148,16 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  MINIMIZE / EXPAND CHAT DOCK
+  //  MINIMIZE / EXPAND CHAT DOCK (TOUCH-DEBOUNCED FOR MOBILE)
   // ═══════════════════════════════════════════════════════════
-  function toggleDock() {
+  function toggleDock(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    
+    // Prevent mobile double-firing (touchstart + click) within 300ms
+    const now = Date.now();
+    if (now - lastToggleTime < 300) return;
+    lastToggleTime = now;
+
     isExpanded ? minimizeDock() : expandDock();
   }
 
@@ -158,10 +166,15 @@
       if (window.showToast) window.showToast("Please wait for account authorization to load.", "error");
       return;
     }
-    isExpanded = true;
-    document.getElementById("chat-panel").classList.remove("hidden");
-    document.getElementById("chat-dock-arrow").textContent = "▼";
 
+    // Instantly expand UI in 0ms
+    isExpanded = true;
+    const panel = document.getElementById("chat-panel");
+    const arrow = document.getElementById("chat-dock-arrow");
+    if (panel) panel.classList.remove("hidden");
+    if (arrow) arrow.textContent = "▼";
+
+    // Asynchronously load data in background
     loadPeerList();
     renderConversationsList();
 
@@ -175,8 +188,10 @@
 
   function minimizeDock() {
     isExpanded = false;
-    document.getElementById("chat-panel").classList.add("hidden");
-    document.getElementById("chat-dock-arrow").textContent = "▲";
+    const panel = document.getElementById("chat-panel");
+    const arrow = document.getElementById("chat-dock-arrow");
+    if (panel) panel.classList.add("hidden");
+    if (arrow) arrow.textContent = "▲";
   }
 
   function backToList() {
@@ -772,7 +787,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STYLES INJECTION
+  //  STYLES INJECTION WITH TOUCH OPTIMIZATION
   // ═══════════════════════════════════════════════════════════
   function injectStyles() {
     const s = document.createElement("style");
@@ -780,7 +795,7 @@
       /* Bottom Dock Bar */
       #chat-dock-bar {
         position: fixed; bottom: 0; right: 24px;
-        height: 40px; padding: 0 16px;
+        height: 42px; padding: 0 16px;
         background: var(--surface, #0c1826);
         border: 1px solid var(--gold-border, rgba(201,165,92,0.3));
         border-bottom: none; border-radius: 12px 12px 0 0;
@@ -788,6 +803,8 @@
         gap: 12px; cursor: pointer; z-index: 9000;
         box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
         transition: all 0.2s ease; user-select: none; min-width: 170px;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent !important;
       }
       #chat-dock-bar:hover {
         background: var(--surface2, #091422); border-color: var(--gold, #c9a84c);
@@ -802,7 +819,7 @@
       .chat-badge.hidden { display: none; }
 
       .chat-panel {
-        position: fixed; bottom: 40px; right: 24px;
+        position: fixed; bottom: 42px; right: 24px;
         width: 360px; height: 490px; background: var(--surface, #0c1826);
         border: 1px solid var(--gold-border, rgba(201,165,92,0.3));
         border-radius: 14px 14px 0 0; display: flex; flex-direction: column;
@@ -862,6 +879,7 @@
 
       .chat-unseen-dot { color: var(--gold, #c9a84c); font-size: 12px; margin-left: 4px; flex-shrink: 0; }
 
+      /* Messages View */
       .chat-messages {
         flex: 1; overflow-y: auto; padding: 12px 12px 6px;
         display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;
@@ -934,8 +952,8 @@
 
       /* Smartphone Adjustment */
       @media (max-width: 600px) {
-        #chat-dock-bar { right: 10px; bottom: 60px; min-width: 150px; }
-        .chat-panel { right: 10px; width: calc(100vw - 20px); bottom: 100px; height: 420px; }
+        #chat-dock-bar { right: 10px !important; bottom: 64px !important; min-width: 160px !important; height: 44px !important; }
+        .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 112px !important; height: 420px !important; }
       }
     `;
     document.head.appendChild(s);
