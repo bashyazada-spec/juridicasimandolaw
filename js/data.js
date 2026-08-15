@@ -2,49 +2,46 @@
 //  ADMINISTRATIVE & SYSTEM CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 const ADMIN_EMAILS = [
-  "admin@simandolaw.com", // Change this to your authorized admin attorney's email
+  "admin@simandolaw.com", // Authorized admin attorney email
 ];
 
-let profiles     = [];
-let cases        = [];
-let notifications = [];
-let appointments = [];
+let profiles        = [];
+let cases           = [];
+let notifications   = [];
+let appointments    = [];
 let globalCaseTypes = [];
-let currentView  = "dashboard";
-let selProfile   = null;
-let selCase      = null;
-let caseFormMode = "add";
-let profFormMode = "add";
-let pfColor      = AVATAR_COLORS[0];
-let pendingDocs  = [];
-let deleteTarget = null;
-let statusFilter = "All";
-let pdFilter     = "All";
-let dbReady      = false;
-let localMode    = false;
+let currentView     = "dashboard";
+let selProfile      = null;
+let selCase         = null;
+let caseFormMode    = "add";
+let profFormMode    = "add";
+let pfColor         = AVATAR_COLORS[0];
+let pendingDocs     = [];
+let deleteTarget    = null;
+let statusFilter    = "All";
+let pdFilter        = "All";
+let dbReady         = false;
+let localMode       = false;
 
-let profilesUnsub  = null;
-let casesUnsub     = null;
+let profilesUnsub      = null;
+let casesUnsub         = null;
 let notificationsUnsub = null;
-let appointmentsUnsub = null;
-let prevNotifCount = 0;
+let appointmentsUnsub  = null;
+let prevNotifCount     = 0;
 
 window._notifsLoaded = false;
 
-// ── STRICT ACCESSIBLE CASES FILTER (STRICT 100% PRIVACY CONTROL) ──
+// ── STRICT ACCESSIBLE CASES FILTER (100% PRIVACY CONTROL) ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
 
-  // STRICT PRIVACY: Attorneys ONLY see cases they own or cases explicitly shared with them
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
     const isShared = c.sharedWith && Array.isArray(c.sharedWith) && c.sharedWith.includes(u.uid);
-    
-    // Legacy fallback: match case profileId to user's profile ID if ownerUid wasn't stored
     const isMyProfileCase = myProf && c.profileId === myProf.id;
 
     return isOwner || isAllowed || isShared || isMyProfileCase;
@@ -77,15 +74,15 @@ function playNotificationSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
     gain.gain.setValueAtTime(0.12, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
-  } catch (e) { /* ignore autoplay restrictions */ }
+  } catch (e) { /* ignore */ }
 }
 
 function playChatSound() {
@@ -95,15 +92,15 @@ function playChatSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "triangle";
-    osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-    osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.12); // E5
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.12);
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.2);
-  } catch (e) { /* ignore autoplay restrictions */ }
+  } catch (e) { /* ignore */ }
 }
 
 window.playNotificationSound = playNotificationSound;
@@ -287,13 +284,13 @@ async function dbLoad() {
       }
     }
 
-    // ── Real-Time Sync: Appointments ─────────────
+    // ── Real-Time Sync: Firm Appointments & Availability ─────────────
+    // Loaded across the firm so all attorneys can view each other's schedule
     if (activeUid) {
       try {
         const apptColRef = window._fbCol(db, "appointments");
         appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
-          const allAppts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          appointments = allAppts.filter(a => a.targetUid === activeUid || a.requesterUid === activeUid);
+          appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           refreshCurrentView();
         }, (error) => {
           console.warn("Appointments sync permission notice:", error.message);
@@ -328,7 +325,6 @@ function checkCaseDueNotifications() {
     if (diffDays <= 3) {
       const notifKey = `case_due_${c.id}_${c.dueDate}`;
 
-      // PERMANENT DEDUPLICATION: Check if notification exists (read OR unread)
       const alreadyNotified = notifications.some(n => 
         (n.type === "case_due" && n.relatedId === c.id && n.notifKey === notifKey) ||
         (n.notifKey === notifKey)
