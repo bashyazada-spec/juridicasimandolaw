@@ -65,21 +65,22 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD — NATIVE BUTTON DOCK BAR & EXPANDABLE PANEL
+  //  UI BUILD — FULL-SURFACE CLICKABLE DOCK & EXPANDABLE PANEL
   // ═══════════════════════════════════════════════════════════
   function buildUI() {
-    // 1. Native HTML Button Dock Bar (Fast cross-platform touch response)
+    // 1. Native HTML Button Dock Bar (100% Full-surface clickable)
     const dockBar = document.createElement("button");
     dockBar.id = "chat-dock-bar";
     dockBar.type = "button";
-    dockBar.onclick = toggleDock;
+    dockBar.setAttribute("aria-label", "Toggle Messages Dock");
+    dockBar.addEventListener("click", toggleDock);
     dockBar.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;pointer-events:none">
-        <span style="font-size:15px">💬</span>
-        <span style="font-weight:700;font-size:13px;color:var(--text, #eee)">Messages</span>
+      <div class="chat-dock-content" style="display:flex;align-items:center;gap:8px;pointer-events:none;user-select:none;">
+        <span style="font-size:15px;line-height:1;">💬</span>
+        <span style="font-weight:700;font-size:13px;color:var(--text, #eee);letter-spacing:0.3px;">Messages</span>
         <span id="chat-dock-badge" class="chat-badge hidden">0</span>
       </div>
-      <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c);pointer-events:none">▲</span>
+      <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c);pointer-events:none;user-select:none;">▲</span>
     `;
     document.body.appendChild(dockBar);
 
@@ -88,14 +89,14 @@
     panel.id = "chat-panel";
     panel.className = "chat-panel hidden";
     panel.innerHTML = `
-      <!-- Header -->
-      <div class="chat-header">
-        <div class="chat-header-left" id="chat-header-title-wrap" onclick="toggleDock(event)" style="cursor:pointer">
+      <!-- Header (Entire header bar is clickable to minimize) -->
+      <div class="chat-header" id="chat-panel-header" onclick="window._chat.toggleDock(event)" style="cursor:pointer;" title="Click header to minimize">
+        <div class="chat-header-left" style="pointer-events:none;">
           <span class="chat-header-icon">⚖️</span>
           <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
         </div>
-        <div class="chat-header-actions">
-          <button class="chat-icon-btn" title="Minimize" type="button" onclick="toggleDock(event)">─</button>
+        <div class="chat-header-actions" style="pointer-events:auto;">
+          <button class="chat-icon-btn" title="Minimize" type="button" onclick="window._chat.toggleDock(event)">─</button>
         </div>
       </div>
 
@@ -148,10 +149,13 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  NATIVE DOCK TOGGLE (0MS RESPONSIVENESS)
+  //  NATIVE DOCK TOGGLE (0MS FULL-SURFACE RESPONSIVENESS)
   // ═══════════════════════════════════════════════════════════
   function toggleDock(e) {
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.preventDefault && e.type === "submit") e.preventDefault();
+    }
     isExpanded ? minimizeDock() : expandDock();
   }
 
@@ -302,7 +306,7 @@
       });
     });
 
-    // Sort by Most Recent Message First!
+    // Sort by Most Recent Message First
     conversations.sort((a, b) => b.timeMs - a.timeMs);
 
     listEl.innerHTML = conversations.map(c => `
@@ -346,7 +350,7 @@
 
   // ═══════════════════════════════════════════════════════════
   //  CHAT FILE ATTACHMENT HANDLER
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
   async function handleFileAttachment(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -783,26 +787,37 @@
   function injectStyles() {
     const s = document.createElement("style");
     s.textContent = `
-      /* Bottom Dock Bar - Native Button Styling */
+      /* Bottom Dock Bar - Native Full-surface Clickable Button */
       #chat-dock-bar {
-        position: fixed; bottom: 0; right: 24px;
-        height: 42px; padding: 0 16px;
-        background: var(--surface, #0c1826);
-        border: 1px solid var(--gold-border, rgba(201,165,92,0.3));
-        border-bottom: none; border-radius: 12px 12px 0 0;
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 12px; cursor: pointer; z-index: 9000;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-        transition: all 0.2s ease; user-select: none; min-width: 170px;
+        position: fixed !important;
+        bottom: 0 !important;
+        right: 24px !important;
+        height: 44px !important;
+        padding: 0 16px !important;
+        background: var(--surface, #0c1826) !important;
+        border: 1px solid var(--gold-border, rgba(201,165,92,0.3)) !important;
+        border-bottom: none !important;
+        border-radius: 12px 12px 0 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 14px !important;
+        cursor: pointer !important;
+        z-index: 99999 !important;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.55) !important;
+        transition: background 0.18s ease, transform 0.1s ease !important;
+        user-select: none !important;
+        min-width: 175px !important;
         touch-action: manipulation !important;
         -webkit-tap-highlight-color: transparent !important;
-        outline: none;
-      }
-      #chat-dock-bar:active {
-        transform: scale(0.96);
+        outline: none !important;
       }
       #chat-dock-bar:hover {
-        background: var(--surface2, #091422); border-color: var(--gold, #c9a84c);
+        background: var(--surface2, #091422) !important;
+        border-color: var(--gold, #c9a84c) !important;
+      }
+      #chat-dock-bar:active {
+        transform: scale(0.97) !important;
       }
 
       .chat-badge {
@@ -814,14 +829,22 @@
       .chat-badge.hidden { display: none; }
 
       .chat-panel {
-        position: fixed; bottom: 42px; right: 24px;
-        width: 360px; height: 490px; background: var(--surface, #0c1826);
-        border: 1px solid var(--gold-border, rgba(201,165,92,0.3));
-        border-radius: 14px 14px 0 0; display: flex; flex-direction: column;
-        z-index: 8999; box-shadow: 0 -8px 40px rgba(0,0,0,0.65);
-        overflow: hidden; animation: chatDockExpand .22s cubic-bezier(0.4, 0, 0.2, 1);
+        position: fixed !important;
+        bottom: 44px !important;
+        right: 24px !important;
+        width: 360px !important;
+        height: 490px !important;
+        background: var(--surface, #0c1826) !important;
+        border: 1px solid var(--gold-border, rgba(201,165,92,0.3)) !important;
+        border-radius: 14px 14px 0 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        z-index: 99998 !important;
+        box-shadow: 0 -8px 40px rgba(0,0,0,0.7) !important;
+        overflow: hidden !important;
+        animation: chatDockExpand .22s cubic-bezier(0.4, 0, 0.2, 1) !important;
       }
-      .chat-panel.hidden { display: none; }
+      .chat-panel.hidden { display: none !important; }
 
       @keyframes chatDockExpand {
         from { opacity: 0; transform: translateY(20px); }
@@ -830,8 +853,12 @@
 
       .chat-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 10px 14px; background: var(--surface2, #091422);
+        padding: 12px 16px; background: var(--surface2, #091422);
         border-bottom: 1px solid var(--border, #162033); flex-shrink: 0;
+        cursor: pointer; user-select: none;
+      }
+      .chat-header:hover {
+        background: var(--surface3, #10202e);
       }
       .chat-header-left { display: flex; align-items: center; gap: 8px; }
       .chat-header-icon { font-size: 16px; }
@@ -839,7 +866,7 @@
       .chat-header-actions { display: flex; gap: 6px; }
       .chat-icon-btn {
         background: transparent; border: none; color: var(--text-dim, #888);
-        font-size: 13px; cursor: pointer; padding: 3px 6px; border-radius: 6px;
+        font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
         transition: background .15s, color .15s;
       }
       .chat-icon-btn:hover { background: var(--border, #162033); color: var(--text, #eee); }
