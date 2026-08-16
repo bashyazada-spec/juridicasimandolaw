@@ -440,7 +440,7 @@ function renderProfileCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ALL CASES (STRICT PRIVACY FILTERING)
+//  ALL CASES
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
   updateAllFilterDropdowns(); 
@@ -607,7 +607,7 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
@@ -1088,7 +1088,7 @@ window.closeDateScheduleModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  PERSONAL SETTINGS MANAGEMENT
+//  PERSONAL SETTINGS & 2FA MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 let settingsPhotoDataUrl = null;
 
@@ -1139,6 +1139,37 @@ function renderMyProfile() {
       btnText.textContent = "Connect Google Drive";
       btn.classList.remove("connected");
       btn.disabled = false;
+    }
+  }
+
+  // ── Two-Factor Authentication Status UI ──
+  const tfaBadge = document.getElementById("setting-2fa-status-badge");
+  const tfaBtn = document.getElementById("setting-2fa-action-btn");
+  const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
+
+  if (tfaBadge && tfaBtn) {
+    if (myProf.twoFactorEnabled) {
+      tfaBadge.className = "badge";
+      tfaBadge.style.background = "rgba(52,211,153,0.15)";
+      tfaBadge.style.color = "var(--green)";
+      tfaBadge.textContent = "● 2FA Enabled";
+
+      tfaBtn.className = "btn btn-danger btn-sm";
+      tfaBtn.textContent = "Disable 2FA";
+      tfaBtn.onclick = disableTwoFactor;
+
+      if (tfaBackupWrap) tfaBackupWrap.style.display = "block";
+    } else {
+      tfaBadge.className = "badge";
+      tfaBadge.style.background = "rgba(251,191,36,0.15)";
+      tfaBadge.style.color = "var(--amber)";
+      tfaBadge.textContent = "● Not Enabled";
+
+      tfaBtn.className = "btn btn-primary btn-sm";
+      tfaBtn.textContent = "Enable 2FA";
+      tfaBtn.onclick = openTwoFactorSetupModal;
+
+      if (tfaBackupWrap) tfaBackupWrap.style.display = "none";
     }
   }
 }
@@ -1424,6 +1455,7 @@ async function handleLogout() {
     if (window._fbSignOut) {
       await window._fbSignOut(window._auth);
       clearPersistedToken();
+      sessionStorage.removeItem("simando_2fa_verified");
       window.location.replace("login.html");
     }
   } catch (err) {
