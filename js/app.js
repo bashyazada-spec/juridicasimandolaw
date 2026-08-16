@@ -45,7 +45,214 @@ window.closeDriveWarningModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CLICK-TO-TOGGLE SET AVAILABILITY MODAL CONTROLLERS (OWN SCHEDULE ONLY)
+//  TWO-FACTOR AUTHENTICATION (TOTP / GOOGLE AUTHENTICATOR)
+// ═══════════════════════════════════════════════════════════════
+let generated2FASecret = null;
+let generatedBackupCodes = [];
+
+function generateRandomBase32(length = 16) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += alphabet[bytes[i] % 32];
+  }
+  return result;
+}
+
+function generateBackupRecoveryCodes(count = 5) {
+  const codes = [];
+  for (let i = 0; i < count; i++) {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+    codes.push(`${hex.slice(0, 4)}-${hex.slice(4, 8)}`);
+  }
+  return codes;
+}
+
+function base32Decode(base32) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let cleaned = base32.toUpperCase().replace(/=+$/, "");
+  let bits = 0;
+  let value = 0;
+  let output = [];
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const idx = alphabet.indexOf(cleaned.charAt(i));
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(output);
+}
+
+async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
+  const keyBytes = base32Decode(secretBase32);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"]
+  );
+
+  const epoch = Math.floor(Date.now() / 1000);
+  const timeStep = Math.floor(epoch / 30) + timeStepOffset;
+
+  const buffer = new ArrayBuffer(8);
+  const view = new DataView(buffer);
+  view.setUint32(4, timeStep, false);
+
+  const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
+  const hmacBytes = new Uint8Array(hmacResult);
+
+  const offset = hmacBytes[hmacBytes.length - 1] & 0xf;
+  const binary =
+    ((hmacBytes[offset] & 0x7f) << 24) |
+    ((hmacBytes[offset + 1] & 0xff) << 16) |
+    ((hmacBytes[offset + 2] & 0xff) << 8) |
+    (hmacBytes[offset + 3] & 0xff);
+
+  const code = binary % 1000000;
+  return String(code).padStart(6, "0");
+}
+
+async function verifyClientTOTP(token, secretBase32) {
+  for (const offset of [0, -1, 1]) {
+    const valid = await generateTOTPCode(secretBase32, offset);
+    if (token === valid) return true;
+  }
+  return false;
+}
+
+window.openTwoFactorSetupModal = async function() {
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid) || { name: u.displayName || u.email, email: u.email };
+
+  generated2FASecret = generateRandomBase32(16);
+  generatedBackupCodes = generateBackupRecoveryCodes(5);
+
+  const secretDisplay = document.getElementById("tfa-setup-secret-key");
+  const qrContainer = document.getElementById("tfa-setup-qrcode");
+  const codeInp = document.getElementById("tfa-setup-verify-code");
+  const backupListEl = document.getElementById("tfa-setup-backup-list");
+
+  if (secretDisplay) secretDisplay.textContent = generated2FASecret.match(/.{1,4}/g).join(" ");
+  if (codeInp) codeInp.value = "";
+
+  if (backupListEl) {
+    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">${code}</div>`).join("");
+  }
+
+  // Generate QR Code with standard QRCode CDN
+  const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf.email || u.email)}?secret=${generated2FASecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
+  
+  if (qrContainer) {
+    qrContainer.innerHTML = "";
+    if (typeof QRCode !== "undefined") {
+      new QRCode(qrContainer, {
+        text: otpAuthUrl,
+        width: 170,
+        height: 170,
+        colorDark: "#060c13",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      // Fallback QR API
+      qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=${encodeURIComponent(otpAuthUrl)}" alt="2FA QR" style="border-radius:8px"/>`;
+    }
+  }
+
+  const modal = document.getElementById("tfa-setup-modal");
+  if (modal) modal.classList.remove("hidden");
+};
+
+window.closeTwoFactorSetupModal = function() {
+  const modal = document.getElementById("tfa-setup-modal");
+  if (modal) modal.classList.add("hidden");
+  generated2FASecret = null;
+};
+
+window.confirmAndEnableTwoFactor = async function() {
+  const codeInp = document.getElementById("tfa-setup-verify-code");
+  const code = (codeInp?.value || "").trim();
+
+  if (code.length !== 6) {
+    showToast("Please enter the 6-digit code from your authenticator app.", "error");
+    return;
+  }
+
+  const isValid = await verifyClientTOTP(code, generated2FASecret);
+  if (!isValid) {
+    showToast("Invalid 6-digit verification code. Please try again.", "error");
+    return;
+  }
+
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  if (!myProf) return;
+
+  try {
+    showToast("Enabling Two-Factor Security...");
+    await dbUpdateProfile(myProf.id, {
+      twoFactorEnabled: true,
+      twoFactorSecret: generated2FASecret,
+      twoFactorBackupCodes: generatedBackupCodes
+    });
+
+    myProf.twoFactorEnabled = true;
+    myProf.twoFactorSecret = generated2FASecret;
+    myProf.twoFactorBackupCodes = generatedBackupCodes;
+
+    showToast("Two-Factor Authentication is now active! 🛡️");
+    closeTwoFactorSetupModal();
+    renderMyProfile();
+  } catch (err) {
+    console.error("2FA activation error:", err);
+    showToast("Failed to activate 2FA: " + err.message, "error");
+  }
+};
+
+window.disableTwoFactor = async function() {
+  if (!confirm("Are you sure you want to disable Two-Factor Authentication?\nYour account will rely only on your password.")) return;
+
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  if (!myProf) return;
+
+  try {
+    showToast("Disabling 2FA...");
+    await dbUpdateProfile(myProf.id, {
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      twoFactorBackupCodes: []
+    });
+
+    myProf.twoFactorEnabled = false;
+    myProf.twoFactorSecret = null;
+    myProf.twoFactorBackupCodes = [];
+
+    showToast("Two-Factor Authentication disabled.");
+    renderMyProfile();
+  } catch (err) {
+    console.error("2FA disable error:", err);
+    showToast("Failed to disable 2FA: " + err.message, "error");
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  CLICK-TO-TOGGLE SET AVAILABILITY MODAL CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let selectedBusyDatesSet = new Set();
 let modalCalYear = new Date().getFullYear();
@@ -61,7 +268,6 @@ window.openBusyModal = function() {
 
   const u = window._currentUser || window._auth?.currentUser;
   if (u && Array.isArray(appointments)) {
-    // Only pre-select the logged-in user's own availability dates
     appointments.forEach(a => {
       if (a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid || a.ownerUid === u.uid) && a.date) {
         selectedBusyDatesSet.add(a.date);
@@ -230,7 +436,6 @@ window.submitBusyDates = async function() {
 
     const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
     
-    // Only delete and modify the current logged-in attorney's own busy entries
     const myExistingBusyAppts = appointments.filter(a => 
       a.type === "busy" && (a.targetUid === u.uid || a.requesterUid === u.uid || a.ownerUid === u.uid)
     );
@@ -487,6 +692,7 @@ function openShareCaseModal() {
   if (!listEl) return;
 
   const sharedUids = selCase.sharedWith || [];
+  const permissions = selCase.permissions || {};
   const currentUid = window._currentUser?.uid;
 
   const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
@@ -1149,7 +1355,6 @@ document.addEventListener("firebase-ready", () => {
     initAppUI();
   }
 
-  // Attach Loop-Free Auth Listener
   if (window._auth && typeof window._fbOnAuth === "function") {
     window._fbOnAuth(window._auth, (user) => {
       window._currentUser = user;
