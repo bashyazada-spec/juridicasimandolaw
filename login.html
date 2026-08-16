@@ -352,11 +352,11 @@
     </div>
   </div>
 
-  <!-- STEP 2: 2FA TOTP Verification (Triggered if enabled) -->
+  <!-- STEP 2: 2FA TOTP Verification (Prompts on every session) -->
   <div id="step-2fa" class="hidden">
     <div class="heading">
       <h1>Two-Factor Security</h1>
-      <p id="tfa-prompt-sub">Enter the 6-digit verification code from your Google Authenticator or authentication app.</p>
+      <p id="tfa-prompt-sub">Enter the 6-digit verification code from your Microsoft Authenticator or Google Authenticator app.</p>
     </div>
 
     <div id="tfa-error-banner" class="error-banner"></div>
@@ -485,13 +485,42 @@
   }
 
   async function verifyTOTP(token, secretBase32) {
-    // Check current 30s window and +/- 1 window for clock drift
     for (const offset of [0, -1, 1]) {
       const valid = await generateTOTPCode(secretBase32, offset);
       if (token === valid) return true;
     }
     return false;
   }
+
+  // Check Auth State on Page Load
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        const profRef = doc(db, "profiles", user.uid);
+        const profSnap = await getDoc(profRef);
+        const profData = profSnap.exists() ? profSnap.data() : {};
+
+        if (profData.twoFactorEnabled && profData.twoFactorSecret) {
+          const isSessionVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
+          if (isSessionVerified) {
+            window.location.replace("index.html");
+          } else {
+            // Force 2FA Prompt on every login
+            pendingUser = user;
+            pendingProfileData = profData;
+            document.getElementById("step-login").classList.add("hidden");
+            document.getElementById("step-2fa").classList.remove("hidden");
+            setTimeout(() => clearEnteredOTP(), 100);
+          }
+        } else {
+          window.location.replace("index.html");
+        }
+      } catch (err) {
+        console.warn("2FA check notice:", err);
+        window.location.replace("index.html");
+      }
+    }
+  });
 
   window.togglePassword = function() {
     const inp = document.getElementById("inp-password");
@@ -591,6 +620,7 @@
   };
 
   window.cancelTwoFactor = async function() {
+    sessionStorage.removeItem("simando_2fa_verified");
     await signOut(auth);
     pendingUser = null;
     pendingProfileData = null;
@@ -601,6 +631,8 @@
 
   window.handleEmailAuth = async function() {
     clearErrors();
+    sessionStorage.removeItem("simando_2fa_verified");
+
     const email    = document.getElementById("inp-email").value.trim();
     const password = document.getElementById("inp-password").value;
 
@@ -614,7 +646,6 @@
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Check if user has 2FA enabled
       const profRef = doc(db, "profiles", user.uid);
       const profSnap = await getDoc(profRef);
       const profData = profSnap.exists() ? profSnap.data() : {};
@@ -629,7 +660,7 @@
         setLoading(false);
         setTimeout(() => clearEnteredOTP(), 100);
       } else {
-        // Direct Entry if 2FA is not enabled
+        sessionStorage.setItem("simando_2fa_verified", "true");
         window.location.replace("index.html");
       }
     } catch (err) {
@@ -677,7 +708,6 @@
     const matchIndex = availableCodes.findIndex(c => c.toLowerCase().replace(/[^a-z0-9]/g, "") === entered);
 
     if (matchIndex >= 0) {
-      // Consume the used backup code
       availableCodes.splice(matchIndex, 1);
       try {
         await updateDoc(doc(db, "profiles", pendingUser.uid), {
