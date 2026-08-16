@@ -413,6 +413,8 @@
     getFirestore,
     doc,
     getDoc,
+    collection,
+    getDocs,
     updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -430,7 +432,41 @@
   const db   = getFirestore(app);
 
   let pendingUser = null;
+  let pendingProfileDocId = null;
   let pendingProfileData = null;
+
+  // ── Robust Profile Fetcher (checks direct doc ID, ownerUid, and email) ──
+  async function fetchUserProfile(user) {
+    if (!user) return { docId: null, data: {} };
+
+    // 1. Direct document check
+    try {
+      const directRef = doc(db, "profiles", user.uid);
+      const directSnap = await getDoc(directRef);
+      if (directSnap.exists()) {
+        return { docId: directSnap.id, data: directSnap.data() };
+      }
+    } catch (e) { /* continue */ }
+
+    // 2. Query collection for ownerUid or email match
+    try {
+      const pSnap = await getDocs(collection(db, "profiles"));
+      const userEmail = (user.email || "").toLowerCase();
+      const matchedDoc = pSnap.docs.find(d => {
+        const data = d.data();
+        return (data.ownerUid === user.uid) || 
+               (data.email && data.email.toLowerCase() === userEmail);
+      });
+
+      if (matchedDoc) {
+        return { docId: matchedDoc.id, data: matchedDoc.data() };
+      }
+    } catch (e) {
+      console.warn("Collection query notice:", e);
+    }
+
+    return { docId: null, data: {} };
+  }
 
   // ── Cryptographic TOTP Engine (RFC 6238 Standard) ──────────
   function base32Decode(base32) {
@@ -496,9 +532,7 @@
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
-        const profRef = doc(db, "profiles", user.uid);
-        const profSnap = await getDoc(profRef);
-        const profData = profSnap.exists() ? profSnap.data() : {};
+        const { docId, data: profData } = await fetchUserProfile(user);
 
         if (profData.twoFactorEnabled && profData.twoFactorSecret) {
           const isSessionVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
@@ -507,6 +541,7 @@
           } else {
             // Force 2FA Prompt on every login
             pendingUser = user;
+            pendingProfileDocId = docId;
             pendingProfileData = profData;
             document.getElementById("step-login").classList.add("hidden");
             document.getElementById("step-2fa").classList.remove("hidden");
@@ -623,6 +658,7 @@
     sessionStorage.removeItem("simando_2fa_verified");
     await signOut(auth);
     pendingUser = null;
+    pendingProfileDocId = null;
     pendingProfileData = null;
     document.getElementById("step-2fa").classList.add("hidden");
     document.getElementById("step-login").classList.remove("hidden");
@@ -646,12 +682,11 @@
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      const profRef = doc(db, "profiles", user.uid);
-      const profSnap = await getDoc(profRef);
-      const profData = profSnap.exists() ? profSnap.data() : {};
+      const { docId, data: profData } = await fetchUserProfile(user);
 
       if (profData.twoFactorEnabled && profData.twoFactorSecret) {
         pendingUser = user;
+        pendingProfileDocId = docId;
         pendingProfileData = profData;
 
         // Transition to 2FA Prompt Screen
@@ -710,9 +745,11 @@
     if (matchIndex >= 0) {
       availableCodes.splice(matchIndex, 1);
       try {
-        await updateDoc(doc(db, "profiles", pendingUser.uid), {
-          twoFactorBackupCodes: availableCodes
-        });
+        if (pendingProfileDocId) {
+          await updateDoc(doc(db, "profiles", pendingProfileDocId), {
+            twoFactorBackupCodes: availableCodes
+          });
+        }
       } catch (e) { /* continue sign-in */ }
 
       sessionStorage.setItem("simando_2fa_verified", "true");
