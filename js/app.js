@@ -45,7 +45,7 @@ window.closeDriveWarningModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  TWO-FACTOR AUTHENTICATION (TOTP / GOOGLE AUTHENTICATOR)
+//  TWO-FACTOR AUTHENTICATION (TOTP / GOOGLE & MICROSOFT AUTH)
 // ═══════════════════════════════════════════════════════════════
 let generated2FASecret = null;
 let generatedBackupCodes = [];
@@ -152,7 +152,6 @@ window.openTwoFactorSetupModal = async function() {
     backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">${code}</div>`).join("");
   }
 
-  // Generate QR Code with standard QRCode CDN
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf.email || u.email)}?secret=${generated2FASecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
   
   if (qrContainer) {
@@ -167,7 +166,6 @@ window.openTwoFactorSetupModal = async function() {
         correctLevel: QRCode.CorrectLevel.M
       });
     } else {
-      // Fallback QR API
       qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=${encodeURIComponent(otpAuthUrl)}" alt="2FA QR" style="border-radius:8px"/>`;
     }
   }
@@ -214,6 +212,8 @@ window.confirmAndEnableTwoFactor = async function() {
     myProf.twoFactorSecret = generated2FASecret;
     myProf.twoFactorBackupCodes = generatedBackupCodes;
 
+    sessionStorage.setItem("simando_2fa_verified", "true");
+
     showToast("Two-Factor Authentication is now active! 🛡️");
     closeTwoFactorSetupModal();
     renderMyProfile();
@@ -242,6 +242,8 @@ window.disableTwoFactor = async function() {
     myProf.twoFactorEnabled = false;
     myProf.twoFactorSecret = null;
     myProf.twoFactorBackupCodes = [];
+
+    sessionStorage.removeItem("simando_2fa_verified");
 
     showToast("Two-Factor Authentication disabled.");
     renderMyProfile();
@@ -1304,7 +1306,7 @@ function updateCfChip() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BOOT LOGIC WITH SAFE LOOP-FREE AUTH LISTENER
+//  BOOT LOGIC WITH 2FA SESSION GUARD
 // ═══════════════════════════════════════════════════════════════
 function enterLocalMode(reason) {
   localMode = true;
@@ -1356,15 +1358,33 @@ document.addEventListener("firebase-ready", () => {
   }
 
   if (window._auth && typeof window._fbOnAuth === "function") {
-    window._fbOnAuth(window._auth, (user) => {
+    window._fbOnAuth(window._auth, async (user) => {
       window._currentUser = user;
       if (user) {
+        // Enforce 2FA Session Verification on every login
+        try {
+          if (window._db && typeof window._fbGetDoc === "function") {
+            const profSnap = await window._fbGetDoc(window._fbDoc(window._db, "profiles", user.uid));
+            if (profSnap.exists()) {
+              const data = profSnap.data();
+              if (data.twoFactorEnabled && data.twoFactorSecret) {
+                const isVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
+                if (!isVerified) {
+                  window.location.replace("login.html");
+                  return;
+                }
+              }
+            }
+          }
+        } catch (e) { /* ignore */ }
+
         if (!dbConnected) {
           dbConnected = true;
           connectDatabase();
         }
       } else {
         if (window.location.pathname.indexOf("login.html") === -1) {
+          sessionStorage.removeItem("simando_2fa_verified");
           window.location.replace("login.html");
         }
       }
