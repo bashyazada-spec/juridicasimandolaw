@@ -135,7 +135,7 @@ window.openTwoFactorSetupModal = async function() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid) || { name: u.displayName || u.email, email: u.email };
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) || { name: u.displayName || u.email, email: u.email };
 
   generated2FASecret = generateRandomBase32(16);
   generatedBackupCodes = generateBackupRecoveryCodes(5);
@@ -197,7 +197,7 @@ window.confirmAndEnableTwoFactor = async function() {
 
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
-  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) return;
 
   try {
@@ -228,7 +228,7 @@ window.disableTwoFactor = async function() {
 
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
-  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) return;
 
   try {
@@ -431,7 +431,7 @@ window.submitBusyDates = async function() {
     showToast("Please sign in first.", "error");
     return;
   }
-  const myProf = profiles.find(p => p.ownerUid === u.uid) || { name: u.displayName || u.email || "Attorney" };
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) || { name: u.displayName || u.email || "Attorney" };
 
   try {
     showToast("Saving your availability...");
@@ -1363,10 +1363,17 @@ document.addEventListener("firebase-ready", () => {
       if (user) {
         // Enforce 2FA Session Verification on every login
         try {
-          if (window._db && typeof window._fbGetDoc === "function") {
-            const profSnap = await window._fbGetDoc(window._fbDoc(window._db, "profiles", user.uid));
-            if (profSnap.exists()) {
-              const data = profSnap.data();
+          if (window._db && typeof window._fbGetDocs === "function") {
+            const pSnap = await window._fbGetDocs(window._fbCol(window._db, "profiles"));
+            const userEmail = (user.email || "").toLowerCase();
+            const matchedDoc = pSnap.docs.find(d => {
+              const data = d.data();
+              return (data.ownerUid === user.uid) || 
+                     (data.email && data.email.toLowerCase() === userEmail);
+            });
+
+            if (matchedDoc) {
+              const data = matchedDoc.data();
               if (data.twoFactorEnabled && data.twoFactorSecret) {
                 const isVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
                 if (!isVerified) {
