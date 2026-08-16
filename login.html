@@ -27,6 +27,7 @@
       --text-muted:  #6b82a0;
       --text-dim:    #344556;
       --red:         #f87171;
+      --green:       #34d399;
       --font-display:'Cormorant Garamond', Georgia, serif;
       --font-body:   'DM Sans', system-ui, sans-serif;
       --radius:      10px;
@@ -50,7 +51,6 @@
       position: relative;
     }
 
-    /* ── Atmospheric background ── */
     .bg-layer {
       position: fixed; inset: 0; pointer-events: none; z-index: 0;
     }
@@ -92,21 +92,6 @@
       66%       { transform: translate(-20px, 15px) scale(0.97); }
     }
 
-    /* ── Scale lines (decorative) ── */
-    .scale-line {
-      position: absolute;
-      width: 1px;
-      background: linear-gradient(to bottom, transparent, rgba(201,165,92,0.15), transparent);
-      animation: scalePulse 4s ease-in-out infinite;
-    }
-    .scale-line-l { height: 200px; top: 50%; left: 10%; transform: translateY(-50%); animation-delay: 0s; }
-    .scale-line-r { height: 200px; top: 50%; right: 10%; transform: translateY(-50%); animation-delay: -2s; }
-    @keyframes scalePulse {
-      0%, 100% { opacity: 0.3; }
-      50%       { opacity: 0.8; }
-    }
-
-    /* ── Card ── */
     .card {
       position: relative; z-index: 1;
       width: 100%; max-width: 420px;
@@ -114,7 +99,7 @@
       background: linear-gradient(145deg, rgba(12,24,38,0.95) 0%, rgba(8,17,26,0.98) 100%);
       border: 1px solid var(--gold-border2);
       border-radius: 20px;
-      padding: 44px 40px 36px;
+      padding: 40px 36px;
       box-shadow: var(--shadow), 0 0 0 1px rgba(201,165,92,0.05), inset 0 1px 0 rgba(201,165,92,0.08);
       animation: cardReveal 0.7s cubic-bezier(0.22,1,0.36,1) both;
     }
@@ -123,7 +108,6 @@
       to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* ── Corner accents ── */
     .card::before, .card::after {
       content: '';
       position: absolute;
@@ -135,11 +119,9 @@
     .card::before { top: 16px; left: 16px; border-width: 1px 0 0 1px; border-radius: 4px 0 0 0; }
     .card::after  { bottom: 16px; right: 16px; border-width: 0 1px 1px 0; border-radius: 0 0 4px 0; }
 
-    /* ── Logo ── */
     .logo-wrap {
       display: flex; align-items: center; gap: 12px;
-      margin-bottom: 32px;
-      animation: fadeUp 0.6s 0.15s both;
+      margin-bottom: 28px;
     }
     .logo-icon {
       width: 40px; height: 40px;
@@ -162,10 +144,8 @@
       color: var(--text-muted); margin-top: 3px;
     }
 
-    /* ── Heading ── */
     .heading {
-      animation: fadeUp 0.6s 0.2s both;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
     .heading h1 {
       font-family: var(--font-display);
@@ -179,13 +159,7 @@
       margin-top: 6px; line-height: 1.5;
     }
 
-    /* ── Form ── */
-    .form-group {
-      margin-bottom: 16px;
-      animation: fadeUp 0.6s both;
-    }
-    .form-group:nth-child(1) { animation-delay: 0.25s; }
-    .form-group:nth-child(2) { animation-delay: 0.30s; }
+    .form-group { margin-bottom: 16px; }
 
     label {
       display: block;
@@ -228,12 +202,6 @@
     input.err { border-color: rgba(248,113,113,0.5); }
     input::placeholder { color: var(--text-dim); }
 
-    .field-err {
-      font-size: 11px; color: var(--red);
-      margin-top: 5px; display: none;
-    }
-
-    /* ── Buttons ── */
     .btn-primary {
       width: 100%;
       background: linear-gradient(135deg, #c9a55c 0%, #b8913f 100%);
@@ -246,7 +214,6 @@
       cursor: pointer;
       transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
       box-shadow: var(--shadow-gold);
-      animation: fadeUp 0.6s 0.4s both;
     }
     .btn-primary:hover:not(:disabled) {
       opacity: 0.92;
@@ -256,7 +223,6 @@
     .btn-primary:active { transform: translateY(0); }
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ── Error banner ── */
     .error-banner {
       background: rgba(248,113,113,0.08);
       border: 1px solid rgba(248,113,113,0.25);
@@ -277,11 +243,9 @@
       80%       { transform: translateX(4px); }
     }
 
-    /* ── Footer links ── */
     .footer-links {
       margin-top: 24px; text-align: center;
       font-size: 12px; color: var(--text-muted);
-      animation: fadeUp 0.6s 0.5s both;
     }
     .footer-links a {
       color: var(--gold); text-decoration: none;
@@ -289,7 +253,6 @@
     }
     .footer-links a:hover { color: var(--gold-light); }
 
-    /* ── Spinner ── */
     .spinner {
       width: 16px; height: 16px;
       border: 2px solid rgba(6,12,19,0.3);
@@ -300,10 +263,34 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* ── 2FA 6-DIGIT CODE INPUT BOXES ── */
+    .otp-container {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 20px 0 24px;
     }
+    .otp-input {
+      width: 44px !important;
+      height: 52px !important;
+      padding: 0 !important;
+      text-align: center !important;
+      font-size: 22px !important;
+      font-weight: 700 !important;
+      color: var(--gold-light) !important;
+      background: var(--surface2) !important;
+      border: 1.5px solid var(--border-soft) !important;
+      border-radius: 10px !important;
+      outline: none !important;
+      transition: all 0.2s !important;
+    }
+    .otp-input:focus {
+      border-color: var(--gold) !important;
+      background: rgba(201, 165, 92, 0.08) !important;
+      box-shadow: 0 0 0 3px rgba(201, 165, 92, 0.2) !important;
+    }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -313,8 +300,6 @@
   <div class="bg-grid"></div>
   <div class="bg-orb bg-orb-1"></div>
   <div class="bg-orb bg-orb-2"></div>
-  <div class="scale-line scale-line-l"></div>
-  <div class="scale-line scale-line-r"></div>
 </div>
 
 <div class="card">
@@ -326,57 +311,110 @@
     </div>
   </div>
 
-  <div class="heading">
-    <h1 id="heading-title">Welcome back</h1>
-    <p id="heading-sub">Sign in to access your case management dashboard.</p>
-  </div>
-
-  <div id="error-banner" class="error-banner"></div>
-
-  <!-- Email + Password form -->
-  <div class="form-group">
-    <label for="inp-email">Email address</label>
-    <div class="input-wrap">
-      <span class="input-icon">✉</span>
-      <input type="email" id="inp-email" placeholder="attorney@simandolaw.com" autocomplete="email"/>
+  <!-- STEP 1: Standard Password Login -->
+  <div id="step-login">
+    <div class="heading">
+      <h1>Welcome back</h1>
+      <p>Sign in to access your case management dashboard.</p>
     </div>
-    <div class="field-err" id="err-email"></div>
-  </div>
 
-  <div class="form-group">
-    <label for="inp-password">Password</label>
-    <div class="input-wrap">
-      <span class="input-icon">🔒</span>
-      <input type="password" id="inp-password" placeholder="••••••••" autocomplete="current-password"/>
-      <button class="input-toggle" onclick="togglePassword()" id="pw-toggle" title="Show/hide password">👁</button>
+    <div id="error-banner" class="error-banner"></div>
+
+    <div class="form-group">
+      <label for="inp-email">Email address</label>
+      <div class="input-wrap">
+        <span class="input-icon">✉</span>
+        <input type="email" id="inp-email" placeholder="attorney@simandolaw.com" autocomplete="email"/>
+      </div>
     </div>
-    <div class="field-err" id="err-password"></div>
-  </div>
 
-  <button class="btn-primary" id="email-btn" onclick="handleEmailAuth()">
-    <span id="email-btn-text">Sign In</span>
-  </button>
+    <div class="form-group">
+      <label for="inp-password">Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" id="inp-password" placeholder="••••••••" autocomplete="current-password"/>
+        <button class="input-toggle" onclick="togglePassword()" id="pw-toggle" title="Show/hide password">👁</button>
+      </div>
+    </div>
 
-  <div class="footer-links" id="footer-links">
-    <a href="#" onclick="handleForgotPassword(); return false;" id="forgot-link">Forgot password?</a>
-    
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,165,92,0.12);font-size:11.5px;color:var(--text-muted);line-height:1.6">
-      By signing in, you agree to Simando Law's<br>
-      <a href="terms-of-service.html" target="_blank" style="color:var(--gold);text-decoration:underline;margin-right:6px">Terms of Service</a> & 
-      <a href="privacy-policy.html" target="_blank" style="color:var(--gold);text-decoration:underline">Privacy Policy</a>
+    <button class="btn-primary" id="email-btn" onclick="handleEmailAuth()">
+      <span id="email-btn-text">Sign In</span>
+    </button>
+
+    <div class="footer-links">
+      <a href="#" onclick="handleForgotPassword(); return false;">Forgot password?</a>
+      
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,165,92,0.12);font-size:11.5px;color:var(--text-muted);line-height:1.6">
+        By signing in, you agree to Simando Law's<br>
+        <a href="terms-of-service.html" target="_blank" style="color:var(--gold);text-decoration:underline;margin-right:6px">Terms of Service</a> & 
+        <a href="privacy-policy.html" target="_blank" style="color:var(--gold);text-decoration:underline">Privacy Policy</a>
+      </div>
     </div>
   </div>
+
+  <!-- STEP 2: 2FA TOTP Verification (Triggered if enabled) -->
+  <div id="step-2fa" class="hidden">
+    <div class="heading">
+      <h1>Two-Factor Security</h1>
+      <p id="tfa-prompt-sub">Enter the 6-digit verification code from your Google Authenticator or authentication app.</p>
+    </div>
+
+    <div id="tfa-error-banner" class="error-banner"></div>
+
+    <div id="tfa-code-panel">
+      <div class="otp-container">
+        <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-1"/>
+        <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-2"/>
+        <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-3"/>
+        <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-4"/>
+        <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-5"/>
+        <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-6"/>
+      </div>
+      <button class="btn-primary" id="btn-verify-tfa" onclick="verifyTwoFactorCode()">
+        <span id="btn-verify-tfa-text">Verify & Sign In</span>
+      </button>
+      <div style="margin-top:16px;text-align:center">
+        <a href="#" onclick="toggleBackupCodeInput(true); return false;" style="color:var(--gold);font-size:12px;text-decoration:underline">Lost phone? Use a backup code</a>
+      </div>
+    </div>
+
+    <!-- Backup Recovery Code Input -->
+    <div id="tfa-backup-panel" class="hidden">
+      <div class="form-group">
+        <label>8-Character Backup Code</label>
+        <input type="text" id="inp-backup-code" placeholder="e.g. a8f1-9c02" style="text-align:center;letter-spacing:2px;font-weight:700;padding:12px"/>
+      </div>
+      <button class="btn-primary" id="btn-verify-backup" onclick="verifyBackupRecoveryCode()">
+        <span>Verify Recovery Code</span>
+      </button>
+      <div style="margin-top:16px;text-align:center">
+        <a href="#" onclick="toggleBackupCodeInput(false); return false;" style="color:var(--gold);font-size:12px;text-decoration:underline">← Back to Authenticator app code</a>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;text-align:center;border-top:1px solid rgba(201,165,92,0.12);padding-top:14px">
+      <a href="#" onclick="cancelTwoFactor(); return false;" style="color:var(--text-muted);font-size:12px">← Cancel and return to login</a>
+    </div>
+  </div>
+
 </div>
 
-<!-- Firebase -->
+<!-- Firebase & Web Crypto TOTP Engine -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getAuth,
     onAuthStateChanged,
     signInWithEmailAndPassword,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    signOut
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDIDs21G2wWy-Wd72wb-iWNMCTy0_KlADo",
@@ -389,18 +427,80 @@
 
   const app  = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  const db   = getFirestore(app);
 
-  onAuthStateChanged(auth, user => {
-    if (user) window.location.replace("index.html");
-  });
+  let pendingUser = null;
+  let pendingProfileData = null;
+
+  // ── Cryptographic TOTP Engine (RFC 6238 Standard) ──────────
+  function base32Decode(base32) {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let cleaned = base32.toUpperCase().replace(/=+$/, "");
+    let bits = 0;
+    let value = 0;
+    let output = [];
+
+    for (let i = 0; i < cleaned.length; i++) {
+      const idx = alphabet.indexOf(cleaned.charAt(i));
+      if (idx === -1) continue;
+      value = (value << 5) | idx;
+      bits += 5;
+      if (bits >= 8) {
+        output.push((value >>> (bits - 8)) & 255);
+        bits -= 8;
+      }
+    }
+    return new Uint8Array(output);
+  }
+
+  async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
+    const keyBytes = base32Decode(secretBase32);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "HMAC", hash: "SHA-1" },
+      false,
+      ["sign"]
+    );
+
+    const epoch = Math.floor(Date.now() / 1000);
+    const timeStep = Math.floor(epoch / 30) + timeStepOffset;
+
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setUint32(4, timeStep, false);
+
+    const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
+    const hmacBytes = new Uint8Array(hmacResult);
+
+    const offset = hmacBytes[hmacBytes.length - 1] & 0xf;
+    const binary =
+      ((hmacBytes[offset] & 0x7f) << 24) |
+      ((hmacBytes[offset + 1] & 0xff) << 16) |
+      ((hmacBytes[offset + 2] & 0xff) << 8) |
+      (hmacBytes[offset + 3] & 0xff);
+
+    const code = binary % 1000000;
+    return String(code).padStart(6, "0");
+  }
+
+  async function verifyTOTP(token, secretBase32) {
+    // Check current 30s window and +/- 1 window for clock drift
+    for (const offset of [0, -1, 1]) {
+      const valid = await generateTOTPCode(secretBase32, offset);
+      if (token === valid) return true;
+    }
+    return false;
+  }
 
   window.togglePassword = function() {
     const inp = document.getElementById("inp-password");
     inp.type = inp.type === "password" ? "text" : "password";
   };
 
-  function showError(msg) {
-    const el = document.getElementById("error-banner");
+  function showError(msg, elId = "error-banner") {
+    const el = document.getElementById(elId);
+    if (!el) return;
     el.textContent = msg;
     el.classList.add("show");
     el.style.animation = "none";
@@ -408,18 +508,18 @@
   }
 
   function clearErrors() {
-    document.getElementById("error-banner").classList.remove("show");
-    ["inp-email","inp-password"].forEach(id => document.getElementById(id).classList.remove("err"));
+    ["error-banner", "tfa-error-banner"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove("show");
+    });
   }
 
-  function setLoading(loading) {
-    const emailBtn  = document.getElementById("email-btn");
-    const btnText   = document.getElementById("email-btn-text");
-    emailBtn.disabled  = loading;
-    if (loading) {
-      btnText.innerHTML = `<span class="spinner"></span>`;
-    } else {
-      btnText.textContent = "Sign In";
+  function setLoading(loading, btnId = "email-btn", textId = "email-btn-text", defaultText = "Sign In") {
+    const btn = document.getElementById(btnId);
+    const btnText = document.getElementById(textId);
+    if (btn) btn.disabled = loading;
+    if (btnText) {
+      btnText.innerHTML = loading ? `<span class="spinner"></span>` : defaultText;
     }
   }
 
@@ -435,35 +535,166 @@
     return map[code] || "Something went wrong. Please try again.";
   }
 
+  // ── Auto-Advancing 6-Digit OTP Boxes ─────────────────────────
+  const otpInputs = Array.from(document.querySelectorAll(".otp-input"));
+  otpInputs.forEach((input, index) => {
+    input.addEventListener("input", (e) => {
+      const val = e.target.value;
+      if (val.length === 1 && index < otpInputs.length - 1) {
+        otpInputs[index + 1].focus();
+      }
+      if (getEnteredOTP().length === 6) {
+        verifyTwoFactorCode();
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !input.value && index > 0) {
+        otpInputs[index - 1].focus();
+      }
+      if (e.key === "Enter") {
+        verifyTwoFactorCode();
+      }
+    });
+
+    input.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData("text").trim();
+      if (/^\d{6}$/.test(pasteData)) {
+        pasteData.split("").forEach((char, i) => {
+          if (otpInputs[i]) otpInputs[i].value = char;
+        });
+        otpInputs[5].focus();
+        verifyTwoFactorCode();
+      }
+    });
+  });
+
+  function getEnteredOTP() {
+    return otpInputs.map(i => i.value).join("");
+  }
+
+  function clearEnteredOTP() {
+    otpInputs.forEach(i => i.value = "");
+    if (otpInputs[0]) otpInputs[0].focus();
+  }
+
+  window.toggleBackupCodeInput = function(showBackup) {
+    clearErrors();
+    document.getElementById("tfa-code-panel").classList.toggle("hidden", showBackup);
+    document.getElementById("tfa-backup-panel").classList.toggle("hidden", !showBackup);
+    if (showBackup) {
+      document.getElementById("inp-backup-code")?.focus();
+    } else {
+      clearEnteredOTP();
+    }
+  };
+
+  window.cancelTwoFactor = async function() {
+    await signOut(auth);
+    pendingUser = null;
+    pendingProfileData = null;
+    document.getElementById("step-2fa").classList.add("hidden");
+    document.getElementById("step-login").classList.remove("hidden");
+    clearErrors();
+  };
+
   window.handleEmailAuth = async function() {
     clearErrors();
     const email    = document.getElementById("inp-email").value.trim();
     const password = document.getElementById("inp-password").value;
-    let valid = true;
 
-    if (!email) {
-      document.getElementById("inp-email").classList.add("err");
-      valid = false;
+    if (!email || !password) {
+      showError("Please enter both email and password.");
+      return;
     }
-    if (!password) {
-      document.getElementById("inp-password").classList.add("err");
-      valid = false;
-    }
-    if (!valid) return;
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check if user has 2FA enabled
+      const profRef = doc(db, "profiles", user.uid);
+      const profSnap = await getDoc(profRef);
+      const profData = profSnap.exists() ? profSnap.data() : {};
+
+      if (profData.twoFactorEnabled && profData.twoFactorSecret) {
+        pendingUser = user;
+        pendingProfileData = profData;
+
+        // Transition to 2FA Prompt Screen
+        document.getElementById("step-login").classList.add("hidden");
+        document.getElementById("step-2fa").classList.remove("hidden");
+        setLoading(false);
+        setTimeout(() => clearEnteredOTP(), 100);
+      } else {
+        // Direct Entry if 2FA is not enabled
+        window.location.replace("index.html");
+      }
     } catch (err) {
       setLoading(false);
       showError(friendlyError(err.code));
     }
   };
 
+  window.verifyTwoFactorCode = async function() {
+    clearErrors();
+    const code = getEnteredOTP();
+    if (code.length !== 6) {
+      showError("Please enter all 6 digits.", "tfa-error-banner");
+      return;
+    }
+
+    setLoading(true, "btn-verify-tfa", "btn-verify-tfa-text", "Verify & Sign In");
+
+    try {
+      const isValid = await verifyTOTP(code, pendingProfileData.twoFactorSecret);
+      if (isValid) {
+        sessionStorage.setItem("simando_2fa_verified", "true");
+        window.location.replace("index.html");
+      } else {
+        setLoading(false, "btn-verify-tfa", "btn-verify-tfa-text", "Verify & Sign In");
+        showError("Invalid 6-digit code. Check your Authenticator app and try again.", "tfa-error-banner");
+        clearEnteredOTP();
+      }
+    } catch (err) {
+      setLoading(false, "btn-verify-tfa", "btn-verify-tfa-text", "Verify & Sign In");
+      showError("Verification error: " + err.message, "tfa-error-banner");
+    }
+  };
+
+  window.verifyBackupRecoveryCode = async function() {
+    clearErrors();
+    const entered = (document.getElementById("inp-backup-code")?.value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    
+    if (!entered) {
+      showError("Please enter your backup code.", "tfa-error-banner");
+      return;
+    }
+
+    const availableCodes = pendingProfileData.twoFactorBackupCodes || [];
+    const matchIndex = availableCodes.findIndex(c => c.toLowerCase().replace(/[^a-z0-9]/g, "") === entered);
+
+    if (matchIndex >= 0) {
+      // Consume the used backup code
+      availableCodes.splice(matchIndex, 1);
+      try {
+        await updateDoc(doc(db, "profiles", pendingUser.uid), {
+          twoFactorBackupCodes: availableCodes
+        });
+      } catch (e) { /* continue sign-in */ }
+
+      sessionStorage.setItem("simando_2fa_verified", "true");
+      window.location.replace("index.html");
+    } else {
+      showError("Invalid or already used backup code.", "tfa-error-banner");
+    }
+  };
+
   window.handleForgotPassword = async function() {
     const email = document.getElementById("inp-email").value.trim();
     if (!email) {
-      document.getElementById("inp-email").classList.add("err");
       showError("Enter your email address above first.");
       return;
     }
@@ -479,7 +710,9 @@
   };
 
   document.addEventListener("keydown", e => {
-    if (e.key === "Enter") window.handleEmailAuth();
+    if (e.key === "Enter" && !document.getElementById("step-login").classList.contains("hidden")) {
+      window.handleEmailAuth();
+    }
   });
 </script>
 </body>
