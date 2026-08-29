@@ -115,7 +115,7 @@ a { color: inherit; text-decoration: none; }
   touch-action: pan-y !important;
 }
 
-/* MOBILE TOP BAR */
+/* MOBILE TOP BAR WITH CLEAN BUTTON ACTIONS */
 .mobile-top-bar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 16px; background: var(--surface);
@@ -126,6 +126,27 @@ a { color: inherit; text-decoration: none; }
 .mobile-top-logo {
   display: flex; align-items: center; gap: 6px;
   font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--gold-light);
+}
+
+.mobile-top-icon-btn {
+  position: relative;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 17px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-top-icon-btn:hover {
+  border-color: var(--gold-border);
+  background: var(--surface3);
 }
 
 /* FIXED BOTTOM NAV BAR */
@@ -205,7 +226,7 @@ a { color: inherit; text-decoration: none; }
 .page-title { font-family: var(--font-display); font-size: 26px !important; font-weight: 600; color: var(--text); line-height: 1.1; }
 .page-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
 
-/* ── LUXURY SCHEDULE FILTER BAR (ADAPTIVE THEME) ── */
+/* ── LUXURY SCHEDULE FILTER BAR ── */
 .schedule-filter-bar {
   display: flex;
   flex-direction: column;
@@ -352,40 +373,14 @@ a { color: inherit; text-decoration: none; }
 }
 #config-banner.show { display: block; }
 
-/* ── NATIVE BUTTON CHAT DOCK BAR ── */
-#chat-dock-bar {
-  position: fixed !important;
-  bottom: 68px !important;
-  right: 12px !important;
-  height: 46px !important;
-  min-height: 46px !important;
-  min-width: 160px !important;
-  padding: 0 16px !important;
-  background: var(--surface2, #091422) !important;
-  border: 1.5px solid var(--gold-border, rgba(201,165,92,0.4)) !important;
-  border-radius: 12px !important;
-  z-index: 9995 !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.65) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  touch-action: manipulation !important;
-  -webkit-tap-highlight-color: transparent !important;
-  outline: none !important;
-}
-
-#chat-dock-bar:active {
-  transform: scale(0.96) !important;
-}
-
+/* ── EXPANDABLE CHAT PANEL ON MOBILE (TOP/FULL OVERLAY, NO BOTTOM JAMS) ── */
 .chat-panel {
+  position: fixed !important;
   width: calc(100vw - 20px) !important;
   right: 10px !important; 
-  bottom: 116px !important; 
-  height: 420px !important;
-  z-index: 9996 !important;
+  bottom: 74px !important; 
+  height: 440px !important;
+  z-index: 10002 !important;
 }
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(4,8,16,0.88); backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center; z-index: 10000 !important; padding: 16px; }
