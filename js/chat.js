@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — MESSENGER-STYLE CHAT DOCK & CONVERSATIONS
-//  Instant 0ms Mobile Dock + Cached Peer Lists + File Attachments
+//  Clean Floating Trigger on Desktop · Top Header Bar on Mobile
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -65,10 +65,12 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD — FULL-SURFACE CLICKABLE DOCK & EXPANDABLE PANEL
-  // ═══════════════════════════════════════════════════════════
+  //  UI BUILD — DOCK BAR (DESKTOP/TABLET) & FULL CHAT PANEL
+  // ═══════════════════════════════════════════════════════════════
   function buildUI() {
-    // 1. Native HTML Button Dock Bar (100% Full-surface clickable)
+    // 1. Desktop & Tablet Floating Dock Bar (Hidden automatically on Mobile)
+    const isMobileDevice = window.innerWidth < 600 || /Mobile|iP(hone|od)|Android|BlackBerry|IEMobile/i.test(navigator.userAgent);
+
     const dockBar = document.createElement("button");
     dockBar.id = "chat-dock-bar";
     dockBar.type = "button";
@@ -82,14 +84,18 @@
       </div>
       <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c);pointer-events:none;user-select:none;">▲</span>
     `;
-    document.body.appendChild(dockBar);
 
-    // 2. Chat Panel (Expanded State)
+    // Only append bottom dock bar on Desktop/Tablet
+    if (!isMobileDevice) {
+      document.body.appendChild(dockBar);
+    }
+
+    // 2. Chat Panel (Expanded State for all devices)
     const panel = document.createElement("div");
     panel.id = "chat-panel";
     panel.className = "chat-panel hidden";
     panel.innerHTML = `
-      <!-- Header (Entire header bar is clickable to minimize) -->
+      <!-- Header -->
       <div class="chat-header" id="chat-panel-header" onclick="window._chat.toggleDock(event)" style="cursor:pointer;" title="Click header to minimize">
         <div class="chat-header-left" style="pointer-events:none;">
           <span class="chat-header-icon">⚖️</span>
@@ -149,7 +155,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  NATIVE DOCK TOGGLE (0MS FULL-SURFACE RESPONSIVENESS)
+  //  DOCK TOGGLE CONTROLLERS
   // ═══════════════════════════════════════════════════════════
   function toggleDock(e) {
     if (e) {
@@ -246,7 +252,6 @@
     const listEl = document.getElementById("chat-recent-conversations");
     if (!listEl) return;
 
-    // 1. Group Chat Summary
     const latestGroupMsg = groupMessages[groupMessages.length - 1];
     const groupTimeMs = latestGroupMsg?.ts?.toDate ? latestGroupMsg.ts.toDate().getTime() : 0;
     const groupLastSeen = getSeenTimestamp("group");
@@ -275,7 +280,6 @@
       }
     ];
 
-    // 2. Attorney Direct Message Summaries
     peersList.forEach(p => {
       const channelId = dmChannelId(myUid, p.uid);
       const msgs = dmMessagesMap[channelId] || [];
@@ -306,7 +310,6 @@
       });
     });
 
-    // Sort by Most Recent Message First
     conversations.sort((a, b) => b.timeMs - a.timeMs);
 
     listEl.innerHTML = conversations.map(c => `
@@ -350,7 +353,7 @@
 
   // ═══════════════════════════════════════════════════════════
   //  CHAT FILE ATTACHMENT HANDLER
-  // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════
   async function handleFileAttachment(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -787,7 +790,7 @@
   function injectStyles() {
     const s = document.createElement("style");
     s.textContent = `
-      /* Bottom Dock Bar - Native Full-surface Clickable Button */
+      /* Desktop & Tablet Floating Dock Bar (Hidden automatically on Mobile) */
       #chat-dock-bar {
         position: fixed !important;
         bottom: 0 !important;
@@ -901,7 +904,6 @@
 
       .chat-unseen-dot { color: var(--gold, #c9a84c); font-size: 12px; margin-left: 4px; flex-shrink: 0; }
 
-      /* Messages View */
       .chat-messages {
         flex: 1; overflow-y: auto; padding: 12px 12px 6px;
         display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;
@@ -920,7 +922,6 @@
       .chat-bubble-msg.mine { background: var(--gold, #c9a84c); color: #111; border-bottom-right-radius: 4px; }
       .chat-bubble-msg.theirs { background: var(--surface2, #091422); color: var(--text, #eee); border-bottom-left-radius: 4px; border: 1px solid var(--border, #162033); }
 
-      /* Availability Card */
       .chat-avail-card {
         max-width: 88%; padding: 12px 14px; border-radius: 12px;
         background: var(--surface2, #091422); border: 1px solid var(--gold-border, rgba(201,168,76,0.3));
@@ -972,10 +973,10 @@
       .dm-back-btn { background: transparent; border: none; color: var(--gold, #c9a84c); font-size: 12px; cursor: pointer; padding: 4px 8px; font-weight: 600; }
       .chat-ts { font-size: 9px; opacity: .55; margin-left: 8px; vertical-align: bottom; }
 
-      /* Smartphone Adjustment */
+      /* Mobile Adjustment */
       @media (max-width: 600px) {
-        #chat-dock-bar { right: 12px !important; bottom: 68px !important; min-width: 160px !important; height: 46px !important; }
-        .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 116px !important; height: 420px !important; }
+        #chat-dock-bar { display: none !important; }
+        .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 74px !important; height: 430px !important; }
       }
     `;
     document.head.appendChild(s);
