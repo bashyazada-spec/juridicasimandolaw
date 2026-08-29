@@ -510,7 +510,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (DEDUPLICATED UPLOAD BUTTON)
+//  CASE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -772,12 +772,10 @@ function renderSidebarUser() {
   `;
   chip.style.display = "flex";
 
+  const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
+
   if (adminSection) {
-    if (myProf.role === "admin") {
-      adminSection.style.display = "block";
-    } else {
-      adminSection.style.display = "none";
-    }
+    adminSection.style.display = isAdmin ? "block" : "none";
   }
 }
 
@@ -1125,7 +1123,7 @@ function renderMyProfile() {
   const u = window._currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) return;
 
   const nameEl = document.getElementById("setting-name");
@@ -1143,6 +1141,13 @@ function renderMyProfile() {
   if (passEl) passEl.value = "";
   if (curPassEl) curPassEl.value = "";
   if (reauthEl) reauthEl.style.display = "none";
+
+  // Dynamic Admin Portal Card Visibility on Mobile
+  const mobileAdminCard = document.getElementById("mobile-admin-portal-card");
+  if (mobileAdminCard) {
+    const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
+    mobileAdminCard.style.display = isAdmin ? "block" : "none";
+  }
 
   settingsPhotoDataUrl = myProf.photoUrl || null;
   if (settingsPhotoDataUrl) {
@@ -1171,6 +1176,7 @@ function renderMyProfile() {
     }
   }
 
+  // ── Two-Factor Authentication Status UI ──
   const tfaBadge = document.getElementById("setting-2fa-status-badge");
   const tfaBtn = document.getElementById("setting-2fa-action-btn");
   const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
@@ -1194,7 +1200,7 @@ function renderMyProfile() {
       tfaBadge.textContent = "● Not Enabled";
 
       tfaBtn.className = "btn btn-primary btn-sm";
-      tfaBtn.textContent = "Enable 2FA";
+      tfaBtn.textContent = "Set Up 2FA Authenticator";
       tfaBtn.onclick = openTwoFactorSetupModal;
 
       if (tfaBackupWrap) tfaBackupWrap.style.display = "none";
@@ -1289,7 +1295,7 @@ async function saveUserSettings() {
   const u = window._currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) return;
 
   const name = (document.getElementById("setting-name")?.value || "").trim();
@@ -1884,7 +1890,7 @@ window.submitAppointmentRequest = async function() {
   }
 
   const u = window._currentUser;
-  const myProf = profiles.find(p => p.ownerUid === u.uid);
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf || !targetApptProfile) return;
 
   try {
@@ -2101,7 +2107,7 @@ function openShareCaseModal() {
   const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
 
   if (associates.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:16px">No other associate attorneys are currently registered in the system.</div>`;
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
   } else {
     listEl.innerHTML = associates.map(p => {
       const isChecked = sharedUids.includes(p.ownerUid);
@@ -2112,8 +2118,8 @@ function openShareCaseModal() {
             <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked ? 'checked' : ''} onchange="toggleShareRoleSelect('${p.ownerUid}', this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
             ${avatarDiv(p.name, p.avatarColor, 30, p.photoUrl)}
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.email}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
+              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.email)}</div>
             </div>
           </label>
           <select id="share-role-${p.ownerUid}" class="filter-select" style="width:105px;padding:4px 22px 4px 8px;font-size:11.5px;margin-left:8px;${!isChecked ? 'opacity:0.4;pointer-events:none' : ''}">
