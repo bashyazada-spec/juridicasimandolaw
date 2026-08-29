@@ -271,19 +271,20 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   gap: 16px;
 }
 
-/* ── LUXURY SCHEDULE FILTER BAR (TABLET ADAPTED) ── */
+/* ── LUXURY SCHEDULE FILTER BAR (ADAPTIVE THEME) ── */
 .schedule-filter-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: linear-gradient(145deg, rgba(12, 24, 38, 0.95), rgba(9, 20, 34, 0.98));
+  background: var(--surface);
   border: 1px solid var(--gold-border);
   border-radius: 14px;
   padding: 12px 18px;
   margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
   width: 100%;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .schedule-filter-info {
@@ -296,7 +297,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: rgba(201, 165, 92, 0.12);
+  background: var(--surface2);
   border: 1px solid var(--gold-border);
   display: flex;
   align-items: center;
@@ -332,15 +333,20 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   background-position: right 14px center;
   border: 1.5px solid var(--gold-border);
   border-radius: 10px;
-  color: var(--gold-light);
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
   padding: 10px 36px 10px 14px;
   outline: none;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* TOUCH-OPTIMIZED CALENDAR DAY CELLS FOR FINGER / APPLE PENCIL TAPPING */
+[data-theme="light"] .schedule-filter-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2l4.5 4.5 4.5-4.5' stroke='%23aa7c11' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* TOUCH-OPTIMIZED CALENDAR DAY CELLS */
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
