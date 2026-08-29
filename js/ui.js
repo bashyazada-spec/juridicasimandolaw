@@ -141,9 +141,13 @@ function showView(name) {
   if (el) el.classList.remove("hidden");
   currentView = name;
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
+
   if (["dashboard","profiles","allcases","myprofile","calendar","notifications","mydrive"].includes(name)) {
     const btn = document.querySelector(`.nav-btn[data-nav="${name}"]`);
     if (btn) btn.classList.add("active");
+    const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${name}"]`);
+    if (mBtn) mBtn.classList.add("active");
   }
 }
 
@@ -169,7 +173,7 @@ function navTo(view) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD
+//  DASHBOARD (CATEGORY HIGHLIGHTS & ADMIN STAT VISIBILITY)
 // ═══════════════════════════════════════════════════════════════
 function renderDashboard() {
   const todayDateEl = document.getElementById("today-date");
@@ -178,12 +182,18 @@ function renderDashboard() {
   }
 
   const userCases = getAccessibleCases();
+  const u = window._currentUser || window._auth?.currentUser;
+  const isAdmin = profiles.some(p => (p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase())) && p.role === "admin");
 
+  const statProfilesCard = document.getElementById("stat-card-profiles");
   const statProfilesEl = document.getElementById("stat-profiles");
   const statTotalEl = document.getElementById("stat-total");
   const statOngoingEl = document.getElementById("stat-ongoing");
   const statCompletedEl = document.getElementById("stat-completed");
 
+  if (statProfilesCard) {
+    statProfilesCard.style.display = isAdmin ? "block" : "none";
+  }
   if (statProfilesEl) statProfilesEl.textContent = profiles.length;
   if (statTotalEl) statTotalEl.textContent = userCases.length;
   if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
@@ -208,11 +218,18 @@ function renderDashboard() {
          : daysLeft <= 30 ? {col:"var(--amber)", label:daysLeft + "d left"}
          :                  {col:"var(--text-dim)",label:daysLeft + "d left"})
         : null;
+
+      // Category Pill Highlight
+      const categoryBadge = `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);white-space:nowrap;display:inline-block">${escHtml(c.category || "Case")}</span>`;
+
       return `<div class="flex-center gap-10" style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="openCase('${c.id}')" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
         ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.title}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:2px">${p?.name || ""} · ${c.type || c.category || "Case"}</div>
+          <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${categoryBadge}
+            <span>${p?.name || ""} · ${c.type || "Litigation"}</span>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
           ${badge(c.status, statusColor(c.status))}
@@ -253,8 +270,8 @@ function renderDashProfiles() {
       <div style="display:flex;align-items:center;gap:12px">
         ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px;color:var(--text)">${p.name}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${p.role || "Attorney"} · ${pc.length} case${pc.length !== 1 ? "s" : ""}</div>
+          <div style="font-weight:600;font-size:14px;color:var(--text)">${escHtml(p.name)}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:1px">${escHtml(p.role || "Attorney")} · ${pc.length} case${pc.length !== 1 ? "s" : ""}</div>
         </div>
       </div>
     </div>`;
@@ -287,19 +304,19 @@ function renderProfiles() {
     const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
     
     return `
-      <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,168,76,0.03)' : ''}">
+      <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
         <div class="flex-center gap-14 mb-16">
           ${avatarDiv(p.name, p.avatarColor, 50, p.photoUrl)}
           <div>
             <div style="font-weight:700;font-size:16px;color:var(--text)">
-              ${p.name} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
+              ${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
             </div>
-            <div style="font-size:13px;color:var(--text-dim)">${p.role}</div>
+            <div style="font-size:13px;color:var(--text-dim)">${escHtml(p.role || "Attorney")}</div>
           </div>
         </div>
         <hr class="divider"/>
-        ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${p.email}</div>` : ""}
-        ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${p.contact}</div>` : ""}
+        ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${escHtml(p.email)}</div>` : ""}
+        ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${escHtml(p.contact)}</div>` : ""}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:13px;color:var(--text-dim)">Cases Accessible</span>
           ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
@@ -346,11 +363,11 @@ function renderProfileDetail() {
     headerCard.innerHTML = `
       ${avatarDiv(p.name, p.avatarColor, 64, p.photoUrl)}
       <div style="flex:1">
-        <div style="font-size:24px;font-weight:700;color:var(--text)">${p.name}</div>
-        <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${p.role}</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
+        <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${escHtml(p.role || "Attorney")}</div>
         <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
-          ${p.email ? `<span style="font-size:12px;color:var(--text-dim)">✉ ${p.email}</span>` : ""}
-          ${p.contact ? `<span style="font-size:12px;color:var(--text-dim)">📞 ${p.contact}</span>` : ""}
+          ${p.email ? `<span style="font-size:12px;color:var(--text-dim)">✉ ${escHtml(p.email)}</span>` : ""}
+          ${p.contact ? `<span style="font-size:12px;color:var(--text-dim)">📞 ${escHtml(p.contact)}</span>` : ""}
           <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
           ${driveChip}
         </div>
@@ -427,14 +444,16 @@ function renderProfileCases() {
   el.innerHTML = filtered.map(c => `
     <div class="case-row" onclick="openCase('${c.id}')">
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${c.title}</div>
-        <div style="font-size:13px;color:var(--text-dim)">${c.type || c.category || "Case"} · ${c.venue || "No Venue"}</div>
-        <div style="font-size:13px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.parties || ""}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
+        <div style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">${escHtml(c.category || "Case")}</span>
+          <span>${c.type || "Litigation"} · ${c.venue || "No Venue"}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${badge(c.status, statusColor(c.status))}
         ${dueBadge(c.dueDate)}
-        <span style="font-size:11px;color:var(--text-dim)">${c.documents?.length || 0} doc${c.documents?.length !== 1 ? "s" : ""}</span>
       </div>
     </div>`).join("");
 }
@@ -476,9 +495,12 @@ function renderAllCases() {
     return `<div class="case-row" onclick="openCase('${c.id}')">
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${c.title}</div>
-        <div style="font-size:13px;color:var(--text-dim)">${p?.name || ""} · ${c.type || c.category || "Case"} · ${c.venue || "No Venue"}</div>
-        <div style="font-size:13px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.parties || ""}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
+        <div style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">${escHtml(c.category || "Case")}</span>
+          <span>${p?.name || ""} · ${c.type || "Litigation"} · ${c.venue || "No Venue"}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${badge(c.status, statusColor(c.status))}
@@ -489,7 +511,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL
+//  CASE DETAIL (DEDUPLICATED UPLOAD BUTTON)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -529,7 +551,7 @@ function renderCaseDetail() {
   const chip = document.getElementById("cd-profile-chip");
   if (chip) {
     if (p) {
-      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:12px;color:var(--text-dim)">${p.role}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
+      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:var(--text-dim)">${escHtml(p.role || "Attorney")}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
       chip.style.display = "inline-flex";
     } else {
       chip.style.display = "none";
@@ -540,7 +562,7 @@ function renderCaseDetail() {
   if (infoEl) {
     infoEl.innerHTML = `
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${badge(c.status, statusColor(c.status))} ${badge(c.type || c.category || "Case", "#6366f1")}
+        ${badge(c.status, statusColor(c.status))} ${badge(c.category || "Case", "#c9a55c")} ${badge(c.type || "Litigation", "#6366f1")}
       </div>
       <hr class="divider"/>
       ${[
@@ -552,11 +574,11 @@ function renderCaseDetail() {
       ].map(([l, v]) => `
         <div style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
-          <div style="font-size:15px;color:var(--text)">${v}</div>
+          <div style="font-size:15px;color:var(--text)">${escHtml(v)}</div>
         </div>`).join("")}
       <div>
         <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
-        <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${c.narrative || ""}</div>
+        <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${escHtml(c.narrative || "")}</div>
       </div>`;
   }
 
@@ -564,22 +586,22 @@ function renderCaseDetail() {
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
     ${canEdit ? `
-      <div style="display:inline-flex;align-items:center;gap:12px">
-        <div style="display:inline-flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:4px 12px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
+      <div style="display:inline-flex;align-items:center;gap:10px">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 10px">
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
             <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 In
           </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
             <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
           </label>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload</button>
+        <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload Document</button>
       </div>` : `<span style="font-size:11px;color:var(--text-dim)">Protected File Repository</span>`
     }
   </div>`;
 
   if (docs.length === 0) {
-    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:28px;margin-bottom:6px">📎</div><div>${canEdit ? 'Click to attach a document' : 'No document records uploaded'}</div></div>`;
+    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:26px;margin-bottom:4px">📎</div><div>${canEdit ? 'Click to attach a document' : 'No document records uploaded'}</div></div>`;
   } else {
     const inboundDocs = docs.filter(d => d.fileType === "Inbound");
     const outboundDocs = docs.filter(d => d.fileType === "Outbound");
@@ -593,7 +615,7 @@ function renderCaseDetail() {
             <div>
               <div style="font-size:13px;color:var(--text);font-weight:600">
                 <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
-                  📄 ${doc.name}
+                  📄 ${escHtml(doc.name)}
                 </span>
               </div>
               <div style="font-size:12px;color:var(--text-dim)">
@@ -607,22 +629,18 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:16px 0 8px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
-    }
-
-    if (canEdit) {
-      docsHtml += `<div class="upload-area" style="margin-top:16px;border:1px dashed var(--border)" onclick="addDocToCase()">+ Add more documents</div>`;
     }
   }
   
@@ -635,7 +653,7 @@ function renderCaseDetail() {
       statusPanelEl.innerHTML = `
         <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
         ${STATUS_OPTIONS.map(st => `
-          <button onclick="updateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
+          <button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text-muted)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
             ${c.status === st ? "✓ " : ""}${st}
           </button>`).join("")}`;
     } else {
@@ -647,6 +665,17 @@ function renderCaseDetail() {
     }
   }
 }
+
+// ── CONFIRMATION BOX FOR STATUS UPDATE ──
+window.confirmUpdateCaseStatus = async function(st) {
+  if (!selCase) return;
+  if (selCase.status === st) return;
+  
+  if (!confirm(`Are you sure you want to update the status of "${selCase.title}" to "${st}"?`)) {
+    return;
+  }
+  updateCaseStatus(st);
+};
 
 async function updateCaseStatus(st) {
   try {
@@ -695,7 +724,7 @@ function renderQuickAccess() {
         ? `<img src="${p.photoUrl}" alt="${initials(p.name)}" class="quick-avatar" style="object-fit:cover;border:2px solid ${p.avatarColor || '#c9a84c'}">`
         : `<span class="quick-avatar" style="background:${p.avatarColor}22;border:2px solid ${p.avatarColor};color:${p.avatarColor}">${initials(p.name)}</span>`
       }
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${p.name}</span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px">${escHtml(p.name)}</span>
     </button>`).join("");
 }
 
@@ -737,8 +766,8 @@ function renderSidebarUser() {
   chip.innerHTML = `
     ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
     <div style="flex:1;min-width:0;text-align:left">
-      <div style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.name}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${myProf.email}</div>
+      <div style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.name)}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.email)}</div>
     </div>
   `;
   chip.style.display = "flex";
@@ -788,11 +817,11 @@ function updateAllFilterDropdowns() {
     const curStatus = statusSel.value;
     const curCat = catSel.value;
 
-    statusSel.innerHTML = `<option value="All">All Statuses</option>` + 
+    statusSel.innerHTML = `<option value="All">⚡ All Statuses</option>` + 
       STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join("");
     statusSel.value = curStatus || "All";
 
-    catSel.innerHTML = `<option value="All">All Categories</option>` + 
+    catSel.innerHTML = `<option value="All">📂 All Categories</option>` + 
       CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
     catSel.value = curCat || "All";
 
@@ -819,7 +848,7 @@ function refreshFilterTypes(prefix) {
 
   const distinctTypes = [...new Set(filteredTypes)].sort();
 
-  typeSel.innerHTML = `<option value="All">All Types</option>` + 
+  typeSel.innerHTML = `<option value="All">⚖️ All Types</option>` + 
     distinctTypes.map(t => `<option value="${t}">${t}</option>`).join("");
   
   if (distinctTypes.includes(curType)) {
@@ -836,7 +865,7 @@ function onFilterCategoryChange(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FIRM SCHEDULE & INTERACTIVE MONTHLY CALENDAR GRID
+//  FIRM SCHEDULE & REAL-TIME MONTHLY CALENDAR GRID
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
@@ -1142,7 +1171,6 @@ function renderMyProfile() {
     }
   }
 
-  // ── Two-Factor Authentication Status UI ──
   const tfaBadge = document.getElementById("setting-2fa-status-badge");
   const tfaBtn = document.getElementById("setting-2fa-action-btn");
   const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
@@ -2084,8 +2112,8 @@ function openShareCaseModal() {
             <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked ? 'checked' : ''} onchange="toggleShareRoleSelect('${p.ownerUid}', this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
             ${avatarDiv(p.name, p.avatarColor, 30, p.photoUrl)}
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
-              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.email}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
+              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.email)}</div>
             </div>
           </label>
           <select id="share-role-${p.ownerUid}" class="filter-select" style="width:105px;padding:4px 22px 4px 8px;font-size:11.5px;margin-left:8px;${!isChecked ? 'opacity:0.4;pointer-events:none' : ''}">
