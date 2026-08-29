@@ -17,15 +17,21 @@
   <div class="mobile-top-logo">
     ⚖️ <span>Simando Law</span>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <!-- Notification Bell & Dropdown Widget for Mobile -->
+  <div style="display:flex;align-items:center;gap:12px">
+    <!-- Chat Icon Trigger (Top Header Placement - No Bottom Overlay) -->
+    <button onclick="window._chat ? window._chat.toggleDock(event) : null" class="mobile-top-icon-btn" title="Messages" type="button">
+      💬
+      <span id="chat-dock-badge" class="chat-badge hidden" style="position:absolute;top:-2px;right:-4px;font-size:8.5px;padding:2px 4px">0</span>
+    </button>
+
+    <!-- Notification Bell & Dropdown Widget -->
     <div style="position:relative">
-      <button onclick="toggleNotifDropdown()" style="position:relative;font-size:20px;background:none;border:none;color:var(--text);padding:4px" title="Notifications">
+      <button onclick="toggleNotifDropdown()" class="mobile-top-icon-btn" title="Notifications" type="button">
         🔔
-        <span id="global-notif-badge" class="badge" style="position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;display:none;padding:2px 5px;font-size:9px;border-radius:10px">0</span>
+        <span id="global-notif-badge" class="badge" style="position:absolute;top:-2px;right:-4px;background:var(--red);color:#fff;display:none;padding:2px 5px;font-size:9px;border-radius:10px">0</span>
       </button>
 
-      <!-- Dropdown Popup Widget for Mobile -->
+      <!-- Dropdown Popup Widget -->
       <div id="notif-dropdown" class="hidden" style="position:absolute;top:38px;right:0;width:290px;max-height:380px;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:1000;display:flex;flex-direction:column;overflow:hidden">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)">
           <span style="font-size:12px;font-weight:700;color:var(--text)">🔔 Notifications</span>
@@ -253,10 +259,11 @@
         <button class="btn btn-primary mt-8" onclick="openAddCase()">+ Quick Add Case</button>
       </div>
 
-      <div class="grid4" style="grid-template-columns:1fr 1fr !important; gap:10px !important; margin-bottom:18px">
-        <div class="stat-card" style="padding:14px">
+      <!-- Stat Cards (Dynamic Admin-Level Visibility for Attorneys Count) -->
+      <div class="grid4" id="mobile-stats-grid" style="grid-template-columns:1fr 1fr !important; gap:10px !important; margin-bottom:18px">
+        <div class="stat-card" id="stat-card-profiles" style="padding:14px;display:none">
           <div id="stat-profiles" class="stat-number" style="color:var(--gold)">0</div>
-          <div class="stat-label">Attorneys</div>
+          <div class="stat-label">Attorneys (Admin)</div>
         </div>
         <div class="stat-card" style="padding:14px">
           <div id="stat-total" class="stat-number" style="color:var(--violet)">0</div>
@@ -264,7 +271,7 @@
         </div>
         <div class="stat-card" style="padding:14px">
           <div id="stat-ongoing" class="stat-number" style="color:var(--amber)">0</div>
-          <div class="stat-label">Active</div>
+          <div class="stat-label">Active Cases</div>
         </div>
         <div class="stat-card" style="padding:14px">
           <div id="stat-completed" class="stat-number" style="color:var(--green)">0</div>
@@ -289,7 +296,7 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW (LUXURY MOBILE CONTROL BAR + CLEAN GRID) ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -299,13 +306,12 @@
         <button class="btn btn-primary mt-8" onclick="openBusyModal()">📅 Set Availability</button>
       </div>
 
-      <!-- Luxury Mobile Styled Schedule Filter Bar -->
       <div class="schedule-filter-bar">
         <div class="schedule-filter-info">
           <div class="schedule-filter-icon">👥</div>
           <div>
             <div class="schedule-filter-label">Filter Calendar View</div>
-            <div class="schedule-filter-sub">Select attorney or full firm overview</div>
+            <div class="schedule-filter-sub">Select attorney or firm overview</div>
           </div>
         </div>
         <div class="schedule-filter-select-wrap">
@@ -328,7 +334,7 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES ── -->
+    <!-- ── ALL CASES (REORDERED SWITCH BUTTONS: ALL CATEGORIES & ALL STATUSES) ── -->
     <div id="view-allcases" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -339,21 +345,22 @@
       </div>
 
       <div class="card mb-12" style="padding:12px">
-        <input class="field-input mb-8" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
+        <input class="field-input mb-8" placeholder="🔍 Search cases, category, or title…" id="ac-search" oninput="renderAllCases()"/>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <select class="filter-select" id="ac-status" onchange="renderAllCases()">
-            <option value="All">All Statuses</option>
-          </select>
+          <!-- Reordered for instant one-tap switching -->
           <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')">
-            <option value="All">All Categories</option>
+            <option value="All">📂 All Categories</option>
+          </select>
+          <select class="filter-select" id="ac-status" onchange="renderAllCases()">
+            <option value="All">⚡ All Statuses</option>
           </select>
           <select class="filter-select" id="ac-type" onchange="renderAllCases()">
-            <option value="All">All Types</option>
+            <option value="All">⚖️ All Types</option>
           </select>
           <select class="filter-select" id="ac-sort" onchange="renderAllCases()">
-            <option value="asc">Due: Soonest</option>
-            <option value="desc">Due: Furthest</option>
-            <option value="none">Date Added</option>
+            <option value="asc">📅 Due: Soonest</option>
+            <option value="desc">📅 Due: Furthest</option>
+            <option value="none">Added Date</option>
           </select>
         </div>
       </div>
@@ -405,19 +412,19 @@
         <div class="card mb-12" style="padding:10px">
           <input class="field-input mb-8" placeholder="🔍 Search cases…" id="pd-search" oninput="renderProfileCases()"/>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <select class="filter-select" id="pd-status" onchange="renderProfileCases()">
-              <option value="All">All Statuses</option>
-            </select>
             <select class="filter-select" id="pd-category" onchange="onFilterCategoryChange('pd')">
-              <option value="All">All Categories</option>
+              <option value="All">📂 All Categories</option>
+            </select>
+            <select class="filter-select" id="pd-status" onchange="renderProfileCases()">
+              <option value="All">⚡ All Statuses</option>
             </select>
             <select class="filter-select" id="pd-type" onchange="renderProfileCases()">
-              <option value="All">All Types</option>
+              <option value="All">⚖️ All Types</option>
             </select>
             <select class="filter-select" id="pd-sort" onchange="renderProfileCases()">
-              <option value="asc">Due: Soonest</option>
-              <option value="desc">Due: Furthest</option>
-              <option value="none">Date Added</option>
+              <option value="asc">📅 Due: Soonest</option>
+              <option value="desc">📅 Due: Furthest</option>
+              <option value="none">Added Date</option>
             </select>
           </div>
         </div>
@@ -539,7 +546,7 @@
         <textarea class="field-input mb-12" id="cf-narrative" rows="3" placeholder="Briefly summarize background and claims..."></textarea>
         <div id="cf-narrative-err" class="field-err hidden">Narrative summary is required</div>
 
-        <!-- Documents Upload Card -->
+        <!-- Single Upload Control (Deduplicated) -->
         <div class="card mb-16" style="background:var(--surface2);padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:12px;font-weight:700;color:var(--text)">Attach Documents</span>
@@ -577,21 +584,21 @@
         <button class="btn btn-ghost btn-sm" id="cd-back-btn">← Back</button>
         <div id="cd-action-buttons-wrap" style="display:flex;gap:6px;align-items:center"></div>
       </div>
-      <div style="font-weight:700;font-size:20px;color:var(--text);margin-bottom:12px" id="cd-title"></div>
-      <div id="cd-profile-chip" style="display:inline-flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;cursor:pointer" onclick="openCurrentProfile()"></div>
+      <div style="font-weight:700;font-size:20px;color:var(--text);margin-bottom:8px" id="cd-title"></div>
+      <div id="cd-profile-chip" style="display:inline-flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;cursor:pointer" onclick="openCurrentProfile()"></div>
       <div class="card mb-12" id="cd-info" style="padding:16px"></div>
       <div class="card mb-12" id="cd-docs" style="padding:16px"></div>
       <div class="card" id="cd-status-panel" style="padding:16px"></div>
     </div>
 
-    <!-- ── MY USER SETTINGS ── -->
+    <!-- ── MY USER SETTINGS (HIGHLIGHTED PROFILE DETAILS & COMPLETE NAME) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
         <div class="page-sub">Personal profile, Drive connection, & security</div>
       </div>
 
-      <!-- Theme Switcher Card for Mobile -->
+      <!-- Theme Switcher Card -->
       <div class="card mb-16" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
@@ -605,13 +612,17 @@
         </div>
       </div>
 
-      <!-- Profile Details Card -->
-      <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">👤 Profile Details</div>
-        <label class="field-label">Display Name *</label>
-        <input class="field-input mb-12" id="setting-name" placeholder="e.g. Atty. Maria Garcia"/>
+      <!-- Profile Details Card (Highlighted Complete Name) -->
+      <div class="card mb-16" style="padding:18px;border:1.5px solid var(--gold-border)">
+        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          👤 Profile Details
+        </div>
+        <label class="field-label" style="color:var(--gold-light);font-weight:700">Complete Name / Display Name *</label>
+        <input class="field-input mb-12" id="setting-name" placeholder="e.g. Atty. Maria Garcia" style="border-color:var(--gold-border);font-weight:600"/>
+        
         <label class="field-label">Role / Designation *</label>
         <input class="field-input mb-12" id="setting-role" placeholder="e.g. Senior Partner"/>
+        
         <label class="field-label">Contact Number</label>
         <input class="field-input mb-12" id="setting-contact" placeholder="09XX-XXX-XXXX"/>
 
@@ -695,7 +706,7 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- Fixed Bottom Navigation Bar for Mobile Smartphones -->
+<!-- Fixed Bottom Navigation Bar -->
 <div class="mobile-bottom-nav">
   <button class="mobile-nav-item active" data-nav="dashboard" onclick="navTo('dashboard')">
     <span class="mobile-nav-item-icon">⚖️</span>
