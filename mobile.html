@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="css/mobile.css"/>
 <script src="js/redirect.js"></script>
 <script type="module" src="js/firebase-init.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <base target="_blank">
 </head>
 <body>
@@ -17,8 +18,8 @@
   <div class="mobile-top-logo">
     ⚖️ <span>Simando Law</span>
   </div>
-  <div style="display:flex;align-items:center;gap:12px">
-    <!-- Chat Icon Trigger (Top Header Placement - No Bottom Overlay) -->
+  <div style="display:flex;align-items:center;gap:10px">
+    <!-- Chat Icon Trigger (Top Header Placement) -->
     <button onclick="window._chat ? window._chat.toggleDock(event) : null" class="mobile-top-icon-btn" title="Messages" type="button">
       💬
       <span id="chat-dock-badge" class="chat-badge hidden" style="position:absolute;top:-2px;right:-4px;font-size:8.5px;padding:2px 4px">0</span>
@@ -153,6 +154,44 @@
   </div>
 </div>
 
+<!-- Two-Factor Authentication Setup Modal on Mobile -->
+<div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
+  <div class="modal-box" style="max-width: 440px; padding: 20px;">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+      🛡️ Set Up 2FA Authenticator
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
+      Scan this QR code with <strong>Microsoft Authenticator</strong>, <strong>Google Authenticator</strong>, or <strong>Apple Passwords</strong> on your phone.
+    </div>
+
+    <!-- QR Code Container -->
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:12px;border-radius:10px;margin-bottom:12px;width:fit-content;margin-left:auto;margin-right:auto">
+      <div id="tfa-setup-qrcode"></div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 12px;margin-bottom:14px;text-align:center">
+      <div style="font-size:9.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">Manual Entry Key</div>
+      <div id="tfa-setup-secret-key" style="font-family:monospace;font-size:12px;font-weight:700;color:var(--gold-light);margin-top:2px;letter-spacing:1.5px;word-break:break-all"></div>
+    </div>
+
+    <!-- Backup Recovery Codes -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes</div>
+      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px;color:var(--gold-light)"></div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label class="field-label">Confirm 6-Digit Code *</label>
+      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" inputmode="numeric" style="text-align:center;font-size:17px;font-weight:700;letter-spacing:3px"/>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()">Verify & Activate 2FA</button>
+      <button class="btn btn-ghost" onclick="closeTwoFactorSetupModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Share Case Modal -->
 <div id="share-modal" class="modal-overlay hidden" style="z-index:10000">
   <div class="modal-box" style="max-width:480px">
@@ -259,7 +298,7 @@
         <button class="btn btn-primary mt-8" onclick="openAddCase()">+ Quick Add Case</button>
       </div>
 
-      <!-- Stat Cards (Dynamic Admin-Level Visibility for Attorneys Count) -->
+      <!-- Stat Cards -->
       <div class="grid4" id="mobile-stats-grid" style="grid-template-columns:1fr 1fr !important; gap:10px !important; margin-bottom:18px">
         <div class="stat-card" id="stat-card-profiles" style="padding:14px;display:none">
           <div id="stat-profiles" class="stat-number" style="color:var(--gold)">0</div>
@@ -334,7 +373,7 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES (REORDERED SWITCH BUTTONS: ALL CATEGORIES & ALL STATUSES) ── -->
+    <!-- ── ALL CASES ── -->
     <div id="view-allcases" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -347,7 +386,6 @@
       <div class="card mb-12" style="padding:12px">
         <input class="field-input mb-8" placeholder="🔍 Search cases, category, or title…" id="ac-search" oninput="renderAllCases()"/>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <!-- Reordered for instant one-tap switching -->
           <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')">
             <option value="All">📂 All Categories</option>
           </select>
@@ -546,7 +584,7 @@
         <textarea class="field-input mb-12" id="cf-narrative" rows="3" placeholder="Briefly summarize background and claims..."></textarea>
         <div id="cf-narrative-err" class="field-err hidden">Narrative summary is required</div>
 
-        <!-- Single Upload Control (Deduplicated) -->
+        <!-- Single Upload Control -->
         <div class="card mb-16" style="background:var(--surface2);padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:12px;font-weight:700;color:var(--text)">Attach Documents</span>
@@ -591,11 +629,25 @@
       <div class="card" id="cd-status-panel" style="padding:16px"></div>
     </div>
 
-    <!-- ── MY USER SETTINGS (HIGHLIGHTED PROFILE DETAILS & COMPLETE NAME) ── -->
+    <!-- ── MY USER SETTINGS (WITH ADMIN PORTAL BUTTON & 2FA MANAGER) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
-        <div class="page-sub">Personal profile, Drive connection, & security</div>
+        <div class="page-sub">Personal profile, Drive connection, & 2FA security</div>
+      </div>
+
+      <!-- Admin Console Card (Dynamically Displayed for Admins on Mobile) -->
+      <div class="card mb-16" id="mobile-admin-portal-card" style="display:none;background:rgba(201,168,76,0.06);border:1.5px solid var(--gold-border);padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:14px;font-weight:700;color:var(--gold)">🛡️ Admin Control Console</div>
+          <span class="badge" style="background:var(--gold);color:#060c13;font-weight:700">ADMIN ACCESS</span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.4">
+          Manage firm attorney accounts, edit designations, grant admin privileges, and manage security settings.
+        </div>
+        <button class="btn btn-primary" onclick="window.location.assign('admin.html')" style="width:100%">
+          Open Admin Console →
+        </button>
       </div>
 
       <!-- Theme Switcher Card -->
@@ -612,7 +664,7 @@
         </div>
       </div>
 
-      <!-- Profile Details Card (Highlighted Complete Name) -->
+      <!-- Profile Details Card (Complete Name) -->
       <div class="card mb-16" style="padding:18px;border:1.5px solid var(--gold-border)">
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:6px">
           👤 Profile Details
@@ -669,6 +721,22 @@
           </svg>
           <span id="settings-connect-drive-text">Connect Google Drive</span>
         </button>
+      </div>
+
+      <!-- Two-Factor Authentication Security Card on Mobile -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">🛡️ Two-Factor Authentication (2FA)</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-bottom:12px">
+          Secure case documents using Microsoft Authenticator or Google Authenticator.
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <span style="font-size:12px;font-weight:600">Status:</span>
+          <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
+        </div>
+        <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="width:100%">Set Up 2FA Authenticator</button>
+        <div id="setting-2fa-backup-wrap" style="display:none;margin-top:10px;text-align:center">
+          <span style="font-size:11px;color:var(--text-dim)">Backup codes active in your security profile.</span>
+        </div>
       </div>
 
       <!-- Login & Security Card -->
