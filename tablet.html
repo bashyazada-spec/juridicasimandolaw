@@ -8,8 +8,9 @@
 <!-- 1. Instant 0ms Device Router -->
 <script src="js/redirect.js"></script>
 
-<!-- 2. Firebase & Tablet Stylesheet -->
+<!-- 2. Firebase, QRCode Library & Tablet Stylesheet -->
 <script type="module" src="js/firebase-init.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/tablet.css"/>
 <base target="_blank">
@@ -140,6 +141,44 @@
 
     <div style="display:flex;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
       <button class="btn btn-ghost btn-sm" onclick="closeDateScheduleModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Factor Authentication Setup Modal for Tablet -->
+<div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
+  <div class="modal-box" style="max-width: 480px;">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+      🛡️ Set Up Two-Factor Authentication
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
+      Scan the QR code below using <strong>Microsoft Authenticator</strong>, <strong>Google Authenticator</strong>, or <strong>Apple Passwords</strong>.
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:16px;border-radius:12px;margin-bottom:14px;width:fit-content;margin-left:auto;margin-right:auto">
+      <div id="tfa-setup-qrcode"></div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;text-align:center">
+      <div style="font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px">Manual Entry Key</div>
+      <div id="tfa-setup-secret-key" style="font-family:monospace;font-size:13px;font-weight:700;color:var(--gold-light);margin-top:2px;letter-spacing:2px"></div>
+    </div>
+
+    <!-- Backup Recovery Codes Section -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes</div>
+      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--gold-light)"></div>
+    </div>
+
+    <!-- Verification Step -->
+    <div style="margin-bottom:20px">
+      <label class="field-label">Confirm 6-Digit Code *</label>
+      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" style="text-align:center;font-size:18px;font-weight:700;letter-spacing:4px"/>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeTwoFactorSetupModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()">Verify & Activate 2FA</button>
     </div>
   </div>
 </div>
@@ -378,7 +417,7 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW (FULL-WIDTH CLEAN TABLET GRID) ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -708,7 +747,7 @@
       </div>
     </div>
 
-    <!-- ── MY USER SETTINGS / PROFILE ── -->
+    <!-- ── MY USER SETTINGS / PROFILE (WITH 2FA CARD FOR TABLET) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -760,6 +799,7 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- Google Drive Integration -->
           <div class="card">
             <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px">
               ☁️ Google Drive Connection
@@ -784,6 +824,25 @@
             </button>
           </div>
 
+          <!-- Two-Factor Authentication Security Card for Tablet -->
+          <div class="card">
+            <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px">
+              🛡️ Two-Factor Authentication (2FA)
+            </div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:16px">
+              Protect client files and account access using Microsoft Authenticator or Google Authenticator.
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+              <span style="font-size:13px;font-weight:600">Status:</span>
+              <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
+            </div>
+            <button id="setting-2fa-action-btn" class="btn btn-primary" onclick="openTwoFactorSetupModal()" style="width:100%">Set Up 2FA Authenticator</button>
+            <div id="setting-2fa-backup-wrap" style="display:none;margin-top:12px;text-align:center">
+              <span style="font-size:11px;color:var(--text-dim)">Backup codes active in your security profile.</span>
+            </div>
+          </div>
+
+          <!-- Login & Security -->
           <div class="card">
             <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:8px">
               🔒 Login & Security
