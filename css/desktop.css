@@ -245,20 +245,21 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr !important; gap: 24px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-/* ── LUXURY SCHEDULE FILTER BAR (ROSTER SCOPE SELECTOR) ── */
+/* ── LUXURY SCHEDULE FILTER BAR (ADAPTIVE LIGHT & DARK THEME) ── */
 .schedule-filter-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: linear-gradient(145deg, rgba(12, 24, 38, 0.95), rgba(9, 20, 34, 0.98));
+  background: var(--surface);
   border: 1px solid var(--gold-border);
   border-radius: 14px;
   padding: 14px 20px;
   margin-bottom: 24px;
-  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(201, 165, 92, 0.1);
+  box-shadow: var(--shadow-sm);
   width: 100%;
   max-width: 1100px;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .schedule-filter-info {
@@ -271,7 +272,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(201, 165, 92, 0.12);
+  background: var(--surface2);
   border: 1px solid var(--gold-border);
   display: flex;
   align-items: center;
@@ -309,25 +310,28 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   background-position: right 14px center;
   border: 1.5px solid var(--gold-border);
   border-radius: 10px;
-  color: var(--gold-light);
+  color: var(--text);
   font-size: 13.5px;
   font-weight: 600;
   padding: 10px 38px 10px 14px;
   outline: none;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
   transition: all 0.2s ease;
 }
 
 .schedule-filter-select:hover {
   border-color: var(--gold);
   background-color: var(--surface3);
-  box-shadow: var(--shadow-gold);
 }
 
 .schedule-filter-select:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(201, 165, 92, 0.2);
+  box-shadow: 0 0 0 3px var(--gold-dim);
+}
+
+[data-theme="light"] .schedule-filter-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2l4.5 4.5 4.5-4.5' stroke='%23aa7c11' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .case-row { display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
