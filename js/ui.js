@@ -219,7 +219,6 @@ function renderDashboard() {
          :                  {col:"var(--text-dim)",label:daysLeft + "d left"})
         : null;
 
-      // Category Pill Highlight
       const categoryBadge = `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);white-space:nowrap;display:inline-block">${escHtml(c.category || "Case")}</span>`;
 
       return `<div class="flex-center gap-10" style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="openCase('${c.id}')" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
@@ -666,7 +665,7 @@ function renderCaseDetail() {
   }
 }
 
-// ── CONFIRMATION BOX FOR STATUS UPDATE ──
+// ── CONFIRMATION PROMPT BEFORE UPDATING STATUS ──
 window.confirmUpdateCaseStatus = async function(st) {
   if (!selCase) return;
   if (selCase.status === st) return;
@@ -744,6 +743,7 @@ function openCase(id) {
   renderCaseDetail();
 }
 
+// ── USER CHIP (DYNAMIC THEME COLORS & NAME DISPLAY) ──
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
@@ -766,8 +766,8 @@ function renderSidebarUser() {
   chip.innerHTML = `
     ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
     <div style="flex:1;min-width:0;text-align:left">
-      <div style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.name)}</div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.email)}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.name)}</div>
+      <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.role || "Attorney")}</div>
     </div>
   `;
   chip.style.display = "flex";
@@ -2112,8 +2112,8 @@ function openShareCaseModal() {
             <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked ? 'checked' : ''} onchange="toggleShareRoleSelect('${p.ownerUid}', this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
             ${avatarDiv(p.name, p.avatarColor, 30, p.photoUrl)}
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
-              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.email)}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.email}</div>
             </div>
           </label>
           <select id="share-role-${p.ownerUid}" class="filter-select" style="width:105px;padding:4px 22px 4px 8px;font-size:11.5px;margin-left:8px;${!isChecked ? 'opacity:0.4;pointer-events:none' : ''}">
