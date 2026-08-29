@@ -39,12 +39,70 @@
     align-items: center;
     gap: 8px;
   }
+
+  /* Responsive Mobile Overrides for Admin Console */
+  @media (max-width: 768px) {
+    #app {
+      flex-direction: column !important;
+    }
+    #sidebar {
+      position: static !important;
+      width: 100% !important;
+      height: auto !important;
+      border-right: none !important;
+      border-bottom: 1px solid var(--border) !important;
+      padding: 14px 16px !important;
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+    }
+    #sidebar .logo-sub, #sidebar .nav-section, #sidebar .sidebar-footer {
+      display: none !important;
+    }
+    #sidebar .logo-img {
+      max-width: 130px !important;
+      margin-bottom: 0 !important;
+    }
+    #main {
+      margin-left: 0 !important;
+      padding: 20px 14px 60px 14px !important;
+      width: 100% !important;
+    }
+    .page-hdr {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 12px !important;
+      padding-right: 0 !important;
+    }
+    .page-title {
+      font-size: 26px !important;
+    }
+    .page-hdr button {
+      width: 100% !important;
+      justify-content: center !important;
+    }
+    .action-btn-group {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 4px !important;
+    }
+    .action-btn-group button {
+      width: 100% !important;
+      justify-content: center !important;
+      padding: 4px 8px !important;
+      font-size: 11px !important;
+    }
+  }
 </style>
 </head>
 <body>
 
 <!-- Toast Alert -->
 <div id="toast"></div>
+
+<!-- Mobile Back Button -->
+<div style="display:none;" id="mobile-admin-header-bar"></div>
 
 <!-- Initial Security Verification Screen -->
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
@@ -56,7 +114,7 @@
 
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
-    <div class="logo-wrap">
+    <div class="logo-wrap" style="padding:0">
       <svg class="logo-img" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
         <rect x="10" y="10" width="80" height="100" rx="4" fill="none" stroke="#c9a84c" stroke-width="2"/>
         <line x1="50" y1="20" x2="50" y2="100" stroke="#c9a84c" stroke-width="2"/>
@@ -71,7 +129,7 @@
       </svg>
       <div class="logo-sub">Firm Control Center</div>
     </div>
-    <div style="flex:1">
+    <div style="flex:1" class="desktop-only-controls">
       <div class="nav-section">Controls</div>
       <button class="nav-btn active">👥&nbsp;&nbsp;Attorney Database</button>
     </div>
@@ -79,6 +137,8 @@
       <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:12px;color:var(--gold-light)">↩ Return to CMS</a>
       Simando Law Admin v2.0
     </div>
+    <!-- Mobile Return Button -->
+    <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="display:inline-flex;padding:6px 12px;font-size:11px;color:var(--gold-light)">↩ Return</a>
   </div>
 
   <!-- ══════ MAIN CONTENT ══════ -->
@@ -93,7 +153,7 @@
         </div>
         <button class="btn btn-primary" onclick="openCreateModal()">+ Create Account</button>
       </div>
-      <div class="card">
+      <div class="card" style="padding:16px">
         <div style="overflow-x:auto">
           <table class="admin-table">
             <thead>
@@ -119,7 +179,7 @@
 
 <!-- Account Creation Modal -->
 <div id="create-modal" class="modal-overlay hidden" style="z-index: 10000;">
-  <div class="modal-box" style="max-width: 480px;">
+  <div class="modal-box" style="max-width: 480px; padding: 22px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
       👤 Create New Account
     </div>
@@ -159,7 +219,7 @@
 
 <!-- Edit Profile & Role Modal -->
 <div id="edit-modal" class="modal-overlay hidden" style="z-index: 10001;">
-  <div class="modal-box" style="max-width: 500px;">
+  <div class="modal-box" style="max-width: 500px; padding: 22px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
       ✏️ Edit Attorney Account
     </div>
@@ -359,7 +419,7 @@
               ${avatarDiv(p.name, p.avatarColor, 34, p.photoUrl)}
               <div>
                 <div style="font-weight:600;font-size:14px">${escHtml(p.name)}</div>
-                <div style="font-size:11px;color:var(--text-dim)">${p.contact || "No contact"}</div>
+                <div style="font-size:11px;color:var(--text-dim)">${escHtml(p.contact || "No contact")}</div>
               </div>
             </div>
           </td>
@@ -408,7 +468,7 @@
     document.getElementById("edit-role").value = p.role || "Attorney";
 
     const desc2FA = document.getElementById("edit-2fa-status-desc");
-    const resetBtn2FA = document.getElementById("btn-admin-reset-2FA");
+    const resetBtn2FA = document.getElementById("btn-admin-reset-2fa");
 
     if (p.twoFactorEnabled) {
       if (desc2FA) desc2FA.innerHTML = `<span style="color:var(--green);font-weight:600">Active (Authenticator)</span>`;
