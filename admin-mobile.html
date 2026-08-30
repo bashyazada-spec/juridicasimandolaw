@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Simando Law — Admin Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/mobile.css"/>
+<script type="module" src="js/firebase-init.js"></script>
+<base target="_blank">
+
+<style>
+  body {
+    padding-bottom: 30px !important;
+  }
+  .admin-mobile-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 900;
+  }
+  .admin-badge {
+    background: var(--gold);
+    color: #060c13;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .attorney-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .attorney-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .attorney-details {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .chip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Toast Alert -->
+<div id="toast"></div>
+
+<!-- Initial Security Verification Screen -->
+<div id="loading-screen" style="position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center">
+  <div class="spinner"></div>
+  <div style="font-size:13.5px;color:var(--text-muted);font-weight:600" id="gate-message">Verifying Administrator Privileges...</div>
+</div>
+
+<!-- Mobile Header Bar -->
+<div class="admin-mobile-top">
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:18px">🛡️</span>
+    <span style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--gold)">Admin Console</span>
+  </div>
+  <a href="mobile.html" target="_self" class="btn btn-secondary btn-sm" style="width:auto !important;padding:5px 12px !important;font-size:11.5px !important;color:var(--gold-light)">
+    ↩ Return to CMS
+  </a>
+</div>
+
+<!-- Main Mobile Content Area -->
+<div id="main" style="padding:16px 14px 40px 14px !important">
+  
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text)">Attorney Roster</div>
+      <div style="font-size:11.5px;color:var(--text-dim)" id="admin-directory-sub">Managing firm access profiles</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openCreateModal()" style="width:auto !important;font-size:12px;padding:7px 12px !important">
+      + Create Account
+    </button>
+  </div>
+
+  <!-- Search Bar -->
+  <input class="field-input mb-14" id="admin-search-input" placeholder="🔍 Search attorney name, email, or role…" oninput="filterAttorneyRoster()"/>
+
+  <!-- Roster Container (Card layout for phones) -->
+  <div id="admin-attorney-list">
+    <!-- Populated dynamically -->
+  </div>
+
+</div>
+
+<!-- Create Account Modal for Mobile -->
+<div id="create-modal" class="modal-overlay hidden" style="z-index: 10000;">
+  <div class="modal-box" style="padding:18px;max-width:100%;">
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+      👤 Create New Account
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
+      Initialize credentials and create attorney profile.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <div>
+        <label class="field-label">Full Name *</label>
+        <input type="text" class="field-input" id="new-name" placeholder="e.g. Atty. Jane Doe" autocomplete="off"/>
+      </div>
+      <div>
+        <label class="field-label">Email Address *</label>
+        <input type="email" class="field-input" id="new-email" placeholder="jane.doe@simandolaw.com" autocomplete="off"/>
+      </div>
+      <div>
+        <label class="field-label">Role / Privilege *</label>
+        <select class="field-input" id="new-role">
+          <option value="Attorney">Attorney</option>
+          <option value="Associate Attorney">Associate Attorney</option>
+          <option value="Senior Partner">Senior Partner</option>
+          <option value="Managing Partner">Managing Partner</option>
+          <option value="admin">Firm Administrator 🛡️</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Initial Password *</label>
+        <input type="password" class="field-input" id="new-password" placeholder="••••••••" autocomplete="new-password"/>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" id="btn-create-submit">Create Account</button>
+      <button class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile & Role Modal for Mobile -->
+<div id="edit-modal" class="modal-overlay hidden" style="z-index: 10001;">
+  <div class="modal-box" style="padding:18px;max-width:100%;">
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+      ✏️ Edit Attorney Profile
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
+      Modify account info, role privileges, and security settings.
+    </div>
+
+    <input type="hidden" id="edit-profile-id"/>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <div>
+        <label class="field-label">Full Name *</label>
+        <input type="text" class="field-input" id="edit-name" placeholder="Full Name"/>
+      </div>
+
+      <div>
+        <label class="field-label">Email Address *</label>
+        <input type="email" class="field-input" id="edit-email" placeholder="email@simandolaw.com"/>
+      </div>
+
+      <div>
+        <label class="field-label">Contact Number</label>
+        <input type="text" class="field-input" id="edit-contact" placeholder="09XX-XXX-XXXX"/>
+      </div>
+
+      <div>
+        <label class="field-label">Role Designation *</label>
+        <select class="field-input" id="edit-role" style="font-weight:700">
+          <option value="Attorney">Attorney</option>
+          <option value="Associate Attorney">Associate Attorney</option>
+          <option value="Senior Partner">Senior Partner</option>
+          <option value="Managing Partner">Managing Partner</option>
+          <option value="admin">Firm Administrator 🛡️</option>
+        </select>
+      </div>
+
+      <!-- 2FA Security Administration -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--text)">Two-Factor (2FA)</div>
+          <div id="edit-2fa-status-desc" style="font-size:10.5px;color:var(--text-dim)">Status</div>
+        </div>
+        <button id="btn-admin-reset-2fa" class="btn btn-danger btn-sm" type="button" onclick="adminResetUser2FA()" style="width:auto !important;padding:4px 8px !important;font-size:10.5px !important;display:none">Reset 2FA</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" id="btn-edit-submit" onclick="saveAdminProfileEdit()">Save Changes</button>
+      <button class="btn btn-ghost" onclick="closeAdminEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+
+<script type="module">
+  import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDIDs21G2wWy-Wd72wb-iWNMCTy0_KlADo",
+    authDomain: "simando.firebaseapp.com",
+    projectId: "simando",
+    storageBucket: "simando.firebasestorage.app",
+    messagingSenderId: "625959608817",
+    appId: "1:625959608817:web:0c571d94f720658e97a450"
+  };
+
+  let db, auth;
+  let adminProfiles = [];
+
+  function bounceUser(msg) {
+    const el = document.getElementById("gate-message");
+    if (el) el.innerHTML = `<span style="color:var(--red)">❌ ${msg}</span><br><br><a href="mobile.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
+    showToast(msg, "error");
+    setTimeout(() => {
+      window.location.replace("mobile.html");
+    }, 2500);
+  }
+
+  async function runAdminVerification() {
+    db = window._db;
+    auth = window._auth;
+
+    if (!auth || !db) {
+      setTimeout(runAdminVerification, 300);
+      return;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        bounceUser("Please sign in first.");
+        return;
+      }
+
+      try {
+        const userEmail = (user.email || "").toLowerCase();
+        const isEmailAdmin = typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
+
+        const docRef = doc(db, "profiles", user.uid);
+        const docSnap = await getDoc(docRef);
+
+        let isAdmin = false;
+
+        if (docSnap.exists() && (docSnap.data().role === "admin" || isEmailAdmin)) {
+          isAdmin = true;
+        } else {
+          const pSnap = await getDocs(collection(db, "profiles"));
+          const matched = pSnap.docs.find(d => {
+            const data = d.data();
+            return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) &&
+                   (data.role === "admin" || isEmailAdmin);
+          });
+          if (matched || isEmailAdmin) {
+            isAdmin = true;
+          }
+        }
+
+        if (isAdmin) {
+          const loader = document.getElementById("loading-screen");
+          if (loader) loader.style.display = "none";
+          showToast("Admin Verified");
+          initMobileAdmin();
+        } else {
+          bounceUser("Unauthorized. Administrator access required.");
+        }
+      } catch (err) {
+        console.error("Admin check error:", err);
+        bounceUser("Verification failed: " + err.message);
+      }
+    });
+  }
+
+  if (window._fbReady) {
+    runAdminVerification();
+  } else {
+    document.addEventListener("firebase-ready", runAdminVerification);
+  }
+
+  async function initMobileAdmin() {
+    await loadDirectoryProfiles();
+    renderMobileAttorneyRoster(adminProfiles);
+  }
+
+  async function loadDirectoryProfiles() {
+    try {
+      const pSnap = await getDocs(collection(db, "profiles"));
+      adminProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const subEl = document.getElementById("admin-directory-sub");
+      if (subEl) {
+        subEl.textContent = `${adminProfiles.length} registered attorney profile${adminProfiles.length !== 1 ? 's' : ''}`;
+      }
+    } catch (err) {
+      console.error("Error loading directory:", err);
+      showToast("Directory load failed.", "error");
+    }
+  }
+
+  function renderMobileAttorneyRoster(list) {
+    const container = document.getElementById("admin-attorney-list");
+    if (!container) return;
+
+    if (list.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div>No attorney profiles found.</div></div>`;
+      return;
+    }
+
+    container.innerHTML = list.map(p => {
+      const isAdminProfile = p.role === "admin";
+      const is2FA = !!(p.twoFactorEnabled && p.twoFactorSecret);
+
+      return `
+        <div class="attorney-card">
+          <div class="attorney-header">
+            ${avatarDiv(p.name, p.avatarColor, 42, p.photoUrl)}
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
+              <div style="font-size:11.5px;color:${isAdminProfile ? 'var(--gold)' : 'var(--text-muted)'};font-weight:600">
+                ${isAdminProfile ? 'Firm Administrator 🛡️' : escHtml(p.role || 'Attorney')}
+              </div>
+            </div>
+          </div>
+
+          <div class="attorney-details">
+            <div><strong style="color:var(--text-dim)">Email:</strong> ${escHtml(p.email || 'N/A')}</div>
+            <div><strong style="color:var(--text-dim)">Contact:</strong> ${escHtml(p.contact || 'None')}</div>
+            
+            <div class="chip-row" style="margin-top:4px">
+              ${p.driveFolderId 
+                ? `<span style="font-size:10px;font-weight:700;color:var(--green);background:rgba(52,211,153,0.12);padding:2px 6px;border-radius:4px">● Drive Linked</span>`
+                : `<span style="font-size:10px;font-weight:700;color:var(--amber);background:rgba(251,191,36,0.12);padding:2px 6px;border-radius:4px">⚠ No Drive</span>`
+              }
+              ${is2FA 
+                ? `<span style="font-size:10px;font-weight:700;color:var(--green);background:rgba(52,211,153,0.12);padding:2px 6px;border-radius:4px">🔒 2FA Active</span>`
+                : `<span style="font-size:10px;color:var(--text-dim);background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:4px">2FA Off</span>`
+              }
+            </div>
+          </div>
+
+          <div class="action-grid">
+            <button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')">✏️ Edit Profile</button>
+            <button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${p.name.replace(/'/g, "\\'")}')">🗑️ Remove</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  window.filterAttorneyRoster = function() {
+    const q = (document.getElementById("admin-search-input")?.value || "").toLowerCase().trim();
+    if (!q) {
+      renderMobileAttorneyRoster(adminProfiles);
+      return;
+    }
+    const filtered = adminProfiles.filter(p => 
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.email && p.email.toLowerCase().includes(q)) ||
+      (p.role && p.role.toLowerCase().includes(q))
+    );
+    renderMobileAttorneyRoster(filtered);
+  };
+
+  let currentEditingProfile = null;
+
+  window.openAdminEditModal = function(profileId) {
+    const p = adminProfiles.find(x => x.id === profileId);
+    if (!p) return;
+
+    currentEditingProfile = p;
+
+    document.getElementById("edit-profile-id").value = p.id;
+    document.getElementById("edit-name").value = p.name || "";
+    document.getElementById("edit-email").value = p.email || "";
+    document.getElementById("edit-contact").value = p.contact || "";
+    document.getElementById("edit-role").value = p.role || "Attorney";
+
+    const desc2FA = document.getElementById("edit-2fa-status-desc");
+    const resetBtn2FA = document.getElementById("btn-admin-reset-2fa");
+
+    if (p.twoFactorEnabled) {
+      if (desc2FA) desc2FA.innerHTML = `<span style="color:var(--green);font-weight:700">Active (Authenticator)</span>`;
+      if (resetBtn2FA) resetBtn2FA.style.display = "inline-flex";
+    } else {
+      if (desc2FA) desc2FA.innerHTML = `Not enabled`;
+      if (resetBtn2FA) resetBtn2FA.style.display = "none";
+    }
+
+    document.getElementById("edit-modal").classList.remove("hidden");
+  };
+
+  window.closeAdminEditModal = function() {
+    document.getElementById("edit-modal").classList.add("hidden");
+    currentEditingProfile = null;
+  };
+
+  window.saveAdminProfileEdit = async function() {
+    const profId = document.getElementById("edit-profile-id").value;
+    const name = document.getElementById("edit-name").value.trim();
+    const email = document.getElementById("edit-email").value.trim();
+    const contact = document.getElementById("edit-contact").value.trim();
+    const role = document.getElementById("edit-role").value;
+
+    if (!name || !email) {
+      showToast("Name and Email are required.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-edit-submit");
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+
+    try {
+      showToast("Updating profile...");
+      await updateDoc(doc(db, "profiles", profId), {
+        name,
+        email,
+        contact,
+        role
+      });
+      showToast("Profile & role updated!");
+
+      closeAdminEditModal();
+      await loadDirectoryProfiles();
+      renderMobileAttorneyRoster(adminProfiles);
+    } catch (err) {
+      console.error("Edit error:", err);
+      showToast("Failed to save: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Save Changes";
+    }
+  };
+
+  window.adminResetUser2FA = async function() {
+    if (!currentEditingProfile) return;
+    if (!confirm(`Reset 2FA for ${currentEditingProfile.name}?`)) return;
+
+    try {
+      showToast("Resetting 2FA...");
+      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        twoFactorBackupCodes: []
+      });
+
+      currentEditingProfile.twoFactorEnabled = false;
+      currentEditingProfile.twoFactorSecret = null;
+      currentEditingProfile.twoFactorBackupCodes = [];
+
+      document.getElementById("edit-2fa-status-desc").innerHTML = "2FA disabled.";
+      document.getElementById("btn-admin-reset-2fa").style.display = "none";
+
+      showToast("2FA reset!");
+      await loadDirectoryProfiles();
+      renderMobileAttorneyRoster(adminProfiles);
+    } catch (err) {
+      console.error("2FA reset error:", err);
+      showToast("Failed: " + err.message, "error");
+    }
+  };
+
+  window.adminDeleteProfile = async function(profileId, name) {
+    if (!confirm(`Delete profile: ${name}?\nAction cannot be undone.`)) return;
+
+    try {
+      showToast("Removing profile...");
+      await deleteDoc(doc(db, "profiles", profileId));
+      showToast("Profile removed.");
+      await loadDirectoryProfiles();
+      renderMobileAttorneyRoster(adminProfiles);
+    } catch (err) {
+      console.error(err);
+      showToast("Failed: " + err.message, "error");
+    }
+  };
+
+  window.openCreateModal = function() {
+    document.getElementById("new-name").value = "";
+    document.getElementById("new-email").value = "";
+    document.getElementById("new-password").value = "";
+    document.getElementById("new-role").value = "Attorney";
+    document.getElementById("create-modal").classList.remove("hidden");
+  };
+
+  window.closeCreateModal = function() {
+    document.getElementById("create-modal").classList.add("hidden");
+  };
+
+  document.getElementById("btn-create-submit").addEventListener("click", async () => {
+    const name = document.getElementById("new-name").value.trim();
+    const email = document.getElementById("new-email").value.trim();
+    const password = document.getElementById("new-password").value;
+    const role = document.getElementById("new-role").value;
+
+    if (!name || !email || !password) {
+      showToast("All fields are required.", "error");
+      return;
+    }
+    if (password.length < 6) {
+      showToast("Password must be at least 6 characters.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-create-submit");
+    btn.disabled = true;
+    btn.textContent = "Creating...";
+
+    let secondaryApp;
+    try {
+      const secondaryAppName = "SimandoLawMobileReg_" + Date.now();
+      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const user = userCredential.user;
+
+      const colors = ["#c9a84c", "#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#06b6d4", "#a855f7", "#ec4899"];
+      const randColor = colors[Math.floor(Math.random() * colors.length)];
+
+      const newProfile = {
+        name: name,
+        email: email,
+        role: role,
+        contact: "",
+        avatarColor: randColor,
+        photoUrl: null,
+        ownerUid: user.uid,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        twoFactorBackupCodes: [],
+        createdAt: new Date().toISOString().slice(0, 10)
+      };
+
+      await setDoc(doc(db, "profiles", user.uid), newProfile);
+
+      showToast("Account created!");
+      closeCreateModal();
+
+      await loadDirectoryProfiles();
+      renderMobileAttorneyRoster(adminProfiles);
+
+    } catch (err) {
+      console.error("Account creation failed:", err);
+      showToast(err.message || "Failed to create account", "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Create Account";
+      if (secondaryApp) {
+        await deleteApp(secondaryApp).catch(console.error);
+      }
+    }
+  });
+
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+</script>
+</body>
+</html>
