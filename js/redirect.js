@@ -1,13 +1,11 @@
 // ═══════════════════════════════════════════════════════════════
-//  LOOP-PROOF AUTOMATIC DEVICE ROUTER
+//  SIMANDO LAW — AUTOMATIC DEVICE ROUTER (CMS & ADMIN CONSOLE)
 // ═══════════════════════════════════════════════════════════════
 
 (function autoDeviceRedirect() {
-  // Extract and normalize current filename from URL path
   let path = window.location.pathname;
   let currentFile = path.substring(path.lastIndexOf('/') + 1).toLowerCase();
   
-  // Normalize root URL or empty filename to "index.html"
   if (currentFile === "" || currentFile === "index" || currentFile === "index.html") {
     currentFile = "index.html";
   }
@@ -15,29 +13,34 @@
   const w = window.innerWidth;
   const ua = navigator.userAgent;
   const isTouch = navigator.maxTouchPoints > 0;
+  const isMobile = /Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle/i.test(ua) || w < 600;
+  const isTablet = (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua) || (w >= 600 && w <= 1024 && isTouch)) && !isMobile;
 
-  let targetFile = "index.html";
+  let targetFile = currentFile;
 
-  // 1. Detect Tablet / iPad
-  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua) || (w >= 600 && w <= 1024 && isTouch)) {
-    targetFile = "tablet.html";
-  } 
-  // 2. Detect Mobile Phone (iPhone / Android)
-  else if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle/i.test(ua) || w < 600) {
-    targetFile = "mobile.html";
-  } 
-  // 3. Desktop / Laptop
-  else {
-    targetFile = "index.html";
+  // 1. ROUTING FOR ADMIN CONSOLE
+  if (currentFile === "admin.html" || currentFile === "admin-mobile.html" || currentFile === "admin") {
+    if (isMobile) {
+      targetFile = "admin-mobile.html";
+    } else {
+      targetFile = "admin.html";
+    }
+  }
+  // 2. ROUTING FOR CASE MANAGEMENT SYSTEM (CMS)
+  else if (currentFile === "index.html" || currentFile === "tablet.html" || currentFile === "mobile.html") {
+    if (isTablet) {
+      targetFile = "tablet.html";
+    } else if (isMobile) {
+      targetFile = "mobile.html";
+    } else {
+      targetFile = "index.html";
+    }
   }
 
-  // CRITICAL LOOP PROTECTION:
-  // If the user is ALREADY on the target page, stop immediately and do NOT redirect!
+  // LOOP PROTECTION: Don't redirect if already on target file
   if (currentFile === targetFile) {
     return;
   }
 
-  // Execute redirection only when moving to a different device file
-  console.log(`[Device Router] Redirecting from ${currentFile} -> ${targetFile}`);
   window.location.replace(targetFile);
 })();
