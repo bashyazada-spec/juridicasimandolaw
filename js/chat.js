@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — MESSENGER-STYLE CHAT DOCK & CONVERSATIONS
 //  Clean Floating Trigger on Desktop · Top Header Bar on Mobile
+//  Mutually Exclusive with Notification Dropdown Popup
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -65,10 +66,9 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD — DOCK BAR (DESKTOP/TABLET) & FULL CHAT PANEL
-  // ═══════════════════════════════════════════════════════════════
+  //  UI BUILD — DOCK BAR (DESKTOP/TABLET) & EXPANDABLE PANEL
+  // ═══════════════════════════════════════════════════════════
   function buildUI() {
-    // 1. Desktop & Tablet Floating Dock Bar (Hidden automatically on Mobile)
     const isMobileDevice = window.innerWidth < 600 || /Mobile|iP(hone|od)|Android|BlackBerry|IEMobile/i.test(navigator.userAgent);
 
     const dockBar = document.createElement("button");
@@ -85,12 +85,12 @@
       <span id="chat-dock-arrow" style="font-size:11px;color:var(--gold, #c9a84c);pointer-events:none;user-select:none;">▲</span>
     `;
 
-    // Only append bottom dock bar on Desktop/Tablet
+    // Only render bottom dock bar on Desktop/Tablet
     if (!isMobileDevice) {
       document.body.appendChild(dockBar);
     }
 
-    // 2. Chat Panel (Expanded State for all devices)
+    // Chat Panel (Expanded State)
     const panel = document.createElement("div");
     panel.id = "chat-panel";
     panel.className = "chat-panel hidden";
@@ -155,7 +155,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  DOCK TOGGLE CONTROLLERS
+  //  DOCK TOGGLE (MUTUALLY EXCLUSIVE WITH NOTIFICATIONS)
   // ═══════════════════════════════════════════════════════════
   function toggleDock(e) {
     if (e) {
@@ -169,6 +169,12 @@
     if (!myUid || !myName) {
       if (window.showToast) window.showToast("Please wait for account authorization to load.", "error");
       return;
+    }
+
+    // Automatically close notifications popup when opening chat
+    const notifDropdown = document.getElementById("notif-dropdown");
+    if (notifDropdown && !notifDropdown.classList.contains("hidden")) {
+      notifDropdown.classList.add("hidden");
     }
 
     isExpanded = true;
@@ -790,7 +796,6 @@
   function injectStyles() {
     const s = document.createElement("style");
     s.textContent = `
-      /* Desktop & Tablet Floating Dock Bar (Hidden automatically on Mobile) */
       #chat-dock-bar {
         position: fixed !important;
         bottom: 0 !important;
@@ -973,7 +978,6 @@
       .dm-back-btn { background: transparent; border: none; color: var(--gold, #c9a84c); font-size: 12px; cursor: pointer; padding: 4px 8px; font-weight: 600; }
       .chat-ts { font-size: 9px; opacity: .55; margin-left: 8px; vertical-align: bottom; }
 
-      /* Mobile Adjustment */
       @media (max-width: 600px) {
         #chat-dock-bar { display: none !important; }
         .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 74px !important; height: 430px !important; }
