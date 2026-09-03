@@ -393,12 +393,47 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 .delete-confirm-input { width: 100% !important; background: var(--surface2) !important; border: 1.5px solid var(--border) !important; border-radius: 9px !important; color: var(--text) !important; padding: 12px 14px !important; font-size: 15px !important; text-align: center !important; letter-spacing: 2px !important; font-weight: 600 !important; margin: 16px 0 !important; outline: none !important; box-sizing: border-box !important; }
 .delete-confirm-input:focus { border-color: var(--red) !important; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18) !important; background: var(--surface3) !important; }
 
+/* ── CALENDAR CELL & HIGHLIGHT STYLES ── */
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
 .cal-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 8px 0; text-transform: uppercase; letter-spacing: 1px; }
-.cal-day-cell { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; min-height: 72px; padding: 6px 8px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
-.cal-day-cell:hover { border-color: var(--gold-border); background: var(--surface3); transform: translateY(-2px); }
+
+.cal-day-cell { 
+  background: var(--surface2); 
+  border: 1px solid var(--border); 
+  border-radius: 10px; 
+  min-height: 72px; 
+  padding: 6px 8px; 
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: space-between; 
+  position: relative; 
+}
+.cal-day-cell:hover { 
+  border-color: var(--gold-border); 
+  background: var(--surface3); 
+  transform: translateY(-2px); 
+}
 .cal-day-cell.other-month { opacity: 0.35; background: transparent; }
-.cal-day-cell.is-today { border-color: var(--gold) !important; box-shadow: 0 0 0 1px var(--gold); }
+
+/* Highlight Today's Date with Burnished Gold Aura */
+.cal-day-cell.is-today { 
+  border-color: var(--gold) !important; 
+  background: rgba(201, 165, 92, 0.08) !important;
+  box-shadow: 0 0 14px rgba(201, 165, 92, 0.35), inset 0 0 0 1px var(--gold) !important; 
+}
+
+/* Gray Out Past Dates */
+.cal-day-cell.is-past { 
+  opacity: 0.42 !important;
+  filter: grayscale(0.65) !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+.cal-day-cell.is-past .cal-day-num {
+  color: var(--text-dim) !important;
+}
+
 .cal-day-cell.is-selected { background: rgba(201, 168, 76, 0.15) !important; border-color: var(--gold) !important; }
 .cal-day-num { font-size: 13px; font-weight: 700; color: var(--text); }
 
