@@ -327,6 +327,14 @@ window.todayModalCalMonth = function() {
 };
 
 window.toggleModalBusyDate = function(dateStr) {
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  
+  if (dateStr < todayStr) {
+    showToast("Cannot modify availability for past dates.", "error");
+    return;
+  }
+
   if (selectedBusyDatesSet.has(dateStr)) {
     selectedBusyDatesSet.delete(dateStr);
   } else {
@@ -362,7 +370,10 @@ window.renderModalCalendarGrid = function() {
   const prevMonthDays = new Date(modalCalYear, modalCalMonth, 0).getDate();
 
   const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  const todayY = todayObj.getFullYear();
+  const todayM = String(todayObj.getMonth() + 1).padStart(2, '0');
+  const todayD = String(todayObj.getDate()).padStart(2, '0');
+  const todayStr = `${todayY}-${todayM}-${todayD}`;
 
   let html = `
     <div class="cal-day-header" style="font-size:9.5px;padding:4px 0">Sun</div>
@@ -385,12 +396,24 @@ window.renderModalCalendarGrid = function() {
     const fullDateStr = `${modalCalYear}-${mStr}-${dStr}`;
 
     const isToday = fullDateStr === todayStr;
+    const isPast = fullDateStr < todayStr;
     const isSelected = selectedBusyDatesSet.has(fullDateStr);
 
+    let customCellStyle = "min-height:38px;padding:4px;align-items:center;justify-content:center;";
+    if (isSelected) {
+      customCellStyle += "background:rgba(239, 68, 68, 0.22) !important;border-color:var(--red) !important;";
+    }
+    if (isPast) {
+      customCellStyle += "opacity:0.4;cursor:not-allowed;";
+    } else {
+      customCellStyle += "cursor:pointer;";
+    }
+
     html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" 
-           style="min-height:38px;padding:4px;cursor:pointer;align-items:center;justify-content:center;${isSelected ? 'background:rgba(239, 68, 68, 0.22) !important;border-color:var(--red) !important;' : ''}" 
-           onclick="toggleModalBusyDate('${fullDateStr}')">
+      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''} ${isSelected ? 'is-selected' : ''}" 
+           style="${customCellStyle}" 
+           onclick="${isPast ? '' : `toggleModalBusyDate('${fullDateStr}')`}"
+           title="${isPast ? 'Past date' : 'Toggle busy state'}">
         <span class="cal-day-num" style="font-size:12px;${isSelected ? 'color:var(--red);font-weight:800' : ''}">
           ${day} ${isSelected ? '🚫' : ''}
         </span>
@@ -1412,9 +1435,8 @@ function clearCaseErrors() {
   });
 }
 
-// ── ROBUST SAVE CASE (AUTO-CAPTURES INPUT TEXT & ENSURES STABLE SAVE) ──
+// ── ROBUST SAVE CASE ──
 async function saveCase() {
-  // 1. Auto-capture pending party inputs if user typed without clicking '+'
   const petInp = document.getElementById("cf-petitioner-input");
   const resInp = document.getElementById("cf-respondent-input");
 
