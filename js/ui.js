@@ -141,11 +141,9 @@ function showView(name) {
   if (el) el.classList.remove("hidden");
   currentView = name;
   
-  // Clear existing active tabs
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
 
-  // Map sub-views to their primary navigation tab
   let primaryNavKey = name;
   if (name === "caseDetail" || name === "caseForm" || name === "allcases") {
     primaryNavKey = "allcases";
@@ -181,7 +179,7 @@ function navTo(view) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (CATEGORY HIGHLIGHTS & ADMIN STAT VISIBILITY)
+//  DASHBOARD
 // ═══════════════════════════════════════════════════════════════
 function renderDashboard() {
   const todayDateEl = document.getElementById("today-date");
@@ -518,7 +516,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL
+//  CASE DETAIL (DEDUPLICATED UPLOAD BUTTON & CASE FILE PURGE)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -629,7 +627,7 @@ function renderCaseDetail() {
                 ${doc.size} · ${doc.date}${doc.driveFileId ? " · ✅ Drive" : ""}
               </div>
             </div>
-            ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})">×</button>` : ""}
+            ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})" title="Delete File">🗑️</button>` : ""}
           </div>
         </div>
       `;
@@ -697,17 +695,24 @@ async function updateCaseStatus(st) {
 }
 
 async function removeDocFromCase(idx) {
+  const docs = selCase.documents || [];
+  const doc = docs[idx];
+  if (!doc) return;
+
+  if (!confirm(`Are you sure you want to delete "${doc.name}"?\nThis removes the document from the case and Google Drive.`)) {
+    return;
+  }
+
   try {
-    const docs = selCase.documents || [];
-    const doc = docs[idx];
-    if (doc && doc.driveFileId && typeof deleteDriveFile === "function") {
+    showToast("Deleting file...");
+    if (doc.driveFileId && typeof deleteDriveFile === "function") {
       await deleteDriveFile(doc.driveFileId);
     }
     const updDocs = docs.filter((_, i) => i !== idx);
     await dbUpdateCase(selCase.id, { documents: updDocs });
     selCase = { ...selCase, documents: updDocs };
     renderCaseDetail();
-    showToast("Document removed");
+    showToast("Document deleted successfully!");
   } catch (err) {
     console.error("removeDocFromCase error:", err);
     showToast("Failed to remove document: " + (err.message || "Unknown error"), "error");
@@ -741,7 +746,6 @@ function openProfile(id) {
   renderProfileDetail();
 }
 
-// ── OPEN CASE FROM ANYWHERE (HIGHLIGHTS "CASES" NAV TAB) ──
 function openCase(id) {
   selCase = cases.find(c => c.id === id);
   if (!selCase) return;
@@ -1727,7 +1731,6 @@ window.toggleNotifDropdown = function() {
   const willOpen = dropdown.classList.contains("hidden");
   dropdown.classList.toggle("hidden");
 
-  // If opening notifications, automatically close/minimize messages/chat
   if (willOpen) {
     const chatPanel = document.getElementById("chat-panel");
     const arrow = document.getElementById("chat-dock-arrow");
@@ -2176,7 +2179,7 @@ async function saveShareSettings() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA
+//  GOOGLE DRIVE EXPLORER REPLICA & FILE DELETION ENGINE
 // ═══════════════════════════════════════════════════════════════
 let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
@@ -2260,10 +2263,15 @@ window.loadExplorerFiles = async function() {
       const sizeText = f.size ? (f.size / (1024 * 1024)).toFixed(2) + " MB" : "";
 
       return `
-        <div ${onClickAction} style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
-          <div style="font-size:32px;margin-bottom:8px">${icon}</div>
-          <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
-          ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + sizeText + '</div>' : ""}
+        <div style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
+          <div ${onClickAction}>
+            <div style="font-size:32px;margin-bottom:8px">${icon}</div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
+            ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + sizeText + '</div>' : ""}
+          </div>
+          <button onclick="event.stopPropagation(); adminDeleteDriveExplorerFile('${f.id}', '${f.name.replace(/'/g, "\\'")}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;border-radius:4px;opacity:0.6;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete file from Google Drive">
+            🗑️
+          </button>
         </div>
       `;
     }).join("");
@@ -2271,6 +2279,21 @@ window.loadExplorerFiles = async function() {
   } catch (err) {
     console.error("loadExplorerFiles error:", err);
     listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--red);font-size:13px;padding:40px">⚠ Failed to load explorer directory items.</div>`;
+  }
+};
+
+window.adminDeleteDriveExplorerFile = async function(fileId, fileName) {
+  if (!confirm(`Are you sure you want to delete "${fileName}" from Google Drive?`)) {
+    return;
+  }
+  try {
+    showToast("Deleting file from Drive...");
+    await deleteDriveFile(fileId);
+    showToast("File deleted from Google Drive.");
+    loadExplorerFiles();
+  } catch (err) {
+    console.error("Delete explorer file error:", err);
+    showToast("Failed to delete file: " + err.message, "error");
   }
 };
 
