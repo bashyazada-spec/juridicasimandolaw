@@ -133,22 +133,30 @@ function updateThemeIcon(theme) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  NAVIGATION
+//  NAVIGATION (WITH ACTIVE "CASES" TAB HIGHLIGHT ON CASE DETAIL)
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
   const el = document.getElementById("view-" + name);
   if (el) el.classList.remove("hidden");
   currentView = name;
+  
+  // Clear existing active tabs
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
 
-  if (["dashboard","profiles","allcases","myprofile","calendar","notifications","mydrive"].includes(name)) {
-    const btn = document.querySelector(`.nav-btn[data-nav="${name}"]`);
-    if (btn) btn.classList.add("active");
-    const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${name}"]`);
-    if (mBtn) mBtn.classList.add("active");
+  // Map sub-views to their primary navigation tab
+  let primaryNavKey = name;
+  if (name === "caseDetail" || name === "caseForm" || name === "allcases") {
+    primaryNavKey = "allcases";
+  } else if (name === "profileDetail" || name === "profileForm" || name === "profiles") {
+    primaryNavKey = "profiles";
   }
+
+  const btn = document.querySelector(`.nav-btn[data-nav="${primaryNavKey}"]`);
+  if (btn) btn.classList.add("active");
+  const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${primaryNavKey}"]`);
+  if (mBtn) mBtn.classList.add("active");
 }
 
 function navTo(view) {
@@ -665,7 +673,6 @@ function renderCaseDetail() {
   }
 }
 
-// ── CONFIRMATION PROMPT BEFORE UPDATING STATUS ──
 window.confirmUpdateCaseStatus = async function(st) {
   if (!selCase) return;
   if (selCase.status === st) return;
@@ -734,6 +741,7 @@ function openProfile(id) {
   renderProfileDetail();
 }
 
+// ── OPEN CASE FROM ANYWHERE (HIGHLIGHTS "CASES" NAV TAB) ──
 function openCase(id) {
   selCase = cases.find(c => c.id === id);
   if (!selCase) return;
@@ -743,7 +751,6 @@ function openCase(id) {
   renderCaseDetail();
 }
 
-// ── USER CHIP (DYNAMIC THEME COLORS & NAME DISPLAY) ──
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
@@ -1142,7 +1149,6 @@ function renderMyProfile() {
   if (curPassEl) curPassEl.value = "";
   if (reauthEl) reauthEl.style.display = "none";
 
-  // Dynamic Admin Portal Card Visibility on Mobile
   const mobileAdminCard = document.getElementById("mobile-admin-portal-card");
   if (mobileAdminCard) {
     const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
@@ -1176,7 +1182,6 @@ function renderMyProfile() {
     }
   }
 
-  // ── Two-Factor Authentication Status UI ──
   const tfaBadge = document.getElementById("setting-2fa-status-badge");
   const tfaBtn = document.getElementById("setting-2fa-action-btn");
   const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
@@ -1713,13 +1718,23 @@ if (!window._calendarIntervalId) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REAL-TIME NOTIFICATIONS SYSTEM & INTERACTIVE CLICK NAVIGATION
+//  MUTUALLY EXCLUSIVE NOTIFICATIONS & CHAT DROPDOWNS
 // ═══════════════════════════════════════════════════════════════
 window.toggleNotifDropdown = function() {
   const dropdown = document.getElementById("notif-dropdown");
   if (!dropdown) return;
+  
+  const willOpen = dropdown.classList.contains("hidden");
   dropdown.classList.toggle("hidden");
-  if (!dropdown.classList.contains("hidden")) {
+
+  // If opening notifications, automatically close/minimize messages/chat
+  if (willOpen) {
+    const chatPanel = document.getElementById("chat-panel");
+    const arrow = document.getElementById("chat-dock-arrow");
+    if (chatPanel && !chatPanel.classList.contains("hidden")) {
+      chatPanel.classList.add("hidden");
+      if (arrow) arrow.textContent = "▲";
+    }
     renderNotificationsView();
   }
 };
@@ -2110,23 +2125,16 @@ function openShareCaseModal() {
     listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
   } else {
     listEl.innerHTML = associates.map(p => {
-      const isChecked = sharedUids.includes(p.ownerUid);
-      const role = permissions[p.ownerUid] || "viewer";
+      const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
       return `
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0;margin:0">
-            <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked ? 'checked' : ''} onchange="toggleShareRoleSelect('${p.ownerUid}', this.checked)" style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
-            ${avatarDiv(p.name, p.avatarColor, 30, p.photoUrl)}
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
-              <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.email)}</div>
-            </div>
-          </label>
-          <select id="share-role-${p.ownerUid}" class="filter-select" style="width:105px;padding:4px 22px 4px 8px;font-size:11.5px;margin-left:8px;${!isChecked ? 'opacity:0.4;pointer-events:none' : ''}">
-            <option value="viewer" ${role === 'viewer' ? 'selected' : ''}>👁 Viewer</option>
-            <option value="editor" ${role === 'editor' ? 'selected' : ''}>✏️ Editor</option>
-          </select>
-        </div>
+        <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
+          <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked} style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
+          ${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${p.email}</div>
+          </div>
+        </label>
       `;
     }).join("");
   }
@@ -2135,27 +2143,17 @@ function openShareCaseModal() {
   if (modal) modal.classList.remove("hidden");
 }
 
-function toggleShareRoleSelect(uid, isChecked) {
-  const select = document.getElementById(`share-role-${uid}`);
-  if (select) {
-    select.style.opacity = isChecked ? "1" : "0.4";
-    select.style.pointerEvents = isChecked ? "all" : "none";
-  }
+function closeShareModal() {
+  const modal = document.getElementById("share-modal");
+  if (modal) modal.classList.add("hidden");
 }
 
 async function saveShareSettings() {
   if (!selCase) return;
   const checkboxes = document.querySelectorAll('input[name="share-associate-checkbox"]');
   const selectedUids = [];
-  const permissions = {};
-
   checkboxes.forEach(cb => {
-    if (cb.checked) {
-      const uid = cb.value;
-      selectedUids.push(uid);
-      const roleSel = document.getElementById(`share-role-${uid}`);
-      permissions[uid] = roleSel ? roleSel.value : "viewer";
-    }
+    if (cb.checked) selectedUids.push(cb.value);
   });
 
   const ownerUid = selCase.ownerUid || window._currentUser.uid;
@@ -2165,34 +2163,12 @@ async function saveShareSettings() {
     showToast("Updating share settings...");
     await dbUpdateCase(selCase.id, {
       sharedWith: selectedUids,
-      allowedUids: allowedUids,
-      permissions: permissions
+      allowedUids: allowedUids
     });
-
-    const myProf = profiles.find(p => p.ownerUid === window._currentUser.uid);
-    for (const sharedUid of selectedUids) {
-      if (!selCase.sharedWith || !selCase.sharedWith.includes(sharedUid)) {
-        const permRole = permissions[sharedUid] === "editor" ? "Editor ✏️" : "Viewer 👁";
-        await dbAddNotification({
-          toUid: sharedUid,
-          fromUid: window._currentUser.uid,
-          fromName: myProf?.name || "Attorney",
-          title: "📁 Case Shared With You",
-          message: `${myProf?.name || "An attorney"} granted you ${permRole} access to case "${selCase.title}".`,
-          type: "case_share",
-          relatedId: selCase.id,
-          status: "unread"
-        });
-      }
-    }
-
     selCase.sharedWith = selectedUids;
     selCase.allowedUids = allowedUids;
-    selCase.permissions = permissions;
-
     closeShareModal();
-    renderCaseDetail();
-    showToast("Share settings & permissions saved!");
+    showToast("Case shared successfully!");
   } catch (err) {
     console.error("saveShareSettings error:", err);
     showToast("Failed to share case: " + err.message, "error");
