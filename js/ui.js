@@ -1,3 +1,4 @@
+
 // ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
@@ -516,7 +517,7 @@ function renderAllCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (DEDUPLICATED UPLOAD BUTTON & CASE FILE PURGE)
+//  CASE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -874,7 +875,7 @@ function onFilterCategoryChange(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FIRM SCHEDULE & REAL-TIME MONTHLY CALENDAR GRID
+//  REAL-TIME MONTHLY CALENDAR GRID (PAST DATE GRAYING & TODAY HIGHLIGHT)
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
@@ -979,7 +980,10 @@ function renderMonthlyCalendarGrid() {
   const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
 
   const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  const todayY = todayObj.getFullYear();
+  const todayM = String(todayObj.getMonth() + 1).padStart(2, '0');
+  const todayD = String(todayObj.getDate()).padStart(2, '0');
+  const todayStr = `${todayY}-${todayM}-${todayD}`;
 
   let html = `
     <div class="cal-day-header">Sun</div>
@@ -1002,6 +1006,7 @@ function renderMonthlyCalendarGrid() {
     const fullDateStr = `${currentCalYear}-${mStr}-${dStr}`;
 
     const isToday = fullDateStr === todayStr;
+    const isPast = fullDateStr < todayStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
     const hasBusy = dayEvents.some(e => e.type === "busy");
@@ -1017,11 +1022,16 @@ function renderMonthlyCalendarGrid() {
       dotsHtml += `</div>`;
     }
 
+    const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold);color:#060c13;font-weight:800;padding:1px 5px;border-radius:3px;letter-spacing:0.5px">TODAY</span>` : "";
+
     html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''}" 
+      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''}" 
            onclick="openDateScheduleModal('${fullDateStr}')" 
-           title="Click to view events for ${fullDateStr}">
-        <span class="cal-day-num">${day}</span>
+           title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span class="cal-day-num">${day}</span>
+          ${todayTag}
+        </div>
         ${dotsHtml}
       </div>
     `;
@@ -1037,7 +1047,7 @@ function renderMonthlyCalendarGrid() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL CONTROLLER
+//  DATE POPUP MODAL CONTROLLER (WITH PAST DATE BOOKING LOCK)
 // ═══════════════════════════════════════════════════════════════
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
@@ -1047,7 +1057,16 @@ window.openDateScheduleModal = function(dateStr) {
   if (!modal || !listEl) return;
 
   const formattedDate = formatDate(dateStr);
-  if (titleEl) titleEl.textContent = `📅 Schedule for ${formattedDate}`;
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  const isPast = dateStr < todayStr;
+  const isToday = dateStr === todayStr;
+
+  let headerBadge = "";
+  if (isToday) headerBadge = ` <span style="font-size:10px;background:var(--gold);color:#060c13;font-weight:800;padding:2px 6px;border-radius:4px">TODAY</span>`;
+  else if (isPast) headerBadge = ` <span style="font-size:10px;background:var(--surface3);color:var(--text-dim);font-weight:600;padding:2px 6px;border-radius:4px">PAST DATE</span>`;
+
+  if (titleEl) titleEl.innerHTML = `📅 Schedule for ${formattedDate}${headerBadge}`;
 
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
@@ -1095,7 +1114,9 @@ window.openDateScheduleModal = function(dateStr) {
     listEl.innerHTML = `
       <div class="empty-state" style="padding:28px 14px">
         <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px">☀️</div>
-        <div style="font-size:13px;color:var(--text-muted)">No schedules, appointments, or deadlines for this date.</div>
+        <div style="font-size:13px;color:var(--text-muted)">
+          ${isPast ? "No past events recorded for this date." : "No events, deadlines, or appointments scheduled for this date."}
+        </div>
       </div>
     `;
   } else {
@@ -1865,7 +1886,7 @@ window.markAllNotificationsAsRead = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  APPOINTMENTS / SCHEDULING SYSTEM CONTROLLERS
+//  APPOINTMENTS / SCHEDULING SYSTEM CONTROLLERS (BLOCKS PAST BOOKINGS)
 // ═══════════════════════════════════════════════════════════════
 let targetApptProfile = null;
 
@@ -1874,6 +1895,9 @@ window.openAppointmentModal = function(profileId) {
   if (!p) return;
   targetApptProfile = p;
 
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+
   const titleInp = document.getElementById("appt-title");
   const dateInp = document.getElementById("appt-date");
   const timeInp = document.getElementById("appt-time");
@@ -1881,7 +1905,10 @@ window.openAppointmentModal = function(profileId) {
   const modalSub = document.getElementById("appointment-modal-sub");
 
   if (titleInp) titleInp.value = "";
-  if (dateInp) dateInp.value = "";
+  if (dateInp) {
+    dateInp.value = "";
+    dateInp.min = todayStr;
+  }
   if (timeInp) timeInp.value = "";
   if (descInp) descInp.value = "";
   if (modalSub) modalSub.textContent = `Propose an appointment or schedule date with ${p.name}`;
@@ -1904,6 +1931,13 @@ window.submitAppointmentRequest = async function() {
 
   if (!title || !date || !time) {
     showToast("Please fill in all required fields.", "error");
+    return;
+  }
+
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  if (date < todayStr) {
+    showToast("Cannot propose appointments on past dates.", "error");
     return;
   }
 
