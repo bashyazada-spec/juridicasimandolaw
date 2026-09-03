@@ -1,6 +1,33 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, limit, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, updateProfile, updateEmail, updatePassword, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { 
+  initializeFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  limit, 
+  serverTimestamp, 
+  where 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut, 
+  updateProfile, 
+  updateEmail, 
+  updatePassword, 
+  deleteUser, 
+  reauthenticateWithCredential, 
+  EmailAuthProvider 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDIDs21G2wWy-Wd72wb-iWNMCTy0_KlADo",
@@ -14,7 +41,13 @@ const firebaseConfig = {
 
 try {
   const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
+  
+  // Force Long Polling to prevent adblockers from blocking WebChannel streams (net::ERR_BLOCKED_BY_CLIENT)
+  const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false
+  });
+  
   const auth = getAuth(app);
 
   window._db = db;
@@ -52,7 +85,6 @@ try {
   // Set ready status IMMEDIATELY after initialization
   window._fbReady = true;
 
-  // Dispatch readiness signal immediately for scripts already listening
   if (!window._firebaseReadyFired) {
     window._firebaseReadyFired = true;
     document.dispatchEvent(new Event("firebase-ready"));
