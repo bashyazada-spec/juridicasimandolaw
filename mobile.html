@@ -154,7 +154,7 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal -->
+<!-- Two-Factor Authentication Setup Modal on Mobile -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
   <div class="modal-box" style="max-width: 440px; padding: 20px;">
     <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
@@ -627,14 +627,14 @@
       <div class="card" id="cd-status-panel" style="padding:16px"></div>
     </div>
 
-    <!-- ── MY USER SETTINGS (WITH TOP ADMIN PORTAL CARD & 2FA MANAGER) ── -->
+    <!-- ── MY USER SETTINGS (WITH TOP ADMIN CARD & 2FA MANAGER) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
         <div class="page-sub">Personal profile, Drive connection, & 2FA security</div>
       </div>
 
-      <!-- Admin Console Card (Dynamically Displayed at the Top for Admins) -->
+      <!-- Admin Console Card (Directly opens admin-mobile.html) -->
       <div class="card mb-16" id="mobile-admin-portal-card" style="display:none;background:rgba(201,168,76,0.08);border:1.5px solid var(--gold);padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:15px;font-weight:700;color:var(--gold)">🛡️ Admin Control Console</div>
@@ -643,7 +643,7 @@
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.4">
           Manage firm attorney accounts, edit designations, grant admin privileges, and manage security settings.
         </div>
-        <button class="btn btn-primary" onclick="window.location.assign('admin.html')" style="width:100%;font-weight:700">
+        <button class="btn btn-primary" onclick="window.location.assign('admin-mobile.html')" style="width:100%;font-weight:700">
           Open Admin Console →
         </button>
       </div>
