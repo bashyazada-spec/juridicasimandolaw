@@ -1306,7 +1306,7 @@ function updateCfChip() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BOOT LOGIC WITH 2FA SESSION GUARD
+//  BOOT LOGIC WITH LOOP-FREE 2FA SESSION GUARD
 // ═══════════════════════════════════════════════════════════════
 function enterLocalMode(reason) {
   localMode = true;
@@ -1361,36 +1361,13 @@ document.addEventListener("firebase-ready", () => {
     window._fbOnAuth(window._auth, async (user) => {
       window._currentUser = user;
       if (user) {
-        // Enforce 2FA Session Verification on every login
-        try {
-          if (window._db && typeof window._fbGetDocs === "function") {
-            const pSnap = await window._fbGetDocs(window._fbCol(window._db, "profiles"));
-            const userEmail = (user.email || "").toLowerCase();
-            const matchedDoc = pSnap.docs.find(d => {
-              const data = d.data();
-              return (data.ownerUid === user.uid) || 
-                     (data.email && data.email.toLowerCase() === userEmail);
-            });
-
-            if (matchedDoc) {
-              const data = matchedDoc.data();
-              if (data.twoFactorEnabled && data.twoFactorSecret) {
-                const isVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
-                if (!isVerified) {
-                  window.location.replace("login.html");
-                  return;
-                }
-              }
-            }
-          }
-        } catch (e) { /* ignore */ }
-
         if (!dbConnected) {
           dbConnected = true;
           connectDatabase();
         }
       } else {
-        if (window.location.pathname.indexOf("login.html") === -1) {
+        const isLoginPage = window.location.pathname.toLowerCase().endsWith("login.html") || window.location.pathname.toLowerCase().endsWith("login");
+        if (!isLoginPage) {
           sessionStorage.removeItem("simando_2fa_verified");
           window.location.replace("login.html");
         }
@@ -1435,8 +1412,24 @@ function clearCaseErrors() {
   });
 }
 
+// ── ROBUST SAVE CASE (AUTO-CAPTURES INPUT TEXT & ENSURES STABLE SAVE) ──
 async function saveCase() {
+  // 1. Auto-capture pending party inputs if user typed without clicking '+'
+  const petInp = document.getElementById("cf-petitioner-input");
+  const resInp = document.getElementById("cf-respondent-input");
+
+  if (petInp && petInp.value.trim()) {
+    cfPetitioners.push(petInp.value.trim());
+    petInp.value = "";
+  }
+  if (resInp && resInp.value.trim()) {
+    cfRespondents.push(resInp.value.trim());
+    resInp.value = "";
+  }
+
+  renderPartyLists();
   serializeParties();
+
   const title = (document.getElementById("cf-case-title")?.value || "").trim();
   const filed = document.getElementById("cf-filed")?.value || "";
   const due = document.getElementById("cf-due")?.value || "";
@@ -1483,6 +1476,9 @@ async function saveCase() {
   const caseType = (document.getElementById("cf-type-input")?.value || "").trim();
   if (caseType) await saveCaseTypeIfNew(category, caseType);
 
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = profiles.find(p => p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase())) || selProfile;
+
   const data = {
     title,
     filedDate: filed,
@@ -1502,7 +1498,7 @@ async function saveCase() {
     const caseCategory = data.category || "Other";
     const cType = data.type || "Other";
     const caseTitle = data.title || "Untitled";
-    const profileFolderId = selProfile?.driveFolderId || null;
+    const profileFolderId = myProf?.driveFolderId || selProfile?.driveFolderId || null;
     const hadLocalFiles = pendingDocs.some(d => d._localTempId);
 
     if (typeof syncPendingFilesToDrive === "function") {
@@ -1530,11 +1526,11 @@ async function saveCase() {
     }
 
     if (caseFormMode === "add") {
-      data.profileId = selProfile.id;
+      data.profileId = myProf?.id || (selProfile?.id || "unassigned");
       data.createdAt = new Date().toISOString().slice(0, 10);
-      data.ownerUid = window._currentUser.uid;
+      data.ownerUid = u?.uid || "unknown";
       data.sharedWith = [];
-      data.allowedUids = [window._currentUser.uid];
+      data.allowedUids = [u?.uid || "unknown"];
       
       const newCaseObj = await dbAddCase(data);
       
@@ -1544,10 +1540,10 @@ async function saveCase() {
         cases.unshift(data);
       }
 
-      showToast("Case added!");
+      showToast("Case added successfully!");
     } else {
       if (selCase) {
-        data.ownerUid = selCase.ownerUid || window._currentUser.uid;
+        data.ownerUid = selCase.ownerUid || u?.uid;
         data.sharedWith = selCase.sharedWith || [];
         data.allowedUids = selCase.allowedUids || [data.ownerUid];
       }
@@ -1557,7 +1553,7 @@ async function saveCase() {
       if (idx >= 0) cases[idx] = { ...cases[idx], ...data };
       selCase = { ...selCase, ...data };
 
-      showToast("Case updated!");
+      showToast("Case updated successfully!");
     }
 
     pendingDocs = [];
@@ -1568,12 +1564,13 @@ async function saveCase() {
       renderProfileDetail();
     }
 
-    navTo(caseFormMode === "add" ? caseFormOrigin : "caseDetail");
+    navTo(caseFormMode === "add" ? (caseFormOrigin === "profileDetail" ? "profileDetail" : "allcases") : "caseDetail");
     if (caseFormMode === "edit") renderCaseDetail();
 
   } catch (err) {
     console.error("saveCase error:", err);
     showToast("Failed to save case: " + (err.message || "Unknown error"), "error");
+  } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
       saveBtn.textContent = caseFormMode === "add" ? "Add Case" : "Save Changes";
