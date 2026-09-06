@@ -54,9 +54,14 @@ window.getAccessibleCases = getAccessibleCases;
 let sharedAudioCtx = null;
 
 function getAudioContext() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
   if (!sharedAudioCtx) {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (AudioCtx) sharedAudioCtx = new AudioCtx();
+    try {
+      sharedAudioCtx = new AudioCtx();
+    } catch (e) {
+      return null;
+    }
   }
   if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
     sharedAudioCtx.resume().catch(() => {});
@@ -64,8 +69,18 @@ function getAudioContext() {
   return sharedAudioCtx;
 }
 
-document.addEventListener("click", () => { getAudioContext(); }, { once: true });
-document.addEventListener("keydown", () => { getAudioContext(); }, { once: true });
+const unlockAudio = () => {
+  try {
+    const ctx = getAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+  } catch (e) { /* ignore */ }
+  document.removeEventListener("pointerdown", unlockAudio);
+  document.removeEventListener("keydown", unlockAudio);
+};
+document.addEventListener("pointerdown", unlockAudio, { once: true, passive: true });
+document.addEventListener("keydown", unlockAudio, { once: true, passive: true });
 
 function playNotificationSound() {
   try {
@@ -285,7 +300,6 @@ async function dbLoad() {
     }
 
     // ── Real-Time Sync: Firm Appointments & Availability ─────────────
-    // Loaded across the firm so all attorneys can view each other's schedule
     if (activeUid) {
       try {
         const apptColRef = window._fbCol(db, "appointments");
