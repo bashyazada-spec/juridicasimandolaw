@@ -1,4 +1,3 @@
-
 // ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
@@ -2060,8 +2059,10 @@ async function openAddCase() {
     return;
   }
 
+  // Enforce mandatory Google Account authorization:
   if (typeof hasValidToken === "function" && !hasValidToken()) {
     openDriveWarningModal();
+    return;
   }
 
   selProfile = myProf;
@@ -2106,6 +2107,13 @@ async function openAddCase() {
 async function openEditCase() {
   const c = selCase;
   if (!c) return;
+
+  // Enforce mandatory Google Account authorization:
+  if (typeof hasValidToken === "function" && !hasValidToken()) {
+    openDriveWarningModal();
+    return;
+  }
+
   caseFormMode = "edit";
   pendingDocs = [...(c.documents || [])];
   parsePartiesString(c.parties);
