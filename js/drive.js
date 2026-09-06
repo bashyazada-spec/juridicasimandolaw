@@ -39,9 +39,9 @@ function initGoogleDrive() {
   if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
     driveInitAttempts++;
     if (driveInitAttempts < MAX_DRIVE_INIT_ATTEMPTS) {
-      setTimeout(initGoogleDrive, 500);
+      setTimeout(initGoogleDrive, 400);
     } else {
-      console.error("Google Identity Services failed to load after maximum retries.");
+      console.warn("Google Identity Services script still loading...");
     }
     return;
   }
@@ -60,16 +60,16 @@ function initGoogleDrive() {
             fetchAndRenderGoogleCalendarEvents();
           }
         } else {
-          console.error("Drive & Calendar auth response error:", response);
+          console.warn("Drive & Calendar auth response error:", response);
           if (pendingDriveAuthReject) {
-            pendingDriveAuthReject(new Error(response.error_description || "Authentication failed."));
+            pendingDriveAuthReject(new Error(response.error_description || "Authorization failed."));
           }
         }
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
       },
       error_callback: (err) => {
-        console.warn("GIS error callback:", err);
-        let errorMsg = "OAuth authorization error.";
+        console.warn("Google OAuth error callback:", err);
+        let errorMsg = "OAuth authorization cancelled or closed.";
         if (err && err.type === "popup_closed") {
           errorMsg = "Google Sign-In popup was closed before completing authorization. Please click Connect and approve the permissions.";
         } else if (err && err.type === "popup_blocked") {
@@ -92,15 +92,20 @@ function initGoogleDrive() {
 
 function promptDriveAuth() {
   if (!gTokenClient) {
-    return Promise.reject(new Error("Google Client not ready. Reload the page."));
+    initGoogleDrive();
   }
+
+  if (!gTokenClient) {
+    return Promise.reject(new Error("Google Client is still initializing. Please tap Connect again."));
+  }
+
   return new Promise((resolve, reject) => {
     pendingDriveAuthResolve = resolve;
     pendingDriveAuthReject = reject;
     try {
       const u = window._currentUser || window._auth?.currentUser;
       const authParams = {
-        prompt: "consent"
+        prompt: "select_account"
       };
 
       if (u && u.email) {
@@ -109,6 +114,7 @@ function promptDriveAuth() {
 
       gTokenClient.requestAccessToken(authParams);
     } catch (e) {
+      pendingDriveAuthResolve = pendingDriveAuthReject = null;
       reject(e);
     }
   });
@@ -430,7 +436,6 @@ async function addDocToCase() {
     if (!hasValidToken()) {
       showToast("Session expired — reconnecting…");
       try {
-        await waitForGoogleDriveReady(6000);
         await promptDriveAuth();
         showToast("Reconnected — uploading files…");
       } catch (authErr) {
@@ -543,7 +548,6 @@ function updateDriveFolderChip() {
       chip.style.display = "inline-flex";
       chip.onclick = async () => {
         try {
-          await waitForGoogleDriveReady(6000);
           await promptDriveAuth();
           updateDriveFolderChip();
           showToast("Drive reconnected ✅");
@@ -873,12 +877,14 @@ window.addEventListener("load", () => {
   if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2) {
     initGoogleDrive();
   } else {
-    setTimeout(initGoogleDrive, 1000);
+    setTimeout(initGoogleDrive, 600);
   }
 });
 
-function waitForGoogleDriveReady(timeoutMs = 8000) {
+function waitForGoogleDriveReady(timeoutMs = 6000) {
   return new Promise((resolve, reject) => {
+    if (gTokenClient) { resolve(); return; }
+    initGoogleDrive();
     if (gTokenClient) { resolve(); return; }
     const start = Date.now();
     const interval = setInterval(() => {
@@ -887,8 +893,8 @@ function waitForGoogleDriveReady(timeoutMs = 8000) {
         resolve();
       } else if (Date.now() - start > timeoutMs) {
         clearInterval(interval);
-        reject(new Error("Google Drive failed to initialize."));
+        reject(new Error("Google Drive services failed to initialize."));
       }
-    }, 200);
+    }, 150);
   });
 }
