@@ -75,17 +75,17 @@
   </div>
 </div>
 
-<!-- Google Drive Disconnected Warning Modal Popup -->
+<!-- Google Account Mandatory Connection Modal Popup -->
 <div id="drive-warning-modal" class="modal-overlay hidden" style="z-index: 10003;">
   <div class="modal-box" style="max-width: 420px; text-align: center; padding:20px">
     <div style="font-size:36px;margin-bottom:8px">☁️</div>
-    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Google Drive Not Connected</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Google Account Required</div>
     <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px">
-      Your case details will be saved to the database, but attached documents won't sync to the cloud until you authorize Google Drive.
+      A connected Google Account is required to manage cases, store client court documents, and synchronize deadlines. Please authorize your Google Account to proceed.
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-primary" type="button" onclick="closeDriveWarningModal(); navTo('myprofile');">Connect Drive Now</button>
-      <button class="btn btn-ghost" type="button" onclick="closeDriveWarningModal()">Continue Anyway</button>
+      <button class="btn btn-primary" type="button" onclick="closeDriveWarningModal(); navTo('myprofile');">Connect Google Account</button>
+      <button class="btn btn-ghost" type="button" onclick="closeDriveWarningModal(); navTo('dashboard');">Cancel</button>
     </div>
   </div>
 </div>
