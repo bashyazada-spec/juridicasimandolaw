@@ -61,13 +61,26 @@ function initGoogleDrive() {
           }
         } else {
           console.error("Drive & Calendar auth response error:", response);
-          if (pendingDriveAuthReject) pendingDriveAuthReject(new Error(response.error_description || "Auth failed"));
+          if (pendingDriveAuthReject) {
+            pendingDriveAuthReject(new Error(response.error_description || "Authentication failed."));
+          }
         }
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
       },
       error_callback: (err) => {
-        console.error("GIS error:", err);
-        if (pendingDriveAuthReject) pendingDriveAuthReject(new Error(err.message || "OAuth error"));
+        console.warn("GIS error callback:", err);
+        let errorMsg = "OAuth authorization error.";
+        if (err && err.type === "popup_closed") {
+          errorMsg = "Google Sign-In popup was closed before completing authorization. Please click Connect and approve the permissions.";
+        } else if (err && err.type === "popup_blocked") {
+          errorMsg = "The authorization popup was blocked by your browser. Please allow popups for this site.";
+        } else if (err && err.message) {
+          errorMsg = err.message;
+        }
+
+        if (pendingDriveAuthReject) {
+          pendingDriveAuthReject(new Error(errorMsg));
+        }
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
       }
     });
@@ -85,7 +98,16 @@ function promptDriveAuth() {
     pendingDriveAuthResolve = resolve;
     pendingDriveAuthReject = reject;
     try {
-      gTokenClient.requestAccessToken({ prompt: '' });
+      const u = window._currentUser || window._auth?.currentUser;
+      const authParams = {
+        prompt: "consent"
+      };
+
+      if (u && u.email) {
+        authParams.hint = u.email;
+      }
+
+      gTokenClient.requestAccessToken(authParams);
     } catch (e) {
       reject(e);
     }
