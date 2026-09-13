@@ -94,11 +94,11 @@
   </div>
 </div>
 
-<!-- Set Availability Modal -->
-<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
+<!-- Set Schedule & Availability Modal -->
+<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()">
   <div class="modal-box" style="max-width: 520px; padding:20px">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      📅 Set Availability
+      📅 Set Schedule & Availability
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
       Click dates on the calendar below to toggle your availability. <span style="color:var(--red)">Red</span> = Out of Office.
@@ -106,7 +106,7 @@
     
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
       <div>
-        <label class="field-label">Reason / Label *</label>
+        <label class="field-label">Reason / Schedule Label *</label>
         <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office" value="In Court / Out of Office" autocomplete="off"/>
       </div>
 
@@ -128,13 +128,13 @@
       </div>
 
       <div>
-        <label class="field-label">Brief Notes (Optional)</label>
+        <label class="field-label">Brief Description / Notes (Optional)</label>
         <input type="text" class="field-input" id="busy-notes" placeholder="e.g. RTC Branch 20 Hearing"/>
       </div>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Availability</button>
+      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Schedule</button>
       <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
     </div>
   </div>
@@ -158,17 +158,17 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal on Mobile -->
+<!-- Two-Factor Authentication Setup Modal on Mobile (Centered Layout) -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
-  <div class="modal-box" style="max-width: 440px; padding: 20px;">
-    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+  <div class="modal-box" style="max-width: 440px; padding: 20px; text-align: center;">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">
       🛡️ Set Up 2FA Authenticator
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
       Scan this QR code with <strong>Microsoft Authenticator</strong>, <strong>Google Authenticator</strong>, or <strong>Apple Passwords</strong> on your phone.
     </div>
 
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:12px;border-radius:10px;margin-bottom:12px;width:fit-content;margin-left:auto;margin-right:auto">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:12px;border-radius:10px;margin:0 auto 12px;width:fit-content">
       <div id="tfa-setup-qrcode"></div>
     </div>
 
@@ -177,14 +177,14 @@
       <div id="tfa-setup-secret-key" style="font-family:monospace;font-size:12px;font-weight:700;color:var(--gold-light);margin-top:2px;letter-spacing:1.5px;word-break:break-all"></div>
     </div>
 
-    <div style="margin-bottom:14px">
+    <div style="margin-bottom:14px;text-align:center">
       <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes</div>
-      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px;color:var(--gold-light)"></div>
+      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px;color:var(--gold-light);max-width:280px;margin:0 auto"></div>
     </div>
 
-    <div style="margin-bottom:16px">
-      <label class="field-label">Confirm 6-Digit Code *</label>
-      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" inputmode="numeric" style="text-align:center;font-size:17px;font-weight:700;letter-spacing:3px"/>
+    <div style="margin-bottom:16px;text-align:center">
+      <label class="field-label" style="text-align:center">Confirm 6-Digit Code *</label>
+      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" inputmode="numeric" style="text-align:center;font-size:19px;font-weight:700;letter-spacing:4px;max-width:220px;margin:0 auto"/>
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px">
@@ -275,7 +275,7 @@
         </div>
       </div>
       <div>
-        <label class="field-label">Brief Description / Notes</label>
+        <label class="field-label">Brief Description / Notes (Optional)</label>
         <textarea class="field-input" id="appt-desc" style="min-height:80px;resize:vertical" placeholder="Enter notes or topics for the session..."></textarea>
       </div>
     </div>
@@ -323,7 +323,12 @@
       <div class="dashboard-content-grid">
         <div>
           <div class="card" style="padding:14px">
-            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
+              <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11px;padding:3px 8px;width:auto !important;border:1px solid var(--border)">
+                ↕ Expand
+              </button>
+            </div>
             <div id="dash-cases"></div>
           </div>
           <div class="card mt-16" id="dash-calendar-card" style="padding:14px"></div>
@@ -331,7 +336,7 @@
 
         <div class="card mt-16" style="padding:14px">
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
-          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorneys…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
+          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
           <div id="dash-profiles"></div>
         </div>
       </div>
@@ -427,12 +432,18 @@
       </div>
     </div>
 
-    <!-- ── ALL PROFILES ── -->
+    <!-- ── ALL PROFILES (WITH LIST / TILE TOGGLE) ── -->
     <div id="view-profiles" class="view hidden">
       <div class="page-hdr">
-        <div>
-          <div class="page-title">Attorneys</div>
-          <div class="page-sub" id="profiles-count"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <div>
+            <div class="page-title">Attorneys</div>
+            <div class="page-sub" id="profiles-count"></div>
+          </div>
+          <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px">
+            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">🔲 Tiles</button>
+            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">☰ List</button>
+          </div>
         </div>
       </div>
       <div id="profiles-grid" style="display:grid;grid-template-columns:1fr;gap:12px"></div>
@@ -491,11 +502,11 @@
         </div>
 
         <div id="pf-details-section">
-          <label class="field-label">Full Name *</label>
+          <label class="field-label" id="lbl-pf-name">Full Name *</label>
           <input class="field-input mb-12" id="pf-name" placeholder="e.g. Atty. Juan Dela Cruz"/>
           <div id="pf-name-err" class="field-err hidden">Full name is required</div>
 
-          <label class="field-label">Role / Title *</label>
+          <label class="field-label" id="lbl-pf-role">Role / Title *</label>
           <input class="field-input mb-12" id="pf-role" placeholder="e.g. Senior Associate"/>
           <div id="pf-role-err" class="field-err hidden">Role is required</div>
 
@@ -671,10 +682,10 @@
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:6px">
           👤 Profile Details
         </div>
-        <label class="field-label" style="color:var(--gold-light);font-weight:700">Complete Name / Display Name *</label>
+        <label class="field-label" id="lbl-setting-name" style="color:var(--gold-light);font-weight:700">Complete Name / Display Name *</label>
         <input class="field-input mb-12" id="setting-name" placeholder="e.g. Atty. Maria Garcia" style="border-color:var(--gold-border);font-weight:600"/>
         
-        <label class="field-label">Role / Designation *</label>
+        <label class="field-label" id="lbl-setting-role">Role / Designation *</label>
         <input class="field-input mb-12" id="setting-role" placeholder="e.g. Senior Partner"/>
         
         <label class="field-label">Contact Number</label>
@@ -699,7 +710,21 @@
           </div>
         </div>
 
-        <button class="btn btn-primary" onclick="saveUserSettings()">Save Profile Settings</button>
+        <button class="btn btn-primary" onclick="saveUserSettings()" style="margin:0 auto">Save Profile Settings</button>
+      </div>
+
+      <!-- Suggestion & Legal Policy Card (Inside Settings) -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">⚖️ Firm Guidelines & Support</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
+            💬 Suggest / Report Issue ↗
+          </a>
+          <div style="display:flex;gap:8px">
+            <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Privacy Policy</a>
+            <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Terms</a>
+          </div>
+        </div>
       </div>
 
       <!-- Google Drive Connection Card -->
@@ -767,9 +792,11 @@
         <button class="btn btn-secondary" onclick="saveSecuritySettings()" style="width:100%">Update Credentials</button>
       </div>
 
-      <!-- Sign Out / Danger Zone -->
+      <!-- Sign Out -->
       <div class="card" style="padding:16px">
-        <button class="btn btn-danger" onclick="handleLogout()" style="width:100%">🚪 Sign Out</button>
+        <button class="btn btn-danger" onclick="handleLogout()" style="width:100%;gap:8px">
+          <span style="font-size:15px">⎋</span> Sign Out
+        </button>
       </div>
     </div>
 
@@ -795,8 +822,8 @@
     <span>Drive</span>
   </button>
   <button class="mobile-nav-item" data-nav="myprofile" onclick="navTo('myprofile')">
-    <span class="mobile-nav-item-icon">👤</span>
-    <span>Profile</span>
+    <span class="mobile-nav-item-icon">⚙️</span>
+    <span>Settings</span>
   </button>
 </div>
 
