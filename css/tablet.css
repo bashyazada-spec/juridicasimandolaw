@@ -153,7 +153,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 }
 
 .logo-wrap {
-  padding: 26px 20px 20px;
+  padding: 26px 22px 20px;
   border-bottom: 1px solid rgba(201,165,92,0.08);
   position: relative;
 }
@@ -182,17 +182,18 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 }
 
 .nav-section {
-  padding: 20px 20px 6px;
-  font-size: 8.5px;
-  letter-spacing: 2.5px;
+  padding: 20px 22px 6px;
+  font-size: 9px;
+  letter-spacing: 2.2px;
   text-transform: uppercase;
   color: rgba(201,165,92,0.4);
   font-weight: 700;
+  text-align: left;
 }
 
 .nav-btn {
   display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 11px 20px 11px 20px;
+  width: 100%; padding: 11px 22px;
   background: transparent; border: none;
   border-left: 3px solid transparent;
   color: rgba(216,228,240,0.55); font-size: 13.5px;
@@ -219,14 +220,6 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   border-top: 1px solid rgba(201,165,92,0.08);
   font-size: 10.5px; color: rgba(216,228,240,0.3);
   text-align: center; line-height: 1.8;
-}
-
-.suggest-report-btn {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%; margin-bottom: 10px; padding: 8px 14px;
-  border-radius: 8px; border: 1px solid rgba(201,168,76,0.25);
-  background: rgba(201,168,76,0.06); color: var(--gold);
-  font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s;
 }
 
 /* ── THEME SWITCH ── */
@@ -271,7 +264,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   gap: 16px;
 }
 
-/* ── LUXURY SCHEDULE FILTER BAR (ADAPTIVE THEME) ── */
+/* ── LUXURY SCHEDULE FILTER BAR ── */
 .schedule-filter-bar {
   display: flex;
   align-items: center;
@@ -417,6 +410,31 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   color: var(--text);
 }
 
+/* ── ATTORNEY LIST VIEW FOR TABLET ── */
+.profiles-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.profile-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.profile-list-row:hover {
+  background: var(--surface3);
+  border-color: var(--gold-border);
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -456,11 +474,24 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .btn-ghost { background: transparent; color: var(--text-muted); }
 .btn-danger { background: transparent; border: 1px solid rgba(248,113,113,0.2); color: var(--red); }
 
+.field-label { display: block; font-size: 10.5px; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
 .field-input, select.field-input, textarea.field-input {
   width: 100%; background: var(--surface2);
   border: 1px solid var(--border); border-radius: 9px;
   color: var(--text); padding: 12px 16px !important;
   font-size: 14px; outline: none;
+}
+
+/* ── RED HIGHLIGHT WHEN INCOMPLETE PROFILE FIELD ── */
+.field-input.err, select.field-input.err, textarea.field-input.err { 
+  border-color: var(--red) !important; 
+  box-shadow: 0 0 0 3px rgba(248,113,113,0.18) !important; 
+  background: rgba(248,113,113,0.03) !important;
+}
+
+.field-label.err {
+  color: var(--red) !important;
+  font-weight: 700 !important;
 }
 
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
