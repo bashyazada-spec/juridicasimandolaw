@@ -60,20 +60,20 @@
   </div>
 </div>
 
-<!-- Interactive Click-to-Toggle Set Availability Modal -->
-<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
+<!-- Interactive Click-to-Toggle Set Availability / Schedule Modal -->
+<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()">
   <div class="modal-box" style="max-width: 520px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      📅 Set Availability
+      📅 Set Schedule & Availability
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Click dates on the calendar below to toggle your availability.<br>
+      Click dates on the calendar below to toggle your schedule.<br>
       <span style="color:var(--red)">Red</span> = Busy / Out of Office. Click again to clear.
     </div>
     
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px">
       <div>
-        <label class="field-label">Reason / Label *</label>
+        <label class="field-label">Reason / Schedule Label *</label>
         <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office / Vacation" value="In Court / Out of Office" autocomplete="off"/>
       </div>
 
@@ -121,7 +121,7 @@
 
     <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
-      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Availability</button>
+      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Schedule</button>
     </div>
   </div>
 </div>
@@ -144,18 +144,18 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal -->
+<!-- Two-Factor Authentication Setup Modal (Centered Layout) -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
-  <div class="modal-box" style="max-width: 480px;">
-    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      🛡️ Set Up Two-Factor Authentication
+  <div class="modal-box" style="max-width: 480px; text-align: center;">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px">
+      🛡️ Two-Factor Authentication
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Scan the QR code below using <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>, or <strong>Apple Passwords</strong> on your phone.
+      Scan this QR code with <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>, or <strong>Apple Passwords</strong>.
     </div>
 
-    <!-- QR Code Display Box -->
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:16px;border-radius:12px;margin-bottom:14px;width:fit-content;margin-left:auto;margin-right:auto">
+    <!-- Centered QR Code Display Box -->
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:16px;border-radius:12px;margin:0 auto 14px;width:fit-content">
       <div id="tfa-setup-qrcode"></div>
     </div>
 
@@ -164,19 +164,19 @@
       <div id="tfa-setup-secret-key" style="font-family:monospace;font-size:13px;font-weight:700;color:var(--gold-light);margin-top:2px;letter-spacing:2px"></div>
     </div>
 
-    <!-- Backup Recovery Codes Section -->
-    <div style="margin-bottom:16px">
-      <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes (Save these in a safe place)</div>
-      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--gold-light)"></div>
+    <!-- Centered Backup Recovery Codes Section -->
+    <div style="margin-bottom:16px;text-align:center">
+      <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes (Save these safely)</div>
+      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--gold-light);max-width:320px;margin:0 auto"></div>
     </div>
 
     <!-- Verification Step -->
-    <div style="margin-bottom:20px">
-      <label class="field-label">Confirm 6-Digit Code from App *</label>
-      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" style="text-align:center;font-size:18px;font-weight:700;letter-spacing:4px"/>
+    <div style="margin-bottom:20px;text-align:center">
+      <label class="field-label" style="text-align:center">Confirm 6-Digit Code from App *</label>
+      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" style="text-align:center;font-size:20px;font-weight:700;letter-spacing:6px;max-width:240px;margin:0 auto"/>
     </div>
 
-    <div style="display:flex;gap:12px;justify-content:flex-end">
+    <div style="display:flex;gap:12px;justify-content:center">
       <button class="btn btn-ghost" onclick="closeTwoFactorSetupModal()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()">Verify & Activate 2FA</button>
     </div>
@@ -264,7 +264,7 @@
         </div>
       </div>
       <div>
-        <label class="field-label">Brief Description / Notes</label>
+        <label class="field-label">Brief Description / Notes (Optional)</label>
         <textarea class="field-input" id="appt-desc" style="min-height:80px;resize:vertical" placeholder="Enter notes or topics for the session..."></textarea>
       </div>
     </div>
@@ -278,7 +278,7 @@
 <!-- Main App -->
 <div id="app">
 
-  <!-- ══════ SIDEBAR ══════ -->
+  <!-- ══════ SIDEBAR (UNIFORM LEFT INDENTATION) ══════ -->
   <div id="sidebar">
     <div class="logo-wrap">
       <svg class="logo-img" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
@@ -295,16 +295,22 @@
       </svg>
       <div class="logo-sub">Case Management System</div>
     </div>
+
     <div style="flex:1">
       <div class="nav-section">Overview</div>
       <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')">⚖️&nbsp;&nbsp;Dashboard</button>
       <button class="nav-btn" data-nav="calendar" onclick="navTo('calendar')">📅&nbsp;&nbsp;Schedule / Calendar</button>
       <button class="nav-btn" data-nav="mydrive" onclick="navTo('mydrive')">📁&nbsp;&nbsp;Firm Drive</button>
-      <div class="nav-section">Clients</div>
+      
+      <div class="nav-section">Clients & Team</div>
       <button class="nav-btn" data-nav="profiles" onclick="navTo('profiles')">👥&nbsp;&nbsp;Attorneys</button>
-      <div class="nav-section">Cases</div>
+      
+      <div class="nav-section">Litigation</div>
       <button class="nav-btn" data-nav="allcases" onclick="navTo('allcases')">📋&nbsp;&nbsp;All Cases</button>
       
+      <div class="nav-section">System</div>
+      <button class="nav-btn" data-nav="myprofile" onclick="navTo('myprofile')">⚙️&nbsp;&nbsp;My Settings</button>
+
       <div id="admin-sidebar-section" style="display:none">
         <div class="nav-section">Administration</div>
         <button class="nav-btn" onclick="window.location.assign('admin.html')" style="color:var(--gold-light) !important;font-weight:600">🛡️&nbsp;&nbsp;Admin Console</button>
@@ -318,7 +324,7 @@
         💼 Add Case
       </button>
 
-      <div class="theme-switch-container" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px">
+      <div class="theme-switch-container" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px">
         <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Display Mode</span>
         <div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme" style="position:static;transform:none;margin:0">
           <div class="theme-switch-track">
@@ -329,12 +335,15 @@
         </div>
       </div>
 
-      <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="suggest-report-btn" style="margin-bottom:12px">
-        <span style="font-size:14px">💬</span> Suggest / Report
-      </a>
-      <button class="btn btn-danger btn-sm" onclick="handleLogout()" style="width:100%;justify-content:center;margin-bottom:12px">🚪 Sign Out</button>
-      Simando Law v5.0<br>
-      <span style="opacity:0.6">Firebase + Google Drive</span>
+      <!-- Modern Logout Button -->
+      <button class="btn btn-danger btn-sm" onclick="handleLogout()" style="width:100%;justify-content:center;margin-bottom:12px;gap:8px">
+        <span style="font-size:14px">⎋</span> Sign Out
+      </button>
+
+      <div style="font-size:10px;color:var(--text-dim);line-height:1.6">
+        Simando Law v5.2<br>
+        <a href="privacy-policy.html" target="_blank" style="color:var(--gold);text-decoration:underline">Privacy Policy</a> · <a href="terms-of-service.html" target="_blank" style="color:var(--gold);text-decoration:underline">Terms of Service</a>
+      </div>
     </div>
   </div>
 
@@ -344,12 +353,19 @@
     <!-- Floating Sidebar Toggle Button -->
     <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">☰</button>
 
-    <!-- Top Right Action Header -->
-    <div id="top-hdr-actions" style="position:fixed;top:22px;right:32px;z-index:950;display:flex;align-items:center;gap:14px">
+    <!-- Top Right Action Header: Messages Directly Beside Notifications -->
+    <div id="top-hdr-actions" style="position:fixed;top:22px;right:32px;z-index:950;display:flex;align-items:center;gap:12px">
+      <!-- Message / Chat Trigger -->
+      <button onclick="window._chat ? window._chat.toggleDock(event) : null" style="position:relative;font-size:18px;background:var(--surface);border:1px solid var(--gold-border);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--gold);cursor:pointer;box-shadow:var(--shadow-sm);transition:all 0.2s" title="Messages / Conversations">
+        💬
+        <span id="chat-hdr-badge" class="chat-badge hidden" style="position:absolute;top:-4px;right:-4px;padding:2px 6px;font-size:9.5px;border-radius:10px;line-height:1;border:2px solid var(--bg)">0</span>
+      </button>
+
+      <!-- Notification Bell -->
       <div style="position:relative">
-        <button onclick="toggleNotifDropdown()" style="position:relative;font-size:20px;background:var(--surface);border:1px solid var(--gold-border);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--gold);cursor:pointer;box-shadow:var(--shadow-sm);transition:all 0.2s" title="Notifications">
+        <button onclick="toggleNotifDropdown()" style="position:relative;font-size:18px;background:var(--surface);border:1px solid var(--gold-border);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--gold);cursor:pointer;box-shadow:var(--shadow-sm);transition:all 0.2s" title="Notifications">
           🔔
-          <span id="global-notif-badge" class="badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;display:none;padding:2px 6px;font-size:10px;border-radius:10px;line-height:1;border:2px solid var(--bg)">0</span>
+          <span id="global-notif-badge" class="badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;display:none;padding:2px 6px;font-size:9.5px;border-radius:10px;line-height:1;border:2px solid var(--bg)">0</span>
         </button>
 
         <!-- Dropdown Popup Widget -->
@@ -393,8 +409,13 @@
       <div class="dashboard-content-grid">
         <div>
           <div class="card">
-            <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px">
-              <span style="font-size:20px">📁</span> Recent Cases
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+              <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+                <span style="font-size:20px">📁</span> Recent Active Cases
+              </div>
+              <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11.5px;padding:4px 10px;border:1px solid var(--border)">
+                ↕ Expand View
+              </button>
             </div>
             <div id="dash-cases"></div>
           </div>
@@ -409,7 +430,7 @@
             <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="navTo('profiles')">View all →</button>
           </div>
           <div style="position:relative;margin-bottom:12px">
-            <input class="field-input" id="dash-profile-search" placeholder="🔍 Search attorneys…" oninput="renderDashProfiles()" style="font-size:13px;padding:8px 12px"/>
+            <input class="field-input" id="dash-profile-search" placeholder="🔍 Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:13px;padding:8px 12px"/>
           </div>
           <div id="dash-profiles"></div>
         </div>
@@ -479,12 +500,18 @@
       </div>
     </div>
 
-    <!-- ── ALL PROFILES ── -->
+    <!-- ── ALL PROFILES (WITH LIST / TILE VIEW SWITCHER) ── -->
     <div id="view-profiles" class="view hidden">
       <div class="page-hdr">
         <div>
           <div class="page-title">Attorney Profiles</div>
           <div class="page-sub" id="profiles-count"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="view-mode-toggle" style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px">
+            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="padding:4px 10px;font-size:12px">🔲 Tile View</button>
+            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="padding:4px 10px;font-size:12px">☰ List View</button>
+          </div>
         </div>
       </div>
       <div id="profiles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px"></div>
@@ -545,12 +572,12 @@
         <div id="pf-details-section">
           <div class="grid2 mb-16">
             <div>
-              <label class="field-label">Full Name *</label>
+              <label class="field-label" id="lbl-pf-name">Full Name *</label>
               <input class="field-input" id="pf-name" placeholder="e.g. Atty. Juan Dela Cruz"/>
               <div id="pf-name-err" class="field-err hidden">Full name is required</div>
             </div>
             <div>
-              <label class="field-label">Role / Title *</label>
+              <label class="field-label" id="lbl-pf-role">Role / Title *</label>
               <input class="field-input" id="pf-role" placeholder="e.g. Senior Associate"/>
               <div id="pf-role-err" class="field-err hidden">Role is required</div>
             </div>
@@ -566,9 +593,9 @@
             </div>
           </div>
           
-          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px">
+          <div style="display:flex;gap:12px;justify-content:center;margin-top:24px">
             <button class="btn btn-ghost" id="pf-cancel-btn">Cancel</button>
-            <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()"><span id="pf-save-btn-text">Create Profile</span></button>
+            <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()" style="min-width:200px"><span id="pf-save-btn-text">Create Profile</span></button>
           </div>
         </div>
       </div>
@@ -709,7 +736,7 @@
         <button class="btn btn-primary" onclick="openAddCase()">+ New Case</button>
       </div>
       <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <input class="field-input" style="max-width:200px;flex:1;min-width:130px" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
+        <input class="field-input" style="max-width:240px;flex:1;min-width:140px" placeholder="🔍 Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
         <select class="filter-select" id="ac-status" onchange="renderAllCases()" title="Filter by status">
           <option value="All">All Statuses</option>
         </select>
@@ -745,55 +772,91 @@
       </div>
     </div>
 
-    <!-- ── MY USER SETTINGS / PROFILE ── -->
+    <!-- ── MY USER SETTINGS (EXPANDED WIDESCREEN LAYOUT) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div>
           <div class="page-title">My Settings</div>
-          <div class="page-sub">Configure your personal display name, profile details, and account credentials</div>
+          <div class="page-sub">Personal profile, team security credentials, firm ethics & help portal</div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:24px;max-width:1100px">
+      
+      <!-- Expanded Responsive Grid -->
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:24px;width:100%;max-width:1300px">
         
-        <div class="card">
-          <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:8px">
-            👤 Profile Details
-          </div>
-          <div class="grid2">
-            <div style="grid-column: 1/-1">
-              <label class="field-label">Display Name *</label>
-              <input class="field-input" id="setting-name" placeholder="e.g. Atty. Maria Garcia"/>
+        <div style="display:flex;flex-direction:column;gap:24px">
+          <!-- Profile Details Card -->
+          <div class="card">
+            <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:8px">
+              👤 Profile Details
             </div>
-            <div>
-              <label class="field-label">Role / Designation *</label>
-              <input class="field-input" id="setting-role" placeholder="e.g. Senior Partner"/>
-            </div>
-            <div>
-              <label class="field-label">Contact Number</label>
-              <input class="field-input" id="setting-contact" placeholder="09XX-XXX-XXXX"/>
-            </div>
-            <div style="grid-column: 1/-1">
-              <label class="field-label">Attorney Profile Photo</label>
-              <div id="setting-photo-upload-area" style="margin-top:6px">
-                <div id="setting-photo-dropzone" onclick="document.getElementById('setting-photo-input').click()" style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:var(--bg)">
-                  <div style="font-size:24px;margin-bottom:6px">📷</div>
-                  <div style="font-size:13px;color:var(--text-muted);font-weight:500">Click to upload a profile photo</div>
-                  <div style="font-size:11px;color:var(--text-dim);margin-top:3px">Max size: 2MB</div>
-                </div>
-                <input type="file" id="setting-photo-input" accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
-                
-                <div id="setting-photo-preview-wrap" style="display:none;align-items:center;gap:14px;margin-top:12px;padding:12px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
-                  <img id="setting-photo-preview-img" src="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>
-                  <div style="flex:1">
-                    <div id="setting-name-preview" style="font-size:15px;font-weight:600;color:var(--text)">Name</div>
-                    <div id="setting-role-preview" style="font-size:13px;color:var(--text-dim)">Role</div>
+            <div class="grid2">
+              <div style="grid-column: 1/-1">
+                <label class="field-label" id="lbl-setting-name">Display Name *</label>
+                <input class="field-input" id="setting-name" placeholder="e.g. Atty. Maria Garcia"/>
+              </div>
+              <div>
+                <label class="field-label" id="lbl-setting-role">Role / Designation *</label>
+                <input class="field-input" id="setting-role" placeholder="e.g. Senior Partner"/>
+              </div>
+              <div>
+                <label class="field-label">Contact Number</label>
+                <input class="field-input" id="setting-contact" placeholder="09XX-XXX-XXXX"/>
+              </div>
+              <div style="grid-column: 1/-1">
+                <label class="field-label">Attorney Profile Photo</label>
+                <div id="setting-photo-upload-area" style="margin-top:6px">
+                  <div id="setting-photo-dropzone" onclick="document.getElementById('setting-photo-input').click()" style="border:2px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;background:var(--bg)">
+                    <div style="font-size:24px;margin-bottom:6px">📷</div>
+                    <div style="font-size:13px;color:var(--text-muted);font-weight:500">Click to upload a profile photo</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:3px">Max size: 2MB</div>
                   </div>
-                  <button onclick="removeSettingsPhoto()" class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Remove</button>
+                  <input type="file" id="setting-photo-input" accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
+                  
+                  <div id="setting-photo-preview-wrap" style="display:none;align-items:center;gap:14px;margin-top:12px;padding:12px 16px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
+                    <img id="setting-photo-preview-img" src="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>
+                    <div style="flex:1">
+                      <div id="setting-name-preview" style="font-size:15px;font-weight:600;color:var(--text)">Name</div>
+                      <div id="setting-role-preview" style="font-size:13px;color:var(--text-dim)">Role</div>
+                    </div>
+                    <button onclick="removeSettingsPhoto()" class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Remove</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Centered Save Profile Button -->
+            <div style="display:flex;justify-content:center;margin-top:24px">
+              <button class="btn btn-primary" onclick="saveUserSettings()" style="min-width:240px;justify-content:center">
+                Save Profile Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Help, Suggest & Legal Policies (Relocated Inside Settings) -->
+          <div class="card">
+            <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+              ⚖️ Firm Guidelines & Feedback Portal
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+                <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">💬 Suggestion / Issue Report</div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Submit feedback, feature requests, or system reports directly to firm leadership.</div>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
+                  Open Feedback Form ↗
+                </a>
+              </div>
+
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px">
+                <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">📜 Ethics & Legal Rules</div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Review confidentiality standards, attorney-client privilege, and platform terms.</div>
+                <div style="display:flex;gap:8px">
+                  <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Privacy Policy</a>
+                  <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Terms</a>
                 </div>
               </div>
             </div>
           </div>
-          <button class="btn btn-primary" onclick="saveUserSettings()" style="margin-top:24px;width:100%">Save Profile Settings</button>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:24px">
