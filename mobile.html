@@ -1,532 +1,210 @@
-/* ═══════════════════════════════════════════════════════════════
-   SIMANDO LAW — SMARTPHONE SPECIFIC STYLESHEET (mobile.html)
-   Zero Wobble · Fixed Bottom Nav Bar · Centered Layout
-   ═══════════════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
-
-:root {
-  --navy:        #0a1520;
-  --navy-light:  #112030;
-  --navy-dark:   #060d14;
-  --gold:        #c9a55c;
-  --gold-light:  #e0c080;
-  --gold-pale:   #f5e6c4;
-  --gold-dim:    rgba(201,165,92,0.09);
-  --gold-border: rgba(201,165,92,0.26);
-
-  --bg:          #060c13;
-  --surface:     #0c1826;
-  --surface2:    #091422;
-  --surface3:    #10202e;
-  --border:      #162033;
-  --border-soft: #1c2d3f;
-  --text:        #d8e4f0;
-  --text-muted:  #6b82a0;
-  --text-dim:    #344556;
-
-  --green:  #34d399;
-  --amber:  #fbbf24;
-  --red:    #f87171;
-  --violet: #818cf8;
-
-  --font-display:'Cormorant Garamond', Georgia, serif;
-  --font-body:   'DM Sans', system-ui, sans-serif;
-  --radius:      10px;
-  --radius-lg:   16px;
-  --radius-xl:   22px;
-  --shadow:      0 12px 48px rgba(0,0,0,0.6);
-  --shadow-sm:   0 4px 16px rgba(0,0,0,0.35);
-}
-
-[data-theme="light"] {
-  --bg:          #f1f5f9;
-  --surface:     #ffffff;
-  --surface2:    #f8fafc;
-  --surface3:    #f1f5f9;
-  --border:      #e2e8f0;
-  --text:        #0f172a;
-  --text-muted:  #334155;
-  --text-dim:    #64748b;
-  --gold:        #aa7c11;
-  --gold-light:  #c9a84c;
-}
-
-/* PREVENT HORIZONTAL WOBBLE / PANNING ENTIRELY */
-html, body {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-  position: relative;
-  padding-bottom: 70px !important;
-  margin: 0 !important;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 13.5px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  -webkit-tap-highlight-color: rgba(201,165,92,0.15);
-}
-
-/* OVERRIDE FOR NOTIFICATION DROPDOWN POPUP WIDGET ON MOBILE */
-#notif-dropdown {
-  position: fixed !important;
-  top: 54px !important;
-  right: 12px !important;
-  left: 12px !important;
-  width: auto !important;
-  max-width: 100% !important;
-  background: var(--surface) !important;
-  border: 1px solid var(--border-soft) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.85) !important;
-  z-index: 10005 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-}
-
-#notif-dropdown.hidden {
-  display: none !important;
-}
-
-button { 
-  font-family: var(--font-body); 
-  cursor: pointer; 
-  border: none; 
-  background: none; 
-  touch-action: manipulation;
-}
-input, select, textarea { font-family: var(--font-body); }
-a { color: inherit; text-decoration: none; }
-
-#app {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-#sidebar { display: none !important; }
-
-#main {
-  margin-left: 0 !important;
-  padding: 16px 14px 90px 14px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-
-/* MOBILE TOP BAR WITH CLEAN BUTTON ACTIONS */
-.mobile-top-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; background: var(--surface);
-  border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 900;
-  backdrop-filter: blur(12px); width: 100% !important;
-}
-
-.mobile-top-logo {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--gold-light);
-  letter-spacing: 0.2px;
-}
-
-.mobile-top-icon-btn {
-  position: relative;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 17px;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mobile-top-icon-btn:hover {
-  border-color: var(--gold-border);
-  background: var(--surface3);
-}
-
-/* FIXED BOTTOM NAV BAR */
-.mobile-bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0; height: 60px;
-  background: var(--surface); border-top: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-around;
-  z-index: 990; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); backdrop-filter: blur(16px);
-  width: 100% !important;
-}
-
-.mobile-nav-item {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; color: var(--text-dim); font-size: 10px; font-weight: 600; text-decoration: none;
-  background: none; border: none; outline: none; flex: 1; height: 100%; transition: color 0.18s ease;
-  font-family: var(--font-body);
-}
-
-.mobile-nav-item.active { 
-  color: var(--gold-light); 
-  border: none !important;
-  outline: none !important;
-}
-
-.mobile-nav-item-icon { font-size: 18px; line-height: 1; }
-
-/* MOBILE THEME SWITCH STYLING */
-.theme-switch { position: relative; cursor: pointer; user-select: none; }
-.theme-switch-track { width: 52px; height: 26px; border-radius: 13px; background: linear-gradient(135deg, #0a1520 0%, #162030 100%); border: 1px solid rgba(201,165,92,0.25); position: relative; overflow: hidden; display: flex; align-items: center; }
-.theme-switch-icon { position: absolute; font-size: 11px; line-height: 1; z-index: 2; transition: opacity 0.25s; }
-.theme-switch-moon { right: 6px; opacity: 1; }
-.theme-switch-sun { left: 6px; opacity: 0; }
-.theme-switch.is-light .theme-switch-moon { opacity: 0; }
-.theme-switch.is-light .theme-switch-sun { opacity: 1; }
-.theme-switch-thumb { position: absolute; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(145deg, var(--gold-light), var(--gold)); transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 3; }
-.theme-switch.is-light .theme-switch-thumb { transform: translateX(26px); }
-
-/* 1-COLUMN MOBILE LAYOUTS */
-.grid4, .grid2, .dashboard-content-grid, .card {
-  grid-template-columns: 1fr !important;
-  gap: 12px !important;
-  width: 100% !important;
-  max-width: 100% !important;
-}
-
-.card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 16px !important;
-}
-
-.stat-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 14px !important; position: relative;
-}
-
-.stat-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--accent, var(--gold)), transparent);
-}
-
-.stat-number { 
-  font-family: var(--font-display) !important; 
-  font-size: 38px !important; 
-  font-weight: 600 !important; 
-  line-height: 1; 
-  margin-bottom: 4px; 
-}
-.stat-label { font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; font-family: var(--font-body); }
-
-.page-hdr {
-  display: flex !important;
-  flex-direction: column !important; 
-  align-items: flex-start !important;
-  gap: 8px !important; 
-  margin-bottom: 16px !important;
-}
-
-.page-title { 
-  font-family: var(--font-display); 
-  font-size: 28px !important; 
-  font-weight: 600; 
-  color: var(--text); 
-  line-height: 1.1; 
-  letter-spacing: -0.5px;
-}
-.page-sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; font-family: var(--font-body); }
-
-/* ── LUXURY SCHEDULE FILTER BAR ── */
-.schedule-filter-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--gold-border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  width: 100%;
-  transition: background 0.3s, border-color 0.3s;
-}
-
-.schedule-filter-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.schedule-filter-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--surface2);
-  border: 1px solid var(--gold-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.schedule-filter-label {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text);
-  font-family: var(--font-body);
-}
-
-.schedule-filter-sub {
-  font-size: 10.5px;
-  color: var(--text-dim);
-  font-family: var(--font-body);
-}
-
-.schedule-filter-select-wrap {
-  width: 100%;
-}
-
-.schedule-filter-select {
-  width: 100%;
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: var(--surface2);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2l4.5 4.5 4.5-4.5' stroke='%23c9a55c' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  border: 1.5px solid var(--gold-border);
-  border-radius: 9px;
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 600;
-  font-family: var(--font-body);
-  padding: 10px 32px 10px 12px;
-  outline: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-[data-theme="light"] .schedule-filter-select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2l4.5 4.5 4.5-4.5' stroke='%23aa7c11' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-}
-
-.btn {
-  width: 100% !important; justify-content: center !important;
-  padding: 12px 14px !important; font-size: 13px; border-radius: 9px; border: none;
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  font-family: var(--font-body);
-  touch-action: manipulation !important;
-}
-
-.btn-sm { padding: 7px 12px !important; font-size: 11.5px !important; border-radius: 7px; width: auto !important; }
-
-.btn-primary { background: linear-gradient(135deg, #c9a55c 0%, #aa8030 100%); color: #040810; font-weight: 600; }
-.btn-secondary { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
-.btn-ghost { background: transparent; color: var(--text-muted); }
-.btn-danger { background: transparent; border: 1px solid rgba(248,113,113,0.2); color: var(--red); }
-
-.case-row {
-  flex-direction: column !important; align-items: flex-start !important;
-  gap: 8px !important; padding: 12px !important; width: 100% !important;
-  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
-}
-
-.case-row > div:last-child {
-  align-items: flex-start !important; flex-direction: row !important;
-  gap: 8px !important; width: 100% !important; justify-content: space-between !important;
-}
-
-/* ── ATTORNEY LIST VIEW FOR MOBILE ── */
-.profiles-list-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.profile-list-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.field-label { display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 5px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; font-family: var(--font-body); transition: color 0.2s; }
-
-.field-input, select.field-input, textarea.field-input {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 9px; color: var(--text); padding: 10px 12px; font-size: 13px; outline: none; box-sizing: border-box;
-}
-
-/* ── RED HIGHLIGHT WHEN INCOMPLETE FIELD ── */
-.field-input.err, select.field-input.err, textarea.field-input.err { 
-  border-color: var(--red) !important; 
-  box-shadow: 0 0 0 3px rgba(248,113,113,0.18) !important; 
-  background: rgba(248,113,113,0.03) !important;
-}
-
-.field-label.err {
-  color: var(--red) !important;
-  font-weight: 700 !important;
-}
-
-.filter-select {
-  appearance: none; -webkit-appearance: none;
-  background-color: var(--surface2);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b82a0' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 8px center;
-  border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted);
-  cursor: pointer; font-size: 11.5px; font-weight: 500; outline: none;
-  padding: 8px 24px 8px 10px; transition: all 0.18s; width: 100%;
-  font-family: var(--font-body);
-}
-
-/* ── MOBILE CALENDAR GRID & REAL-TIME HIGHLIGHTS ── */
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.cal-day-header { text-align: center; font-size: 9.5px; font-weight: 700; color: var(--text-dim); padding: 4px 0; text-transform: uppercase; font-family: var(--font-body); }
-
-.cal-day-cell { 
-  background: var(--surface2); 
-  border: 1px solid var(--border); 
-  border-radius: 8px; 
-  min-height: 48px; 
-  padding: 4px; 
-  cursor: pointer; 
-  display: flex; 
-  flex-direction: column; 
-  justify-content: space-between;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.cal-day-cell.other-month { opacity: 0.35; background: transparent; }
-
-/* Highlight Today's Date with Burnished Gold Aura */
-.cal-day-cell.is-today { 
-  border-color: var(--gold) !important; 
-  background: rgba(201, 165, 92, 0.08) !important;
-  box-shadow: 0 0 10px rgba(201, 165, 92, 0.3), inset 0 0 0 1px var(--gold) !important; 
-}
-
-/* Gray Out Past Dates */
-.cal-day-cell.is-past { 
-  opacity: 0.42 !important;
-  filter: grayscale(0.65) !important;
-  background: rgba(0, 0, 0, 0.15) !important;
-}
-
-.cal-day-cell.is-past .cal-day-num {
-  color: var(--text-dim) !important;
-}
-
-.cal-day-cell.is-selected { 
-  background: rgba(201, 168, 76, 0.15) !important; 
-  border-color: var(--gold) !important; 
-}
-
-.cal-day-num { font-size: 11px; font-weight: 700; color: var(--text); font-family: var(--font-body); }
-
-/* Google Drive Button styling */
-.gdrive-btn {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--surface2); border: 1px solid var(--border);
-  border-radius: 9px; color: var(--text); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all 0.2s; text-decoration: none;
-  font-family: var(--font-body);
-}
-.gdrive-btn.connected { border-color: rgba(52,211,153,0.3); color: var(--green); }
-
-.drive-status-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 20px; border: 1px solid var(--border);
-  font-size: 10.5px; color: var(--text-muted); background: var(--surface2); font-weight: 500;
-  font-family: var(--font-body);
-}
-.drive-status-chip.connected { border-color: rgba(52,211,153,0.28); color: var(--green); background: rgba(52,211,153,0.05); }
-.drive-status-chip.disconnected { border-color: rgba(251,191,36,0.24); color: var(--amber); background: rgba(251,191,36,0.04); }
-
-#config-banner {
-  background: rgba(251,191,36,0.04);
-  border: 1px solid rgba(251,191,36,0.18);
-  color: #fcd34d;
-  border-radius: var(--radius);
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  font-size: 12px;
-  display: none;
-  font-family: var(--font-body);
-}
-#config-banner.show { display: block; }
-
-/* ── EXPANDABLE CHAT PANEL ON MOBILE (BOTTOM OVERLAY, NO CLIPPING) ── */
-.chat-panel {
-  position: fixed !important;
-  width: 100vw !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 60px !important;
-  height: calc(100vh - 120px) !important;
-  max-height: 520px !important;
-  border-radius: 16px 16px 0 0 !important;
-  z-index: 10002 !important;
-  box-shadow: 0 -8px 40px rgba(0,0,0,0.85) !important;
-}
-
-/* ── TOUCH-SCROLLABLE MODAL OVERLAY & BOX (PREVENTS CANCEL BUTTONS BEING CUT OFF) ── */
-.modal-overlay { 
-  position: fixed !important; 
-  inset: 0 !important; 
-  background: rgba(4,8,16,0.88) !important; 
-  backdrop-filter: blur(14px) !important; 
-  display: flex !important; 
-  align-items: center !important; 
-  justify-content: center !important; 
-  z-index: 10000 !important; 
-  padding: 16px !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-
-.modal-box { 
-  background: var(--surface) !important; 
-  border: 1px solid var(--border-soft) !important; 
-  border-radius: var(--radius-xl) !important; 
-  padding: 20px !important; 
-  max-width: 100% !important; 
-  width: 100% !important;
-  max-height: 88vh !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  position: relative !important;
-  margin: auto !important;
-}
-
-.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; font-family: var(--font-body); }
-
-#toast { position: fixed; bottom: 74px; right: 14px; left: 14px; padding: 12px 18px; border-radius: 10px; font-size: 12.5px; font-weight: 500; z-index: 10001; opacity: 0; transform: translateY(20px); transition: all 0.28s; font-family: var(--font-body); }
-#toast.show { opacity: 1; transform: translateY(0); }
-#toast.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.35); color: var(--green); }
-#toast.error { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
-
-.avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-family: var(--font-body); }
-.empty-state { text-align: center; padding: 40px 16px; color: var(--text-dim); font-family: var(--font-body); }
-.empty-state-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.3; }
-
-.hidden { display: none !important; }
-.mb-8 { margin-bottom: 8px !important; }
-.mb-12 { margin-bottom: 12px !important; }
-.mb-16 { margin-bottom: 16px !important; }
-.mt-8 { margin-top: 8px !important; }
-.mt-16 { margin-top: 16px !important; }
+  </div>
+</div>
+
+<!-- Set Availability Modal -->
+<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;">
+<!-- Set Schedule & Availability Modal -->
+<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()">
+  <div class="modal-box" style="max-width: 520px; padding:20px">
+    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
+      📅 Set Availability
+      📅 Set Schedule & Availability
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
+      Click dates on the calendar below to toggle your availability. <span style="color:var(--red)">Red</span> = Out of Office.
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+      <div>
+        <label class="field-label">Reason / Label *</label>
+        <label class="field-label">Reason / Schedule Label *</label>
+        <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office" value="In Court / Out of Office" autocomplete="off"/>
+      </div>
+
+@@ -128,13 +128,13 @@
+      </div>
+
+      <div>
+        <label class="field-label">Brief Notes (Optional)</label>
+        <label class="field-label">Brief Description / Notes (Optional)</label>
+        <input type="text" class="field-input" id="busy-notes" placeholder="e.g. RTC Branch 20 Hearing"/>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Availability</button>
+      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Schedule</button>
+      <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
+    </div>
+  </div>
+@@ -158,17 +158,17 @@
+  </div>
+</div>
+
+<!-- Two-Factor Authentication Setup Modal on Mobile -->
+<!-- Two-Factor Authentication Setup Modal on Mobile (Centered Layout) -->
+<div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
+  <div class="modal-box" style="max-width: 440px; padding: 20px;">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+  <div class="modal-box" style="max-width: 440px; padding: 20px; text-align: center;">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">
+      🛡️ Set Up 2FA Authenticator
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
+      Scan this QR code with <strong>Microsoft Authenticator</strong>, <strong>Google Authenticator</strong>, or <strong>Apple Passwords</strong> on your phone.
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:12px;border-radius:10px;margin-bottom:12px;width:fit-content;margin-left:auto;margin-right:auto">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#ffffff;padding:12px;border-radius:10px;margin:0 auto 12px;width:fit-content">
+      <div id="tfa-setup-qrcode"></div>
+    </div>
+
+@@ -177,14 +177,14 @@
+      <div id="tfa-setup-secret-key" style="font-family:monospace;font-size:12px;font-weight:700;color:var(--gold-light);margin-top:2px;letter-spacing:1.5px;word-break:break-all"></div>
+    </div>
+
+    <div style="margin-bottom:14px">
+    <div style="margin-bottom:14px;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes</div>
+      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px;color:var(--gold-light)"></div>
+      <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px;color:var(--gold-light);max-width:280px;margin:0 auto"></div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label class="field-label">Confirm 6-Digit Code *</label>
+      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" inputmode="numeric" style="text-align:center;font-size:17px;font-weight:700;letter-spacing:3px"/>
+    <div style="margin-bottom:16px;text-align:center">
+      <label class="field-label" style="text-align:center">Confirm 6-Digit Code *</label>
+      <input type="text" class="field-input" id="tfa-setup-verify-code" placeholder="e.g. 123456" maxlength="6" inputmode="numeric" style="text-align:center;font-size:19px;font-weight:700;letter-spacing:4px;max-width:220px;margin:0 auto"/>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+@@ -275,7 +275,7 @@
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Brief Description / Notes</label>
+        <label class="field-label">Brief Description / Notes (Optional)</label>
+        <textarea class="field-input" id="appt-desc" style="min-height:80px;resize:vertical" placeholder="Enter notes or topics for the session..."></textarea>
+      </div>
+    </div>
+@@ -323,15 +323,20 @@
+      <div class="dashboard-content-grid">
+        <div>
+          <div class="card" style="padding:14px">
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
+              <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11px;padding:3px 8px;width:auto !important;border:1px solid var(--border)">
+                ↕ Expand
+              </button>
+            </div>
+            <div id="dash-cases"></div>
+          </div>
+          <div class="card mt-16" id="dash-calendar-card" style="padding:14px"></div>
+        </div>
+
+        <div class="card mt-16" style="padding:14px">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
+          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorneys…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
+          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
+          <div id="dash-profiles"></div>
+        </div>
+      </div>
+@@ -427,12 +432,18 @@
+      </div>
+    </div>
+
+    <!-- ── ALL PROFILES ── -->
+    <!-- ── ALL PROFILES (WITH LIST / TILE TOGGLE) ── -->
+    <div id="view-profiles" class="view hidden">
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">Attorneys</div>
+          <div class="page-sub" id="profiles-count"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <div>
+            <div class="page-title">Attorneys</div>
+            <div class="page-sub" id="profiles-count"></div>
+          </div>
+          <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px">
+            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">🔲 Tiles</button>
+            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">☰ List</button>
+          </div>
+        </div>
+      </div>
+      <div id="profiles-grid" style="display:grid;grid-template-columns:1fr;gap:12px"></div>
+@@ -491,11 +502,11 @@
+        </div>
+
+        <div id="pf-details-section">
+          <label class="field-label">Full Name *</label>
+          <label class="field-label" id="lbl-pf-name">Full Name *</label>
+          <input class="field-input mb-12" id="pf-name" placeholder="e.g. Atty. Juan Dela Cruz"/>
+          <div id="pf-name-err" class="field-err hidden">Full name is required</div>
+
+          <label class="field-label">Role / Title *</label>
+          <label class="field-label" id="lbl-pf-role">Role / Title *</label>
+          <input class="field-input mb-12" id="pf-role" placeholder="e.g. Senior Associate"/>
+          <div id="pf-role-err" class="field-err hidden">Role is required</div>
+
+@@ -671,10 +682,10 @@
+        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          👤 Profile Details
+        </div>
+        <label class="field-label" style="color:var(--gold-light);font-weight:700">Complete Name / Display Name *</label>
+        <label class="field-label" id="lbl-setting-name" style="color:var(--gold-light);font-weight:700">Complete Name / Display Name *</label>
+        <input class="field-input mb-12" id="setting-name" placeholder="e.g. Atty. Maria Garcia" style="border-color:var(--gold-border);font-weight:600"/>
+
+        <label class="field-label">Role / Designation *</label>
+        <label class="field-label" id="lbl-setting-role">Role / Designation *</label>
+        <input class="field-input mb-12" id="setting-role" placeholder="e.g. Senior Partner"/>
+
+        <label class="field-label">Contact Number</label>
+@@ -699,7 +710,21 @@
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="saveUserSettings()">Save Profile Settings</button>
+        <button class="btn btn-primary" onclick="saveUserSettings()" style="margin:0 auto">Save Profile Settings</button>
+      </div>
+
+      <!-- Suggestion & Legal Policy Card (Inside Settings) -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">⚖️ Firm Guidelines & Support</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
+            💬 Suggest / Report Issue ↗
+          </a>
+          <div style="display:flex;gap:8px">
+            <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Privacy Policy</a>
+            <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Terms</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Drive Connection Card -->
+@@ -767,9 +792,11 @@
+        <button class="btn btn-secondary" onclick="saveSecuritySettings()" style="width:100%">Update Credentials</button>
+      </div>
+
+      <!-- Sign Out / Danger Zone -->
+      <!-- Sign Out -->
+      <div class="card" style="padding:16px">
+        <button class="btn btn-danger" onclick="handleLogout()" style="width:100%">🚪 Sign Out</button>
+        <button class="btn btn-danger" onclick="handleLogout()" style="width:100%;gap:8px">
+          <span style="font-size:15px">⎋</span> Sign Out
+        </button>
+      </div>
+    </div>
+
+@@ -795,8 +822,8 @@
+    <span>Drive</span>
+  </button>
+  <button class="mobile-nav-item" data-nav="myprofile" onclick="navTo('myprofile')">
+    <span class="mobile-nav-item-icon">👤</span>
+    <span>Profile</span>
+    <span class="mobile-nav-item-icon">⚙️</span>
+    <span>Settings</span>
+  </button>
+</div>
