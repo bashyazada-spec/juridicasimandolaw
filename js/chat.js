@@ -757,10 +757,16 @@
       }
     });
 
-    const badge = document.getElementById("chat-dock-badge");
-    if (badge) {
-      badge.textContent = totalUnread > 9 ? "9+" : totalUnread;
-      badge.classList.toggle("hidden", totalUnread === 0);
+    const dockBadge = document.getElementById("chat-dock-badge");
+    if (dockBadge) {
+      dockBadge.textContent = totalUnread > 9 ? "9+" : totalUnread;
+      dockBadge.classList.toggle("hidden", totalUnread === 0);
+    }
+
+    const hdrBadge = document.getElementById("chat-hdr-badge");
+    if (hdrBadge) {
+      hdrBadge.textContent = totalUnread > 9 ? "9+" : totalUnread;
+      hdrBadge.classList.toggle("hidden", totalUnread === 0);
     }
   }
 
@@ -980,7 +986,15 @@
 
       @media (max-width: 600px) {
         #chat-dock-bar { display: none !important; }
-        .chat-panel { right: 10px !important; width: calc(100vw - 20px) !important; bottom: 74px !important; height: 430px !important; }
+        .chat-panel { 
+          left: 0 !important; 
+          right: 0 !important; 
+          width: 100vw !important; 
+          bottom: 60px !important; 
+          height: calc(100vh - 120px) !important; 
+          max-height: 520px !important;
+          border-radius: 16px 16px 0 0 !important;
+        }
       }
     `;
     document.head.appendChild(s);
