@@ -254,7 +254,7 @@ window.disableTwoFactor = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CLICK-TO-TOGGLE SET AVAILABILITY MODAL CONTROLLERS
+//  CLICK-TO-TOGGLE SET AVAILABILITY / SCHEDULE MODAL
 // ═══════════════════════════════════════════════════════════════
 let selectedBusyDatesSet = new Set();
 let modalCalYear = new Date().getFullYear();
@@ -361,7 +361,7 @@ window.renderModalCalendarGrid = function() {
     countLabel.textContent = `${selectedCount} busy date${selectedCount !== 1 ? 's' : ''} selected`;
   }
   if (submitBtn) {
-    submitBtn.textContent = `Save Availability (${selectedCount})`;
+    submitBtn.textContent = `Save Schedule (${selectedCount})`;
   }
 
   const firstDayObj = new Date(modalCalYear, modalCalMonth, 1);
@@ -445,7 +445,7 @@ window.submitBusyDates = async function() {
   const notes = (document.getElementById("busy-notes")?.value || "").trim();
 
   if (!title) {
-    showToast("Please enter a title or reason.", "error");
+    showToast("Please enter a schedule reason or title.", "error");
     return;
   }
 
@@ -457,7 +457,7 @@ window.submitBusyDates = async function() {
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) || { name: u.displayName || u.email || "Attorney" };
 
   try {
-    showToast("Saving your availability...");
+    showToast("Saving your schedule...");
 
     const timeLabel = isAllDay ? "All Day" : `${startTime} - ${endTime}`;
     
@@ -500,7 +500,7 @@ window.submitBusyDates = async function() {
             apptId = await dbAddAppointment(apptData);
           }
         } catch (dbErr) {
-          console.warn("Firestore write permission warning:", dbErr.message);
+          console.warn("Firestore write warning:", dbErr.message);
         }
 
         if (apptId) apptData.id = apptId;
@@ -510,7 +510,7 @@ window.submitBusyDates = async function() {
       }
     }
 
-    showToast("Availability settings saved!");
+    showToast("Schedule updated successfully!");
     closeBusyModal();
 
     if (typeof renderMonthlyCalendarGrid === "function") {
@@ -518,7 +518,7 @@ window.submitBusyDates = async function() {
     }
   } catch (err) {
     console.error("submitBusyDates error:", err);
-    showToast("Failed to save availability: " + err.message, "error");
+    showToast("Failed to save schedule: " + err.message, "error");
   }
 };
 
@@ -530,18 +530,18 @@ window.deleteBusySlot = async function(apptId, dateStr = null) {
   if (slot && u) {
     const isOwner = slot.ownerUid === u.uid || slot.targetUid === u.uid || slot.requesterUid === u.uid;
     if (!isOwner) {
-      showToast("You can only modify your own availability.", "error");
+      showToast("You can only modify your own schedule.", "error");
       return;
     }
   }
 
   try {
-    showToast("Removing availability entry...");
+    showToast("Removing schedule entry...");
     if (!apptId.startsWith("local_") && typeof dbDeleteAppointment === "function") {
       await dbDeleteAppointment(apptId).catch(err => console.warn("Delete appt error:", err));
     }
     appointments = appointments.filter(a => a.id !== apptId);
-    showToast("Availability removed!");
+    showToast("Schedule removed!");
 
     if (dateStr && typeof openDateScheduleModal === "function") {
       openDateScheduleModal(dateStr);
@@ -627,7 +627,7 @@ function confirmDeleteCase() {
   openDeleteModal();
 }
 
-function openDeleteModal() {
+window.openDeleteModal = function() {
   const modal = document.getElementById("delete-modal");
   const input = document.getElementById("del-confirm-input");
   const btn = document.getElementById("del-confirm-btn");
@@ -652,13 +652,13 @@ function openDeleteModal() {
 
   modal.classList.remove("hidden");
   if (input) setTimeout(() => input.focus(), 50);
-}
+};
 
-function closeDeleteModal() {
+window.closeDeleteModal = function() {
   const modal = document.getElementById("delete-modal");
   if (modal) modal.classList.add("hidden");
   _pendingDeleteTarget = null;
-}
+};
 
 async function executeDelete() {
   const target = _pendingDeleteTarget;
@@ -711,13 +711,12 @@ async function executeDelete() {
 // ═══════════════════════════════════════════════════════════════
 //  CASE SHARING SYSTEM
 // ═══════════════════════════════════════════════════════════════
-function openShareCaseModal() {
+window.openShareCaseModal = function() {
   if (!selCase) return;
   const listEl = document.getElementById("share-modal-list");
   if (!listEl) return;
 
   const sharedUids = selCase.sharedWith || [];
-  const permissions = selCase.permissions || {};
   const currentUid = window._currentUser?.uid;
 
   const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
@@ -742,12 +741,12 @@ function openShareCaseModal() {
 
   const modal = document.getElementById("share-modal");
   if (modal) modal.classList.remove("hidden");
-}
+};
 
-function closeShareModal() {
+window.closeShareModal = function() {
   const modal = document.getElementById("share-modal");
   if (modal) modal.classList.add("hidden");
-}
+};
 
 async function saveShareSettings() {
   if (!selCase) return;
@@ -777,7 +776,7 @@ async function saveShareSettings() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILE FORM
+//  PROFILE FORM (WITH INCOMPLETE RED VALIDATION)
 // ═══════════════════════════════════════════════════════════════
 let pfDriveConnected = false;
 
@@ -899,7 +898,6 @@ async function connectDriveForProfile() {
   if (errorEl) errorEl.classList.add("hidden");
 
   try {
-    await waitForGoogleDriveReady();
     await promptDriveAuth();
 
     pfDriveConnected = true;
@@ -1001,11 +999,19 @@ function bindProfileInputs() {
   const nameInp = document.getElementById("pf-name");
   const roleInp = document.getElementById("pf-role");
   if (nameInp && !nameInp._bound) {
-    nameInp.oninput = updateAvatarPreview;
+    nameInp.oninput = () => {
+      nameInp.classList.remove("err");
+      document.getElementById("lbl-pf-name")?.classList.remove("err");
+      updateAvatarPreview();
+    };
     nameInp._bound = true;
   }
   if (roleInp && !roleInp._bound) {
-    roleInp.oninput = updateAvatarPreview;
+    roleInp.oninput = () => {
+      roleInp.classList.remove("err");
+      document.getElementById("lbl-pf-role")?.classList.remove("err");
+      updateAvatarPreview();
+    };
     roleInp._bound = true;
   }
 }
@@ -1019,6 +1025,10 @@ function clearProfileErrors() {
     const el = document.getElementById(id);
     if (el) el.classList.remove("err");
   });
+  ["lbl-pf-name","lbl-pf-role"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("err");
+  });
 }
 
 async function saveProfile() {
@@ -1027,25 +1037,33 @@ async function saveProfile() {
     return;
   }
 
-  const name = (document.getElementById("pf-name")?.value || "").trim();
-  const role = (document.getElementById("pf-role")?.value || "").trim();
+  const nameInput = document.getElementById("pf-name");
+  const roleInput = document.getElementById("pf-role");
+  const nameLabel = document.getElementById("lbl-pf-name");
+  const roleLabel = document.getElementById("lbl-pf-role");
+
+  const name = (nameInput?.value || "").trim();
+  const role = (roleInput?.value || "").trim();
   let valid = true;
 
   if (!name) {
     const errEl = document.getElementById("pf-name-err");
-    const inpEl = document.getElementById("pf-name");
     if (errEl) errEl.classList.remove("hidden");
-    if (inpEl) inpEl.classList.add("err");
+    if (nameInput) nameInput.classList.add("err");
+    if (nameLabel) nameLabel.classList.add("err");
     valid = false;
   }
   if (!role) {
     const errEl = document.getElementById("pf-role-err");
-    const inpEl = document.getElementById("pf-role");
     if (errEl) errEl.classList.remove("hidden");
-    if (inpEl) inpEl.classList.add("err");
+    if (roleInput) roleInput.classList.add("err");
+    if (roleLabel) roleLabel.classList.add("err");
     valid = false;
   }
-  if (!valid) return;
+  if (!valid) {
+    showToast("Please fill in the required fields highlighted in red.", "error");
+    return;
+  }
 
   const data = {
     name, role,
@@ -1329,7 +1347,7 @@ function updateCfChip() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BOOT LOGIC WITH LOOP-FREE 2FA SESSION GUARD
+//  BOOT LOGIC
 // ═══════════════════════════════════════════════════════════════
 function enterLocalMode(reason) {
   localMode = true;
@@ -1435,7 +1453,7 @@ function clearCaseErrors() {
   });
 }
 
-// ── ROBUST SAVE CASE ──
+// ── ROBUST SAVE CASE (BRIEF NARRATIVE & CLEAN ERROR STATES) ──
 async function saveCase() {
   const petInp = document.getElementById("cf-petitioner-input");
   const resInp = document.getElementById("cf-respondent-input");
