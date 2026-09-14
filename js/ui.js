@@ -133,7 +133,7 @@ function updateThemeIcon(theme) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  NAVIGATION (WITH ACTIVE "CASES" TAB HIGHLIGHT ON CASE DETAIL)
+//  NAVIGATION (ACTIVE TAB HIGHLIGHTING)
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
@@ -149,6 +149,8 @@ function showView(name) {
     primaryNavKey = "allcases";
   } else if (name === "profileDetail" || name === "profileForm" || name === "profiles") {
     primaryNavKey = "profiles";
+  } else if (name === "myprofile") {
+    primaryNavKey = "myprofile";
   }
 
   const btn = document.querySelector(`.nav-btn[data-nav="${primaryNavKey}"]`);
@@ -179,8 +181,19 @@ function navTo(view) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD
+//  DASHBOARD (STRICT 5 CASES LIMIT & EXPAND TOGGLE)
 // ═══════════════════════════════════════════════════════════════
+let recentCasesExpanded = false;
+
+window.toggleExpandRecentCases = function() {
+  recentCasesExpanded = !recentCasesExpanded;
+  const btn = document.getElementById("btn-toggle-expand-cases");
+  if (btn) {
+    btn.textContent = recentCasesExpanded ? "▲ Collapse" : "↕ Expand View";
+  }
+  renderDashboard();
+};
+
 function renderDashboard() {
   const todayDateEl = document.getElementById("today-date");
   if (todayDateEl) {
@@ -210,7 +223,8 @@ function renderDashboard() {
   const dcEl = document.getElementById("dash-cases");
   if (!dcEl) return;
 
-  const displayCases = userCases.slice(0, 6);
+  // 5 cases limit when collapsed, all accessible when expanded
+  const displayCases = recentCasesExpanded ? userCases : userCases.slice(0, 5);
 
   dcEl.innerHTML = displayCases.length === 0
     ? '<div class="empty-state"><div class="empty-state-icon">📁</div><div>No active cases yet.</div></div>'
@@ -284,8 +298,27 @@ function renderDashProfiles() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES
+//  PROFILES (LIST VIEW VS TILE VIEW CONTROLLER)
 // ═══════════════════════════════════════════════════════════════
+let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
+
+window.setProfilesViewMode = function(mode) {
+  profilesViewMode = mode;
+  try {
+    localStorage.setItem("simando-profiles-view", mode);
+  } catch (e) { /* ignore */ }
+
+  const tileBtn = document.getElementById("btn-view-tile");
+  const listBtn = document.getElementById("btn-view-list");
+
+  if (tileBtn && listBtn) {
+    tileBtn.className = mode === "tile" ? "btn btn-sm btn-secondary active" : "btn btn-sm btn-ghost";
+    listBtn.className = mode === "list" ? "btn btn-sm btn-secondary active" : "btn btn-sm btn-ghost";
+  }
+
+  renderProfiles();
+};
+
 function renderProfiles() {
   const u = window._currentUser;
   if (!u) return;
@@ -303,32 +336,67 @@ function renderProfiles() {
     return;
   }
 
-  el.innerHTML = profiles.map(p => {
-    const pc = userCases.filter(c => c.profileId === p.id);
-    const ongoing = pc.filter(c => c.status === "On-going").length;
-    const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
-    
-    return `
-      <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
-        <div class="flex-center gap-14 mb-16">
-          ${avatarDiv(p.name, p.avatarColor, 50, p.photoUrl)}
-          <div>
-            <div style="font-weight:700;font-size:16px;color:var(--text)">
-              ${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
+  if (profilesViewMode === "list") {
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+    el.style.gap = "8px";
+
+    el.innerHTML = profiles.map(p => {
+      const pc = userCases.filter(c => c.profileId === p.id);
+      const ongoing = pc.filter(c => c.status === "On-going").length;
+      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
+
+      return `
+        <div class="profile-list-row" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
+          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+            ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
+            <div style="min-width:0">
+              <div style="font-weight:700;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                ${escHtml(p.name)} ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">YOU</span>' : ""}
+              </div>
+              <div style="font-size:12px;color:var(--text-dim)">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
             </div>
-            <div style="font-size:13px;color:var(--text-dim)">${escHtml(p.role || "Attorney")}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+            <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
+            ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
+            <span style="font-size:14px;color:var(--gold)">→</span>
           </div>
         </div>
-        <hr class="divider"/>
-        ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${escHtml(p.email)}</div>` : ""}
-        ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${escHtml(p.contact)}</div>` : ""}
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:13px;color:var(--text-dim)">Cases Accessible</span>
-          ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
+      `;
+    }).join("");
+  } else {
+    el.style.display = "grid";
+    el.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+    el.style.gap = "20px";
+
+    el.innerHTML = profiles.map(p => {
+      const pc = userCases.filter(c => c.profileId === p.id);
+      const ongoing = pc.filter(c => c.status === "On-going").length;
+      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
+      
+      return `
+        <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
+          <div class="flex-center gap-14 mb-16">
+            ${avatarDiv(p.name, p.avatarColor, 50, p.photoUrl)}
+            <div>
+              <div style="font-weight:700;font-size:16px;color:var(--text)">
+                ${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
+              </div>
+              <div style="font-size:13px;color:var(--text-dim)">${escHtml(p.role || "Attorney")}</div>
+            </div>
+          </div>
+          <hr class="divider"/>
+          ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${escHtml(p.email)}</div>` : ""}
+          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${escHtml(p.contact)}</div>` : ""}
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:var(--text-dim)">Cases Accessible (${pc.length})</span>
+            ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
+          </div>
         </div>
-      </div>
-    `;
-  }).join("");
+      `;
+    }).join("");
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -429,7 +497,7 @@ function renderProfileCases() {
   const pc = getAccessibleCases().filter(c => c.profileId === p.id);
 
   let filtered = pc.filter(c =>
-    (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q)) &&
+    (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (c.caseNumber || "").toLowerCase().includes(q)) &&
     (status === "All" || c.status === status) &&
     (category === "All" || c.category === category) &&
     (type === "All" || c.type === type)
@@ -464,11 +532,11 @@ function renderProfileCases() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ALL CASES
+//  ALL CASES (WITH LIVE NAME & TITLE SEARCH FILTER)
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
   updateAllFilterDropdowns(); 
-  const q        = (document.getElementById("ac-search")?.value || "").toLowerCase();
+  const q        = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
   const status   = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
   const type     = document.getElementById("ac-type")?.value || "All";
@@ -478,7 +546,18 @@ function renderAllCases() {
 
   let filtered = accessible.filter(c => {
     const p = profiles.find(x => x.id === c.profileId);
-    return (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (p && p.name.toLowerCase().includes(q))) &&
+    const attorneyName = (p?.name || "").toLowerCase();
+    const caseTitle = (c.title || "").toLowerCase();
+    const parties = (c.parties || "").toLowerCase();
+    const caseNumber = (c.caseNumber || "").toLowerCase();
+
+    const matchesQuery = !q || 
+      caseTitle.includes(q) || 
+      attorneyName.includes(q) || 
+      parties.includes(q) || 
+      caseNumber.includes(q);
+
+    return matchesQuery &&
       (status === "All" || c.status === status) &&
       (category === "All" || c.category === category) &&
       (type === "All" || c.type === type);
@@ -874,7 +953,7 @@ function onFilterCategoryChange(prefix) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REAL-TIME MONTHLY CALENDAR GRID (PAST DATE GRAYING & TODAY HIGHLIGHT)
+//  REAL-TIME MONTHLY CALENDAR GRID
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
@@ -1046,7 +1125,7 @@ function renderMonthlyCalendarGrid() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL CONTROLLER (WITH PAST DATE BOOKING LOCK)
+//  DATE POPUP MODAL CONTROLLER
 // ═══════════════════════════════════════════════════════════════
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
@@ -1146,7 +1225,7 @@ window.closeDateScheduleModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  PERSONAL SETTINGS & 2FA MANAGEMENT
+//  PERSONAL SETTINGS & RED HIGHLIGHT VALIDATION
 // ═══════════════════════════════════════════════════════════════
 let settingsPhotoDataUrl = null;
 
@@ -1165,8 +1244,22 @@ function renderMyProfile() {
   const curPassEl = document.getElementById("setting-current-password");
   const reauthEl = document.getElementById("setting-reauth-panel");
 
-  if (nameEl) nameEl.value = myProf.name || "";
-  if (roleEl) roleEl.value = myProf.role || "Attorney";
+  if (nameEl) {
+    nameEl.value = myProf.name || "";
+    nameEl.classList.remove("err");
+    nameEl.oninput = () => {
+      nameEl.classList.remove("err");
+      document.getElementById("lbl-setting-name")?.classList.remove("err");
+    };
+  }
+  if (roleEl) {
+    roleEl.value = myProf.role || "Attorney";
+    roleEl.classList.remove("err");
+    roleEl.oninput = () => {
+      roleEl.classList.remove("err");
+      document.getElementById("lbl-setting-role")?.classList.remove("err");
+    };
+  }
   if (contactEl) contactEl.value = myProf.contact || "";
   if (emailEl) emailEl.value = u.email || "";
   if (passEl) passEl.value = "";
@@ -1246,7 +1339,6 @@ async function connectDriveFromSettings() {
   if (btnText) btnText.textContent = "Connecting...";
 
   try {
-    await waitForGoogleDriveReady();
     await promptDriveAuth();
     showToast("Google Drive connected successfully!");
     renderMyProfile();
@@ -1327,12 +1419,30 @@ async function saveUserSettings() {
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) return;
 
-  const name = (document.getElementById("setting-name")?.value || "").trim();
-  const role = (document.getElementById("setting-role")?.value || "").trim();
+  const nameInput = document.getElementById("setting-name");
+  const roleInput = document.getElementById("setting-role");
+  const nameLabel = document.getElementById("lbl-setting-name");
+  const roleLabel = document.getElementById("lbl-setting-role");
+
+  const name = (nameInput?.value || "").trim();
+  const role = (roleInput?.value || "").trim();
   const contact = (document.getElementById("setting-contact")?.value || "").trim();
 
-  if (!name || !role) {
-    showToast("Name and Role are required.", "error");
+  let hasError = false;
+
+  if (!name) {
+    if (nameInput) nameInput.classList.add("err");
+    if (nameLabel) nameLabel.classList.add("err");
+    hasError = true;
+  }
+  if (!role) {
+    if (roleInput) roleInput.classList.add("err");
+    if (roleLabel) roleLabel.classList.add("err");
+    hasError = true;
+  }
+
+  if (hasError) {
+    showToast("Please complete all required fields highlighted in red.", "error");
     return;
   }
 
@@ -1885,7 +1995,7 @@ window.markAllNotificationsAsRead = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  APPOINTMENTS / SCHEDULING SYSTEM CONTROLLERS (BLOCKS PAST BOOKINGS)
+//  APPOINTMENTS / SCHEDULING SYSTEM CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let targetApptProfile = null;
 
@@ -2032,7 +2142,7 @@ window.declineAppointmentRequest = async function(notifId, apptId) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE FORM INITIALIZATION & STATUS POPULATION
+//  CASE FORM INITIALIZATION
 // ═══════════════════════════════════════════════════════════════
 function populateCaseSelects(isEdit = false) {
   const catSel = document.getElementById("cf-category");
@@ -2059,7 +2169,6 @@ async function openAddCase() {
     return;
   }
 
-  // Enforce mandatory Google Account authorization:
   if (typeof hasValidToken === "function" && !hasValidToken()) {
     openDriveWarningModal();
     return;
@@ -2108,7 +2217,6 @@ async function openEditCase() {
   const c = selCase;
   if (!c) return;
 
-  // Enforce mandatory Google Account authorization:
   if (typeof hasValidToken === "function" && !hasValidToken()) {
     openDriveWarningModal();
     return;
@@ -2161,7 +2269,6 @@ function openShareCaseModal() {
   if (!listEl) return;
 
   const sharedUids = selCase.sharedWith || [];
-  const permissions = selCase.permissions || {};
   const currentUid = window._currentUser?.uid;
 
   const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
@@ -2221,7 +2328,7 @@ async function saveShareSettings() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA & FILE DELETION ENGINE
+//  GOOGLE DRIVE EXPLORER REPLICA
 // ═══════════════════════════════════════════════════════════════
 let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
