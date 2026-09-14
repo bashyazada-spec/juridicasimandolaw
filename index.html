@@ -67,7 +67,7 @@
       📅 Set Schedule & Availability
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Click dates on the calendar below to toggle your schedule.<br>
+      Click dates on the calendar below to toggle your availability.<br>
       <span style="color:var(--red)">Red</span> = Busy / Out of Office. Click again to clear.
     </div>
     
@@ -318,13 +318,16 @@
     </div>
     
     <div class="sidebar-footer">
+      <!-- 1. User Profile Chip -->
       <div id="sidebar-user-chip" onclick="navTo('myprofile')" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-bottom:12px;cursor:pointer;transition:all 0.2s"></div>
 
-      <button class="btn btn-secondary btn-sm" onclick="openAddCase()" style="width:100%;justify-content:center;margin-bottom:12px;font-size:12px;padding:8px 12px;background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.3);color:var(--gold-light)">
+      <!-- 2. Add Case Card Button -->
+      <button class="btn btn-secondary btn-sm" onclick="openAddCase()" style="width:100%;justify-content:center;margin-bottom:12px;font-size:12px;padding:8px 12px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:10px;color:var(--gold-light)">
         💼 Add Case
       </button>
 
-      <div class="theme-switch-container" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px">
+      <!-- 3. Display Mode Card -->
+      <div class="theme-switch-container" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px">
         <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Display Mode</span>
         <div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme" style="position:static;transform:none;margin:0">
           <div class="theme-switch-track">
@@ -335,9 +338,10 @@
         </div>
       </div>
 
-      <!-- Modern Logout Button -->
-      <button class="btn btn-danger btn-sm" onclick="handleLogout()" style="width:100%;justify-content:center;margin-bottom:12px;gap:8px">
-        <span style="font-size:14px">⎋</span> Sign Out
+      <!-- 4. Sign Out Card Button (Redesigned to match the exact card design above it) -->
+      <button onclick="handleLogout()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;margin-bottom:14px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.22);border-radius:10px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(248,113,113,0.14)';this.style.borderColor='rgba(248,113,113,0.4)'" onmouseout="this.style.background='rgba(248,113,113,0.06)';this.style.borderColor='rgba(248,113,113,0.22)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        Sign Out
       </button>
 
       <div style="font-size:10px;color:var(--text-dim);line-height:1.6">
