@@ -121,7 +121,7 @@ a { color: inherit; text-decoration: none; }
 /* ── LAYOUT ── */
 #app { display: flex; min-height: 100vh; position: relative; }
 
-/* ── SIDEBAR & COLLAPSED ICON DOCK ── */
+/* ── SIDEBAR (DESKTOP ONLY COLLAPSE LOGIC) ── */
 #sidebar {
   width: var(--sidebar-w) !important;
   background: linear-gradient(175deg, #0a1624 0%, #06101a 55%, #040c15 100%) !important;
@@ -148,48 +148,51 @@ a { color: inherit; text-decoration: none; }
   transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease, background 0.3s;
 }
 
-/* WHEN COLLAPSED: SLIM ICON DOCK WITH PRESSABLE STICKERS */
-body.sidebar-collapsed #sidebar {
-  width: 76px !important;
-}
+/* DESKTOP COLLAPSED ICON DOCK */
+@media (min-width: 901px) {
+  body.sidebar-collapsed #sidebar {
+    width: 76px !important;
+  }
 
-body.sidebar-collapsed #main {
-  margin-left: 76px !important;
-  padding-left: 54px !important;
-}
+  body.sidebar-collapsed #main {
+    margin-left: 76px !important;
+    padding-left: 54px !important;
+  }
 
-body.sidebar-collapsed #sidebar .logo-wrap {
-  padding: 20px 12px 14px !important;
-  text-align: center !important;
-}
+  body.sidebar-collapsed #sidebar .logo-wrap {
+    padding: 20px 10px 14px !important;
+    text-align: center !important;
+  }
 
-body.sidebar-collapsed #sidebar .logo-img {
-  max-width: 44px !important;
-  margin: 0 auto !important;
-}
+  body.sidebar-collapsed #sidebar .logo-img {
+    max-width: 44px !important;
+    margin: 0 auto !important;
+  }
 
-body.sidebar-collapsed #sidebar .logo-sub,
-body.sidebar-collapsed #sidebar .nav-section,
-body.sidebar-collapsed #sidebar .nav-label,
-body.sidebar-collapsed #sidebar .sidebar-footer .theme-switch-container {
-  display: none !important;
-}
+  body.sidebar-collapsed #sidebar .logo-sub,
+  body.sidebar-collapsed #sidebar .nav-section,
+  body.sidebar-collapsed #sidebar .nav-label,
+  body.sidebar-collapsed #sidebar .sidebar-footer .theme-switch-container {
+    display: none !important;
+  }
 
-body.sidebar-collapsed #sidebar .nav-btn,
-body.sidebar-collapsed #sidebar #sidebar-user-chip.nav-btn {
-  justify-content: center !important;
-  padding: 12px 0 !important;
-  font-size: 18px !important;
-}
+  body.sidebar-collapsed #sidebar .nav-btn,
+  body.sidebar-collapsed #sidebar #sidebar-user-chip.nav-btn {
+    justify-content: center !important;
+    padding: 13px 0 !important;
+    font-size: 17px !important;
+    gap: 0 !important;
+  }
 
-body.sidebar-collapsed #sidebar .sidebar-footer {
-  padding: 8px 6px 16px 6px !important;
-  text-align: center !important;
-}
+  body.sidebar-collapsed #sidebar .sidebar-footer {
+    padding: 8px 4px 16px 4px !important;
+    text-align: center !important;
+  }
 
-body.sidebar-collapsed #sidebar .sidebar-footer button {
-  justify-content: center !important;
-  padding: 10px 0 !important;
+  body.sidebar-collapsed #sidebar .sidebar-footer button {
+    justify-content: center !important;
+    padding: 10px 0 !important;
+  }
 }
 
 /* HAMBURGER TOGGLE BUTTON */
