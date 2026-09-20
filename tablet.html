@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
 
+<!-- Load Optimized Tablet Stylesheet with Mobile UI Structure -->
 <link rel="stylesheet" href="css/tablet.css"/>
 <script src="js/redirect.js"></script>
 <script type="module" src="js/firebase-init.js"></script>
@@ -287,7 +288,7 @@
   </div>
 </div>
 
-<!-- Main Tablet App Area -->
+<!-- Main App -->
 <div id="app">
   <div id="main">
 
@@ -301,21 +302,21 @@
         <button class="btn btn-primary mt-8" onclick="openAddCase()">+ Quick Add Case</button>
       </div>
 
-      <!-- Stat Cards in 2x2 Grid -->
-      <div class="grid4" id="mobile-stats-grid" style="grid-template-columns:1fr 1fr !important; gap:12px !important; margin-bottom:20px">
-        <div class="stat-card" id="stat-card-profiles" style="padding:16px;display:none">
+      <!-- Stat Cards -->
+      <div class="grid4" id="mobile-stats-grid" style="grid-template-columns:1fr 1fr !important; gap:10px !important; margin-bottom:18px">
+        <div class="stat-card" id="stat-card-profiles" style="padding:14px;display:none">
           <div id="stat-profiles" class="stat-number" style="color:var(--gold)">0</div>
           <div class="stat-label">Attorneys (Admin)</div>
         </div>
-        <div class="stat-card" style="padding:16px">
+        <div class="stat-card" style="padding:14px">
           <div id="stat-total" class="stat-number" style="color:var(--violet)">0</div>
           <div class="stat-label">Total Cases</div>
         </div>
-        <div class="stat-card" style="padding:16px">
+        <div class="stat-card" style="padding:14px">
           <div id="stat-ongoing" class="stat-number" style="color:var(--amber)">0</div>
           <div class="stat-label">Active Cases</div>
         </div>
-        <div class="stat-card" style="padding:16px">
+        <div class="stat-card" style="padding:14px">
           <div id="stat-completed" class="stat-number" style="color:var(--green)">0</div>
           <div class="stat-label">Resolved</div>
         </div>
@@ -323,21 +324,21 @@
 
       <div class="dashboard-content-grid">
         <div>
-          <div class="card" style="padding:18px">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-              <div style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">📁 Recent Active Cases</div>
-              <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11.5px;padding:4px 10px;border:1px solid var(--border)">
-                ↕ Expand View
+          <div class="card" style="padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
+              <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11px;padding:3px 8px;width:auto !important;border:1px solid var(--border)">
+                ↕ Expand
               </button>
             </div>
             <div id="dash-cases"></div>
           </div>
-          <div class="card mt-16" id="dash-calendar-card" style="padding:18px"></div>
+          <div class="card mt-16" id="dash-calendar-card" style="padding:14px"></div>
         </div>
 
-        <div class="card mt-16" style="padding:18px">
-          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
-          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:13px;padding:9px 14px"/>
+        <div class="card mt-16" style="padding:14px">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
+          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
           <div id="dash-profiles"></div>
         </div>
       </div>
@@ -368,16 +369,16 @@
         </div>
       </div>
 
-      <div class="card mb-16" id="calendar-month-card" style="padding:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:16px;font-weight:700;color:var(--text)" id="cal-month-title">Month</div>
-          <div style="display:flex;gap:6px">
+      <div class="card mb-16" id="calendar-month-card" style="padding:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:700;color:var(--text)" id="cal-month-title">Month</div>
+          <div style="display:flex;gap:4px">
             <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄</button>
             <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
             <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">►</button>
           </div>
         </div>
-        <div class="cal-grid" id="calendar-grid-container" style="gap:4px"></div>
+        <div class="cal-grid" id="calendar-grid-container" style="gap:2px"></div>
       </div>
     </div>
 
@@ -391,9 +392,9 @@
         <button class="btn btn-primary mt-8" onclick="openAddCase()">+ New Case</button>
       </div>
 
-      <div class="card mb-14" style="padding:14px">
-        <input class="field-input mb-10" placeholder="🔍 Search cases, category, or title…" id="ac-search" oninput="renderAllCases()"/>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="card mb-12" style="padding:12px">
+        <input class="field-input mb-8" placeholder="🔍 Search cases, category, or title…" id="ac-search" oninput="renderAllCases()"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')">
             <option value="All">📂 All Categories</option>
           </select>
@@ -423,9 +424,9 @@
         </div>
         <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm mt-8" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px">📁 Open in Google Drive ↗</a>
       </div>
-      <div class="card" style="padding:18px">
+      <div class="card" style="padding:14px">
         <div id="mydrive-breadcrumbs" class="mb-12"></div>
-        <div id="mydrive-explorer-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px"></div>
+        <div id="mydrive-explorer-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
         <div id="mydrive-empty-state" class="empty-state hidden">
           <div class="empty-state-icon">📁</div>
           <div style="font-size:13px">This folder is empty.</div>
@@ -441,27 +442,27 @@
             <div class="page-title">Attorneys</div>
             <div class="page-sub" id="profiles-count"></div>
           </div>
-          <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px">
-            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="width:auto !important;padding:4px 10px !important;font-size:12px !important">🔲 Tiles</button>
-            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="width:auto !important;padding:4px 10px !important;font-size:12px !important">☰ List</button>
+          <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px">
+            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">🔲 Tiles</button>
+            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">☰ List</button>
           </div>
         </div>
       </div>
-      <div id="profiles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
+      <div id="profiles-grid" style="display:grid;grid-template-columns:1fr;gap:12px"></div>
     </div>
 
     <!-- ── PROFILE DETAIL ── -->
     <div id="view-profileDetail" class="view hidden">
       <button class="btn btn-ghost btn-sm mb-12" onclick="navTo('profiles')">← Back to Attorneys</button>
-      <div class="card mb-14" id="profile-header-card" style="padding:18px"></div>
-      <div class="grid4 mb-14" style="grid-template-columns:1fr 1fr !important; gap:10px !important;" id="profile-stats-row"></div>
-      <div id="profile-restricted-notice" class="card mb-14" style="display:none;text-align:center;padding:28px;border-color:var(--border)">
+      <div class="card mb-12" id="profile-header-card" style="padding:16px"></div>
+      <div class="grid4 mb-12" style="grid-template-columns:1fr 1fr !important; gap:8px !important;" id="profile-stats-row"></div>
+      <div id="profile-restricted-notice" class="card mb-12" style="display:none;text-align:center;padding:24px;border-color:var(--border)">
         <span style="font-size:28px">🔒</span>
         <div style="font-size:15px;font-weight:700;color:var(--text);margin-top:8px">Access Restricted</div>
         <div style="font-size:12px;color:var(--text-dim);margin-top:4px">For privacy reasons, you can only access documents and cases belonging to your own account.</div>
       </div>
       <div id="profile-cases-section">
-        <div class="card mb-12" style="padding:12px">
+        <div class="card mb-12" style="padding:10px">
           <input class="field-input mb-8" placeholder="🔍 Search cases…" id="pd-search" oninput="renderProfileCases()"/>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
             <select class="filter-select" id="pd-category" onchange="onFilterCategoryChange('pd')">
@@ -490,10 +491,10 @@
         <button class="btn btn-ghost btn-sm" id="pf-back-btn" onclick="navTo('profiles')">← Cancel</button>
         <div style="font-size:18px;font-weight:700;color:var(--text)" id="pf-title">New Attorney Profile</div>
       </div>
-      <div class="card" style="padding:18px">
-        <div id="pf-drive-section" style="margin-bottom:16px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
+      <div class="card" style="padding:16px">
+        <div id="pf-drive-section" style="margin-bottom:16px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <span style="font-size:12.5px;font-weight:600;color:var(--text)">Google Drive Integration *</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text)">Google Drive Integration *</span>
             <span id="pf-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
           </div>
           <button type="button" class="gdrive-btn" id="pf-connect-drive-btn" onclick="connectDriveForProfile()" style="width:100%;justify-content:center;padding:10px">
@@ -533,7 +534,7 @@
         <div></div>
       </div>
 
-      <div class="card" style="padding:18px">
+      <div class="card" style="padding:16px">
         <div id="cf-profile-chip" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:16px"></div>
         
         <label class="field-label">Case Title *</label>
@@ -643,7 +644,7 @@
       <div class="card" id="cd-status-panel" style="padding:16px"></div>
     </div>
 
-    <!-- ── MY USER SETTINGS (MATCHING MOBILE DESIGN) ── -->
+    <!-- ── MY USER SETTINGS ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
@@ -712,7 +713,7 @@
         </div>
 
         <div style="display:flex;justify-content:center;margin-top:8px">
-          <button class="btn btn-primary" onclick="saveUserSettings()" style="min-width:220px;justify-content:center">Save Profile Settings</button>
+          <button class="btn btn-primary" onclick="saveUserSettings()" style="width:100%">Save Profile Settings</button>
         </div>
       </div>
 
@@ -730,7 +731,7 @@
         </div>
       </div>
 
-      <!-- Google Drive Connection Card (Vibrant, Prominently Highlighted) -->
+      <!-- Google Drive Connection Card (Highlighted) -->
       <div class="card mb-16" style="padding:18px;border: 1.5px solid var(--gold-border); background: linear-gradient(180deg, var(--surface) 0%, rgba(201,165,92,0.04) 100%);">
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px">☁️ Google Drive Connection</div>
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px">
@@ -741,9 +742,8 @@
           <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
         </div>
         
-        <!-- Highlighted High-Visibility Button -->
         <div style="display:flex;justify-content:center">
-          <button class="gdrive-btn gdrive-highlight-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()" style="width:100%;max-width:320px;justify-content:center;padding:11px">
+          <button class="gdrive-btn gdrive-highlight-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()" style="width:100%;max-width:300px;justify-content:center;padding:11px">
             <svg width="18" height="18" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
               <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
               <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
@@ -758,19 +758,18 @@
       </div>
 
       <!-- Two-Factor Authentication Security Card -->
-      <div class="card mb-16" style="padding:18px">
-        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px">🛡️ Two-Factor Authentication (2FA)</div>
-        <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px">
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">🛡️ Two-Factor Authentication (2FA)</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-bottom:12px">
           Secure case documents using Microsoft Authenticator or Google Authenticator.
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <span style="font-size:12.5px;font-weight:600">Status:</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <span style="font-size:12px;font-weight:600">Status:</span>
           <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
         </div>
         
-        <!-- Small, Centered 2FA Action Button -->
         <div style="display:flex;justify-content:center">
-          <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="min-width:210px;width:auto !important;justify-content:center;padding:9px 20px">
+          <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="min-width:200px;width:auto !important;justify-content:center;padding:9px 18px">
             Set Up 2FA Authenticator
           </button>
         </div>
@@ -780,8 +779,8 @@
       </div>
 
       <!-- Login & Security Card -->
-      <div class="card mb-16" style="padding:18px">
-        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login & Security</div>
+      <div class="card mb-16" style="padding:16px">
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login & Security</div>
         
         <label class="field-label">Email Address</label>
         <input class="field-input mb-12" id="setting-email" placeholder="email@address.com"/>
@@ -806,7 +805,7 @@
       </div>
 
       <!-- Sign Out -->
-      <div class="card" style="padding:18px">
+      <div class="card" style="padding:16px">
         <button class="btn btn-danger" onclick="handleLogout()" style="width:100%;gap:8px">
           <span style="font-size:15px">⎋</span> Sign Out
         </button>
