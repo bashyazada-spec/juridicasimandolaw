@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Simando Law — Case Manager</title>
 
+<!-- Content Security Policy Header -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com;">
+
 <!-- 1. Instant 0ms Device Redirector (Executes before Firebase loads) -->
 <script src="js/redirect.js"></script>
 
@@ -295,42 +298,32 @@
       </svg>
       <div class="logo-sub">Case Management System</div>
     </div>
-
-    <!-- Main Navigation Items -->
     <div style="flex:1">
       <div class="nav-section">Overview</div>
       <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')">⚖️&nbsp;&nbsp;Dashboard</button>
       <button class="nav-btn" data-nav="calendar" onclick="navTo('calendar')">📅&nbsp;&nbsp;Schedule / Calendar</button>
       <button class="nav-btn" data-nav="mydrive" onclick="navTo('mydrive')">📁&nbsp;&nbsp;Firm Drive</button>
-      
       <div class="nav-section">Clients & Team</div>
       <button class="nav-btn" data-nav="profiles" onclick="navTo('profiles')">👥&nbsp;&nbsp;Attorneys</button>
-      
       <div class="nav-section">Litigation</div>
       <button class="nav-btn" data-nav="allcases" onclick="navTo('allcases')">📋&nbsp;&nbsp;All Cases</button>
-      
       <div class="nav-section">System</div>
       <button class="nav-btn" data-nav="myprofile" onclick="navTo('myprofile')">⚙️&nbsp;&nbsp;My Settings</button>
-
+      
       <div id="admin-sidebar-section" style="display:none">
         <div class="nav-section">Administration</div>
         <button class="nav-btn" onclick="window.location.assign('admin.html')" style="color:var(--gold-light) !important;font-weight:600">🛡️&nbsp;&nbsp;Admin Console</button>
       </div>
     </div>
     
-    <!-- Sidebar Footer -->
     <div class="sidebar-footer">
       <div class="nav-section">Account & Actions</div>
-
-      <!-- 1. Attorney Profile Nav Item -->
       <div id="sidebar-user-chip" class="nav-btn" onclick="navTo('myprofile')" style="cursor:pointer;padding:10px 24px"></div>
 
-      <!-- 2. Add Case Nav Button -->
       <button class="nav-btn" onclick="openAddCase()">
         💼&nbsp;&nbsp;Add Case
       </button>
 
-      <!-- 3. Display Mode Nav Row -->
       <div class="nav-btn" style="justify-content:space-between;cursor:default;">
         <span style="display:flex;align-items:center;gap:12px">
           🌙&nbsp;&nbsp;Display Mode
@@ -344,7 +337,6 @@
         </div>
       </div>
 
-      <!-- 4. Sign Out Nav Button -->
       <button class="nav-btn nav-btn-signout" onclick="handleLogout()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-right:2px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         Sign Out
@@ -363,7 +355,7 @@
     <!-- Floating Sidebar Toggle Button -->
     <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">☰</button>
 
-    <!-- Top Right Action Header: Messages Directly Beside Notifications -->
+    <!-- Top Right Action Header -->
     <div id="top-hdr-actions" style="position:fixed;top:22px;right:32px;z-index:950;display:flex;align-items:center;gap:12px">
       <!-- Message / Chat Trigger -->
       <button onclick="window._chat ? window._chat.toggleDock(event) : null" style="position:relative;font-size:18px;background:var(--surface);border:1px solid var(--gold-border);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--gold);cursor:pointer;box-shadow:var(--shadow-sm);transition:all 0.2s" title="Messages / Conversations">
@@ -782,7 +774,7 @@
       </div>
     </div>
 
-    <!-- ── MY USER SETTINGS ── -->
+    <!-- ── MY USER SETTINGS (EXPANDED WIDESCREEN LAYOUT) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -870,7 +862,7 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:24px">
-          <!-- Google Drive Integration (Vibrant, Prominently Highlighted) -->
+          <!-- Google Drive Integration (Highlighted) -->
           <div class="card" style="border: 1.5px solid var(--gold-border); background: linear-gradient(180deg, var(--surface) 0%, rgba(201,165,92,0.04) 100%);">
             <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px">
               ☁️ Google Drive Connection
@@ -883,7 +875,6 @@
               <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
             </div>
             
-            <!-- Highlighted High-Visibility Google Button -->
             <div style="display:flex;justify-content:center">
               <button class="gdrive-btn gdrive-highlight-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()">
                 <svg width="20" height="20" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
@@ -912,7 +903,7 @@
               <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
             </div>
             
-            <!-- Compact, Centered 2FA Action Button -->
+            <!-- Compact Centered 2FA Button -->
             <div style="display:flex;justify-content:center">
               <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="min-width:210px;width:auto;justify-content:center;padding:9px 20px">
                 Set Up 2FA Authenticator
