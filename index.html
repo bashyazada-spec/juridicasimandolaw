@@ -281,7 +281,7 @@
 <!-- Main App -->
 <div id="app">
 
-  <!-- ══════ SIDEBAR ══════ -->
+  <!-- ══════ SIDEBAR WITH MINIMIZED ICON-DOCK SUPPORT ══════ -->
   <div id="sidebar">
     <div class="logo-wrap">
       <svg class="logo-img" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
@@ -298,35 +298,41 @@
       </svg>
       <div class="logo-sub">Case Management System</div>
     </div>
+
+    <!-- Main Navigation Items with Title Tooltips for Minimized View -->
     <div style="flex:1">
       <div class="nav-section">Overview</div>
-      <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')">⚖️&nbsp;&nbsp;Dashboard</button>
-      <button class="nav-btn" data-nav="calendar" onclick="navTo('calendar')">📅&nbsp;&nbsp;Schedule / Calendar</button>
-      <button class="nav-btn" data-nav="mydrive" onclick="navTo('mydrive')">📁&nbsp;&nbsp;Firm Drive</button>
-      <div class="nav-section">Clients & Team</div>
-      <button class="nav-btn" data-nav="profiles" onclick="navTo('profiles')">👥&nbsp;&nbsp;Attorneys</button>
-      <div class="nav-section">Litigation</div>
-      <button class="nav-btn" data-nav="allcases" onclick="navTo('allcases')">📋&nbsp;&nbsp;All Cases</button>
-      <div class="nav-section">System</div>
-      <button class="nav-btn" data-nav="myprofile" onclick="navTo('myprofile')">⚙️&nbsp;&nbsp;My Settings</button>
+      <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')" title="Dashboard">⚖️&nbsp;&nbsp;<span class="nav-label">Dashboard</span></button>
+      <button class="nav-btn" data-nav="calendar" onclick="navTo('calendar')" title="Schedule / Calendar">📅&nbsp;&nbsp;<span class="nav-label">Schedule / Calendar</span></button>
+      <button class="nav-btn" data-nav="mydrive" onclick="navTo('mydrive')" title="Firm Drive">📁&nbsp;&nbsp;<span class="nav-label">Firm Drive</span></button>
       
+      <div class="nav-section">Clients & Team</div>
+      <button class="nav-btn" data-nav="profiles" onclick="navTo('profiles')" title="Attorneys">👥&nbsp;&nbsp;<span class="nav-label">Attorneys</span></button>
+      
+      <div class="nav-section">Litigation</div>
+      <button class="nav-btn" data-nav="allcases" onclick="navTo('allcases')" title="All Cases">📋&nbsp;&nbsp;<span class="nav-label">All Cases</span></button>
+      
+      <div class="nav-section">System</div>
+      <button class="nav-btn" data-nav="myprofile" onclick="navTo('myprofile')" title="My Settings">⚙️&nbsp;&nbsp;<span class="nav-label">My Settings</span></button>
+
       <div id="admin-sidebar-section" style="display:none">
         <div class="nav-section">Administration</div>
-        <button class="nav-btn" onclick="window.location.assign('admin.html')" style="color:var(--gold-light) !important;font-weight:600">🛡️&nbsp;&nbsp;Admin Console</button>
+        <button class="nav-btn" onclick="window.location.assign('admin.html')" title="Admin Console" style="color:var(--gold-light) !important;font-weight:600">🛡️&nbsp;&nbsp;<span class="nav-label">Admin Console</span></button>
       </div>
     </div>
     
+    <!-- Sidebar Footer -->
     <div class="sidebar-footer">
       <div class="nav-section">Account & Actions</div>
-      <div id="sidebar-user-chip" class="nav-btn" onclick="navTo('myprofile')" style="cursor:pointer;padding:10px 24px"></div>
+      <div id="sidebar-user-chip" class="nav-btn" onclick="navTo('myprofile')" title="My Profile" style="cursor:pointer;padding:10px 24px"></div>
 
-      <button class="nav-btn" onclick="openAddCase()">
-        💼&nbsp;&nbsp;Add Case
+      <button class="nav-btn" onclick="openAddCase()" title="Add Case">
+        💼&nbsp;&nbsp;<span class="nav-label">Add Case</span>
       </button>
 
-      <div class="nav-btn" style="justify-content:space-between;cursor:default;">
+      <div class="nav-btn" title="Display Mode" style="justify-content:space-between;cursor:default;">
         <span style="display:flex;align-items:center;gap:12px">
-          🌙&nbsp;&nbsp;Display Mode
+          🌙&nbsp;&nbsp;<span class="nav-label">Display Mode</span>
         </span>
         <div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme">
           <div class="theme-switch-track">
@@ -337,12 +343,12 @@
         </div>
       </div>
 
-      <button class="nav-btn nav-btn-signout" onclick="handleLogout()">
+      <button class="nav-btn nav-btn-signout" onclick="handleLogout()" title="Sign Out">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-right:2px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-        Sign Out
+        <span class="nav-label">Sign Out</span>
       </button>
 
-      <div style="padding:14px 24px 6px;font-size:10px;color:var(--text-dim);line-height:1.6;text-align:left">
+      <div style="padding:14px 24px 6px;font-size:10px;color:var(--text-dim);line-height:1.6;text-align:left" class="nav-label">
         Simando Law v5.2<br>
         <a href="privacy-policy.html" target="_blank" style="color:var(--gold);text-decoration:underline">Privacy Policy</a> · <a href="terms-of-service.html" target="_blank" style="color:var(--gold);text-decoration:underline">Terms of Service</a>
       </div>
@@ -862,7 +868,7 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:24px">
-          <!-- Google Drive Integration (Highlighted) -->
+          <!-- Google Drive Integration -->
           <div class="card" style="border: 1.5px solid var(--gold-border); background: linear-gradient(180deg, var(--surface) 0%, rgba(201,165,92,0.04) 100%);">
             <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px">
               ☁️ Google Drive Connection
@@ -903,7 +909,6 @@
               <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
             </div>
             
-            <!-- Compact Centered 2FA Button -->
             <div style="display:flex;justify-content:center">
               <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="min-width:210px;width:auto;justify-content:center;padding:9px 20px">
                 Set Up 2FA Authenticator
