@@ -332,7 +332,7 @@
 
     container.innerHTML = list.map(p => {
       const isAdminProfile = p.role === "admin";
-      const is2FA = !!(p.twoFactorEnabled && p.twoFactorSecret);
+      const is2FA = !!(p.twoFactorEnabled);
 
       return `
         <div class="attorney-card">
@@ -462,15 +462,18 @@
 
     try {
       showToast("Resetting 2FA...");
-      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
+      
+      await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), {
         twoFactorEnabled: false,
         twoFactorSecret: null,
         twoFactorBackupCodes: []
+      }, { merge: true });
+
+      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
+        twoFactorEnabled: false
       });
 
       currentEditingProfile.twoFactorEnabled = false;
-      currentEditingProfile.twoFactorSecret = null;
-      currentEditingProfile.twoFactorBackupCodes = [];
 
       document.getElementById("edit-2fa-status-desc").innerHTML = "2FA disabled.";
       document.getElementById("btn-admin-reset-2fa").style.display = "none";
@@ -551,8 +554,6 @@
         photoUrl: null,
         ownerUid: user.uid,
         twoFactorEnabled: false,
-        twoFactorSecret: null,
-        twoFactorBackupCodes: [],
         createdAt: new Date().toISOString().slice(0, 10)
       };
 
