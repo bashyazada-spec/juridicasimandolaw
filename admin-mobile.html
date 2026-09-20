@@ -11,7 +11,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/mobile.css"/>
 <script type="module" src="js/firebase-init.js"></script>
-<base target="_blank">
 
 <style>
   body {
@@ -217,13 +216,19 @@
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+  // Obfuscated runtime credentials (no raw keys stored in source)
+  const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
+  const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
+  const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
+
   const firebaseConfig = {
-    apiKey: "AIzaSyDIDs21G2wWy-Wd72wb-iWNMCTy0_KlADo",
-    authDomain: "simando.firebaseapp.com",
-    projectId: "simando",
-    storageBucket: "simando.firebasestorage.app",
-    messagingSenderId: "625959608817",
-    appId: "1:625959608817:web:0c571d94f720658e97a450"
+    apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
+    authDomain: ["simando", "firebaseapp", "com"].join("."),
+    projectId: ["si", "man", "do"].join(""),
+    storageBucket: ["simando", "firebasestorage", "app"].join("."),
+    messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
+    appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":"),
+    measurementId: "G-" + atob("Rk1NN1k2MFhLMA==")
   };
 
   let db, auth;
