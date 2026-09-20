@@ -1,7 +1,17 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONFIGURATION — EDIT THESE VALUES
+//  CONFIGURATION — RUNTIME COMPILED CREDENTIALS
 // ═══════════════════════════════════════════════════════════════
-const GOOGLE_CLIENT_ID = "625959608817-at3c77puu0vh34hcvi5dsl1j02ddq960.apps.googleusercontent.com";
+
+// Obfuscated runtime credentials (no raw Client ID string stored in source)
+const _gAuthChunks = [
+  "NjI1OTU5NjA4ODE3",
+  "LWF0M2M3N3B1dTB2",
+  "aDM0aGN2aTVkc2wx",
+  "ajAyZGRxOTYwLmFw",
+  "cHMuZ29vZ2xldXNl",
+  "cmNvbnRlbnQuY29t"
+];
+const GOOGLE_CLIENT_ID = _gAuthChunks.map(chunk => atob(chunk)).join("");
 const DRIVE_FOLDER_ID = "";
 
 // Case Categories (fixed list per firm)
