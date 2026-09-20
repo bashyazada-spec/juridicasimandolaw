@@ -202,10 +202,20 @@ window.confirmAndEnableTwoFactor = async function() {
 
   try {
     showToast("Enabling Two-Factor Security...");
-    await dbUpdateProfile(myProf.id, {
+    
+    // Save secret exclusively in isolated private subcollection
+    const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
+    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    
+    await setDoc(secRef, {
       twoFactorEnabled: true,
       twoFactorSecret: generated2FASecret,
       twoFactorBackupCodes: generatedBackupCodes
+    }, { merge: true });
+
+    // Mark public profile flag
+    await dbUpdateProfile(myProf.id, {
+      twoFactorEnabled: true
     });
 
     myProf.twoFactorEnabled = true;
@@ -233,10 +243,18 @@ window.disableTwoFactor = async function() {
 
   try {
     showToast("Disabling 2FA...");
-    await dbUpdateProfile(myProf.id, {
+    
+    const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
+    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    
+    await setDoc(secRef, {
       twoFactorEnabled: false,
       twoFactorSecret: null,
       twoFactorBackupCodes: []
+    }, { merge: true });
+
+    await dbUpdateProfile(myProf.id, {
+      twoFactorEnabled: false
     });
 
     myProf.twoFactorEnabled = false;
@@ -1347,7 +1365,7 @@ function updateCfChip() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  BOOT LOGIC
+//  BOOT LOGIC WITH 2FA UNVERIFIED EVICTION GUARD
 // ═══════════════════════════════════════════════════════════════
 function enterLocalMode(reason) {
   localMode = true;
@@ -1402,6 +1420,20 @@ document.addEventListener("firebase-ready", () => {
     window._fbOnAuth(window._auth, async (user) => {
       window._currentUser = user;
       if (user) {
+        // ── 2FA SESSION EVICTION GUARD ──
+        try {
+          const { data: profData } = await fetchUserProfile(user);
+          if (profData.twoFactorEnabled) {
+            const isVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
+            if (!isVerified) {
+              console.warn("Unverified 2FA session detected. Evicting session.");
+              await signOut(window._auth);
+              window.location.replace("login.html");
+              return;
+            }
+          }
+        } catch (e) { /* ignore */ }
+
         if (!dbConnected) {
           dbConnected = true;
           connectDatabase();
@@ -1453,7 +1485,19 @@ function clearCaseErrors() {
   });
 }
 
-// ── ROBUST SAVE CASE (BRIEF NARRATIVE & CLEAN ERROR STATES) ──
+async function fetchUserProfile(user) {
+  if (!user) return { docId: null, data: {} };
+  try {
+    const directRef = window._fbDoc(window._db, "profiles", user.uid);
+    const directSnap = await window._fbGetDoc(directRef);
+    if (directSnap.exists()) {
+      return { docId: directSnap.id, data: directSnap.data() };
+    }
+  } catch (e) { /* continue */ }
+  return { docId: null, data: {} };
+}
+
+// ── ROBUST SAVE CASE ──
 async function saveCase() {
   const petInp = document.getElementById("cf-petitioner-input");
   const resInp = document.getElementById("cf-respondent-input");
