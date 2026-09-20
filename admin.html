@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -238,7 +237,8 @@
     projectId: ["si", "man", "do"].join(""),
     storageBucket: ["simando", "firebasestorage", "app"].join("."),
     messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
-    appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":")
+    appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":"),
+    measurementId: "G-" + atob("Rk1NN1k2MFhLMA==")
   };
 
   let db, auth;
@@ -359,7 +359,7 @@
 
     tbody.innerHTML = adminProfiles.map(p => {
       const isAdminProfile = p.role === "admin";
-      const is2FA = !!(p.twoFactorEnabled && p.twoFactorSecret);
+      const is2FA = !!(p.twoFactorEnabled);
 
       return `
         <tr>
@@ -481,15 +481,19 @@
 
     try {
       showToast("Resetting 2FA...");
-      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
+      
+      // Clear private security vault
+      await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), {
         twoFactorEnabled: false,
         twoFactorSecret: null,
         twoFactorBackupCodes: []
+      }, { merge: true });
+
+      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
+        twoFactorEnabled: false
       });
 
       currentEditingProfile.twoFactorEnabled = false;
-      currentEditingProfile.twoFactorSecret = null;
-      currentEditingProfile.twoFactorBackupCodes = [];
 
       document.getElementById("edit-2fa-status-desc").innerHTML = "2FA has been disabled for this account.";
       document.getElementById("btn-admin-reset-2fa").style.display = "none";
@@ -588,8 +592,6 @@
         photoUrl: null,
         ownerUid: user.uid,
         twoFactorEnabled: false,
-        twoFactorSecret: null,
-        twoFactorBackupCodes: [],
         createdAt: new Date().toISOString().slice(0, 10)
       };
 
