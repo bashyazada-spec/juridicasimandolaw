@@ -322,7 +322,7 @@ async function dbLoad() {
   }
 }
 
-// ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──
+// ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR (15 DAYS RETRIEVE) ──
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
   if (!activeUid || !window._notifsLoaded) return;
@@ -336,7 +336,8 @@ function checkCaseDueNotifications() {
     const dueObj = new Date(c.dueDate + "T00:00:00");
     const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
 
-    if (diffDays <= 3) {
+    // Look ahead 15 days for upcoming case deadlines
+    if (diffDays <= 15) {
       const notifKey = `case_due_${c.id}_${c.dueDate}`;
 
       const alreadyNotified = notifications.some(n => 
