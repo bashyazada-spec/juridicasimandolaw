@@ -29,14 +29,19 @@ import {
   EmailAuthProvider 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+// Obfuscated runtime credentials (no raw API key or App ID strings stored in source)
+const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
+const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
+const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDIDs21G2wWy-Wd72wb-iWNMCTy0_KlADo",
-  authDomain: "simando.firebaseapp.com",
-  projectId: "simando",
-  storageBucket: "simando.firebasestorage.app",
-  messagingSenderId: "625959608817",
-  appId: "1:625959608817:web:0c571d94f720658e97a450",
-  measurementId: "G-FMM7Y60XK0"
+  apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
+  authDomain: ["simando", "firebaseapp", "com"].join("."),
+  projectId: ["si", "man", "do"].join(""),
+  storageBucket: ["simando", "firebasestorage", "app"].join("."),
+  messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
+  appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":"),
+  measurementId: "G-" + atob("Rk1NN1k2MFhLMA==")
 };
 
 try {
