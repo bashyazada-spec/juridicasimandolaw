@@ -415,7 +415,8 @@
     getDoc,
     collection,
     getDocs,
-    updateDoc
+    updateDoc,
+    setDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // Obfuscated runtime credentials (no raw credentials stored in source)
@@ -531,23 +532,43 @@
     return false;
   }
 
-  // Check Auth State on Page Load
+  // Check Auth State on Page Load & Verify 2FA via Private Vault
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
         const { docId, data: profData } = await fetchUserProfile(user);
 
-        if (profData.twoFactorEnabled && profData.twoFactorSecret) {
-          const isSessionVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
-          if (isSessionVerified) {
-            window.location.replace("index.html");
+        if (profData.twoFactorEnabled) {
+          // Read secret key from isolated private security vault
+          let secData = null;
+          try {
+            const secSnap = await getDoc(doc(db, "profiles", docId, "private", "security"));
+            if (secSnap.exists()) {
+              secData = secSnap.data();
+            }
+          } catch (e) { /* fallback to profile data if unmigrated */ }
+
+          const secretKey = secData?.twoFactorSecret || profData.twoFactorSecret;
+          const backupCodes = secData?.twoFactorBackupCodes || profData.twoFactorBackupCodes || [];
+
+          if (secretKey) {
+            const isSessionVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
+            if (isSessionVerified) {
+              window.location.replace("index.html");
+            } else {
+              pendingUser = user;
+              pendingProfileDocId = docId;
+              pendingProfileData = {
+                ...profData,
+                twoFactorSecret: secretKey,
+                twoFactorBackupCodes: backupCodes
+              };
+              document.getElementById("step-login").classList.add("hidden");
+              document.getElementById("step-2fa").classList.remove("hidden");
+              setTimeout(() => clearEnteredOTP(), 100);
+            }
           } else {
-            pendingUser = user;
-            pendingProfileDocId = docId;
-            pendingProfileData = profData;
-            document.getElementById("step-login").classList.add("hidden");
-            document.getElementById("step-2fa").classList.remove("hidden");
-            setTimeout(() => clearEnteredOTP(), 100);
+            window.location.replace("index.html");
           }
         } else {
           window.location.replace("index.html");
@@ -686,15 +707,34 @@
 
       const { docId, data: profData } = await fetchUserProfile(user);
 
-      if (profData.twoFactorEnabled && profData.twoFactorSecret) {
-        pendingUser = user;
-        pendingProfileDocId = docId;
-        pendingProfileData = profData;
+      if (profData.twoFactorEnabled) {
+        // Read secret from private vault
+        let secData = null;
+        try {
+          const secSnap = await getDoc(doc(db, "profiles", docId, "private", "security"));
+          if (secSnap.exists()) secData = secSnap.data();
+        } catch (e) { /* continue */ }
 
-        document.getElementById("step-login").classList.add("hidden");
-        document.getElementById("step-2fa").classList.remove("hidden");
-        setLoading(false);
-        setTimeout(() => clearEnteredOTP(), 100);
+        const secretKey = secData?.twoFactorSecret || profData.twoFactorSecret;
+        const backupCodes = secData?.twoFactorBackupCodes || profData.twoFactorBackupCodes || [];
+
+        if (secretKey) {
+          pendingUser = user;
+          pendingProfileDocId = docId;
+          pendingProfileData = {
+            ...profData,
+            twoFactorSecret: secretKey,
+            twoFactorBackupCodes: backupCodes
+          };
+
+          document.getElementById("step-login").classList.add("hidden");
+          document.getElementById("step-2fa").classList.remove("hidden");
+          setLoading(false);
+          setTimeout(() => clearEnteredOTP(), 100);
+        } else {
+          sessionStorage.setItem("simando_2fa_verified", "true");
+          window.location.replace("index.html");
+        }
       } else {
         sessionStorage.setItem("simando_2fa_verified", "true");
         window.location.replace("index.html");
@@ -747,9 +787,10 @@
       availableCodes.splice(matchIndex, 1);
       try {
         if (pendingProfileDocId) {
-          await updateDoc(doc(db, "profiles", pendingProfileDocId), {
+          // Update private vault first
+          await setDoc(doc(db, "profiles", pendingProfileDocId, "private", "security"), {
             twoFactorBackupCodes: availableCodes
-          });
+          }, { merge: true });
         }
       } catch (e) { /* continue sign-in */ }
 
