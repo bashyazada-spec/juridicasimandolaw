@@ -149,7 +149,7 @@ window.openTwoFactorSetupModal = async function() {
   if (codeInp) codeInp.value = "";
 
   if (backupListEl) {
-    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">${code}</div>`).join("");
+    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);color:var(--gold-light)">${code}</div>`).join("");
   }
 
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf.email || u.email)}?secret=${generated2FASecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
@@ -1204,7 +1204,7 @@ function renderPartyLists() {
   const chipStyle = (color, bg) =>
     `display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:500;background:${bg};border:1px solid ${color};color:${color};margin-bottom:6px;margin-right:4px`;
   const removeBtn = (role, i) =>
-    `<button type="button" onclick="removeParty('${role}',${i})" style="background:none;border:none;cursor:pointer;padding:0;line-height:1;font-size:14px;opacity:0.6" title="Remove">×</button>`;
+    `<button type="button" onclick="removeParty('${role}',${i})" style="background:none;border:none;cursor:pointer;padding:0;line-height:1;font-size:14px;opacity:0.6;color:inherit" title="Remove">×</button>`;
 
   const petEl = document.getElementById("cf-petitioners-list");
   if (petEl) {
