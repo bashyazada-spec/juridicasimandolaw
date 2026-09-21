@@ -280,6 +280,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .sidebar-footer .nav-btn {
   margin: 0 !important;
   border-radius: 0 !important;
+  color: #ffffff !important;
 }
 
 .sidebar-footer .nav-section {
@@ -302,6 +303,11 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 #sidebar-user-chip.nav-btn:hover {
   background: rgba(201,165,92,0.06) !important;
   border-left-color: var(--gold-border) !important;
+}
+
+/* User name inside dark sidebar is always clean white */
+#sidebar #sidebar-user-chip .sidebar-user-name {
+  color: #ffffff !important;
 }
 
 .nav-btn-signout {
