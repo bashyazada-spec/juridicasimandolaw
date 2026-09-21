@@ -1,3 +1,16 @@
+
+Model 4:29 PM
+Thank you for pointing that out! In the original project structure, css/style.css was actually the main comprehensive desktop stylesheet (used by admin.html and other pages).
+Here is the full, complete original code for css/style.css, with all the hardcoded #ffffff colors properly updated to dynamic variables (var(--text), var(--text-muted), var(--text-dim)) so all text turns dark in light mode while keeping dark mode intact.
+Progress 3/6: css/style.css (Complete Full Code)
+code
+CSS
+Please let me know when you are ready for File 4 of 6 (js/ui.js).
+Model 4:30 PM
+### Progress 4/6: `js/ui.js`
+Replaces all inline `color:#ffffff` occurrences inside dynamically rendered templates (cases, attorneys, dashboard cards, detail views, calendar items, and explorer files) with `var(--text)`, `var(--text-muted)`, and `var(--text-dim)` so they dynamically adapt to light mode and turn dark as intended.
+
+```javascript
 // ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
@@ -99,7 +112,7 @@ function initPasswordStrengthChecker() {
           rule.el.style.color = "var(--green, #22c55e)";
           if (icon) icon.textContent = "✅";
         } else {
-          rule.el.style.color = "#ffffff";
+          rule.el.style.color = "var(--text-dim)";
           if (icon) icon.textContent = "❌";
         }
       }
@@ -235,7 +248,7 @@ function renderDashboard() {
          : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
          : daysLeft <= 7  ? {col:"var(--red)",   label:(daysLeft === 0 ? "Due today" : daysLeft + "d left")}
          : daysLeft <= 30 ? {col:"var(--amber)", label:daysLeft + "d left"}
-         :                  {col:"#ffffff",      label:daysLeft + "d left"})
+         :                  {col:"var(--text-muted)", label:daysLeft + "d left"})
         : null;
 
       const categoryBadge = `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);white-space:nowrap;display:inline-block">${escHtml(c.category || "Case")}</span>`;
@@ -244,7 +257,7 @@ function renderDashboard() {
         ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
-          <div style="font-size:11px;color:#ffffff;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             ${categoryBadge}
             <span>${p?.name || ""} · ${c.type || "Litigation"}</span>
           </div>
@@ -278,7 +291,7 @@ function renderDashProfiles() {
     return;
   }
   if (filtered.length === 0) {
-    dpEl.innerHTML = '<div style="text-align:center;padding:20px;color:#ffffff;font-size:13px">No attorneys match your search.</div>';
+    dpEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">No attorneys match your search.</div>';
     return;
   }
 
@@ -289,7 +302,7 @@ function renderDashProfiles() {
         ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:14px;color:var(--text)">${escHtml(p.name)}</div>
-          <div style="font-size:11px;color:#ffffff;margin-top:1px">${escHtml(p.role || "Attorney")} · ${pc.length} case${pc.length !== 1 ? "s" : ""}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${escHtml(p.role || "Attorney")} · ${pc.length} case${pc.length !== 1 ? "s" : ""}</div>
         </div>
       </div>
     </div>`;
@@ -331,7 +344,7 @@ function renderProfiles() {
   const userCases = getAccessibleCases();
 
   if (profiles.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👥</div><div style="font-size:13px;color:#ffffff">No associate attorneys are currently registered.</div></div>`;
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👥</div><div style="font-size:13px;color:var(--text-muted)">No associate attorneys are currently registered.</div></div>`;
     return;
   }
 
@@ -353,11 +366,11 @@ function renderProfiles() {
               <div style="font-weight:700;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                 ${escHtml(p.name)} ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">YOU</span>' : ""}
               </div>
-              <div style="font-size:12px;color:#ffffff">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-            <span style="font-size:12px;color:#ffffff">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
+            <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
             ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
             <span style="font-size:14px;color:var(--gold)">→</span>
           </div>
@@ -382,14 +395,14 @@ function renderProfiles() {
               <div style="font-weight:700;font-size:16px;color:var(--text)">
                 ${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
               </div>
-              <div style="font-size:13px;color:#ffffff">${escHtml(p.role || "Attorney")}</div>
+              <div style="font-size:13px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div>
             </div>
           </div>
           <hr class="divider"/>
           ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${escHtml(p.email)}</div>` : ""}
           ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${escHtml(p.contact)}</div>` : ""}
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;color:#ffffff">Cases Accessible (${pc.length})</span>
+            <span style="font-size:13px;color:var(--text-dim)">Cases Accessible (${pc.length})</span>
             ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
           </div>
         </div>
@@ -416,7 +429,7 @@ function renderProfileDetail() {
       ? `<a href="https://drive.google.com/drive/folders/${p.driveFolderId}" target="_blank" style="font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:500;padding:4px 10px;background:rgba(34,197,94,0.08);border-radius:6px;border:1px solid rgba(34,197,94,0.2)" title="Open Drive Folder">📁 Drive Folder →</a>`
       : (accessToken
           ? `<button onclick="createProfileFolderManual()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:4px 10px;border-radius:6px;transition:all 0.2s">📁 Create Drive Folder</button>`
-          : `<span style="font-size:12px;color:#ffffff;display:inline-flex;align-items:center;gap:6px">📁 Drive not connected</span>`);
+          : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px">📁 Drive not connected</span>`);
 
     actionButtons = `
       <button class="btn btn-secondary btn-sm" onclick="openEditProfile()">✏️ Edit</button>
@@ -424,7 +437,7 @@ function renderProfileDetail() {
       <button class="btn btn-primary btn-sm" onclick="openAddCase()">+ Add Case</button>
     `;
   } else {
-    driveChip = `<span style="font-size:12px;color:#ffffff">📁 Files Protected</span>`;
+    driveChip = `<span style="font-size:12px;color:var(--text-dim)">📁 Files Protected</span>`;
     actionButtons = `
       <button class="btn btn-primary btn-sm" onclick="openAppointmentModal('${p.id}')">📅 Request Schedule</button>
     `;
@@ -438,9 +451,9 @@ function renderProfileDetail() {
         <div style="font-size:24px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
         <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${escHtml(p.role || "Attorney")}</div>
         <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
-          ${p.email ? `<span style="font-size:12px;color:#ffffff">✉ ${escHtml(p.email)}</span>` : ""}
-          ${p.contact ? `<span style="font-size:12px;color:#ffffff">📞 ${escHtml(p.contact)}</span>` : ""}
-          <span style="font-size:12px;color:#ffffff">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
+          ${p.email ? `<span style="font-size:12px;color:var(--text-muted)">✉ ${escHtml(p.email)}</span>` : ""}
+          ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)">📞 ${escHtml(p.contact)}</span>` : ""}
+          <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
           ${driveChip}
         </div>
       </div>
@@ -517,11 +530,11 @@ function renderProfileCases() {
     <div class="case-row" onclick="openCase('${c.id}')">
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
-        <div style="font-size:12px;color:#ffffff;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">${escHtml(c.category || "Case")}</span>
           <span>${c.type || "Litigation"} · ${c.venue || "No Venue"}</span>
         </div>
-        <div style="font-size:13px;color:#ffffff;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${badge(c.status, statusColor(c.status))}
@@ -579,11 +592,11 @@ function renderAllCases() {
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
         <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
-        <div style="font-size:12px;color:#ffffff;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">${escHtml(c.category || "Case")}</span>
           <span>${p?.name || ""} · ${c.type || "Litigation"} · ${c.venue || "No Venue"}</span>
         </div>
-        <div style="font-size:13px;color:#ffffff;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${badge(c.status, statusColor(c.status))}
@@ -634,7 +647,7 @@ function renderCaseDetail() {
   const chip = document.getElementById("cd-profile-chip");
   if (chip) {
     if (p) {
-      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:#ffffff">${escHtml(p.role || "Attorney")}</div></div><span style="font-size:12px;color:#ffffff;margin-left:8px">→ view profile</span>`;
+      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
       chip.style.display = "inline-flex";
     } else {
       chip.style.display = "none";
@@ -656,11 +669,11 @@ function renderCaseDetail() {
         ["Added", c.createdAt || "N/A"]
       ].map(([l, v]) => `
         <div style="margin-bottom:16px">
-          <div style="font-size:11px;color:#ffffff;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
+          <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
           <div style="font-size:15px;color:var(--text)">${escHtml(v)}</div>
         </div>`).join("")}
       <div>
-        <div style="font-size:11px;color:#ffffff;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
         <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${escHtml(c.narrative || "")}</div>
       </div>`;
   }
@@ -679,7 +692,7 @@ function renderCaseDetail() {
           </label>
         </div>
         <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload Document</button>
-      </div>` : `<span style="font-size:11px;color:#ffffff">Protected File Repository</span>`
+      </div>` : `<span style="font-size:11px;color:var(--text-dim)">Protected File Repository</span>`
     }
   </div>`;
 
@@ -701,7 +714,7 @@ function renderCaseDetail() {
                   📄 ${escHtml(doc.name)}
                 </span>
               </div>
-              <div style="font-size:12px;color:#ffffff">
+              <div style="font-size:12px;color:var(--text-muted)">
                 ${doc.size} · ${doc.date}${doc.driveFileId ? " · ✅ Drive" : ""}
               </div>
             </div>
@@ -712,17 +725,17 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:#ffffff;margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:#ffffff;margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:#ffffff;margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
   }
@@ -736,14 +749,14 @@ function renderCaseDetail() {
       statusPanelEl.innerHTML = `
         <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
         ${STATUS_OPTIONS.map(st => `
-          <button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "#ffffff"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
+          <button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
             ${c.status === st ? "✓ " : ""}${st}
           </button>`).join("")}`;
     } else {
       statusPanelEl.innerHTML = `
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">Current Status</div>
         ${badge(c.status, statusColor(c.status))}
-        <div style="font-size:11.5px;color:#ffffff;margin-top:8px">You have Viewer access for this case. Status modifications are restricted to Editors &amp; Owners.</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">You have Viewer access for this case. Status modifications are restricted to Editors &amp; Owners.</div>
       `;
     }
   }
@@ -885,14 +898,14 @@ function sortCasesByDue(arr, dir) {
 }
 
 function dueBadge(dueDate) {
-  if (!dueDate) return '<span style="font-size:11px;color:#ffffff">No due date</span>';
+  if (!dueDate) return '<span style="font-size:11px;color:var(--text-dim)">No due date</span>';
   const days = Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
   const formatted = formatDate(dueDate);
   if (days < 0)   return `<span style="font-size:11px;font-weight:700;color:var(--red)">Overdue (${formatted})</span>`;
   if (days === 0) return `<span style="font-size:11px;font-weight:700;color:var(--red)">Due today</span>`;
   if (days <= 7)  return `<span style="font-size:11px;font-weight:700;color:var(--amber)">${days}d left (${formatted})</span>`;
   if (days <= 30) return `<span style="font-size:11px;font-weight:600;color:var(--gold)">${days}d (${formatted})</span>`;
-  return `<span style="font-size:11px;color:#ffffff">Due ${formatted}</span>`;
+  return `<span style="font-size:11px;color:var(--text-muted)">Due ${formatted}</span>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1144,7 +1157,7 @@ window.openDateScheduleModal = function(dateStr) {
 
   let headerBadge = "";
   if (isToday) headerBadge = ` <span style="font-size:10px;background:var(--gold);color:#060c13;font-weight:800;padding:2px 6px;border-radius:4px">TODAY</span>`;
-  else if (isPast) headerBadge = ` <span style="font-size:10px;background:var(--surface3);color:#ffffff;font-weight:600;padding:2px 6px;border-radius:4px">PAST DATE</span>`;
+  else if (isPast) headerBadge = ` <span style="font-size:10px;background:var(--surface3);color:var(--text-dim);font-weight:600;padding:2px 6px;border-radius:4px">PAST DATE</span>`;
 
   if (titleEl) titleEl.innerHTML = `📅 Schedule for ${formattedDate}${headerBadge}`;
 
@@ -1207,13 +1220,13 @@ window.openDateScheduleModal = function(dateStr) {
             ${item.badgeLabel}
           </span>
           <div style="display:flex;align-items:center;gap:8px">
-            ${item.time ? `<span style="font-size:11.5px;color:#ffffff;font-weight:600">⏰ ${item.time}</span>` : ""}
+            ${item.time ? `<span style="font-size:11.5px;color:var(--text-muted);font-weight:600">⏰ ${item.time}</span>` : ""}
             ${item.canDelete ? `<button onclick="deleteBusySlot('${item.id}', '${item.dateStr}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px" title="Delete availability entry">Remove</button>` : ""}
           </div>
         </div>
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(item.title)}</div>
-        <div style="font-size:12px;color:#ffffff;margin-bottom:6px">${escHtml(item.sub)}</div>
-        ${item.desc ? `<div style="font-size:12px;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;line-height:1.5;white-space:pre-wrap">${escHtml(item.desc)}</div>` : ""}
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">${escHtml(item.sub)}</div>
+        ${item.desc ? `<div style="font-size:12px;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;line-height:1.5;white-space:pre-wrap">${escHtml(item.desc)}</div>` : ""}
       </div>
     `).join("");
   }
@@ -1751,7 +1764,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
   </div>`;
 
   if (!hasValidToken()) {
-    html += `<div style="text-align:center;padding:24px 12px;color:#ffffff;border:1px dashed var(--border);border-radius:10px">
+    html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px">
       <div style="font-size:24px;margin-bottom:8px">☁️</div>
       <div style="font-size:12px;font-weight:600">Google Calendar Not Synced</div>
       <div style="font-size:11px;margin-top:4px">Authorize Google Calendar under <a href="#" onclick="navTo('myprofile'); return false;" style="color:var(--gold);text-decoration:underline">My Settings</a> to sync case deadlines and view your agenda live.</div>
@@ -1785,7 +1798,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
     window._fetchedCalendarEvents = events;
 
     if (events.length === 0) {
-      html += `<div style="text-align:center;padding:24px 12px;color:#ffffff;border:1px dashed var(--border);border-radius:10px;font-size:12px">
+      html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px">
         No upcoming events found on your Google Calendar.
       </div>`;
     } else {
@@ -1798,7 +1811,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
         const timeStr   = parsedStart.timeStr;
         const eventDate = parsedStart.dateObj;
         
-        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:#ffffff;margin-top:2px;display:flex;align-items:center;gap:4px">📍 ${escHtml(ev.location)}</div>` : "";
+        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px">📍 ${escHtml(ev.location)}</div>` : "";
         const descriptionMarkup = ev.description ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic">"${escHtml(ev.description.slice(0, 50))}${ev.description.length > 50 ? '...' : ''}"</div>` : "";
 
         const weekdayStr = eventDate.toLocaleDateString("en-US", { weekday: "short" });
@@ -1811,7 +1824,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
             </div>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary || 'No Title')}">${escHtml(ev.summary || 'No Title')}</div>
-              <div style="font-size:11px;color:#ffffff;margin-top:2px">📅 ${dateStr} · ⏰ ${timeStr}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">📅 ${dateStr} · ⏰ ${timeStr}</div>
               ${locationMarkup}
               ${descriptionMarkup}
             </div>
@@ -1919,7 +1932,7 @@ function renderNotificationsView() {
   if (!listEl) return;
 
   if (notifications.length === 0) {
-    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px">🔔</div><div style="font-size:12px;color:#ffffff">No notifications found.</div></div>`;
+    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px">🔔</div><div style="font-size:12px;color:var(--text-muted)">No notifications found.</div></div>`;
     return;
   }
 
@@ -1954,7 +1967,7 @@ function renderNotificationsView() {
           <div style="flex:1;min-width:0;padding-right:6px">
             <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:2px">${escHtml(n.title)}</div>
             <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4">${escHtml(n.message)}</div>
-            <div style="font-size:10px;color:#ffffff;margin-top:4px">${dateStr}</div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${dateStr}</div>
             ${actions}
           </div>
           ${isUnread ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;flex-shrink:0" onclick="event.stopPropagation(); markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
@@ -2274,7 +2287,7 @@ function openShareCaseModal() {
   const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
 
   if (associates.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center;color:#ffffff;font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
   } else {
     listEl.innerHTML = associates.map(p => {
       const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
@@ -2369,7 +2382,7 @@ window.loadExplorerFiles = async function() {
   }
 
   if (!hasValidToken()) {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#ffffff">
+    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
       <div style="font-size:24px;margin-bottom:8px">☁️</div>
       <div style="font-size:13px;font-weight:600">Google Drive Session Expired</div>
       <div style="font-size:11px;margin-top:4px">Please re-authenticate under My Settings to view file explorer records.</div>
@@ -2416,7 +2429,7 @@ window.loadExplorerFiles = async function() {
           <div ${onClickAction}>
             <div style="font-size:32px;margin-bottom:8px">${icon}</div>
             <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
-            ${sizeText ? '<div style="font-size:11px;color:#ffffff;margin-top:2px">' + sizeText + '</div>' : ""}
+            ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + sizeText + '</div>' : ""}
           </div>
           <button onclick="event.stopPropagation(); adminDeleteDriveExplorerFile('${f.id}', '${f.name.replace(/'/g, "\\'")}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;border-radius:4px;opacity:0.6;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete file from Google Drive">
             🗑️
