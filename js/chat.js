@@ -94,7 +94,7 @@
       <div id="chat-view-single" class="chat-view hidden">
         <div class="dm-conv-header">
           <button class="dm-back-btn" type="button" onclick="window._chat.backToList()">← Back to Chats</button>
-          <span id="dm-conv-title" style="font-weight:700;font-size:13px;color:#ffffff"></span>
+          <span id="dm-conv-title" style="font-weight:700;font-size:13px;color:var(--text)"></span>
         </div>
 
         <div id="chat-messages-container" class="chat-messages"></div>
@@ -673,8 +673,8 @@
             ${showName ? `<div class="chat-msg-sender">${escHtml(m.name || "Unknown")}</div>` : ""}
             <div class="chat-avail-card ${isMine ? "mine" : "theirs"}">
               <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">📅 Availability Request</div>
-              <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:4px">${escHtml(m.reqTitle || "Meeting")}</div>
-              <div style="font-size:11.5px;color:#ffffff">📆 ${m.reqDate || ''} · ⏰ ${m.reqTime || ''}</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(m.reqTitle || "Meeting")}</div>
+              <div style="font-size:11.5px;color:var(--text-muted)">📆 ${m.reqDate || ''} · ⏰ ${m.reqTime || ''}</div>
               <div style="margin-top:8px">${statusBadge}</div>
               ${actionBtns}
               <span class="chat-ts">${ts}</span>
@@ -817,14 +817,14 @@
       }
       .chat-header-left { display: flex; align-items: center; gap: 8px; }
       .chat-header-icon { font-size: 16px; }
-      .chat-header-title { font-size: 13px; font-weight: 700; color: #ffffff; }
+      .chat-header-title { font-size: 13px; font-weight: 700; color: var(--text); }
       .chat-header-actions { display: flex; gap: 6px; }
       .chat-icon-btn {
-        background: transparent; border: none; color: #ffffff;
+        background: transparent; border: none; color: var(--text-dim);
         font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
         transition: background .15s, color .15s;
       }
-      .chat-icon-btn:hover { background: var(--border, #162033); color: #ffffff; }
+      .chat-icon-btn:hover { background: var(--border, #162033); color: var(--text); }
 
       .chat-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
       .chat-view.hidden { display: none; }
@@ -848,11 +848,11 @@
 
       .chat-conv-info { flex: 1; min-width: 0; }
       .chat-conv-name-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 2px; }
-      .chat-conv-name { font-size: 13px; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .chat-conv-name.bold { font-weight: 800; color: #fff; }
-      .chat-conv-time { font-size: 10px; color: #ffffff; flex-shrink: 0; }
-      .chat-conv-preview { font-size: 11.5px; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .chat-conv-preview.bold { color: #ffffff; font-weight: 600; }
+      .chat-conv-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chat-conv-name.bold { font-weight: 800; color: var(--text); }
+      .chat-conv-time { font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+      .chat-conv-preview { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chat-conv-preview.bold { color: var(--text); font-weight: 600; }
 
       .chat-unseen-dot { color: var(--gold, #c9a84c); font-size: 12px; margin-left: 4px; flex-shrink: 0; }
 
@@ -860,19 +860,19 @@
         flex: 1; overflow-y: auto; padding: 12px 12px 6px;
         display: flex; flex-direction: column; gap: 4px; scroll-behavior: smooth;
       }
-      .chat-empty { text-align: center; color: #ffffff; font-size: 12px; margin: auto; padding: 20px; }
+      .chat-empty { text-align: center; color: var(--text-muted); font-size: 12px; margin: auto; padding: 20px; }
 
       .chat-msg-wrap { display: flex; flex-direction: column; margin-bottom: 4px; }
       .chat-msg-wrap.mine  { align-items: flex-end; }
       .chat-msg-wrap.theirs { align-items: flex-start; }
-      .chat-msg-sender { font-size: 10px; color: #ffffff; margin-bottom: 2px; padding: 0 4px; font-weight: 600; }
+      .chat-msg-sender { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; padding: 0 4px; font-weight: 600; }
 
       .chat-bubble-msg {
         max-width: 82%; padding: 8px 12px; border-radius: 14px;
         font-size: 13px; line-height: 1.45; word-break: break-word; position: relative;
       }
       .chat-bubble-msg.mine { background: var(--gold, #c9a84c); color: #111; border-bottom-right-radius: 4px; }
-      .chat-bubble-msg.theirs { background: var(--surface2, #091422); color: #ffffff; border-bottom-left-radius: 4px; border: 1px solid var(--border, #162033); }
+      .chat-bubble-msg.theirs { background: var(--surface2, #091422); color: var(--text); border-bottom-left-radius: 4px; border: 1px solid var(--border, #162033); }
 
       .chat-avail-card {
         max-width: 88%; padding: 12px 14px; border-radius: 12px;
@@ -910,7 +910,7 @@
       .chat-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border, #162033); flex-shrink: 0; }
       .chat-input {
         flex: 1; background: var(--bg, #060c13); border: 1px solid var(--border, #162033);
-        border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #ffffff; outline: none;
+        border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;
       }
       .chat-input:focus { border-color: var(--gold, #c9a84c); }
 
