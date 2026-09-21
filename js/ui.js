@@ -872,11 +872,12 @@ function renderSidebarUser() {
     return;
   }
 
+  // Uses sidebar-user-name class with #ffffff so it stays readable on dark sidebar
   chip.innerHTML = `
     ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
     <div style="flex:1;min-width:0;text-align:left">
-      <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.name)}</div>
-      <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.role || "Attorney")}</div>
+      <div class="sidebar-user-name" style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.name)}</div>
+      <div class="sidebar-user-role" style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.role || "Attorney")}</div>
     </div>
   `;
   chip.style.display = "flex";
