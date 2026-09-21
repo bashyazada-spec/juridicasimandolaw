@@ -17,21 +17,10 @@
 </head>
 <body>
 
-<!-- Mobile Top Header Bar with Option 2 Classical Pillar Emblem -->
+<!-- Mobile Top Header Bar with Compact White Plate Logo -->
 <div class="mobile-top-bar">
-  <div class="mobile-top-logo">
-    <svg width="24" height="24" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-      <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c"/>
-      <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
-      <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="3"/>
-      <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2.5"/>
-      <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3.5"/>
-      <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2.5"/>
-      <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="3"/>
-      <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
-      <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c"/>
-    </svg>
-    <span>Simando Law</span>
+  <div style="background: #ffffff; border-radius: 6px; padding: 3px 8px; border: 1px solid rgba(201,165,92,0.45); max-width: 120px; display: flex; align-items: center;">
+    <img class="logo-img" style="width: 100%; height: auto; max-height: 22px; display: block; object-fit: contain;" src="images/logo.png" onerror="handleImageFallback(this)" alt="Simando Law"/>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <!-- Chat Icon Trigger -->
@@ -169,7 +158,7 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal on Mobile (Clean Typography) -->
+<!-- Two-Factor Authentication Setup Modal on Mobile -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;" onclick="if(event.target===this)closeTwoFactorSetupModal()">
   <div class="modal-box" style="max-width: 440px; padding: 20px; text-align: center;">
     <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">
@@ -608,7 +597,7 @@
         <textarea class="field-input mb-12" id="cf-narrative" rows="3" placeholder="Briefly summarize background and claims..."></textarea>
         <div id="cf-narrative-err" class="field-err hidden">Narrative summary is required</div>
 
-        <!-- Upload Control -->
+        <!-- Single Upload Control -->
         <div class="card mb-16" style="background:var(--surface2);padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:12px;font-weight:700;color:var(--text)">Attach Documents</span>
@@ -674,7 +663,7 @@
         </button>
       </div>
 
-      <!-- Theme Switcher Card (Clean Typography) -->
+      <!-- Theme Switcher Card -->
       <div class="card mb-16" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
@@ -709,7 +698,7 @@
             <div style="font-size:12px;color:var(--text-muted);font-weight:500">Click to upload photo</div>
             <div style="font-size:10px;color:var(--text-dim);margin-top:2px">Max size: 2MB</div>
           </div>
-          <input type="file" id="setting-photo-input" accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
+          <input type="file" id="setting-photo-input"accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
           
           <div id="setting-photo-preview-wrap" style="display:none;align-items:center;gap:12px;margin-top:10px;padding:10px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">
             <img id="setting-photo-preview-img" src="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>
@@ -766,7 +755,7 @@
         </div>
       </div>
 
-      <!-- Two-Factor Authentication Security Card (Clean Typography) -->
+      <!-- Two-Factor Authentication Security Card -->
       <div class="card mb-16" style="padding:16px">
         <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">Two-Factor Authentication (2FA)</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-bottom:12px">
@@ -824,30 +813,6 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- Fixed Bottom Navigation Bar (Dashboard uses 🏛️ Classical Pillar / Courthouse) -->
-<div class="mobile-bottom-nav">
-  <button class="mobile-nav-item active" data-nav="dashboard" onclick="navTo('dashboard')">
-    <span class="mobile-nav-item-icon">🏛️</span>
-    <span>Home</span>
-  </button>
-  <button class="mobile-nav-item" data-nav="allcases" onclick="navTo('allcases')">
-    <span class="mobile-nav-item-icon">📋</span>
-    <span>Cases</span>
-  </button>
-  <button class="mobile-nav-item" data-nav="calendar" onclick="navTo('calendar')">
-    <span class="mobile-nav-item-icon">📅</span>
-    <span>Schedule</span>
-  </button>
-  <button class="mobile-nav-item" data-nav="mydrive" onclick="navTo('mydrive')">
-    <span class="mobile-nav-item-icon">📁</span>
-    <span>Drive</span>
-  </button>
-  <button class="mobile-nav-item" data-nav="myprofile" onclick="navTo('myprofile')">
-    <span class="mobile-nav-item-icon">⚙️</span>
-    <span>Settings</span>
-  </button>
-</div>
-
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/drive.js"></script>
@@ -857,5 +822,23 @@
 <script src="https://accounts.google.com/gsi/client" async defer onload="if(window.onGoogleLibraryLoad)window.onGoogleLibraryLoad()"></script>
 <script src="js/app.js"></script>
 <script src="js/chat.js"></script>
+
+<script>
+  function handleImageFallback(img) {
+    const saved = localStorage.getItem('simando_logo_base64');
+    if (saved) {
+      img.src = saved;
+    } else {
+      img.src = 'images/logo.png';
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('simando_logo_base64');
+    if (saved) {
+      document.querySelectorAll('.logo-img').forEach(el => el.src = saved);
+    }
+  });
+</script>
 </body>
 </html>
