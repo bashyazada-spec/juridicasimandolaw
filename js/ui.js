@@ -1,16 +1,3 @@
-
-Model 4:29 PM
-Thank you for pointing that out! In the original project structure, css/style.css was actually the main comprehensive desktop stylesheet (used by admin.html and other pages).
-Here is the full, complete original code for css/style.css, with all the hardcoded #ffffff colors properly updated to dynamic variables (var(--text), var(--text-muted), var(--text-dim)) so all text turns dark in light mode while keeping dark mode intact.
-Progress 3/6: css/style.css (Complete Full Code)
-code
-CSS
-Please let me know when you are ready for File 4 of 6 (js/ui.js).
-Model 4:30 PM
-### Progress 4/6: `js/ui.js`
-Replaces all inline `color:#ffffff` occurrences inside dynamically rendered templates (cases, attorneys, dashboard cards, detail views, calendar items, and explorer files) with `var(--text)`, `var(--text-muted)`, and `var(--text-dim)` so they dynamically adapt to light mode and turn dark as intended.
-
-```javascript
 // ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
@@ -22,7 +9,26 @@ function initTheme() {
   }
 }
 
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('simando-theme', next);
+  updateThemeIcon(next);
+}
+
+function updateThemeIcon(theme) {
+  const sw = document.querySelector('.theme-switch');
+  if (sw) {
+    sw.setAttribute('data-theme-active', theme);
+    if (theme === 'light') sw.classList.add('is-light');
+    else sw.classList.remove('is-light');
+  }
+}
+
 window.initTheme = initTheme;
+window.toggleTheme = toggleTheme;
+window.updateThemeIcon = updateThemeIcon;
 
 // ═══════════════════════════════════════════════════════════════
 //  AUTOMATIC DEVICE DETECTION & CONNECTION NOTIFICATION
@@ -128,23 +134,6 @@ function initPasswordStrengthChecker() {
 
 window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  const next = current === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('simando-theme', next);
-  updateThemeIcon(next);
-}
-
-function updateThemeIcon(theme) {
-  const sw = document.querySelector('.theme-switch');
-  if (sw) {
-    sw.setAttribute('data-theme-active', theme);
-    if (theme === 'light') sw.classList.add('is-light');
-    else sw.classList.remove('is-light');
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════
 //  NAVIGATION (ACTIVE TAB HIGHLIGHTING)
 // ═══════════════════════════════════════════════════════════════
@@ -192,6 +181,9 @@ function navTo(view) {
   if (view === "notifications") renderNotificationsView();
   if (view === "mydrive") initDriveExplorer();
 }
+
+window.showView = showView;
+window.navTo = navTo;
 
 // ═══════════════════════════════════════════════════════════════
 //  DASHBOARD (STRICT 5 CASES LIMIT & EXPAND TOGGLE)
@@ -309,6 +301,9 @@ function renderDashProfiles() {
   }).join("");
 }
 
+window.renderDashboard = renderDashboard;
+window.renderDashProfiles = renderDashProfiles;
+
 // ═══════════════════════════════════════════════════════════════
 //  PROFILES (LIST VIEW VS TILE VIEW CONTROLLER)
 // ═══════════════════════════════════════════════════════════════
@@ -410,6 +405,8 @@ function renderProfiles() {
     }).join("");
   }
 }
+
+window.renderProfiles = renderProfiles;
 
 // ═══════════════════════════════════════════════════════════════
 //  PROFILE DETAIL
@@ -543,6 +540,9 @@ function renderProfileCases() {
     </div>`).join("");
 }
 
+window.renderProfileDetail = renderProfileDetail;
+window.renderProfileCases = renderProfileCases;
+
 // ═══════════════════════════════════════════════════════════════
 //  ALL CASES (WITH LIVE NAME & TITLE SEARCH FILTER)
 // ═══════════════════════════════════════════════════════════════
@@ -605,6 +605,8 @@ function renderAllCases() {
     </div>`;
   }).join("");
 }
+
+window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
 //  CASE DETAIL
@@ -810,6 +812,8 @@ async function removeDocFromCase(idx) {
   }
 }
 
+window.renderCaseDetail = renderCaseDetail;
+
 // ═══════════════════════════════════════════════════════════════
 //  QUICK ACCESS SIDEBAR
 // ═══════════════════════════════════════════════════════════════
@@ -846,6 +850,9 @@ function openCase(id) {
   renderCaseDetail();
 }
 
+window.openProfile = openProfile;
+window.openCase = openCase;
+
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
@@ -881,9 +888,12 @@ function renderSidebarUser() {
   }
 }
 
+window.renderSidebarUser = renderSidebarUser;
+
 function openCurrentProfile() {
   if (selProfile) openProfile(selProfile.id);
 }
+window.openCurrentProfile = openCurrentProfile;
 
 function sortCasesByDue(arr, dir) {
   if (dir === "none") return arr;
@@ -967,6 +977,10 @@ function onFilterCategoryChange(prefix) {
   if (prefix === "ac") renderAllCases();
 }
 
+window.updateAllFilterDropdowns = updateAllFilterDropdowns;
+window.refreshFilterTypes = refreshFilterTypes;
+window.onFilterCategoryChange = onFilterCategoryChange;
+
 // ═══════════════════════════════════════════════════════════════
 //  REAL-TIME MONTHLY CALENDAR GRID
 // ═══════════════════════════════════════════════════════════════
@@ -1016,6 +1030,11 @@ function todayCalMonth() {
   currentCalMonth = now.getMonth();
   renderMonthlyCalendarGrid();
 }
+
+window.renderCalendarView = renderCalendarView;
+window.prevCalMonth = prevCalMonth;
+window.nextCalMonth = nextCalMonth;
+window.todayCalMonth = todayCalMonth;
 
 function renderMonthlyCalendarGrid() {
   const titleEl = document.getElementById("cal-month-title");
@@ -1138,6 +1157,8 @@ function renderMonthlyCalendarGrid() {
 
   gridEl.innerHTML = html;
 }
+
+window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
 
 // ═══════════════════════════════════════════════════════════════
 //  DATE POPUP MODAL CONTROLLER
@@ -1345,6 +1366,8 @@ function renderMyProfile() {
   }
 }
 
+window.renderMyProfile = renderMyProfile;
+
 async function connectDriveFromSettings() {
   const btn = document.getElementById("settings-connect-drive-btn");
   const btnText = document.getElementById("settings-connect-drive-text");
@@ -1380,6 +1403,8 @@ async function connectDriveFromSettings() {
     showToast("Drive connection failed: " + err.message, "error");
   }
 }
+
+window.connectDriveFromSettings = connectDriveFromSettings;
 
 function showSettingsPhotoPreview(url, name, role) {
   const dropzone = document.getElementById("setting-photo-dropzone");
@@ -1426,6 +1451,9 @@ function handleSettingsPhotoUpload(event) {
 function removeSettingsPhoto() {
   resetSettingsPhotoUpload();
 }
+
+window.handleSettingsPhotoUpload = handleSettingsPhotoUpload;
+window.removeSettingsPhoto = removeSettingsPhoto;
 
 async function saveUserSettings() {
   const u = window._currentUser;
@@ -1567,6 +1595,9 @@ async function saveSecuritySettings() {
   }
 }
 
+window.saveUserSettings = saveUserSettings;
+window.saveSecuritySettings = saveSecuritySettings;
+
 function confirmDeleteUserAccount() {
   const u = window._currentUser;
   if (!u) return;
@@ -1637,6 +1668,9 @@ async function executeDeleteAccountWipe() {
   }
 }
 
+window.confirmDeleteUserAccount = confirmDeleteUserAccount;
+window.executeDeleteAccountWipe = executeDeleteAccountWipe;
+
 async function handleLogout() {
   try {
     if (typeof dbUnsubscribe === "function") dbUnsubscribe();
@@ -1650,6 +1684,8 @@ async function handleLogout() {
     console.error("Signout error:", err);
   }
 }
+
+window.handleLogout = handleLogout;
 
 function escHtml(str) {
   return String(str || "")
@@ -1858,6 +1894,8 @@ async function fetchAndRenderGoogleCalendarEvents() {
   card.innerHTML = html;
 }
 
+window.fetchAndRenderGoogleCalendarEvents = fetchAndRenderGoogleCalendarEvents;
+
 if (!window._calendarIntervalId) {
   window._calendarIntervalId = setInterval(() => {
     if (currentView === "dashboard" && hasValidToken() && document.visibilityState === "visible" && typeof fetchAndRenderGoogleCalendarEvents === "function") {
@@ -1904,6 +1942,8 @@ function updateNotificationBadge() {
     badgeEl.style.display = "none";
   }
 }
+
+window.updateNotificationBadge = updateNotificationBadge;
 
 window.handleNotifClick = async function(notifId, type, relatedId, fromUid, fromName) {
   if (notifId) {
@@ -1976,6 +2016,8 @@ function renderNotificationsView() {
     `;
   }).join("");
 }
+
+window.renderNotificationsView = renderNotificationsView;
 
 window.markNotificationRead = async function(id) {
   const notif = notifications.find(n => n.id === id);
@@ -2170,6 +2212,8 @@ function populateCaseSelects(isEdit = false) {
   if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
 }
 
+window.populateCaseSelects = populateCaseSelects;
+
 async function openAddCase() {
   caseFormOrigin = currentView;
   
@@ -2273,6 +2317,9 @@ async function openEditCase() {
   showView("caseForm");
 }
 
+window.openAddCase = openAddCase;
+window.openEditCase = openEditCase;
+
 // ═══════════════════════════════════════════════════════════════
 //  CASE SHARING SYSTEM
 // ═══════════════════════════════════════════════════════════════
@@ -2339,6 +2386,10 @@ async function saveShareSettings() {
     showToast("Failed to share case: " + err.message, "error");
   }
 }
+
+window.openShareCaseModal = openShareCaseModal;
+window.closeShareModal = closeShareModal;
+window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
 //  GOOGLE DRIVE EXPLORER REPLICA
@@ -2494,6 +2545,8 @@ function openMyDriveFolder() {
     showToast("No Drive folder linked. Please connect Google Drive in Settings first.", "error");
   }
 }
+
+window.openMyDriveFolder = openMyDriveFolder;
 
 // ═══════════════════════════════════════════════════════════════
 //  FILE PREVIEW CONTROLLER
