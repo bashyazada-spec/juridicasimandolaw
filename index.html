@@ -147,7 +147,7 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal -->
+<!-- Two-Factor Authentication Setup Modal (No Emoji) -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;">
   <div class="modal-box" style="max-width: 480px; text-align: center;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -305,7 +305,7 @@
       <div class="logo-sub">Case Management System</div>
     </div>
 
-    <!-- Main Navigation Items -->
+    <!-- Main Navigation Items (Dashboard uses 🏛️ Courthouse Pillar) -->
     <div style="flex:1">
       <div class="nav-section">Overview</div>
       <button class="nav-btn" data-nav="dashboard" onclick="navTo('dashboard')" title="Dashboard">🏛️&nbsp;&nbsp;<span class="nav-label">Dashboard</span></button>
@@ -339,7 +339,7 @@
         💼&nbsp;&nbsp;<span class="nav-label">Add Case</span>
       </button>
 
-      <!-- 3. Display Mode Nav Row -->
+      <!-- 3. Display Mode Nav Row (Clean typography without emoji) -->
       <div class="nav-btn" style="justify-content:space-between;cursor:default;">
         <span class="nav-label" style="display:flex;align-items:center;gap:12px">
           Display Mode
@@ -372,7 +372,7 @@
     <!-- Floating Sidebar Toggle Button -->
     <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">☰</button>
 
-    <!-- Top Right Action Header -->
+    <!-- Top Right Action Header: Messages Directly Beside Notifications -->
     <div id="top-hdr-actions" style="position:fixed;top:22px;right:32px;z-index:950;display:flex;align-items:center;gap:12px">
       <!-- Message / Chat Trigger -->
       <button onclick="window._chat ? window._chat.toggleDock(event) : null" style="position:relative;font-size:18px;background:var(--surface);border:1px solid var(--gold-border);border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--gold);cursor:pointer;box-shadow:var(--shadow-sm);transition:all 0.2s" title="Messages / Conversations">
@@ -456,7 +456,7 @@
       </div>
     </div>
 
-    <!-- ── SCHEDULE / CALENDAR VIEW (INTEGRATED TOOLBAR) ── -->
+    <!-- ── SCHEDULE / CALENDAR VIEW ── -->
     <div id="view-calendar" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -464,14 +464,27 @@
           <div class="page-sub">Interactive calendar with colored indicators — click any date to view details</div>
         </div>
       </div>
+      
+      <!-- Luxury Styled Schedule Filter Bar -->
+      <div class="schedule-filter-bar">
+        <div class="schedule-filter-info">
+          <div class="schedule-filter-icon">👥</div>
+          <div>
+            <div class="schedule-filter-label">Filter Calendar View</div>
+            <div class="schedule-filter-sub">Select an attorney profile or view the entire firm's schedule</div>
+          </div>
+        </div>
+        <div class="schedule-filter-select-wrap">
+          <select class="schedule-filter-select" id="calendar-filter-select" onchange="renderCalendarView()">
+            <option value="Everyone">Everyone (Firm Overview)</option>
+          </select>
+        </div>
+      </div>
 
       <div class="card" id="calendar-month-card" style="width:100%;max-width:1100px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
           <div style="font-size:18px;font-weight:700;color:var(--text)" id="cal-month-title">Month Year</div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <select class="filter-select" id="calendar-filter-select" onchange="renderCalendarView()" style="width:auto;min-width:170px;padding:7px 28px 7px 12px;font-size:12px">
-              <option value="Everyone">Everyone</option>
-            </select>
+          <div style="display:flex;gap:8px;align-items:center">
             <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄ Prev</button>
             <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
             <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">Next ►</button>
@@ -778,7 +791,7 @@
       </div>
     </div>
 
-    <!-- ── MY USER SETTINGS ── -->
+    <!-- ── MY USER SETTINGS (CENTERED RESPONSIVE LAYOUT) ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -894,7 +907,7 @@
             </div>
           </div>
 
-          <!-- Two-Factor Authentication Security Card (No Emoji) -->
+          <!-- Two-Factor Authentication Security Card (Clean without Emoji) -->
           <div class="card">
             <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px">
               Two-Factor Authentication (2FA)
