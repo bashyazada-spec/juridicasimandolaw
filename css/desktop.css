@@ -31,6 +31,7 @@
   --text-muted:  #94a3b8;
   --text-dim:    #64748b;
   --text-inverse:#060c13;
+  --logo-pillar-accent: #ffffff;
 
   --green:  #34d399;
   --amber:  #fbbf24;
@@ -63,6 +64,7 @@
   --text-muted:  #334155;
   --text-dim:    #64748b;
   --text-inverse:#f2ede4;
+  --logo-pillar-accent: #0a1520;
 
   --gold:        #aa7c11;
   --gold-light:  #c9a84c;
@@ -234,6 +236,11 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 
 .logo-img { width: 100%; max-width: 176px; height: auto; margin-bottom: 8px; position: relative; z-index: 1; }
 .logo-sub { font-size: 8.5px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); opacity: 0.85; font-weight: 600; position: relative; z-index: 1; }
+
+.logo-pillar-accent {
+  stroke: var(--logo-pillar-accent, #ffffff) !important;
+  transition: stroke 0.25s ease;
+}
 
 /* Clean Left Indent Alignment */
 .nav-section { 
