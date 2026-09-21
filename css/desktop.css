@@ -126,6 +126,83 @@ a { color: inherit; text-decoration: none; }
   display: none !important;
 }
 
+/* ── TOP ACTION BAR CAPSULE (OPTION 1: PERMANENT OBSIDIAN BOX) ── */
+#top-hdr-actions {
+  position: fixed;
+  top: 20px;
+  right: 32px;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+}
+
+.top-action-capsule {
+  display: inline-flex;
+  align-items: center;
+  background: #0a1624 !important; /* Stays dark obsidian in both light and dark mode */
+  border: 1.5px solid rgba(201,165,92,0.4) !important;
+  border-radius: 30px;
+  padding: 4px 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,165,92,0.12);
+  backdrop-filter: blur(14px);
+  transition: all 0.25s ease;
+}
+
+.top-action-capsule:hover {
+  border-color: #e0c080 !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.45), 0 0 16px rgba(201,165,92,0.22);
+  transform: translateY(-1px);
+}
+
+.top-capsule-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  color: #e0c080 !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.top-capsule-btn:hover {
+  background: rgba(201,165,92,0.16) !important;
+  color: #ffffff !important;
+  transform: scale(1.08);
+}
+
+.top-capsule-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(201,165,92,0.25);
+  margin: 0 3px;
+}
+
+.top-capsule-badge {
+  position: absolute !important;
+  top: 0px !important;
+  right: 0px !important;
+  background: var(--red, #ef4444) !important;
+  color: #ffffff !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 4px !important;
+  border: 2px solid #0a1624 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
+  line-height: 1 !important;
+}
+
 /* ── LAYOUT ── */
 #app { display: flex; min-height: 100vh; position: relative; }
 
@@ -696,7 +773,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
   
   #main {
     margin-left: 0 !important; width: 100% !important;
-    padding: 68px 16px 40px 16px !important; /* Top padding clears hamburger button */
+    padding: 68px 16px 40px 16px !important;
   }
 
   .grid4, .grid3, .grid2, .dashboard-content-grid {
