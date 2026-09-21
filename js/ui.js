@@ -965,11 +965,11 @@ function renderCalendarView() {
   if (select) {
     const curVal = select.value;
     
-    let optionsHtml = `<option value="Everyone">Everyone</option>`;
+    let optionsHtml = `<option value="Everyone">Everyone (Firm Overview)</option>`;
     
     profiles.forEach(p => {
       const designation = p.role ? ` (${p.role})` : "";
-      optionsHtml += `<option value="${p.ownerUid}">${p.name}${designation}</option>`;
+      optionsHtml += `<option value="${p.ownerUid}">👤 ${p.name}${designation}</option>`;
     });
 
     select.innerHTML = optionsHtml;
