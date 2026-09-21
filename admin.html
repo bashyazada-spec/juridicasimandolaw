@@ -230,7 +230,7 @@
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  // Obfuscated runtime credentials (no raw keys stored in source)
+  // Obfuscated runtime credentials
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
   const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
@@ -527,7 +527,7 @@
   };
 
   // ═══════════════════════════════════════════════════════════════
-  //  ACCOUNT CREATION HANDLERS
+  //  ACCOUNT CREATION HANDLERS (RESILIENT SECONDARY AUTH + FIRESTORE)
   // ═══════════════════════════════════════════════════════════════
   window.openCreateModal = function() {
     document.getElementById("new-name").value = "";
@@ -575,11 +575,12 @@
     btn.disabled = true;
     btn.textContent = "Creating...";
 
-    let secondaryApp;
+    let secondaryApp = null;
     try {
       const secondaryAppName = "SimandoLawRegistrationApp_" + Date.now();
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
+      const secondaryDb = getFirestore(secondaryApp);
 
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
       const user = userCredential.user;
@@ -599,7 +600,14 @@
         createdAt: new Date().toISOString().slice(0, 10)
       };
 
-      await setDoc(doc(db, "profiles", user.uid), newProfile);
+      // Write document using the newly created user's authenticated session
+      // This guarantees request.auth.uid == profileId passes security rules with zero permission blocks
+      try {
+        await setDoc(doc(secondaryDb, "profiles", user.uid), newProfile);
+      } catch (secDbErr) {
+        console.warn("Secondary DB write fallback to primary DB:", secDbErr);
+        await setDoc(doc(db, "profiles", user.uid), newProfile);
+      }
 
       showToast("Account successfully registered.");
       closeCreateModal();
