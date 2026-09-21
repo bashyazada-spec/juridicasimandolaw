@@ -63,9 +63,6 @@ function getAudioContext() {
       return null;
     }
   }
-  if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
-    sharedAudioCtx.resume().catch(() => {});
-  }
   return sharedAudioCtx;
 }
 
@@ -264,7 +261,7 @@ async function dbLoad() {
         }
         refreshCurrentView();
       }, (error) => {
-        console.error("Cases real-time connection error:", error);
+        console.warn("Cases real-time connection notice:", error.message);
       });
     }
 
@@ -378,14 +375,14 @@ function refreshCurrentView() {
     if (updatedCase) selCase = updatedCase;
   }
 
-  if (currentView === "dashboard") renderDashboard();
-  if (currentView === "profiles")  renderProfiles();
-  if (currentView === "allcases")  renderAllCases();
-  if (currentView === "profileDetail" && selProfile) renderProfileDetail();
-  if (currentView === "caseDetail" && selCase) renderCaseDetail();
-  if (currentView === "myprofile") renderMyProfile();
-  if (currentView === "calendar")  renderCalendarView();
-  if (currentView === "notifications") renderNotificationsView();
+  if (currentView === "dashboard" && typeof renderDashboard === "function") renderDashboard();
+  if (currentView === "profiles" && typeof renderProfiles === "function") renderProfiles();
+  if (currentView === "allcases" && typeof renderAllCases === "function") renderAllCases();
+  if (currentView === "profileDetail" && selProfile && typeof renderProfileDetail === "function") renderProfileDetail();
+  if (currentView === "caseDetail" && selCase && typeof renderCaseDetail === "function") renderCaseDetail();
+  if (currentView === "myprofile" && typeof renderMyProfile === "function") renderMyProfile();
+  if (currentView === "calendar" && typeof renderCalendarView === "function") renderCalendarView();
+  if (currentView === "notifications" && typeof renderNotificationsView === "function") renderNotificationsView();
   
   if (typeof renderSidebarUser === "function") renderSidebarUser();
   if (typeof updateNotificationBadge === "function") updateNotificationBadge();
