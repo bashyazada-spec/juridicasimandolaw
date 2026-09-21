@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Simando Law — Case Manager</title>
 
-<!-- Content Security Policy Header -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com;">
+<!-- Content Security Policy Header (With gstatic.com in connect-src) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com https://www.gstatic.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://*.gstatic.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com;">
 
 <!-- 1. Instant 0ms Device Redirector (Executes before Firebase loads) -->
 <script src="js/redirect.js"></script>
@@ -339,7 +339,7 @@
         💼&nbsp;&nbsp;<span class="nav-label">Add Case</span>
       </button>
 
-      <!-- 3. Display Mode Nav Row (Clean typography without emoji) -->
+      <!-- 3. Display Mode Nav Row -->
       <div class="nav-btn" style="justify-content:space-between;cursor:default;">
         <span class="nav-label" style="display:flex;align-items:center;gap:12px">
           Display Mode
@@ -359,7 +359,7 @@
         <span class="nav-label">Sign Out</span>
       </button>
 
-      <div style="padding:14px 24px 6px;font-size:10px;color:var(--text-dim);line-height:1.6;text-align:left" class="nav-label">
+      <div style="padding:14px 24px 6px;font-size:10px;color:rgba(255,255,255,0.7);line-height:1.6;text-align:left" class="nav-label">
         Simando Law v5.2<br>
         <a href="privacy-policy.html" target="_blank" style="color:var(--gold);text-decoration:underline">Privacy Policy</a> · <a href="terms-of-service.html" target="_blank" style="color:var(--gold);text-decoration:underline">Terms of Service</a>
       </div>
@@ -888,7 +888,7 @@
               Connect your Google Drive account to allow document uploads, file storage, and profile photo syncing.
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-              <span style="font-size:13px;font-weight:600">Status:</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text)">Status:</span>
               <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
             </div>
             
@@ -916,7 +916,7 @@
               Protect client files and account access using Google Authenticator, Microsoft Authenticator, or Apple Passwords.
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-              <span style="font-size:13px;font-weight:600">Status:</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text)">Status:</span>
               <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
             </div>
             
