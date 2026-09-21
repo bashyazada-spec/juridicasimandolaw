@@ -23,11 +23,11 @@
     <svg width="24" height="24" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
       <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c"/>
       <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
-      <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="3"/>
+      <line x1="14" y1="22" x2="14" y2="54" class="logo-pillar-accent" stroke="var(--logo-pillar-accent, #ffffff)" stroke-width="3"/>
       <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2.5"/>
       <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3.5"/>
       <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2.5"/>
-      <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="3"/>
+      <line x1="50" y1="22" x2="50" y2="54" class="logo-pillar-accent" stroke="var(--logo-pillar-accent, #ffffff)" stroke-width="3"/>
       <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
       <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c"/>
     </svg>
@@ -674,7 +674,7 @@
         </button>
       </div>
 
-      <!-- Theme Switcher Card (Clean Typography) -->
+      <!-- Theme Switcher Card -->
       <div class="card mb-16" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
@@ -747,7 +747,7 @@
           Connect your Google Drive account to enable document uploads, file storage, and profile photo syncing.
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <span style="font-size:12.5px;font-weight:600">Status:</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--text)">Status:</span>
           <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
         </div>
         
@@ -773,7 +773,7 @@
           Secure case documents using Microsoft Authenticator or Google Authenticator.
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <span style="font-size:12px;font-weight:600">Status:</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text)">Status:</span>
           <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
         </div>
         
