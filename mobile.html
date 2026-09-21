@@ -17,10 +17,21 @@
 </head>
 <body>
 
-<!-- Mobile Top Header Bar -->
+<!-- Mobile Top Header Bar with Option 2 Classical Pillar Emblem -->
 <div class="mobile-top-bar">
   <div class="mobile-top-logo">
-    ⚖️ <span>Simando Law</span>
+    <svg width="24" height="24" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c"/>
+      <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
+      <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="3"/>
+      <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2.5"/>
+      <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3.5"/>
+      <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2.5"/>
+      <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="3"/>
+      <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
+      <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c"/>
+    </svg>
+    <span>Simando Law</span>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <!-- Chat Icon Trigger -->
@@ -37,9 +48,9 @@
       </button>
 
       <!-- Dropdown Popup Widget -->
-      <div id="notif-dropdown" class="hidden" style="position:absolute;top:38px;right:0;width:290px;max-height:380px;background:var(--surface);border:1px solid var(--border-soft);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:1000;display:flex;flex-direction:column;overflow:hidden">
+      <div id="notif-dropdown" class="hidden">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)">
-          <span style="font-size:12px;font-weight:700;color:var(--text)">🔔 Notifications</span>
+          <span style="font-size:12px;font-weight:700;color:var(--text)">Notifications</span>
           <button onclick="markAllNotificationsAsRead()" style="font-size:10.5px;color:var(--gold);background:none;border:none;cursor:pointer;font-weight:600">Mark all read</button>
         </div>
         <div id="notifications-list" style="overflow-y:auto;max-height:320px;padding:8px"></div>
@@ -98,7 +109,7 @@
 <div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()">
   <div class="modal-box" style="max-width: 520px; padding:20px">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      📅 Set Schedule & Availability
+      📅 Set Schedule &amp; Availability
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
       Click dates on the calendar below to toggle your availability. <span style="color:var(--red)">Red</span> = Out of Office.
@@ -158,11 +169,11 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal on Mobile (Centered Layout) -->
+<!-- Two-Factor Authentication Setup Modal on Mobile (Clean Typography) -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;" onclick="if(event.target===this)closeTwoFactorSetupModal()">
   <div class="modal-box" style="max-width: 440px; padding: 20px; text-align: center;">
     <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">
-      🛡️ Set Up 2FA Authenticator
+      Two-Factor Authentication (2FA)
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
       Scan this QR code with <strong>Microsoft Authenticator</strong>, <strong>Google Authenticator</strong>, or <strong>Apple Passwords</strong> on your phone.
@@ -178,7 +189,7 @@
     </div>
 
     <div style="margin-bottom:14px;text-align:center">
-      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">🔑 Backup Recovery Codes</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px">Backup Recovery Codes</div>
       <div id="tfa-setup-backup-list" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10.5px;color:var(--gold-light);max-width:280px;margin:0 auto"></div>
     </div>
 
@@ -188,7 +199,7 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()">Verify & Activate 2FA</button>
+      <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()">Verify &amp; Activate 2FA</button>
       <button class="btn btn-ghost" onclick="closeTwoFactorSetupModal()">Cancel</button>
     </div>
   </div>
@@ -231,7 +242,7 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
       <div>
-        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Time & Date</div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;font-weight:600">Time &amp; Date</div>
         <div id="cem-time" style="font-size:14px;color:var(--text);margin-top:2px"></div>
       </div>
       <div>
@@ -336,7 +347,7 @@
 
         <div class="card mt-16" style="padding:14px">
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
-          <input class="field-input mb-12" id="dash-profile-search" placeholder="🔍 Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
+          <input class="field-input mb-12" id="dash-profile-search" placeholder="Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
           <div id="dash-profiles"></div>
         </div>
       </div>
@@ -362,7 +373,7 @@
         </div>
         <div class="schedule-filter-select-wrap">
           <select class="schedule-filter-select" id="calendar-filter-select" onchange="renderCalendarView()">
-            <option value="Everyone">🌐 Everyone (Firm Overview)</option>
+            <option value="Everyone">Everyone (Firm Overview)</option>
           </select>
         </div>
       </div>
@@ -391,20 +402,20 @@
       </div>
 
       <div class="card mb-12" style="padding:12px">
-        <input class="field-input mb-8" placeholder="🔍 Search cases, category, or title…" id="ac-search" oninput="renderAllCases()"/>
+        <input class="field-input mb-8" placeholder="Search cases, category, or title…" id="ac-search" oninput="renderAllCases()"/>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')">
-            <option value="All">📂 All Categories</option>
+            <option value="All">All Categories</option>
           </select>
           <select class="filter-select" id="ac-status" onchange="renderAllCases()">
-            <option value="All">⚡ All Statuses</option>
+            <option value="All">All Statuses</option>
           </select>
           <select class="filter-select" id="ac-type" onchange="renderAllCases()">
-            <option value="All">⚖️ All Types</option>
+            <option value="All">All Types</option>
           </select>
           <select class="filter-select" id="ac-sort" onchange="renderAllCases()">
-            <option value="asc">📅 Due: Soonest</option>
-            <option value="desc">📅 Due: Furthest</option>
+            <option value="asc">Due: Soonest First</option>
+            <option value="desc">Due: Furthest First</option>
             <option value="none">Added Date</option>
           </select>
         </div>
@@ -461,20 +472,20 @@
       </div>
       <div id="profile-cases-section">
         <div class="card mb-12" style="padding:10px">
-          <input class="field-input mb-8" placeholder="🔍 Search cases…" id="pd-search" oninput="renderProfileCases()"/>
+          <input class="field-input mb-8" placeholder="Search cases…" id="pd-search" oninput="renderProfileCases()"/>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
             <select class="filter-select" id="pd-category" onchange="onFilterCategoryChange('pd')">
-              <option value="All">📂 All Categories</option>
+              <option value="All">All Categories</option>
             </select>
             <select class="filter-select" id="pd-status" onchange="renderProfileCases()">
-              <option value="All">⚡ All Statuses</option>
+              <option value="All">All Statuses</option>
             </select>
             <select class="filter-select" id="pd-type" onchange="renderProfileCases()">
-              <option value="All">⚖️ All Types</option>
+              <option value="All">All Types</option>
             </select>
             <select class="filter-select" id="pd-sort" onchange="renderProfileCases()">
-              <option value="asc">📅 Due: Soonest</option>
-              <option value="desc">📅 Due: Furthest</option>
+              <option value="asc">Due: Soonest First</option>
+              <option value="desc">Due: Furthest First</option>
               <option value="none">Added Date</option>
             </select>
           </div>
@@ -597,7 +608,7 @@
         <textarea class="field-input mb-12" id="cf-narrative" rows="3" placeholder="Briefly summarize background and claims..."></textarea>
         <div id="cf-narrative-err" class="field-err hidden">Narrative summary is required</div>
 
-        <!-- Single Upload Control -->
+        <!-- Upload Control -->
         <div class="card mb-16" style="background:var(--surface2);padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <span style="font-size:12px;font-weight:700;color:var(--text)">Attach Documents</span>
@@ -646,13 +657,13 @@
     <div id="view-myprofile" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">My Settings</div>
-        <div class="page-sub">Personal profile, Drive connection, & 2FA security</div>
+        <div class="page-sub">Personal profile, Drive connection, &amp; 2FA security</div>
       </div>
 
       <!-- Admin Console Card -->
       <div class="card mb-16" id="mobile-admin-portal-card" style="display:none;background:rgba(201,168,76,0.08);border:1.5px solid var(--gold);padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:15px;font-weight:700;color:var(--gold)">🛡️ Admin Control Console</div>
+          <div style="font-size:15px;font-weight:700;color:var(--gold)">Admin Control Console</div>
           <span class="badge" style="background:var(--gold);color:#060c13;font-weight:700;font-size:10px">ADMIN ACCESS</span>
         </div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.4">
@@ -663,7 +674,7 @@
         </button>
       </div>
 
-      <!-- Theme Switcher Card -->
+      <!-- Theme Switcher Card (Clean Typography) -->
       <div class="card mb-16" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
@@ -717,7 +728,7 @@
 
       <!-- Suggestion & Legal Policy Card -->
       <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">⚖️ Firm Guidelines & Support</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">⚖️ Firm Guidelines &amp; Support</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
             💬 Suggest / Report Issue ↗
@@ -729,7 +740,7 @@
         </div>
       </div>
 
-      <!-- Google Drive Connection Card (Highlighted) -->
+      <!-- Google Drive Connection Card -->
       <div class="card mb-16" style="padding:18px;border: 1.5px solid var(--gold-border); background: linear-gradient(180deg, var(--surface) 0%, rgba(201,165,92,0.04) 100%);">
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px">☁️ Google Drive Connection</div>
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px">
@@ -755,9 +766,9 @@
         </div>
       </div>
 
-      <!-- Two-Factor Authentication Security Card -->
+      <!-- Two-Factor Authentication Security Card (Clean Typography) -->
       <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">🛡️ Two-Factor Authentication (2FA)</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">Two-Factor Authentication (2FA)</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-bottom:12px">
           Secure case documents using Microsoft Authenticator or Google Authenticator.
         </div>
@@ -768,7 +779,7 @@
         
         <div style="display:flex;justify-content:center">
           <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="min-width:200px;width:auto !important;justify-content:center;padding:9px 18px">
-            Set Up 2FA Authenticator
+            Configure Authenticator
           </button>
         </div>
         <div id="setting-2fa-backup-wrap" style="display:none;margin-top:10px;text-align:center">
@@ -778,7 +789,7 @@
 
       <!-- Login & Security Card -->
       <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login & Security</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login &amp; Security</div>
         
         <label class="field-label">Email Address</label>
         <input class="field-input mb-12" id="setting-email" placeholder="email@address.com"/>
@@ -813,10 +824,10 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- Fixed Bottom Navigation Bar -->
+<!-- Fixed Bottom Navigation Bar (Dashboard uses 🏛️ Classical Pillar / Courthouse) -->
 <div class="mobile-bottom-nav">
   <button class="mobile-nav-item active" data-nav="dashboard" onclick="navTo('dashboard')">
-    <span class="mobile-nav-item-icon">⚖️</span>
+    <span class="mobile-nav-item-icon">🏛️</span>
     <span>Home</span>
   </button>
   <button class="mobile-nav-item" data-nav="allcases" onclick="navTo('allcases')">
