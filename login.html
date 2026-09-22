@@ -263,7 +263,6 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── 2FA 6-DIGIT CODE INPUT BOXES ── */
     .otp-container {
       display: flex;
       gap: 8px;
@@ -419,7 +418,7 @@
     setDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // Obfuscated runtime credentials (no raw credentials stored in source)
+  // Obfuscated runtime credentials
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
   const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
@@ -441,7 +440,6 @@
   let pendingProfileDocId = null;
   let pendingProfileData = null;
 
-  // ── Robust Profile Fetcher ──
   async function fetchUserProfile(user) {
     if (!user) return { docId: null, data: {} };
 
@@ -472,7 +470,6 @@
     return { docId: null, data: {} };
   }
 
-  // ── Cryptographic TOTP Engine (RFC 6238 Standard) ──────────
   function base32Decode(base32) {
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     let cleaned = base32.toUpperCase().replace(/=+$/, "");
@@ -532,21 +529,19 @@
     return false;
   }
 
-  // Check Auth State on Page Load & Verify 2FA via Private Vault
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
         const { docId, data: profData } = await fetchUserProfile(user);
 
         if (profData.twoFactorEnabled) {
-          // Read secret key from isolated private security vault
           let secData = null;
           try {
             const secSnap = await getDoc(doc(db, "profiles", docId, "private", "security"));
             if (secSnap.exists()) {
               secData = secSnap.data();
             }
-          } catch (e) { /* fallback to profile data if unmigrated */ }
+          } catch (e) { /* fallback */ }
 
           const secretKey = secData?.twoFactorSecret || profData.twoFactorSecret;
           const backupCodes = secData?.twoFactorBackupCodes || profData.twoFactorBackupCodes || [];
@@ -612,7 +607,7 @@
 
   function friendlyError(code) {
     const map = {
-      "auth/user-not-found":       "No account found with this email.",
+      "auth/user-not-found":       "No account found with this email address.",
       "auth/wrong-password":       "Incorrect password. Please try again.",
       "auth/invalid-credential":   "Incorrect email or password.",
       "auth/invalid-email":        "Please enter a valid email address.",
@@ -622,7 +617,6 @@
     return map[code] || "Something went wrong. Please try again.";
   }
 
-  // ── Auto-Advancing 6-Digit OTP Boxes ──
   const otpInputs = Array.from(document.querySelectorAll(".otp-input"));
   otpInputs.forEach((input, index) => {
     input.addEventListener("input", (e) => {
@@ -708,7 +702,6 @@
       const { docId, data: profData } = await fetchUserProfile(user);
 
       if (profData.twoFactorEnabled) {
-        // Read secret from private vault
         let secData = null;
         try {
           const secSnap = await getDoc(doc(db, "profiles", docId, "private", "security"));
@@ -787,12 +780,11 @@
       availableCodes.splice(matchIndex, 1);
       try {
         if (pendingProfileDocId) {
-          // Update private vault first
           await setDoc(doc(db, "profiles", pendingProfileDocId, "private", "security"), {
             twoFactorBackupCodes: availableCodes
           }, { merge: true });
         }
-      } catch (e) { /* continue sign-in */ }
+      } catch (e) { /* continue */ }
 
       sessionStorage.setItem("simando_2fa_verified", "true");
       window.location.replace("index.html");
@@ -801,18 +793,20 @@
     }
   };
 
+  // ── Forgot Password Function (Works even after email updates) ──
   window.handleForgotPassword = async function() {
     const email = document.getElementById("inp-email").value.trim();
     if (!email) {
-      showError("Enter your email address above first.");
+      showError("Please enter your email address above first.");
       return;
     }
     try {
       await sendPasswordResetEmail(auth, email);
-      showError("✓ Password reset email sent — check your inbox.");
-      document.getElementById("error-banner").style.background = "rgba(52,211,153,0.08)";
-      document.getElementById("error-banner").style.borderColor = "rgba(52,211,153,0.25)";
-      document.getElementById("error-banner").style.color = "#6ee7b7";
+      showError("✓ Password reset email sent — check your inbox.", "error-banner");
+      const banner = document.getElementById("error-banner");
+      banner.style.background = "rgba(52,211,153,0.08)";
+      banner.style.borderColor = "rgba(52,211,153,0.25)";
+      banner.style.color = "#6ee7b7";
     } catch (err) {
       showError(friendlyError(err.code));
     }
