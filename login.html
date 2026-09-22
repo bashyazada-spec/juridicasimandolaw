@@ -99,7 +99,7 @@
       background: linear-gradient(145deg, rgba(12,24,38,0.95) 0%, rgba(8,17,26,0.98) 100%);
       border: 1px solid var(--gold-border2);
       border-radius: 20px;
-      padding: 40px 36px;
+      padding: 38px 34px;
       box-shadow: var(--shadow), 0 0 0 1px rgba(201,165,92,0.05), inset 0 1px 0 rgba(201,165,92,0.08);
       animation: cardReveal 0.7s cubic-bezier(0.22,1,0.36,1) both;
     }
@@ -121,7 +121,7 @@
 
     .logo-wrap {
       display: flex; align-items: center; gap: 12px;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
     .logo-icon {
       width: 40px; height: 40px;
@@ -145,7 +145,7 @@
     }
 
     .heading {
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .heading h1 {
       font-family: var(--font-display);
@@ -159,7 +159,7 @@
       margin-top: 6px; line-height: 1.5;
     }
 
-    .form-group { margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
 
     label {
       display: block;
@@ -221,7 +221,7 @@
       box-shadow: 0 6px 28px rgba(201,165,92,0.28);
     }
     .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
     .error-banner {
       background: rgba(248,113,113,0.08);
@@ -244,7 +244,7 @@
     }
 
     .footer-links {
-      margin-top: 24px; text-align: center;
+      margin-top: 18px; text-align: center;
       font-size: 12px; color: var(--text-muted);
     }
     .footer-links a {
@@ -337,18 +337,22 @@
       </div>
     </div>
 
-    <button class="btn-primary" id="email-btn" onclick="handleEmailAuth()">
+    <!-- MANDATORY TERMS & PRIVACY CHECKMARK -->
+    <div style="margin: 16px 0 20px; display: flex; align-items: flex-start; gap: 10px; text-align: left; background: rgba(201,165,92,0.04); border: 1px solid var(--border-soft); border-radius: 9px; padding: 10px 12px;">
+      <input type="checkbox" id="cb-agree-terms" onchange="toggleTermsAgreement()" style="accent-color: var(--gold); width: 17px; height: 17px; margin-top: 1px; cursor: pointer; flex-shrink: 0;"/>
+      <label for="cb-agree-terms" style="font-size: 11.5px; color: var(--text-muted); text-transform: none; letter-spacing: normal; cursor: pointer; margin-bottom: 0; line-height: 1.5; font-weight: 400;">
+        I have read and agree to Simando Law's 
+        <a href="terms-of-service.html" target="_blank" style="color: var(--gold); text-decoration: underline; font-weight: 600;">Terms of Service</a> &amp; 
+        <a href="privacy-policy.html" target="_blank" style="color: var(--gold); text-decoration: underline; font-weight: 600;">Privacy Policy</a>.
+      </label>
+    </div>
+
+    <button class="btn-primary" id="email-btn" onclick="handleEmailAuth()" disabled style="opacity: 0.5; cursor: not-allowed;">
       <span id="email-btn-text">Sign In</span>
     </button>
 
     <div class="footer-links">
       <a href="#" onclick="handleForgotPassword(); return false;">Forgot password?</a>
-      
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(201,165,92,0.12);font-size:11.5px;color:var(--text-muted);line-height:1.6">
-        By signing in, you agree to Simando Law's<br>
-        <a href="terms-of-service.html" target="_blank" style="color:var(--gold);text-decoration:underline;margin-right:6px">Terms of Service</a> & 
-        <a href="privacy-policy.html" target="_blank" style="color:var(--gold);text-decoration:underline">Privacy Policy</a>
-      </div>
     </div>
   </div>
 
@@ -371,7 +375,7 @@
         <input type="text" class="otp-input" maxlength="1" pattern="\d*" inputmode="numeric" id="otp-6"/>
       </div>
       <button class="btn-primary" id="btn-verify-tfa" onclick="verifyTwoFactorCode()">
-        <span id="btn-verify-tfa-text">Verify & Sign In</span>
+        <span id="btn-verify-tfa-text">Verify &amp; Sign In</span>
       </button>
       <div style="margin-top:16px;text-align:center">
         <a href="#" onclick="toggleBackupCodeInput(true); return false;" style="color:var(--gold);font-size:12px;text-decoration:underline">Lost phone? Use a backup code</a>
@@ -445,6 +449,22 @@
   function isValidEmail(email) {
     return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
   }
+
+  window.toggleTermsAgreement = function() {
+    const cb = document.getElementById("cb-agree-terms");
+    const btn = document.getElementById("email-btn");
+    if (!cb || !btn) return;
+
+    if (cb.checked) {
+      btn.disabled = false;
+      btn.style.opacity = "1";
+      btn.style.cursor = "pointer";
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+      btn.style.cursor = "not-allowed";
+    }
+  };
 
   async function fetchUserProfile(user) {
     if (!user) return { docId: null, data: {} };
@@ -690,6 +710,13 @@
 
   window.handleEmailAuth = async function() {
     clearErrors();
+
+    const agreeCb = document.getElementById("cb-agree-terms");
+    if (!agreeCb || !agreeCb.checked) {
+      showError("Please check the box to agree to the Terms of Service & Privacy Policy before signing in.");
+      return;
+    }
+
     sessionStorage.removeItem("simando_2fa_verified");
 
     const email    = document.getElementById("inp-email").value.trim();
