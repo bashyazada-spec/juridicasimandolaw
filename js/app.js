@@ -34,7 +34,7 @@ function isValidMobile(num) {
 window.isValidMobile = isValidMobile;
 
 // ═══════════════════════════════════════════════════════════════
-//  DELETE CONFIRMATION & MODAL CONTROLLERS
+//  DOM HELPERS & ERROR CLEARING
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
 let caseFormOrigin = "profileDetail";
@@ -43,11 +43,25 @@ function setElText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
+window.setElText = setElText;
 
 function setElVal(id, val) {
   const el = document.getElementById(id);
   if (el) el.value = val;
 }
+window.setElVal = setElVal;
+
+function clearCaseErrors() {
+  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+  ["cf-case-title", "cf-filed", "cf-narrative"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("err");
+  });
+}
+window.clearCaseErrors = clearCaseErrors;
 
 window.openDriveWarningModal = function() {
   const modal = document.getElementById("drive-warning-modal");
