@@ -139,8 +139,8 @@
         <input type="text" class="field-input" id="new-name" placeholder="e.g. Atty. Jane Doe" autocomplete="off"/>
       </div>
       <div>
-        <label class="field-label" style="color:var(--text-muted)">Email Address *</label>
-        <input type="email" class="field-input" id="new-email" placeholder="jane.doe@simandolaw.com" autocomplete="off"/>
+        <label class="field-label" style="color:var(--text-muted)">Email Address (@gmail.com or @outlook.com) *</label>
+        <input type="email" class="field-input" id="new-email" placeholder="jane.doe@gmail.com" autocomplete="off"/>
       </div>
       <div>
         <label class="field-label" style="color:var(--text-muted)">Role / Privilege Level *</label>
@@ -184,8 +184,8 @@
 
       <div class="grid2">
         <div>
-          <label class="field-label">Email Address *</label>
-          <input type="email" class="field-input" id="edit-email" placeholder="email@simandolaw.com"/>
+          <label class="field-label">Email Address (@gmail.com or @outlook.com) *</label>
+          <input type="email" class="field-input" id="edit-email" placeholder="attorney@gmail.com"/>
         </div>
         <div>
           <label class="field-label">Contact Number (11 digits)</label>
@@ -255,9 +255,9 @@
   let db, auth;
   let adminProfiles = [];
 
-  // STRICT EMAIL VALIDATOR (Requires full domain like .com)
+  // SPECIFIC DOMAIN VALIDATOR (Requires @gmail.com or @outlook.com)
   function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email);
+    return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
   }
 
   function isValidMobile(num) {
@@ -455,7 +455,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid full email address (e.g. name@domain.com).", "error");
+      showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
       return;
     }
     if (contact && !isValidMobile(contact)) {
@@ -492,7 +492,7 @@
       return;
     }
     if (!isValidEmail(currentEditingProfile.email)) {
-      showToast("The assigned email address is not formatted correctly.", "error");
+      showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
       return;
     }
     if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
@@ -585,7 +585,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid full email address.", "error");
+      showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
       return;
     }
     if (password.length < 6) {
