@@ -31,6 +31,21 @@ window.toggleTheme = toggleTheme;
 window.updateThemeIcon = updateThemeIcon;
 
 // ═══════════════════════════════════════════════════════════════
+//  VALIDATION HELPERS (MOBILE & EMAIL)
+// ═══════════════════════════════════════════════════════════════
+function isValidMobile(num) {
+  if (!num) return true;
+  const cleaned = String(num).replace(/\D/g, "");
+  return cleaned.length === 11;
+}
+window.isValidMobile = isValidMobile;
+
+function isValidEmail(email) {
+  return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
+}
+window.isValidEmail = isValidEmail;
+
+// ═══════════════════════════════════════════════════════════════
 //  AUTOMATIC DEVICE DETECTION & CONNECTION NOTIFICATION
 // ═══════════════════════════════════════════════════════════════
 function autoDetectDevice() {
@@ -1296,7 +1311,14 @@ function renderMyProfile() {
       document.getElementById("lbl-setting-role")?.classList.remove("err");
     };
   }
-  if (contactEl) contactEl.value = myProf.contact || "";
+  if (contactEl) {
+    contactEl.value = myProf.contact || "";
+    contactEl.classList.remove("err");
+    contactEl.oninput = () => {
+      contactEl.value = contactEl.value.replace(/\D/g, "");
+      contactEl.classList.remove("err");
+    };
+  }
   if (emailEl) emailEl.value = u.email || "";
   if (passEl) passEl.value = "";
   if (curPassEl) curPassEl.value = "";
@@ -1467,12 +1489,14 @@ async function saveUserSettings() {
 
   const nameInput = document.getElementById("setting-name");
   const roleInput = document.getElementById("setting-role");
+  const contactInput = document.getElementById("setting-contact");
+  
   const nameLabel = document.getElementById("lbl-setting-name");
   const roleLabel = document.getElementById("lbl-setting-role");
 
   const name = (nameInput?.value || "").trim();
   const role = (roleInput?.value || "").trim();
-  const contact = (document.getElementById("setting-contact")?.value || "").trim();
+  const contact = (contactInput?.value || "").trim();
 
   let hasError = false;
 
@@ -1485,6 +1509,13 @@ async function saveUserSettings() {
     if (roleInput) roleInput.classList.add("err");
     if (roleLabel) roleLabel.classList.add("err");
     hasError = true;
+  }
+  if (contact && !isValidMobile(contact)) {
+    if (contactInput) contactInput.classList.add("err");
+    showToast("Contact number must be exactly 11 digits.", "error");
+    return;
+  } else if (contactInput) {
+    contactInput.classList.remove("err");
   }
 
   if (hasError) {
@@ -1540,6 +1571,11 @@ async function saveSecuritySettings() {
 
   if (email === u.email && !pass) {
     showToast("No security modifications requested.");
+    return;
+  }
+
+  if (email && !isValidEmail(email)) {
+    showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
     return;
   }
 
@@ -2322,77 +2358,6 @@ async function openEditCase() {
 
 window.openAddCase = openAddCase;
 window.openEditCase = openEditCase;
-
-// ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM
-// ═══════════════════════════════════════════════════════════════
-function openShareCaseModal() {
-  if (!selCase) return;
-  const listEl = document.getElementById("share-modal-list");
-  if (!listEl) return;
-
-  const sharedUids = selCase.sharedWith || [];
-  const currentUid = window._currentUser?.uid;
-
-  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
-
-  if (associates.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
-  } else {
-    listEl.innerHTML = associates.map(p => {
-      const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
-      return `
-        <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
-          <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked} style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
-          ${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${p.email}</div>
-          </div>
-        </label>
-      `;
-    }).join("");
-  }
-
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.remove("hidden");
-}
-
-function closeShareModal() {
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.add("hidden");
-}
-
-async function saveShareSettings() {
-  if (!selCase) return;
-  const checkboxes = document.querySelectorAll('input[name="share-associate-checkbox"]');
-  const selectedUids = [];
-  checkboxes.forEach(cb => {
-    if (cb.checked) selectedUids.push(cb.value);
-  });
-
-  const ownerUid = selCase.ownerUid || window._currentUser.uid;
-  const allowedUids = [ownerUid, ...selectedUids];
-
-  try {
-    showToast("Updating share settings...");
-    await dbUpdateCase(selCase.id, {
-      sharedWith: selectedUids,
-      allowedUids: allowedUids
-    });
-    selCase.sharedWith = selectedUids;
-    selCase.allowedUids = allowedUids;
-    closeShareModal();
-    showToast("Case shared successfully!");
-  } catch (err) {
-    console.error("saveShareSettings error:", err);
-    showToast("Failed to share case: " + err.message, "error");
-  }
-}
-
-window.openShareCaseModal = openShareCaseModal;
-window.closeShareModal = closeShareModal;
-window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
 //  GOOGLE DRIVE EXPLORER REPLICA (WITH ZERO CELL OVERFLOW)
