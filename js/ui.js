@@ -31,6 +31,33 @@ window.toggleTheme = toggleTheme;
 window.updateThemeIcon = updateThemeIcon;
 
 // ═══════════════════════════════════════════════════════════════
+//  DOM HELPERS & ERROR CLEARING
+// ═══════════════════════════════════════════════════════════════
+function setElText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+window.setElText = setElText;
+
+function setElVal(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+}
+window.setElVal = setElVal;
+
+function clearCaseErrors() {
+  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+  ["cf-case-title", "cf-filed", "cf-narrative"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("err");
+  });
+}
+window.clearCaseErrors = clearCaseErrors;
+
+// ═══════════════════════════════════════════════════════════════
 //  VALIDATION HELPERS (MOBILE & EMAIL)
 // ═══════════════════════════════════════════════════════════════
 function isValidMobile(num) {
