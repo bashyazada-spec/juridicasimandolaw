@@ -52,7 +52,7 @@
   --text-dim:    #64748b;
   --gold:        #aa7c11;
   --gold-light:  #c9a84c;
-  --logo-pillar-accent: #0a1520;
+  --logo-pillar-accent: #ffffff; /* Preserved white for dark top bar */
 }
 
 /* PREVENT HORIZONTAL WOBBLE / PANNING ENTIRELY */
@@ -127,44 +127,69 @@ a { color: inherit; text-decoration: none; }
   overflow-x: hidden !important;
 }
 
-/* TOP BAR WITH CLEAN BUTTON ACTIONS */
+/* ═══════════════════════════════════════════════════════════════
+   PERMANENT DARK TOP BAR (FIXED TO OBSIDIAN IN ALL MODES)
+   ═══════════════════════════════════════════════════════════════ */
 .mobile-top-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; background: var(--surface);
-  border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 900;
-  backdrop-filter: blur(12px); width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 16px !important;
+  background: #0a1624 !important; /* Always dark obsidian */
+  border-bottom: 1.5px solid rgba(201,165,92,0.22) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 900 !important;
+  backdrop-filter: blur(14px) !important;
+  width: 100% !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35) !important;
 }
 
 .mobile-top-logo {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--font-display); font-size: 19px; font-weight: 700; color: var(--gold-light);
-  letter-spacing: 0.2px;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-family: var(--font-display) !important;
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  color: #e0c080 !important; /* Gold logo text */
+  letter-spacing: 0.2px !important;
 }
 
-.logo-pillar-accent {
-  stroke: var(--logo-pillar-accent, #ffffff) !important;
-  transition: stroke 0.25s ease;
+/* Outer pillars stay sharp white on the dark top bar */
+.mobile-top-bar .logo-pillar-accent {
+  stroke: #ffffff !important;
 }
 
-.mobile-top-icon-btn {
-  position: relative;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 17px;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.mobile-top-bar .mobile-top-icon-btn {
+  position: relative !important;
+  background: #0f1d2e !important;
+  border: 1px solid rgba(201,165,92,0.32) !important;
+  color: #e0c080 !important;
+  font-size: 16px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 9px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important;
 }
 
-.mobile-top-icon-btn:hover {
-  border-color: var(--gold-border);
-  background: var(--surface3);
+.mobile-top-bar .mobile-top-icon-btn:hover {
+  border-color: #e0c080 !important;
+  background: #17283c !important;
+  color: #ffffff !important;
+  transform: scale(1.05) !important;
+}
+
+.mobile-top-bar #sidebar-user-chip .sidebar-user-name {
+  color: #ffffff !important;
+}
+.mobile-top-bar #sidebar-user-chip .sidebar-user-role {
+  color: #e0c080 !important;
 }
 
 /* FIXED BOTTOM NAV BAR */
