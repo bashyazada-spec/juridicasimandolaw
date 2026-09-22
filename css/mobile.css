@@ -52,7 +52,7 @@
   --text-dim:    #64748b;
   --gold:        #aa7c11;
   --gold-light:  #c9a84c;
-  --logo-pillar-accent: #ffffff; /* Preserved white for dark top bar */
+  --logo-pillar-accent: #ffffff;
 }
 
 /* PREVENT HORIZONTAL WOBBLE / PANNING ENTIRELY */
@@ -77,6 +77,37 @@ html, body {
   max-width: 100% !important;
   box-sizing: border-box !important;
   -webkit-tap-highlight-color: rgba(201,165,92,0.15);
+}
+
+/* ── FIRM DRIVE REPLICA GRID (FIXES OVERLAPPING / OVERFLOW ON PHONES) ── */
+#mydrive-explorer-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#mydrive-explorer-list > div {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#mydrive-explorer-list > div > div {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+#mydrive-explorer-list [title] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
 }
 
 /* OVERRIDE FOR NOTIFICATION DROPDOWN POPUP WIDGET ON MOBILE & TABLET */
@@ -135,7 +166,7 @@ a { color: inherit; text-decoration: none; }
   align-items: center !important;
   justify-content: space-between !important;
   padding: 10px 16px !important;
-  background: #0a1624 !important; /* Always dark obsidian */
+  background: #0a1624 !important;
   border-bottom: 1.5px solid rgba(201,165,92,0.22) !important;
   position: sticky !important;
   top: 0 !important;
@@ -152,11 +183,10 @@ a { color: inherit; text-decoration: none; }
   font-family: var(--font-display) !important;
   font-size: 19px !important;
   font-weight: 700 !important;
-  color: #e0c080 !important; /* Gold logo text */
+  color: #e0c080 !important;
   letter-spacing: 0.2px !important;
 }
 
-/* Outer pillars stay sharp white on the dark top bar */
 .mobile-top-bar .logo-pillar-accent {
   stroke: #ffffff !important;
 }
