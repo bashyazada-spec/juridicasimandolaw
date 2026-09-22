@@ -149,7 +149,7 @@ window.openTwoFactorSetupModal = async function() {
   if (codeInp) codeInp.value = "";
 
   if (backupListEl) {
-    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);color:var(--gold-light)">${code}</div>`).join("");
+    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">${code}</div>`).join("");
   }
 
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf.email || u.email)}?secret=${generated2FASecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
@@ -1365,6 +1365,36 @@ function updateCfChip() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  RESTRICT CONTACT & MOBILE NUMBER INPUTS TO DIGITS ONLY
+// ═══════════════════════════════════════════════════════════════
+function initNumericInputConstraints() {
+  const contactInputs = document.querySelectorAll('input[id*="contact"], input[id*="phone"], input[id*="mobile"]');
+  contactInputs.forEach(input => {
+    if (input._numericBound) return;
+    input.setAttribute("inputmode", "numeric");
+    input.setAttribute("pattern", "[0-9]*");
+    
+    input.addEventListener("input", (e) => {
+      const sanitized = e.target.value.replace(/\D/g, "");
+      if (e.target.value !== sanitized) {
+        e.target.value = sanitized;
+      }
+    });
+
+    input.addEventListener("keypress", (e) => {
+      if (e.key && !/^\d$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+
+    input._numericBound = true;
+  });
+}
+
+window.addEventListener("DOMContentLoaded", initNumericInputConstraints);
+setTimeout(initNumericInputConstraints, 500);
+
+// ═══════════════════════════════════════════════════════════════
 //  BOOT LOGIC WITH 2FA UNVERIFIED EVICTION GUARD
 // ═══════════════════════════════════════════════════════════════
 function enterLocalMode(reason) {
@@ -1383,6 +1413,7 @@ function initAppUI() {
   if (typeof initTheme === "function") initTheme();
   if (typeof bindProfileInputs === "function") bindProfileInputs();
   if (typeof initPasswordStrengthChecker === "function") initPasswordStrengthChecker();
+  if (typeof initNumericInputConstraints === "function") initNumericInputConstraints();
   showView("dashboard");
   renderDashboard();
 }
