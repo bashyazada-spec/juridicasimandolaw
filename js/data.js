@@ -31,12 +31,37 @@ let prevNotifCount     = 0;
 
 window._notifsLoaded = false;
 
+// ── IMMUTABLE COMPLIANCE AUDIT RECORDER ──────────────────────
+async function dbLogAuditAction(action, details = {}) {
+  if (localMode || !window._db) return;
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+
+  try {
+    await window._fbAddDoc(window._fbCol(window._db, "audit_logs"), {
+      action: action,
+      userId: u.uid,
+      userEmail: u.email || "unknown",
+      details: details,
+      createdAt: window._fbServerTs ? window._fbServerTs() : new Date().toISOString()
+    });
+  } catch (err) {
+    console.warn("Audit logging notice:", err.message);
+  }
+}
+window.dbLogAuditAction = dbLogAuditAction;
+
 // ── STRICT ACCESSIBLE CASES FILTER (100% PRIVACY CONTROL) ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase()));
+
+  if (isFirmAdmin) {
+    return cases;
+  }
 
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
@@ -250,29 +275,38 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases ─────────────
+    // ── Real-Time Sync: Cases (Rule-Aligned Query) ────────────
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
-      const cColRef = window._fbCol(db, "cases");
-      casesUnsub = window._fbOnSnapshot(cColRef, (snap) => {
+      const isEmailAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+
+      // Admins query full collection; associates query allowedUids to prevent permission-denied errors
+      const caseQuery = isEmailAdmin 
+        ? window._fbCol(db, "cases")
+        : window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
+
+      casesUnsub = window._fbOnSnapshot(caseQuery, (snap) => {
         cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (window._notifsLoaded) {
           checkCaseDueNotifications();
         }
         refreshCurrentView();
       }, (error) => {
-        console.warn("Cases real-time connection notice:", error.message);
+        console.warn("Cases real-time connection notice (Query aligned):", error.message);
       });
     }
 
-    // ── Real-Time Sync: Notifications ─────────────
+    // ── Real-Time Sync: Notifications (Rule-Aligned Query) ───
     if (activeUid) {
       try {
-        const notifColRef = window._fbCol(db, "notifications");
-        notificationsUnsub = window._fbOnSnapshot(notifColRef, (snap) => {
-          const allNotifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          notifications = allNotifs
-            .filter(n => n.toUid === activeUid)
+        const notifQuery = window._fbQuery(
+          window._fbCol(db, "notifications"),
+          window._fbWhere("toUid", "==", activeUid)
+        );
+
+        notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
+          notifications = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
             .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
 
           window._notifsLoaded = true;
@@ -296,7 +330,7 @@ async function dbLoad() {
       }
     }
 
-    // ── Real-Time Sync: Firm Appointments & Availability ─────────────
+    // ── Real-Time Sync: Firm Appointments & Availability ─────
     if (activeUid) {
       try {
         const apptColRef = window._fbCol(db, "appointments");
@@ -319,7 +353,7 @@ async function dbLoad() {
   }
 }
 
-// ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR (15 DAYS RETRIEVE) ──
+// ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
   if (!activeUid || !window._notifsLoaded) return;
@@ -333,7 +367,6 @@ function checkCaseDueNotifications() {
     const dueObj = new Date(c.dueDate + "T00:00:00");
     const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
 
-    // Look ahead 15 days for upcoming case deadlines
     if (diffDays <= 15) {
       const notifKey = `case_due_${c.id}_${c.dueDate}`;
 
@@ -398,6 +431,7 @@ async function dbAddProfile(data) {
   data.createdAt = new Date().toISOString().slice(0,10);
   const ref = await window._fbAddDoc(window._fbCol(window._db,"profiles"), data);
   data.id = ref.id;
+  dbLogAuditAction("PROFILE_CREATED", { profileId: data.id, name: data.name });
   return data;
 }
 
@@ -405,11 +439,13 @@ async function dbUpdateProfile(id, data) {
   if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db,"profiles",id), data);
   const idx = profiles.findIndex(p=>p.id===id);
   if (idx>=0) profiles[idx] = {...profiles[idx],...data};
+  dbLogAuditAction("PROFILE_UPDATED", { profileId: id });
 }
 
 async function dbDeleteProfile(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db,"profiles",id));
   profiles = profiles.filter(p=>p.id!==id);
+  dbLogAuditAction("PROFILE_DELETED", { profileId: id });
 }
 
 async function dbAddCase(data) {
@@ -418,10 +454,20 @@ async function dbAddCase(data) {
     cases.unshift(data); 
     return data; 
   }
-  data.ownerUid = window._currentUser?.uid || window._auth?.currentUser?.uid || null;
+  const uId = window._currentUser?.uid || window._auth?.currentUser?.uid || null;
+  data.ownerUid = uId;
   data.createdAt = new Date().toISOString().slice(0,10);
+  
+  // Guarantee creator is in allowedUids to satisfy security rules
+  if (!data.allowedUids || !Array.isArray(data.allowedUids)) {
+    data.allowedUids = [uId];
+  } else if (uId && !data.allowedUids.includes(uId)) {
+    data.allowedUids.push(uId);
+  }
+
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
   data.id = ref.id;
+  dbLogAuditAction("CASE_CREATED", { caseId: data.id, title: data.title });
   return data;
 }
 
@@ -429,11 +475,13 @@ async function dbUpdateCase(id, data) {
   if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db,"cases",id), data);
   const idx = cases.findIndex(c=>c.id===id);
   if (idx>=0) cases[idx] = {...cases[idx],...data};
+  dbLogAuditAction("CASE_UPDATED", { caseId: id });
 }
 
 async function dbDeleteCase(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db,"cases",id));
   cases = cases.filter(c=>c.id!==id);
+  dbLogAuditAction("CASE_DELETED", { caseId: id });
 }
 
 async function dbAddNotification(data) {
@@ -454,13 +502,16 @@ async function dbAddAppointment(data) {
   if (localMode || !window._db) return null;
   data.createdAt = new Date().toISOString();
   const ref = await window._fbAddDoc(window._fbCol(window._db, "appointments"), data);
+  dbLogAuditAction("APPOINTMENT_REQUESTED", { apptId: ref.id, title: data.title });
   return ref.id;
 }
 
 async function dbUpdateAppointment(id, data) {
   if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db, "appointments", id), data);
+  dbLogAuditAction("APPOINTMENT_UPDATED", { apptId: id });
 }
 
 async function dbDeleteAppointment(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "appointments", id));
+  dbLogAuditAction("APPOINTMENT_DELETED", { apptId: id });
 }
