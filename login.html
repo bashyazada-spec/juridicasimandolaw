@@ -263,6 +263,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── 2FA 6-DIGIT CODE INPUT BOXES ── */
     .otp-container {
       display: flex;
       gap: 8px;
@@ -440,6 +441,10 @@
   let pendingProfileDocId = null;
   let pendingProfileData = null;
 
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email);
+  }
+
   async function fetchUserProfile(user) {
     if (!user) return { docId: null, data: {} };
 
@@ -541,7 +546,7 @@
             if (secSnap.exists()) {
               secData = secSnap.data();
             }
-          } catch (e) { /* fallback */ }
+          } catch (e) { /* fallback to profile data if unmigrated */ }
 
           const secretKey = secData?.twoFactorSecret || profData.twoFactorSecret;
           const backupCodes = secData?.twoFactorBackupCodes || profData.twoFactorBackupCodes || [];
@@ -607,10 +612,10 @@
 
   function friendlyError(code) {
     const map = {
-      "auth/user-not-found":       "No account found with this email address.",
+      "auth/user-not-found":       "No account found with this email.",
       "auth/wrong-password":       "Incorrect password. Please try again.",
       "auth/invalid-credential":   "Incorrect email or password.",
-      "auth/invalid-email":        "Please enter a valid email address.",
+      "auth/invalid-email":        "Please enter a valid full email address.",
       "auth/too-many-requests":    "Too many attempts. Please wait a moment and try again.",
       "auth/network-request-failed": "Network error. Check your connection.",
     };
@@ -691,6 +696,11 @@
 
     if (!email || !password) {
       showError("Please enter both email and password.");
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      showError("Please enter a valid full email address.");
       return;
     }
 
@@ -784,7 +794,7 @@
             twoFactorBackupCodes: availableCodes
           }, { merge: true });
         }
-      } catch (e) { /* continue */ }
+      } catch (e) { /* continue sign-in */ }
 
       sessionStorage.setItem("simando_2fa_verified", "true");
       window.location.replace("index.html");
@@ -793,13 +803,17 @@
     }
   };
 
-  // ── Forgot Password Function (Works even after email updates) ──
   window.handleForgotPassword = async function() {
     const email = document.getElementById("inp-email").value.trim();
     if (!email) {
-      showError("Please enter your email address above first.");
+      showError("Enter your email address above first.");
       return;
     }
+    if (!isValidEmail(email)) {
+      showError("Please enter a valid full email address.");
+      return;
+    }
+    
     try {
       await sendPasswordResetEmail(auth, email);
       showError("✓ Password reset email sent — check your inbox.", "error-banner");
