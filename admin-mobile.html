@@ -242,12 +242,13 @@
   let db, auth;
   let adminProfiles = [];
 
+  // STRICT EMAIL VALIDATOR (Requires full domain like .com)
   function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email);
   }
 
   function isValidMobile(num) {
-    if (!num) return true;
+    if (!num) return true; // optional unless filled
     const cleaned = num.replace(/\D/g, "");
     return cleaned.length === 11;
   }
@@ -446,7 +447,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid email address.", "error");
+      showToast("Please enter a valid full email address (e.g. name@domain.com).", "error");
       return;
     }
     if (contact && !isValidMobile(contact)) {
@@ -551,6 +552,19 @@
     document.getElementById("create-modal").classList.add("hidden");
   };
 
+  const translateAuthError = (code) => {
+    switch (code) {
+      case "auth/email-already-in-use":
+        return "This email address is already registered to another account.";
+      case "auth/invalid-email":
+        return "The email address is not formatted correctly.";
+      case "auth/weak-password":
+        return "The password is too weak. Please use at least 6 characters.";
+      default:
+        return "Failed to complete account registration.";
+    }
+  };
+
   document.getElementById("btn-create-submit").addEventListener("click", async () => {
     const name = document.getElementById("new-name").value.trim();
     const email = document.getElementById("new-email").value.trim();
@@ -562,7 +576,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid email address.", "error");
+      showToast("Please enter a valid full email address.", "error");
       return;
     }
     if (password.length < 6) {
@@ -621,6 +635,11 @@
         await deleteApp(secondaryApp).catch(console.error);
       }
     }
+  });
+
+  // Ensure contact inputs are strictly digits
+  document.getElementById("edit-contact").addEventListener("input", function(e) {
+    this.value = this.value.replace(/\D/g, '');
   });
 
   function escHtml(str) {
