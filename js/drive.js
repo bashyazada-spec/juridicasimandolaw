@@ -35,6 +35,22 @@ function clearPersistedToken() {
   try { sessionStorage.removeItem("gDriveToken"); } catch (e) { /* ignore */ }
 }
 
+window.disconnectDriveAccount = function() {
+  if (!confirm("Disconnect your Google Drive account?\nYou will need to reconnect to upload or browse files in Drive.")) return;
+  clearPersistedToken();
+  if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2 && accessToken) {
+    try {
+      google.accounts.oauth2.revoke(accessToken, () => {
+        console.log("Google token revoked.");
+      });
+    } catch (e) { /* ignore */ }
+  }
+  accessToken = null;
+  tokenExpiresAt = 0;
+  showToast("Google Drive disconnected successfully.");
+  if (typeof renderMyProfile === "function") renderMyProfile();
+};
+
 function initGoogleDrive() {
   if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
     driveInitAttempts++;
@@ -48,7 +64,6 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      // Upgraded scope to full drive access to allow browsing folders & files
       scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
@@ -59,6 +74,9 @@ function initGoogleDrive() {
           
           if (typeof fetchAndRenderGoogleCalendarEvents === "function" && currentView === "dashboard") {
             fetchAndRenderGoogleCalendarEvents();
+          }
+          if (typeof renderMyProfile === "function") {
+            renderMyProfile();
           }
         } else {
           console.warn("Drive & Calendar auth response error:", response);
