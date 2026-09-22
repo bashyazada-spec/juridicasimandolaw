@@ -48,8 +48,7 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      // Upgraded scope to full drive access to allow browsing folders & files
-      scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
+      scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
           accessToken = response.access_token;
@@ -147,6 +146,7 @@ async function createDriveFolder(name, parentId = null) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      // If parent ID is invalid or deleted (404), self-heal by creating in root
       if ((res.status === 404 || err.error?.code === 404) && parentId) {
         console.warn(`Parent folder ${parentId} was deleted or not found. Self-healing to root.`);
         delete metadata.parents;
@@ -178,6 +178,7 @@ async function setupProfileDriveFolder(profile) {
     return null;
   }
 
+  // Verify existing folder ID is actually accessible
   if (profile.driveFolderId) {
     try {
       const checkRes = await fetch(`https://www.googleapis.com/drive/v3/files/${profile.driveFolderId}?fields=id,trashed`, {
@@ -214,6 +215,7 @@ async function convertWordToPdfAndUpload(file, folderId) {
 
   const targetFolder = (folderId && folderId !== "root") ? folderId : null;
 
+  // Step 1: Upload Word file as a Google Doc (triggers Google server conversion)
   const metadata = {
     name: `temp_convert_${Date.now()}`,
     mimeType: "application/vnd.google-apps.document"
@@ -257,6 +259,7 @@ async function convertWordToPdfAndUpload(file, folderId) {
     body: bodyBuffer
   });
 
+  // Self-heal if targetFolder returned 404
   if (!res.ok && targetFolder) {
     delete metadata.parents;
     const retryMetadataPart = delimiter +
@@ -288,6 +291,7 @@ async function convertWordToPdfAndUpload(file, folderId) {
 
   const { id: tempDocId } = await res.json();
 
+  // Step 2: Export Google Doc as a PDF Blob
   showToast("Compiling layout into PDF...");
   const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${tempDocId}/export?mimeType=application/pdf`, {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -300,12 +304,14 @@ async function convertWordToPdfAndUpload(file, folderId) {
 
   const pdfBlob = await exportRes.blob();
 
+  // Step 3: Save the converted PDF directly into the target folder
   const pdfFileName = file.name.replace(/\.[^/.]+$/, "") + ".pdf";
   const pdfFile = new File([pdfBlob], pdfFileName, { type: "application/pdf" });
   pdfFile._isConvertedPdf = true;
 
   const finalPdfMeta = await uploadSingleFileToDrive(pdfFile, targetFolder);
 
+  // Step 4: Delete the temporary workspace file
   await deleteDriveFile(tempDocId).catch(() => {});
 
   showToast(`Converted & saved: ${pdfFileName} ✅`);
@@ -317,6 +323,7 @@ async function uploadSingleFileToDrive(file, folderId) {
     throw new Error("Missing or invalid Google Drive access token.");
   }
 
+  // Intercept and convert Microsoft Word files (.docx / .doc)
   const ext = file.name.split('.').pop().toLowerCase();
   if ((ext === 'docx' || ext === 'doc') && !file._isConvertedPdf) {
     try {
@@ -373,6 +380,7 @@ async function uploadSingleFileToDrive(file, folderId) {
     }
   );
 
+  // Self-heal if target parent folder returned 404
   if (!res.ok && metadata.parents) {
     delete metadata.parents;
     const retryMetaPart = delimiter +
