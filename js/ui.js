@@ -58,6 +58,22 @@ function clearCaseErrors() {
 window.clearCaseErrors = clearCaseErrors;
 
 // ═══════════════════════════════════════════════════════════════
+//  CASE DETAIL BACK NAVIGATION (DYNAMIC ORIGIN TRACKING)
+// ═══════════════════════════════════════════════════════════════
+let caseDetailOrigin = "allcases";
+
+window.handleCaseDetailBack = function() {
+  if (caseDetailOrigin === "profileDetail" && selProfile) {
+    showView("profileDetail");
+    renderProfileDetail();
+  } else if (caseDetailOrigin === "dashboard") {
+    navTo("dashboard");
+  } else {
+    navTo("allcases");
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  VALIDATION HELPERS (MOBILE & EMAIL)
 // ═══════════════════════════════════════════════════════════════
 function isValidMobile(num) {
@@ -682,10 +698,10 @@ function renderCaseDetail() {
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
   if (wrapEl) wrapEl.innerHTML = actionButtons;
 
-  const detailHeaderActions = document.querySelector("#view-caseDetail .flex-center.gap-10");
-  if (detailHeaderActions) {
-    const backBtn = document.getElementById("cd-back-btn");
-    if (backBtn) backBtn.onclick = () => { showView("profileDetail"); renderProfileDetail(); };
+  // Unconditionally attach the back navigation handler
+  const backBtn = document.getElementById("cd-back-btn");
+  if (backBtn) {
+    backBtn.onclick = window.handleCaseDetailBack;
   }
 
   const chip = document.getElementById("cd-profile-chip");
@@ -884,6 +900,7 @@ function openProfile(id) {
 }
 
 function openCase(id) {
+  caseDetailOrigin = currentView; // Tracks exact origin: dashboard, allcases, or profileDetail
   selCase = cases.find(c => c.id === id);
   if (!selCase) return;
   const p = profiles.find(x => x.id === selCase.profileId);
