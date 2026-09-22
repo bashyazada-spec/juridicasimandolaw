@@ -225,7 +225,6 @@
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  // Obfuscated runtime credentials
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
   const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
@@ -243,13 +242,15 @@
   let db, auth;
   let adminProfiles = [];
 
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
   function bounceUser(msg) {
     const el = document.getElementById("gate-message");
     if (el) el.innerHTML = `<span style="color:var(--red)">❌ ${msg}</span><br><br><a href="mobile.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
     showToast(msg, "error");
-    setTimeout(() => {
-      window.location.replace("mobile.html");
-    }, 2500);
+    setTimeout(() => { window.location.replace("mobile.html"); }, 2500);
   }
 
   async function runAdminVerification() {
@@ -438,6 +439,10 @@
       showToast("Name and Email are required.", "error");
       return;
     }
+    if (!isValidEmail(email)) {
+      showToast("Please enter a valid email address.", "error");
+      return;
+    }
 
     const btn = document.getElementById("btn-edit-submit");
     btn.disabled = true;
@@ -465,6 +470,10 @@
       showToast("Selected profile has no valid email.", "error");
       return;
     }
+    if (!isValidEmail(currentEditingProfile.email)) {
+      showToast("The assigned email address is not formatted correctly.", "error");
+      return;
+    }
     if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
 
     try {
@@ -483,6 +492,7 @@
 
     try {
       showToast("Resetting 2FA...");
+      
       await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), {
         twoFactorEnabled: false,
         twoFactorSecret: null,
@@ -539,6 +549,10 @@
 
     if (!name || !email || !password) {
       showToast("All fields are required.", "error");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      showToast("Please enter a valid email address.", "error");
       return;
     }
     if (password.length < 6) {
