@@ -643,7 +643,7 @@
     <!-- ── CASE DETAIL ── -->
     <div id="view-caseDetail" class="view hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
-        <button class="btn btn-ghost btn-sm" id="cd-back-btn">← Back</button>
+        <button class="btn btn-ghost btn-sm" id="cd-back-btn" onclick="handleCaseDetailBack()">← Back</button>
         <div id="cd-action-buttons-wrap" style="display:flex;gap:6px;align-items:center"></div>
       </div>
       <div style="font-weight:700;font-size:20px;color:var(--text);margin-bottom:8px" id="cd-title"></div>
@@ -824,7 +824,7 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
-<!-- Fixed Bottom Navigation Bar (Dashboard uses 🏛️ Classical Pillar / Courthouse) -->
+<!-- Fixed Bottom Navigation Bar -->
 <div class="mobile-bottom-nav">
   <button class="mobile-nav-item active" data-nav="dashboard" onclick="navTo('dashboard')">
     <span class="mobile-nav-item-icon">🏛️</span>
