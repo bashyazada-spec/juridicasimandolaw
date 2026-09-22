@@ -11,9 +11,9 @@
 <!-- 1. Instant 0ms Device Redirector (Executes before Firebase loads) -->
 <script src="js/redirect.js"></script>
 
-<!-- 2. Firebase Initialization, QRCode CDN & Desktop Stylesheet -->
+<!-- 2. Firebase Initialization, QRCode CDN with SRI & Desktop Stylesheet -->
 <script type="module" src="js/firebase-init.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1Pg4DzHgHA10ewwjPBnx+xOo5a8WhZVC8GhnZHA9CoLKSGYlUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/desktop.css"/>
 </head>
