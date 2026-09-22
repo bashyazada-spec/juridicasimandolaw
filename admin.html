@@ -57,7 +57,7 @@
 
 <div id="app">
 
-  <!-- ══════ SIDEBAR (WITH OPTION 2 CLASSICAL PILLAR LOGO) ══════ -->
+  <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
     <div class="logo-wrap">
       <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
@@ -204,7 +204,16 @@
         </select>
       </div>
 
-      <!-- 2FA Administration (Clean Typography, No Emoji) -->
+      <!-- Password Reset & Recovery Tool -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--text)">Password Recovery</div>
+          <div style="font-size:11px;color:var(--text-dim)">Send reset email or set temporary password</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="adminSendPasswordReset()">Send Reset Email</button>
+      </div>
+
+      <!-- 2FA Administration -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-size:12px;font-weight:700;color:var(--text)">Two-Factor Security (2FA)</div>
@@ -228,7 +237,7 @@
 <script type="module">
   import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   // Obfuscated runtime credentials
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
@@ -330,9 +339,6 @@
     }
   }, 1200);
 
-  // ═══════════════════════════════════════════════════════════════
-  //  DIRECTORY RENDERERS
-  // ═══════════════════════════════════════════════════════════════
   async function initAdminConsole() {
     await loadDirectoryProfiles();
     renderAttorneyDirectory();
@@ -390,7 +396,7 @@
           <td>
             ${is2FA 
               ? `<span style="color:var(--green);font-size:12px;font-weight:700">Active</span>` 
-              : `<span style="color:var(--text-dim);font-size:12px">Disabled</span>`}
+              : `<span style="font-size:12px;color:var(--text-dim)">Disabled</span>`}
           </td>
           <td>
             <div class="action-btn-group">
@@ -403,9 +409,6 @@
     }).join("");
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  //  EDIT USER PROFILE & ROLE HANDLERS
-  // ═══════════════════════════════════════════════════════════════
   let currentEditingProfile = null;
 
   window.openAdminEditModal = function(profileId) {
@@ -457,12 +460,7 @@
 
     try {
       showToast("Updating attorney profile...");
-      const updData = {
-        name,
-        email,
-        contact,
-        role
-      };
+      const updData = { name, email, contact, role };
 
       await updateDoc(doc(db, "profiles", profId), updData);
       showToast("Profile & privileges updated successfully!");
@@ -479,26 +477,39 @@
     }
   };
 
+  // ── Admin Password Reset Tool ─────────────────────────────
+  window.adminSendPasswordReset = async function() {
+    if (!currentEditingProfile || !currentEditingProfile.email) {
+      showToast("Selected profile has no valid email address.", "error");
+      return;
+    }
+    if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
+
+    try {
+      showToast("Sending password reset email...");
+      await sendPasswordResetEmail(auth, currentEditingProfile.email);
+      showToast("Password reset email sent successfully!");
+    } catch (err) {
+      console.error("Password reset error:", err);
+      showToast("Failed to send reset email: " + err.message, "error");
+    }
+  };
+
   window.adminResetUser2FA = async function() {
     if (!currentEditingProfile) return;
     if (!confirm(`Reset Two-Factor Authentication for ${currentEditingProfile.name}?\nThey will be able to log in with password only.`)) return;
 
     try {
       showToast("Resetting 2FA...");
-      
-      // Clear private security vault
       await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), {
         twoFactorEnabled: false,
         twoFactorSecret: null,
         twoFactorBackupCodes: []
       }, { merge: true });
 
-      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
-        twoFactorEnabled: false
-      });
+      await updateDoc(doc(db, "profiles", currentEditingProfile.id), { twoFactorEnabled: false });
 
       currentEditingProfile.twoFactorEnabled = false;
-
       document.getElementById("edit-2fa-status-desc").innerHTML = "2FA has been disabled for this account.";
       document.getElementById("btn-admin-reset-2fa").style.display = "none";
 
@@ -526,9 +537,6 @@
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════
-  //  ACCOUNT CREATION HANDLERS (RESILIENT SECONDARY AUTH + FIRESTORE)
-  // ═══════════════════════════════════════════════════════════════
   window.openCreateModal = function() {
     document.getElementById("new-name").value = "";
     document.getElementById("new-email").value = "";
@@ -549,8 +557,6 @@
         return "The email address is not formatted correctly.";
       case "auth/weak-password":
         return "The password is too weak. Please use at least 6 characters.";
-      case "auth/operation-not-allowed":
-        return "Email/Password registration is not enabled in Firebase.";
       default:
         return "Failed to complete account registration.";
     }
@@ -600,12 +606,9 @@
         createdAt: new Date().toISOString().slice(0, 10)
       };
 
-      // Write document using the newly created user's authenticated session
-      // This guarantees request.auth.uid == profileId passes security rules with zero permission blocks
       try {
         await setDoc(doc(secondaryDb, "profiles", user.uid), newProfile);
       } catch (secDbErr) {
-        console.warn("Secondary DB write fallback to primary DB:", secDbErr);
         await setDoc(doc(db, "profiles", user.uid), newProfile);
       }
 
