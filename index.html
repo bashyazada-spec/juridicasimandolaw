@@ -591,12 +591,13 @@
           </div>
           <div class="grid2 mb-16">
             <div>
-              <label class="field-label">Contact Number</label>
-              <input class="field-input" id="pf-contact" placeholder="0917-XXX-XXXX"/>
+              <label class="field-label">Contact Number (11 digits)</label>
+              <input class="field-input" id="pf-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
             </div>
             <div>
-              <label class="field-label">Email Address *</label>
+              <label class="field-label" id="lbl-pf-email">Email Address *</label>
               <input class="field-input" id="pf-email" placeholder="attorney@simandolaw.com" type="email"/>
+              <div id="pf-email-err" class="field-err hidden">Valid email is required</div>
             </div>
           </div>
           
@@ -806,8 +807,8 @@
                 <input class="field-input" id="setting-role" placeholder="e.g. Senior Partner"/>
               </div>
               <div>
-                <label class="field-label">Contact Number</label>
-                <input class="field-input" id="setting-contact" placeholder="09XX-XXX-XXXX"/>
+                <label class="field-label">Contact Number (11 digits)</label>
+                <input class="field-input" id="setting-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
               </div>
               <div style="grid-column: 1/-1">
                 <label class="field-label">Attorney Profile Photo</label>
