@@ -872,7 +872,6 @@ function renderSidebarUser() {
     return;
   }
 
-  // Uses sidebar-user-name class with #ffffff so it stays readable on dark sidebar
   chip.innerHTML = `
     ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
     <div style="flex:1;min-width:0;text-align:left">
@@ -2393,7 +2392,7 @@ window.closeShareModal = closeShareModal;
 window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA
+//  GOOGLE DRIVE EXPLORER REPLICA (WITH ZERO CELL OVERFLOW)
 // ═══════════════════════════════════════════════════════════════
 let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
@@ -2467,6 +2466,7 @@ window.loadExplorerFiles = async function() {
 
     if (emptyEl) emptyEl.classList.add("hidden");
 
+    // Adding min-width: 0, overflow: hidden, width: 100% prevents CSS grid blowout on phones
     listEl.innerHTML = files.map(f => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
       const icon = isFolder ? "📁" : "📄";
@@ -2477,11 +2477,11 @@ window.loadExplorerFiles = async function() {
       const sizeText = f.size ? (f.size / (1024 * 1024)).toFixed(2) + " MB" : "";
 
       return `
-        <div style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
-          <div ${onClickAction}>
+        <div style="min-width:0;max-width:100%;overflow:hidden;position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
+          <div ${onClickAction} style="min-width:0;max-width:100%;overflow:hidden">
             <div style="font-size:32px;margin-bottom:8px">${icon}</div>
-            <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
-            ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + sizeText + '</div>' : ""}
+            <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
+            ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sizeText + '</div>' : ""}
           </div>
           <button onclick="event.stopPropagation(); adminDeleteDriveExplorerFile('${f.id}', '${f.name.replace(/'/g, "\\'")}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;border-radius:4px;opacity:0.6;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete file from Google Drive">
             🗑️
