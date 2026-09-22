@@ -191,6 +191,15 @@
         </select>
       </div>
 
+      <!-- Password Recovery Tool -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--text)">Password Recovery</div>
+          <div style="font-size:10.5px;color:var(--text-dim)">Send reset email</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="adminSendPasswordReset()" style="width:auto !important;padding:4px 8px !important;font-size:10.5px !important">Send Reset</button>
+      </div>
+
       <!-- 2FA Security Administration -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:space-between">
         <div>
@@ -214,7 +223,7 @@
 <script type="module">
   import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   // Obfuscated runtime credentials
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
@@ -436,12 +445,7 @@
 
     try {
       showToast("Updating profile...");
-      await updateDoc(doc(db, "profiles", profId), {
-        name,
-        email,
-        contact,
-        role
-      });
+      await updateDoc(doc(db, "profiles", profId), { name, email, contact, role });
       showToast("Profile & role updated!");
 
       closeAdminEditModal();
@@ -456,25 +460,38 @@
     }
   };
 
+  window.adminSendPasswordReset = async function() {
+    if (!currentEditingProfile || !currentEditingProfile.email) {
+      showToast("Selected profile has no valid email.", "error");
+      return;
+    }
+    if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
+
+    try {
+      showToast("Sending reset email...");
+      await sendPasswordResetEmail(auth, currentEditingProfile.email);
+      showToast("Password reset email sent!");
+    } catch (err) {
+      console.error("Password reset error:", err);
+      showToast("Failed to send reset email: " + err.message, "error");
+    }
+  };
+
   window.adminResetUser2FA = async function() {
     if (!currentEditingProfile) return;
     if (!confirm(`Reset 2FA for ${currentEditingProfile.name}?`)) return;
 
     try {
       showToast("Resetting 2FA...");
-      
       await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), {
         twoFactorEnabled: false,
         twoFactorSecret: null,
         twoFactorBackupCodes: []
       }, { merge: true });
 
-      await updateDoc(doc(db, "profiles", currentEditingProfile.id), {
-        twoFactorEnabled: false
-      });
+      await updateDoc(doc(db, "profiles", currentEditingProfile.id), { twoFactorEnabled: false });
 
       currentEditingProfile.twoFactorEnabled = false;
-
       document.getElementById("edit-2fa-status-desc").innerHTML = "2FA disabled.";
       document.getElementById("btn-admin-reset-2fa").style.display = "none";
 
@@ -558,11 +575,9 @@
         createdAt: new Date().toISOString().slice(0, 10)
       };
 
-      // Write document using the newly created user's authenticated session
       try {
         await setDoc(doc(secondaryDb, "profiles", user.uid), newProfile);
       } catch (secDbErr) {
-        console.warn("Secondary DB write fallback to primary DB:", secDbErr);
         await setDoc(doc(db, "profiles", user.uid), newProfile);
       }
 
