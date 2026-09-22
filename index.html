@@ -896,7 +896,7 @@
               <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
             </div>
             
-            <div style="display:flex;justify-content:center">
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
               <button class="gdrive-btn gdrive-highlight-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()">
                 <svg width="20" height="20" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
                   <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
@@ -907,6 +907,9 @@
                   <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
                 </svg>
                 <span id="settings-connect-drive-text">Connect Google Account</span>
+              </button>
+              <button class="btn btn-danger btn-sm hidden" id="settings-disconnect-drive-btn" onclick="disconnectDriveAccount()" style="padding:10px 16px">
+                Disconnect
               </button>
             </div>
           </div>
