@@ -188,8 +188,8 @@
           <input type="email" class="field-input" id="edit-email" placeholder="email@simandolaw.com"/>
         </div>
         <div>
-          <label class="field-label">Contact Number</label>
-          <input type="text" class="field-input" id="edit-contact" placeholder="09XX-XXX-XXXX"/>
+          <label class="field-label">Contact Number (11 digits)</label>
+          <input type="text" class="field-input" id="edit-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
         </div>
       </div>
 
@@ -257,6 +257,12 @@
 
   function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function isValidMobile(num) {
+    if (!num) return true; // optional unless filled
+    const cleaned = num.replace(/\D/g, "");
+    return cleaned.length === 11;
   }
 
   function bounceUser(msg) {
@@ -448,7 +454,11 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid email address (e.g. name@domain.com).", "error");
+      showToast("Please enter a valid email address.", "error");
+      return;
+    }
+    if (contact && !isValidMobile(contact)) {
+      showToast("Contact number must be exactly 11 digits.", "error");
       return;
     }
 
@@ -478,10 +488,6 @@
   window.adminSendPasswordReset = async function() {
     if (!currentEditingProfile || !currentEditingProfile.email) {
       showToast("Selected profile has no valid email address.", "error");
-      return;
-    }
-    if (!isValidEmail(currentEditingProfile.email)) {
-      showToast("The assigned email address is not formatted correctly.", "error");
       return;
     }
     if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
@@ -574,7 +580,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid email address (e.g. name@domain.com).", "error");
+      showToast("Please enter a valid email address.", "error");
       return;
     }
     if (password.length < 6) {
