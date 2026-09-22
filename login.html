@@ -315,7 +315,7 @@
   <div id="step-login">
     <div class="heading">
       <h1>Welcome back</h1>
-      <p>Sign in to access your case management dashboard.</p>
+      <p>Sign in with your @gmail.com or @outlook.com address.</p>
     </div>
 
     <div id="error-banner" class="error-banner"></div>
@@ -324,7 +324,7 @@
       <label for="inp-email">Email address</label>
       <div class="input-wrap">
         <span class="input-icon">✉</span>
-        <input type="email" id="inp-email" placeholder="attorney@simandolaw.com" autocomplete="email"/>
+        <input type="email" id="inp-email" placeholder="attorney@gmail.com or @outlook.com" autocomplete="email"/>
       </div>
     </div>
 
@@ -441,8 +441,9 @@
   let pendingProfileDocId = null;
   let pendingProfileData = null;
 
+  // SPECIFIC DOMAIN VALIDATOR (Requires @gmail.com or @outlook.com)
   function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email);
+    return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
   }
 
   async function fetchUserProfile(user) {
@@ -615,7 +616,7 @@
       "auth/user-not-found":       "No account found with this email.",
       "auth/wrong-password":       "Incorrect password. Please try again.",
       "auth/invalid-credential":   "Incorrect email or password.",
-      "auth/invalid-email":        "Please enter a valid full email address.",
+      "auth/invalid-email":        "Please enter a valid @gmail.com or @outlook.com address.",
       "auth/too-many-requests":    "Too many attempts. Please wait a moment and try again.",
       "auth/network-request-failed": "Network error. Check your connection.",
     };
@@ -700,7 +701,7 @@
     }
 
     if (!isValidEmail(email)) {
-      showError("Please enter a valid full email address.");
+      showError("Please enter a valid @gmail.com or @outlook.com address.");
       return;
     }
 
@@ -810,7 +811,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showError("Please enter a valid full email address.");
+      showError("Please enter a valid @gmail.com or @outlook.com address.");
       return;
     }
     
