@@ -19,10 +19,10 @@ window.toggleSidebar = function() {
 })();
 
 // ═══════════════════════════════════════════════════════════════
-//  VALIDATION HELPERS (GMAIL & MOBILE)
+//  VALIDATION HELPERS (GMAIL & OUTLOOK DOMAINS)
 // ═══════════════════════════════════════════════════════════════
 function isValidEmail(email) {
-  return /^[^\s@]+@gmail\.com$/i.test(String(email || "").trim());
+  return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
 }
 window.isValidEmail = isValidEmail;
 
@@ -813,7 +813,7 @@ async function saveShareSettings() {
 window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILE FORM (WITH STRICT GMAIL VALIDATION)
+//  PROFILE FORM (WITH STRICT GMAIL & OUTLOOK VALIDATION)
 // ═══════════════════════════════════════════════════════════════
 let pfDriveConnected = false;
 
@@ -1084,7 +1084,7 @@ async function saveProfile() {
   }
   if (!email || !isValidEmail(email)) {
     if (emailInput) emailInput.classList.add("err");
-    showToast("Please enter a valid Gmail address (@gmail.com).", "error");
+    showToast("Please enter a valid @gmail.com or @outlook.com address.", "error");
     valid = false;
   }
   if (contact && !isValidMobile(contact)) {
