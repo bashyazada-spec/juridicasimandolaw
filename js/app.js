@@ -19,12 +19,19 @@ window.toggleSidebar = function() {
 })();
 
 // ═══════════════════════════════════════════════════════════════
-//  EMAIL VALIDATION HELPER
+//  VALIDATION HELPERS (EMAIL & MOBILE)
 // ═══════════════════════════════════════════════════════════════
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 window.isValidEmail = isValidEmail;
+
+function isValidMobile(num) {
+  if (!num) return true; // Optional field
+  const cleaned = num.replace(/\D/g, "");
+  return cleaned.length === 11;
+}
+window.isValidMobile = isValidMobile;
 
 // ═══════════════════════════════════════════════════════════════
 //  DELETE CONFIRMATION & MODAL CONTROLLERS
@@ -157,7 +164,7 @@ window.openTwoFactorSetupModal = async function() {
   if (codeInp) codeInp.value = "";
 
   if (backupListEl) {
-    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">${code}</div>`).join("");
+    backupListEl.innerHTML = generatedBackupCodes.map(code => `<div style="font-family:monospace;font-weight:700;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);color:var(--gold-light)">${code}</div>`).join("");
   }
 
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf.email || u.email)}?secret=${generated2FASecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
@@ -232,7 +239,7 @@ window.confirmAndEnableTwoFactor = async function() {
 
     showToast("Two-Factor Authentication is now active! 🛡️");
     closeTwoFactorSetupModal();
-    renderMyProfile();
+    if (typeof renderMyProfile === "function") renderMyProfile();
   } catch (err) {
     console.error("2FA activation error:", err);
     showToast("Failed to activate 2FA: " + err.message, "error");
@@ -270,7 +277,7 @@ window.disableTwoFactor = async function() {
     sessionStorage.removeItem("simando_2fa_verified");
 
     showToast("Two-Factor Authentication disabled.");
-    renderMyProfile();
+    if (typeof renderMyProfile === "function") renderMyProfile();
   } catch (err) {
     console.error("2FA disable error:", err);
     showToast("Failed to disable 2FA: " + err.message, "error");
@@ -307,10 +314,10 @@ window.openBusyModal = function() {
   const allDayCb = document.getElementById("busy-all-day");
   if (allDayCb) {
     allDayCb.checked = true;
-    toggleBusyTimeInputs(true);
+    if (typeof toggleBusyTimeInputs === "function") toggleBusyTimeInputs(true);
   }
 
-  renderModalCalendarGrid();
+  if (typeof renderModalCalendarGrid === "function") renderModalCalendarGrid();
   modal.classList.remove("hidden");
 };
 
@@ -321,7 +328,7 @@ window.closeBusyModal = function() {
 
 window.resetBusySelection = function() {
   selectedBusyDatesSet.clear();
-  renderModalCalendarGrid();
+  if (typeof renderModalCalendarGrid === "function") renderModalCalendarGrid();
   showToast("Selection reset.");
 };
 
@@ -331,7 +338,7 @@ window.prevModalCalMonth = function() {
     modalCalMonth = 11;
     modalCalYear--;
   }
-  renderModalCalendarGrid();
+  if (typeof renderModalCalendarGrid === "function") renderModalCalendarGrid();
 };
 
 window.nextModalCalMonth = function() {
@@ -340,14 +347,14 @@ window.nextModalCalMonth = function() {
     modalCalMonth = 0;
     modalCalYear++;
   }
-  renderModalCalendarGrid();
+  if (typeof renderModalCalendarGrid === "function") renderModalCalendarGrid();
 };
 
 window.todayModalCalMonth = function() {
   const now = new Date();
   modalCalYear = now.getFullYear();
   modalCalMonth = now.getMonth();
-  renderModalCalendarGrid();
+  if (typeof renderModalCalendarGrid === "function") renderModalCalendarGrid();
 };
 
 window.toggleModalBusyDate = function(dateStr) {
@@ -364,7 +371,7 @@ window.toggleModalBusyDate = function(dateStr) {
   } else {
     selectedBusyDatesSet.add(dateStr);
   }
-  renderModalCalendarGrid();
+  if (typeof renderModalCalendarGrid === "function") renderModalCalendarGrid();
 };
 
 window.renderModalCalendarGrid = function() {
@@ -535,7 +542,7 @@ window.submitBusyDates = async function() {
     }
 
     showToast("Schedule updated successfully!");
-    closeBusyModal();
+    if (typeof closeBusyModal === "function") closeBusyModal();
 
     if (typeof renderMonthlyCalendarGrid === "function") {
       renderMonthlyCalendarGrid();
@@ -669,7 +676,7 @@ window.openDeleteModal = function() {
   if (input) {
     input.onkeydown = (e) => {
       if (e.key === "Enter" && btn && !btn.disabled) {
-        executeDelete();
+        if (typeof executeDelete === "function") executeDelete();
       }
     };
   }
@@ -688,49 +695,52 @@ async function executeDelete() {
   const target = _pendingDeleteTarget;
   if (!target) return;
 
-  closeDeleteModal();
+  if (typeof closeDeleteModal === "function") closeDeleteModal();
 
   try {
     if (target.type === "account_delete") {
-      await executeDeleteAccountWipe();
+      if (typeof executeDeleteAccountWipe === "function") {
+        await executeDeleteAccountWipe();
+      }
     } else if (target.type === "case") {
       if (target.calendarEventId && typeof deleteCalendarEvent === "function") {
         await deleteCalendarEvent(target.calendarEventId);
       }
-      await dbDeleteCase(target.id);
+      if (typeof dbDeleteCase === "function") await dbDeleteCase(target.id);
       cases = cases.filter(c => c.id !== target.id);
       selCase = null;
       showToast("Case deleted successfully", "error");
       
-      renderDashboard();
-      renderAllCases();
-      showView("profileDetail");
-      renderProfileDetail();
+      if (typeof renderDashboard === "function") renderDashboard();
+      if (typeof renderAllCases === "function") renderAllCases();
+      if (typeof showView === "function") showView("profileDetail");
+      if (typeof renderProfileDetail === "function") renderProfileDetail();
     } else if (target.type === "profile") {
       const toDelete = cases.filter(c => c.profileId === target.id);
       for (const c of toDelete) {
         if (c.calendarEventId && typeof deleteCalendarEvent === "function") {
           await deleteCalendarEvent(c.calendarEventId).catch(() => {});
         }
-        await dbDeleteCase(c.id);
+        if (typeof dbDeleteCase === "function") await dbDeleteCase(c.id);
       }
       cases = cases.filter(c => c.profileId !== target.id);
 
-      await dbDeleteProfile(target.id);
+      if (typeof dbDeleteProfile === "function") await dbDeleteProfile(target.id);
       profiles = profiles.filter(p => p.id !== target.id);
 
       selProfile = null;
       selCase = null;
       showToast(`Profile and associated cases deleted`, "error");
-      navTo("profiles");
+      if (typeof navTo === "function") navTo("profiles");
     }
 
-    if (currentView === "dashboard") renderDashboard();
+    if (currentView === "dashboard" && typeof renderDashboard === "function") renderDashboard();
   } catch (err) {
     console.error("executeDelete error:", err);
     showToast("Delete failed: " + (err.message || "Unknown error"), "error");
   }
 }
+window.executeDelete = executeDelete;
 
 // ═══════════════════════════════════════════════════════════════
 //  CASE SHARING SYSTEM
@@ -785,22 +795,25 @@ async function saveShareSettings() {
 
   try {
     showToast("Updating share settings...");
-    await dbUpdateCase(selCase.id, {
-      sharedWith: selectedUids,
-      allowedUids: allowedUids
-    });
+    if (typeof dbUpdateCase === "function") {
+      await dbUpdateCase(selCase.id, {
+        sharedWith: selectedUids,
+        allowedUids: allowedUids
+      });
+    }
     selCase.sharedWith = selectedUids;
     selCase.allowedUids = allowedUids;
-    closeShareModal();
+    if (typeof closeShareModal === "function") closeShareModal();
     showToast("Case shared successfully!");
   } catch (err) {
     console.error("saveShareSettings error:", err);
     showToast("Failed to share case: " + err.message, "error");
   }
 }
+window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILE FORM (WITH EMAIL & NUMBER VALIDATION)
+//  PROFILE FORM (WITH STRICT VALIDATION)
 // ═══════════════════════════════════════════════════════════════
 let pfDriveConnected = false;
 
@@ -822,12 +835,12 @@ function openAddProfile() {
   const backBtn = document.getElementById("pf-back-btn");
   if (backBtn) backBtn.onclick = () => navTo("profiles");
 
-  resetDriveAuthUI();
-  setDetailsEnabled(false);
-  clearProfileErrors();
-  resetPhotoUpload();
-  updateAvatarPreview();
-  showView("profileForm");
+  if (typeof resetDriveAuthUI === "function") resetDriveAuthUI();
+  if (typeof setDetailsEnabled === "function") setDetailsEnabled(false);
+  if (typeof clearProfileErrors === "function") clearProfileErrors();
+  if (typeof resetPhotoUpload === "function") resetPhotoUpload();
+  if (typeof updateAvatarPreview === "function") updateAvatarPreview();
+  if (typeof showView === "function") showView("profileForm");
 }
 
 function openEditProfile() {
@@ -853,7 +866,7 @@ function openEditProfile() {
   const driveSection = document.getElementById("pf-drive-section");
   if (driveSection) driveSection.style.display = "none";
 
-  setDetailsEnabled(true);
+  if (typeof setDetailsEnabled === "function") setDetailsEnabled(true);
   const saveBtn = document.getElementById("pf-save-btn");
   if (saveBtn) {
     saveBtn.disabled = false;
@@ -862,14 +875,16 @@ function openEditProfile() {
   }
   setElText("pf-save-btn-text", "Save Changes");
 
-  clearProfileErrors();
-  resetPhotoUpload();
-  if (pfPhotoDataUrl) {
+  if (typeof clearProfileErrors === "function") clearProfileErrors();
+  if (typeof resetPhotoUpload === "function") resetPhotoUpload();
+  if (pfPhotoDataUrl && typeof showPhotoPreview === "function") {
     showPhotoPreview(pfPhotoDataUrl);
   }
-  updateAvatarPreview();
-  showView("profileForm");
+  if (typeof updateAvatarPreview === "function") updateAvatarPreview();
+  if (typeof showView === "function") showView("profileForm");
 }
+window.openAddProfile = openAddProfile;
+window.openEditProfile = openEditProfile;
 
 function resetDriveAuthUI() {
   const driveSection = document.getElementById("pf-drive-section");
@@ -922,7 +937,7 @@ async function connectDriveForProfile() {
   if (errorEl) errorEl.classList.add("hidden");
 
   try {
-    await promptDriveAuth();
+    if (typeof promptDriveAuth === "function") await promptDriveAuth();
 
     pfDriveConnected = true;
 
@@ -957,9 +972,9 @@ async function connectDriveForProfile() {
     showToast("Drive connection failed: " + err.message, "error");
   }
 }
+window.connectDriveForProfile = connectDriveForProfile;
 
 let pfPhotoDataUrl = null;
-
 function resetPhotoUpload() {
   pfPhotoDataUrl = null;
   const input = document.getElementById("pf-photo-input");
@@ -983,35 +998,12 @@ function showPhotoPreview(dataUrl) {
   if (img) img.src = dataUrl;
 }
 
-function handlePhotoUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    showToast("Photo must be under 2MB", "error");
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    pfPhotoDataUrl = e.target.result;
-    showPhotoPreview(pfPhotoDataUrl);
-  };
-  reader.readAsDataURL(file);
-}
-
-function removePhoto() {
-  pfPhotoDataUrl = null;
-  const input = document.getElementById("pf-photo-input");
-  if (input) input.value = "";
-  resetPhotoUpload();
-  updateAvatarPreview();
-}
-
 function updateAvatarPreview() {
   const name = document.getElementById("pf-name")?.value || "Preview";
   const role = document.getElementById("pf-role")?.value || "Role";
 
   const av = document.getElementById("pf-avatar-preview");
-  if (av) av.textContent = initials(name);
+  if (av && typeof initials === "function") av.textContent = initials(name);
 
   setElText("pf-name-preview-initials", name === "Preview" ? "Attorney Name" : name);
   setElText("pf-role-preview-initials", role === "Role" ? "Role" : role);
@@ -1064,20 +1056,28 @@ async function saveProfile() {
   const nameInput = document.getElementById("pf-name");
   const roleInput = document.getElementById("pf-role");
   const emailInput = document.getElementById("pf-email");
+  const contactInput = document.getElementById("pf-contact");
+  
   const nameLabel = document.getElementById("lbl-pf-name");
   const roleLabel = document.getElementById("lbl-pf-role");
 
   const name = (nameInput?.value || "").trim();
   const role = (roleInput?.value || "").trim();
   const email = (emailInput?.value || "").trim();
+  const contact = (contactInput?.value || "").trim();
+  
   let valid = true;
 
   if (!name) {
+    const errEl = document.getElementById("pf-name-err");
+    if (errEl) errEl.classList.remove("hidden");
     if (nameInput) nameInput.classList.add("err");
     if (nameLabel) nameLabel.classList.add("err");
     valid = false;
   }
   if (!role) {
+    const errEl = document.getElementById("pf-role-err");
+    if (errEl) errEl.classList.remove("hidden");
     if (roleInput) roleInput.classList.add("err");
     if (roleLabel) roleLabel.classList.add("err");
     valid = false;
@@ -1087,6 +1087,13 @@ async function saveProfile() {
     showToast("Please enter a valid email address.", "error");
     valid = false;
   }
+  if (contact && !isValidMobile(contact)) {
+    if (contactInput) contactInput.classList.add("err");
+    showToast("Contact number must be exactly 11 digits.", "error");
+    valid = false;
+  } else if (contactInput) {
+    contactInput.classList.remove("err");
+  }
 
   if (!valid) {
     showToast("Please correct the fields highlighted in red.", "error");
@@ -1095,7 +1102,7 @@ async function saveProfile() {
 
   const data = {
     name, role,
-    contact: (document.getElementById("pf-contact")?.value || "").trim(),
+    contact: contact,
     email: email,
     avatarColor: pfColor,
     photoDataUrl: null
@@ -1104,52 +1111,61 @@ async function saveProfile() {
   try {
     if (profFormMode === "add") {
       data.createdAt = new Date().toISOString().slice(0, 10);
-      const np = await dbAddProfile(data);
+      let np = data;
+      if (typeof dbAddProfile === "function") {
+        np = await dbAddProfile(data);
+      }
       selProfile = np;
 
       showToast("Creating Drive folder...");
-      const folderId = await createDriveFolder(`Simando Law — ${np.name}`, DRIVE_FOLDER_ID || null);
-      if (folderId) {
-        await dbUpdateProfile(np.id, { driveFolderId: folderId });
-        np.driveFolderId = folderId;
-        showToast("Drive folder created!");
-      }
+      if (typeof createDriveFolder === "function") {
+        const folderId = await createDriveFolder(`Simando Law — ${np.name}`, DRIVE_FOLDER_ID || null);
+        if (folderId) {
+          if (typeof dbUpdateProfile === "function") await dbUpdateProfile(np.id, { driveFolderId: folderId });
+          np.driveFolderId = folderId;
+          showToast("Drive folder created!");
+        }
 
-      if (pfPhotoDataUrl && np.driveFolderId) {
-        try {
-          showToast("Uploading profile photo...");
-          const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(pfPhotoDataUrl, np.driveFolderId, np.name);
-          await dbUpdateProfile(np.id, { photoFileId: fileId, photoUrl: thumbnailUrl });
-          np.photoFileId = fileId;
-          np.photoUrl = thumbnailUrl;
-          showToast("Profile photo saved!");
-        } catch (photoErr) {
-          console.error("Photo upload error:", photoErr);
-          showToast("Photo upload failed: " + photoErr.message, "error");
+        if (pfPhotoDataUrl && np.driveFolderId && typeof uploadProfilePhotoToDrive === "function") {
+          try {
+            showToast("Uploading profile photo...");
+            const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(pfPhotoDataUrl, np.driveFolderId, np.name);
+            if (typeof dbUpdateProfile === "function") await dbUpdateProfile(np.id, { photoFileId: fileId, photoUrl: thumbnailUrl });
+            np.photoFileId = fileId;
+            np.photoUrl = thumbnailUrl;
+            showToast("Profile photo saved!");
+          } catch (photoErr) {
+            console.error("Photo upload error:", photoErr);
+            showToast("Photo upload failed: " + photoErr.message, "error");
+          }
         }
       }
 
       showToast("Profile created successfully!");
-      renderProfiles();
-      navTo("profiles");
+      if (typeof renderProfiles === "function") renderProfiles();
+      if (typeof navTo === "function") navTo("profiles");
     } else {
       if (pfPhotoDataUrl && pfPhotoDataUrl.startsWith("data:")) {
         try {
           showToast("Uploading profile photo...");
           const folderId = selProfile.driveFolderId;
-          if (selProfile.photoFileId && hasValidToken()) {
+          if (selProfile.photoFileId && typeof hasValidToken === "function" && hasValidToken() && typeof deleteDriveFile === "function") {
             await deleteDriveFile(selProfile.photoFileId).catch(() => {});
           }
-          const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(pfPhotoDataUrl, folderId, name);
-          data.photoFileId = fileId;
-          data.photoUrl = thumbnailUrl;
-          showToast("Profile photo updated!");
+          if (typeof uploadProfilePhotoToDrive === "function") {
+            const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(pfPhotoDataUrl, folderId, name);
+            data.photoFileId = fileId;
+            data.photoUrl = thumbnailUrl;
+            showToast("Profile photo updated!");
+          }
         } catch (photoErr) {
           console.error("Photo upload error:", photoErr);
           showToast("Photo upload failed: " + photoErr.message, "error");
         }
       } else if (!pfPhotoDataUrl && selProfile.photoFileId) {
-        if (hasValidToken()) await deleteDriveFile(selProfile.photoFileId).catch(() => {});
+        if (typeof hasValidToken === "function" && hasValidToken() && typeof deleteDriveFile === "function") {
+          await deleteDriveFile(selProfile.photoFileId).catch(() => {});
+        }
         data.photoFileId = null;
         data.photoUrl = null;
       } else {
@@ -1157,34 +1173,21 @@ async function saveProfile() {
         data.photoUrl = selProfile.photoUrl || null;
       }
 
-      await dbUpdateProfile(selProfile.id, data);
+      if (typeof dbUpdateProfile === "function") await dbUpdateProfile(selProfile.id, data);
       selProfile = { ...selProfile, ...data };
       showToast("Profile updated!");
-      showView("profileDetail");
-      renderProfileDetail();
+      if (typeof showView === "function") showView("profileDetail");
+      if (typeof renderProfileDetail === "function") renderProfileDetail();
     }
   } catch (err) {
     console.error("saveProfile error:", err);
     showToast("Failed to save profile: " + (err.message || "Unknown error"), "error");
   }
 }
-
-async function createProfileFolderManual() {
-  if (!selProfile) return;
-  if (!selProfile.driveFolderId && accessToken) {
-    showToast("Creating Drive folder...");
-    const folderId = await createDriveFolder(`Simando Law — ${selProfile.name}`, DRIVE_FOLDER_ID || null);
-    if (folderId) {
-      await dbUpdateProfile(selProfile.id, { driveFolderId: folderId });
-      selProfile.driveFolderId = folderId;
-      showToast("Drive folder created!");
-      renderProfileDetail();
-    }
-  }
-}
+window.saveProfile = saveProfile;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE FORM
+//  CASE FORM HELPERS (PARTIES, VENUE, DOCS)
 // ═══════════════════════════════════════════════════════════════
 let cfPetitioners = [];
 let cfRespondents = [];
@@ -1284,15 +1287,17 @@ function setVenueValue(val) {
   const sel = document.getElementById("cf-venue");
   const manual = document.getElementById("cf-venue-manual");
   if (!sel) return;
-  const match = VENUES.find(v => v === val);
-  if (match) {
-    sel.value = match;
-    if (manual) manual.style.display = "none";
-  } else if (val) {
-    sel.value = "Other (specify)";
-    if (manual) {
-      manual.style.display = "block";
-      manual.value = val;
+  if (typeof VENUES !== "undefined") {
+    const match = VENUES.find(v => v === val);
+    if (match) {
+      sel.value = match;
+      if (manual) manual.style.display = "none";
+    } else if (val) {
+      sel.value = "Other (specify)";
+      if (manual) {
+        manual.style.display = "block";
+        manual.value = val;
+      }
     }
   }
 }
@@ -1353,11 +1358,13 @@ function onCaseTypeKeydown(e) {
 }
 
 async function onCategoryChange(category) {
-  const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
-  const aLabel = document.getElementById("cf-party-a-label");
-  const bLabel = document.getElementById("cf-party-b-label");
-  if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
-  if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
+  if (typeof CATEGORY_PARTY_LABELS !== "undefined") {
+    const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
+    const aLabel = document.getElementById("cf-party-a-label");
+    const bLabel = document.getElementById("cf-party-b-label");
+    if (aLabel) aLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;flex-shrink:0"></span> ${labels[0]}`;
+    if (bLabel) bLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block;flex-shrink:0"></span> ${labels[1]}`;
+  }
   await loadCaseTypesForCategory(category);
   setElVal("cf-type-input", "");
   hideCaseTypeSuggestions();
@@ -1367,12 +1374,22 @@ function updateCfChip() {
   const chip = document.getElementById("cf-profile-chip");
   if (!chip) return;
   if (selProfile) {
-    chip.innerHTML = `${avatarDiv(selProfile.name, selProfile.avatarColor, 24, selProfile.photoUrl)}<span style="font-size:13px;color:var(--text-muted)">${selProfile.name}</span>`;
+    const av = typeof avatarDiv === "function" ? avatarDiv(selProfile.name, selProfile.avatarColor, 24, selProfile.photoUrl) : "";
+    chip.innerHTML = `${av}<span style="font-size:13px;color:var(--text-muted)">${selProfile.name}</span>`;
     chip.style.display = "flex";
   } else {
     chip.style.display = "none";
   }
 }
+
+window.addParty = addParty;
+window.removeParty = removeParty;
+window.onVenueChange = onVenueChange;
+window.filterCaseTypeSuggestions = filterCaseTypeSuggestions;
+window.showCaseTypeSuggestions = showCaseTypeSuggestions;
+window.selectCaseType = selectCaseType;
+window.onCaseTypeKeydown = onCaseTypeKeydown;
+window.onCategoryChange = onCategoryChange;
 
 // ═══════════════════════════════════════════════════════════════
 //  RESTRICT CONTACT & MOBILE NUMBER INPUTS TO DIGITS ONLY
@@ -1401,9 +1418,6 @@ function initNumericInputConstraints() {
   });
 }
 
-window.addEventListener("DOMContentLoaded", initNumericInputConstraints);
-setTimeout(initNumericInputConstraints, 500);
-
 // ═══════════════════════════════════════════════════════════════
 //  BOOT LOGIC WITH 2FA UNVERIFIED EVICTION GUARD
 // ═══════════════════════════════════════════════════════════════
@@ -1414,7 +1428,7 @@ function enterLocalMode(reason) {
     banner.textContent = "⚠️ " + (reason || "Firebase not connected. Data is stored in memory only and will be lost on refresh.");
     banner.classList.add("show");
   }
-  showToast("Running in local mode — data will not persist", "error");
+  if (typeof showToast === "function") showToast("Running in local mode — data will not persist", "error");
 }
 
 function initAppUI() {
@@ -1425,7 +1439,7 @@ function initAppUI() {
   if (typeof initPasswordStrengthChecker === "function") initPasswordStrengthChecker();
   if (typeof initNumericInputConstraints === "function") initNumericInputConstraints();
   showView("dashboard");
-  renderDashboard();
+  if (typeof renderDashboard === "function") renderDashboard();
 }
 
 async function connectDatabase() {
@@ -1437,7 +1451,7 @@ async function connectDatabase() {
     const u = window._currentUser || window._auth?.currentUser;
     if (u) {
       try {
-        await dbLoad();
+        if (typeof dbLoad === "function") await dbLoad();
       } catch (err) {
         console.error("Database load failed:", err);
         enterLocalMode("Database connection failed.");
@@ -1463,14 +1477,16 @@ document.addEventListener("firebase-ready", () => {
       if (user) {
         // ── 2FA SESSION EVICTION GUARD ──
         try {
-          const { data: profData } = await fetchUserProfile(user);
-          if (profData.twoFactorEnabled) {
-            const isVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
-            if (!isVerified) {
-              console.warn("Unverified 2FA session detected. Evicting session.");
-              await signOut(window._auth);
-              window.location.replace("login.html");
-              return;
+          if (typeof fetchUserProfile === "function") {
+            const { data: profData } = await fetchUserProfile(user);
+            if (profData.twoFactorEnabled) {
+              const isVerified = sessionStorage.getItem("simando_2fa_verified") === "true";
+              if (!isVerified) {
+                console.warn("Unverified 2FA session detected. Evicting session.");
+                if (typeof window._fbSignOut === "function") await window._fbSignOut(window._auth);
+                window.location.replace("login.html");
+                return;
+              }
             }
           }
         } catch (e) { /* ignore */ }
@@ -1515,30 +1531,6 @@ setTimeout(() => {
   }
 }, 8000);
 
-function clearCaseErrors() {
-  ["cf-title-err","cf-filed-err","cf-parties-err","cf-narrative-err"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.add("hidden");
-  });
-  ["cf-case-title","cf-filed","cf-narrative"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove("err");
-  });
-}
-
-async function fetchUserProfile(user) {
-  if (!user) return { docId: null, data: {} };
-  try {
-    const directRef = window._fbDoc(window._db, "profiles", user.uid);
-    const directSnap = await window._fbGetDoc(directRef);
-    if (directSnap.exists()) {
-      return { docId: directSnap.id, data: directSnap.data() };
-    }
-  } catch (e) { /* continue */ }
-  return { docId: null, data: {} };
-}
-
-// ── ROBUST SAVE CASE ──
 async function saveCase() {
   const petInp = document.getElementById("cf-petitioner-input");
   const resInp = document.getElementById("cf-respondent-input");
@@ -1616,7 +1608,7 @@ async function saveCase() {
     docType: (document.getElementById("cf-doc-type")?.value || "").trim(),
     status: document.getElementById("cf-status")?.value || STATUS_OPTIONS[0],
     venue: getVenueValue(),
-    documents: pendingDocs,
+    documents: typeof pendingDocs !== "undefined" ? pendingDocs : [],
   };
 
   try {
@@ -1624,7 +1616,7 @@ async function saveCase() {
     const cType = data.type || "Other";
     const caseTitle = data.title || "Untitled";
     const profileFolderId = myProf?.driveFolderId || selProfile?.driveFolderId || null;
-    const hadLocalFiles = pendingDocs.some(d => d._localTempId);
+    const hadLocalFiles = data.documents.some(d => d._localTempId);
 
     if (typeof syncPendingFilesToDrive === "function") {
       const syncedDocs = await syncPendingFilesToDrive(caseCategory, cType, caseTitle, profileFolderId);
@@ -1639,7 +1631,7 @@ async function saveCase() {
       }
     }
 
-    if (hasValidToken() && typeof createOrUpdateCalendarEvent === "function") {
+    if (typeof hasValidToken === "function" && hasValidToken() && typeof createOrUpdateCalendarEvent === "function") {
       showToast("Syncing with Google Calendar...");
       if (caseFormMode === "edit" && selCase?.calendarEventId) {
         data.calendarEventId = selCase.calendarEventId;
@@ -1657,11 +1649,14 @@ async function saveCase() {
       data.sharedWith = [];
       data.allowedUids = [u?.uid || "unknown"];
       
-      const newCaseObj = await dbAddCase(data);
+      let newCaseObj = null;
+      if (typeof dbAddCase === "function") {
+        newCaseObj = await dbAddCase(data);
+      }
       
-      if (newCaseObj && !cases.some(c => c.id === newCaseObj.id)) {
+      if (newCaseObj && typeof cases !== "undefined" && !cases.some(c => c.id === newCaseObj.id)) {
         cases.unshift(newCaseObj);
-      } else if (!cases.some(c => c.title === data.title && c.filedDate === data.filedDate)) {
+      } else if (typeof cases !== "undefined" && !cases.some(c => c.title === data.title && c.filedDate === data.filedDate)) {
         cases.unshift(data);
       }
 
@@ -1672,25 +1667,29 @@ async function saveCase() {
         data.sharedWith = selCase.sharedWith || [];
         data.allowedUids = selCase.allowedUids || [data.ownerUid];
       }
-      await dbUpdateCase(selCase.id, data);
+      if (typeof dbUpdateCase === "function") await dbUpdateCase(selCase.id, data);
       
-      const idx = cases.findIndex(c => c.id === selCase.id);
-      if (idx >= 0) cases[idx] = { ...cases[idx], ...data };
+      if (typeof cases !== "undefined") {
+        const idx = cases.findIndex(c => c.id === selCase.id);
+        if (idx >= 0) cases[idx] = { ...cases[idx], ...data };
+      }
       selCase = { ...selCase, ...data };
 
       showToast("Case updated successfully!");
     }
 
-    pendingDocs = [];
+    if (typeof pendingDocs !== "undefined") pendingDocs = [];
 
-    renderDashboard();
-    renderAllCases();
-    if (caseFormOrigin === "profileDetail" && selProfile) {
+    if (typeof renderDashboard === "function") renderDashboard();
+    if (typeof renderAllCases === "function") renderAllCases();
+    if (caseFormOrigin === "profileDetail" && selProfile && typeof renderProfileDetail === "function") {
       renderProfileDetail();
     }
 
-    navTo(caseFormMode === "add" ? (caseFormOrigin === "profileDetail" ? "profileDetail" : "allcases") : "caseDetail");
-    if (caseFormMode === "edit") renderCaseDetail();
+    if (typeof navTo === "function") {
+      navTo(caseFormMode === "add" ? (caseFormOrigin === "profileDetail" ? "profileDetail" : "allcases") : "caseDetail");
+    }
+    if (caseFormMode === "edit" && typeof renderCaseDetail === "function") renderCaseDetail();
 
   } catch (err) {
     console.error("saveCase error:", err);
@@ -1702,3 +1701,4 @@ async function saveCase() {
     }
   }
 }
+window.saveCase = saveCase;
