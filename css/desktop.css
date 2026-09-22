@@ -591,6 +591,16 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .field-input, select.field-input, textarea.field-input, input[type="date"].field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px 14px; font-size: 14px; outline: none; transition: all 0.2s; box-sizing: border-box; }
 .field-input:focus, select.field-input:focus, textarea.field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); background: var(--surface3); }
 
+/* ── NUMERIC ONLY MOBILE/CONTACT INPUTS ── */
+input[id*="contact"], input[id*="phone"], input[id*="mobile"] {
+  -moz-appearance: textfield;
+}
+input[id*="contact"]::-webkit-outer-spin-button,
+input[id*="contact"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* ── RED HIGHLIGHT WHEN INCOMPLETE PROFILE FIELD ── */
 .field-input.err, select.field-input.err, textarea.field-input.err { 
   border-color: var(--red) !important; 
@@ -795,7 +805,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
   
   #main {
     margin-left: 0 !important; width: 100% !important;
-    padding: 68px 16px 40px 16px !important; /* Top padding clears hamburger button */
+    padding: 68px 16px 40px 16px !important;
   }
 
   .grid4, .grid3, .grid2, .dashboard-content-grid {
@@ -819,11 +829,6 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
     align-items: flex-start !important;
     flex-direction: row !important;
     gap: 8px !important;
-  }
-
-  /* Keep floating chat bubble above mobile content */
-  #chat-bubble {
-    bottom: 20px !important; right: 20px !important;
   }
 
   .chat-panel {
