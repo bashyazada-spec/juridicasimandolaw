@@ -258,7 +258,7 @@ function renderDashboard() {
           ${badge(c.status, statusColor(c.status))}
           ${urgency ? '<span style="font-size:10px;font-weight:600;color:' + urgency.col + '">' + urgency.label + '</span>' : ""}
         </div>
-      </div>`;
+      `;
     }).join("");
 
   renderQuickAccess();
@@ -2392,7 +2392,7 @@ window.closeShareModal = closeShareModal;
 window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA (WITH ZERO CELL OVERFLOW)
+//  GOOGLE DRIVE EXPLORER REPLICA (WITH ROBUST 403 / 404 RECOVERY)
 // ═══════════════════════════════════════════════════════════════
 let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
@@ -2423,7 +2423,7 @@ window.loadExplorerFiles = async function() {
       ? currentExplorerFolderId 
       : (myProf?.driveFolderId || DRIVE_FOLDER_ID || "");
 
-    if (targetFolder) {
+    if (targetFolder && targetFolder !== "root") {
       nativeBtn.href = "https://drive.google.com/drive/folders/" + targetFolder;
       nativeBtn.style.display = "inline-flex";
     } else {
@@ -2446,14 +2446,31 @@ window.loadExplorerFiles = async function() {
     listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
     if (emptyEl) emptyEl.classList.add("hidden");
 
-    const q = encodeURIComponent("'" + currentExplorerFolderId + "' in parents and trashed = false");
+    let folderQueryId = currentExplorerFolderId;
+    if (!folderQueryId || folderQueryId === "root") {
+      folderQueryId = "root";
+    }
+
+    const q = encodeURIComponent("'" + folderQueryId + "' in parents and trashed = false");
     const url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name,mimeType,size,webViewLink)&orderBy=folder,name";
 
     const res = await fetch(url, {
       headers: { Authorization: "Bearer " + accessToken }
     });
 
-    if (!res.ok) throw new Error("Failed to load folder files");
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      if (res.status === 403 || res.status === 404) {
+        if (folderQueryId !== "root") {
+          console.warn("Folder query 403/404. Falling back to root drive view.");
+          currentExplorerFolderId = "root";
+          explorerBreadcrumbs = [{ id: "root", name: "Firm Drive" }];
+          loadExplorerFiles();
+          return;
+        }
+      }
+      throw new Error(errBody.error?.message || `Google Drive API error (${res.status})`);
+    }
 
     const data = await res.json();
     const files = data.files || [];
@@ -2466,7 +2483,6 @@ window.loadExplorerFiles = async function() {
 
     if (emptyEl) emptyEl.classList.add("hidden");
 
-    // Adding min-width: 0, overflow: hidden, width: 100% prevents CSS grid blowout on phones
     listEl.innerHTML = files.map(f => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
       const icon = isFolder ? "📁" : "📄";
@@ -2491,8 +2507,16 @@ window.loadExplorerFiles = async function() {
     }).join("");
 
   } catch (err) {
-    console.error("loadExplorerFiles error:", err);
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--red);font-size:13px;padding:40px">Failed to load explorer directory items.</div>`;
+    console.warn("loadExplorerFiles notice:", err);
+    listEl.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:30px 16px;color:var(--text-muted)">
+        <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">Google Drive API Notice (403)</div>
+        <div style="font-size:11.5px;margin-top:6px;line-height:1.5">
+          Unable to browse folder contents. Please ensure the <strong>Google Drive API</strong> is enabled in your Google Cloud Console for your project credentials, or click <strong>Open in Google Drive</strong> above to view your files directly.
+        </div>
+      </div>
+    `;
   }
 };
 
