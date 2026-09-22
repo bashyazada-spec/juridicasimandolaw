@@ -176,8 +176,8 @@
       </div>
 
       <div>
-        <label class="field-label">Contact Number</label>
-        <input type="text" class="field-input" id="edit-contact" placeholder="09XX-XXX-XXXX"/>
+        <label class="field-label">Contact Number (11 digits)</label>
+        <input type="text" class="field-input" id="edit-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
       </div>
 
       <div>
@@ -244,6 +244,12 @@
 
   function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function isValidMobile(num) {
+    if (!num) return true;
+    const cleaned = num.replace(/\D/g, "");
+    return cleaned.length === 11;
   }
 
   function bounceUser(msg) {
@@ -441,6 +447,10 @@
     }
     if (!isValidEmail(email)) {
       showToast("Please enter a valid email address.", "error");
+      return;
+    }
+    if (contact && !isValidMobile(contact)) {
+      showToast("Contact number must be exactly 11 digits.", "error");
       return;
     }
 
