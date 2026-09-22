@@ -255,8 +255,9 @@
   let db, auth;
   let adminProfiles = [];
 
+  // STRICT EMAIL VALIDATOR (Requires full domain like .com)
   function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email);
   }
 
   function isValidMobile(num) {
@@ -454,7 +455,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid email address.", "error");
+      showToast("Please enter a valid full email address (e.g. name@domain.com).", "error");
       return;
     }
     if (contact && !isValidMobile(contact)) {
@@ -488,6 +489,10 @@
   window.adminSendPasswordReset = async function() {
     if (!currentEditingProfile || !currentEditingProfile.email) {
       showToast("Selected profile has no valid email address.", "error");
+      return;
+    }
+    if (!isValidEmail(currentEditingProfile.email)) {
+      showToast("The assigned email address is not formatted correctly.", "error");
       return;
     }
     if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
@@ -580,7 +585,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Please enter a valid email address.", "error");
+      showToast("Please enter a valid full email address.", "error");
       return;
     }
     if (password.length < 6) {
@@ -640,6 +645,11 @@
         await deleteApp(secondaryApp).catch(console.error);
       }
     }
+  });
+
+  // Ensure contact inputs are strictly digits
+  document.getElementById("edit-contact").addEventListener("input", function(e) {
+    this.value = this.value.replace(/\D/g, '');
   });
 
   function escHtml(str) {
