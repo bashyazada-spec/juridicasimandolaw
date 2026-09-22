@@ -521,11 +521,11 @@
           <input class="field-input mb-12" id="pf-role" placeholder="e.g. Senior Associate"/>
           <div id="pf-role-err" class="field-err hidden">Role is required</div>
 
-          <label class="field-label">Contact Number</label>
-          <input class="field-input mb-12" id="pf-contact" placeholder="0917-XXX-XXXX"/>
+          <label class="field-label">Contact Number (11 digits)</label>
+          <input class="field-input mb-12" id="pf-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
 
-          <label class="field-label">Email Address</label>
-          <input class="field-input mb-16" id="pf-email" placeholder="attorney@simandolaw.com"/>
+          <label class="field-label">Email Address (@gmail.com or @outlook.com) *</label>
+          <input class="field-input mb-16" id="pf-email" placeholder="attorney@gmail.com" type="email"/>
           
           <div style="display:flex;flex-direction:column;gap:8px">
             <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()"><span id="pf-save-btn-text">Create Profile</span></button>
@@ -699,8 +699,8 @@
         <label class="field-label" id="lbl-setting-role">Role / Designation *</label>
         <input class="field-input mb-12" id="setting-role" placeholder="e.g. Senior Partner"/>
         
-        <label class="field-label">Contact Number</label>
-        <input class="field-input mb-12" id="setting-contact" placeholder="09XX-XXX-XXXX"/>
+        <label class="field-label">Contact Number (11 digits)</label>
+        <input class="field-input mb-12" id="setting-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
 
         <label class="field-label">Attorney Profile Photo</label>
         <div id="setting-photo-upload-area" style="margin-top:4px;margin-bottom:16px">
@@ -794,8 +794,8 @@
       <div class="card mb-16" style="padding:16px">
         <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login &amp; Security</div>
         
-        <label class="field-label">Email Address</label>
-        <input class="field-input mb-12" id="setting-email" placeholder="email@address.com"/>
+        <label class="field-label">Email Address (@gmail.com or @outlook.com)</label>
+        <input class="field-input mb-12" id="setting-email" placeholder="attorney@gmail.com or @outlook.com" type="email"/>
         
         <label class="field-label">New Password (optional)</label>
         <input type="password" class="field-input mb-12" id="setting-password" placeholder="••••••••"/>
