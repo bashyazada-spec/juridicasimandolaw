@@ -237,6 +237,10 @@ window.confirmAndEnableTwoFactor = async function() {
 
     sessionStorage.setItem("simando_2fa_verified", "true");
 
+    if (typeof dbLogAuditAction === "function") {
+      dbLogAuditAction("2FA_ACTIVATED", { profileId: myProf.id });
+    }
+
     showToast("Two-Factor Authentication is now active! 🛡️");
     closeTwoFactorSetupModal();
     if (typeof renderMyProfile === "function") renderMyProfile();
@@ -275,6 +279,10 @@ window.disableTwoFactor = async function() {
     myProf.twoFactorBackupCodes = [];
 
     sessionStorage.removeItem("simando_2fa_verified");
+
+    if (typeof dbLogAuditAction === "function") {
+      dbLogAuditAction("2FA_DISABLED", { profileId: myProf.id });
+    }
 
     showToast("Two-Factor Authentication disabled.");
     if (typeof renderMyProfile === "function") renderMyProfile();
@@ -398,7 +406,7 @@ window.renderModalCalendarGrid = function() {
   const firstDayObj = new Date(modalCalYear, modalCalMonth, 1);
   const startingDayOfWeek = firstDayObj.getDay();
   const daysInMonth = new Date(modalCalYear, modalCalMonth + 1, 0).getDate();
-  const prevMonthDays = new Date(modalCalYear, modalCalMonth, 0).getDate();
+  const prevMonthDays = new Date(modalCalYear, modalCalMonth + 0).getDate();
 
   const todayObj = new Date();
   const todayY = todayObj.getFullYear();
@@ -743,7 +751,7 @@ async function executeDelete() {
 window.executeDelete = executeDelete;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM
+//  CASE SHARING SYSTEM (SECURE ACCESS PERMISSIONS)
 // ═══════════════════════════════════════════════════════════════
 window.openShareCaseModal = function() {
   if (!selCase) return;
@@ -791,7 +799,7 @@ async function saveShareSettings() {
   });
 
   const ownerUid = selCase.ownerUid || window._currentUser.uid;
-  const allowedUids = [ownerUid, ...selectedUids];
+  const allowedUids = Array.from(new Set([ownerUid, ...selectedUids]));
 
   try {
     showToast("Updating share settings...");
@@ -803,6 +811,11 @@ async function saveShareSettings() {
     }
     selCase.sharedWith = selectedUids;
     selCase.allowedUids = allowedUids;
+    
+    if (typeof dbLogAuditAction === "function") {
+      dbLogAuditAction("CASE_SHARED", { caseId: selCase.id, sharedWith: selectedUids });
+    }
+
     if (typeof closeShareModal === "function") closeShareModal();
     showToast("Case shared successfully!");
   } catch (err) {
@@ -1475,7 +1488,6 @@ document.addEventListener("firebase-ready", () => {
     window._fbOnAuth(window._auth, async (user) => {
       window._currentUser = user;
       if (user) {
-        // ── 2FA SESSION EVICTION GUARD ──
         try {
           if (typeof fetchUserProfile === "function") {
             const { data: profData } = await fetchUserProfile(user);
@@ -1665,7 +1677,7 @@ async function saveCase() {
       if (selCase) {
         data.ownerUid = selCase.ownerUid || u?.uid;
         data.sharedWith = selCase.sharedWith || [];
-        data.allowedUids = selCase.allowedUids || [data.ownerUid];
+        data.allowedUids = Array.from(new Set([data.ownerUid, ...(selCase.sharedWith || [])]));
       }
       if (typeof dbUpdateCase === "function") await dbUpdateCase(selCase.id, data);
       
