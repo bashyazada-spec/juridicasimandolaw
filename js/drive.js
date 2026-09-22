@@ -64,12 +64,13 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
+      // SCOPE MINIMIZATION: 'drive.file' restricts access strictly to files/folders created by this application
+      scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
           accessToken = response.access_token;
           persistToken(response.access_token, response.expires_in);
-          console.log("Drive & Calendar auth success");
+          console.log("Drive & Calendar auth success (Scope: drive.file)");
           if (pendingDriveAuthResolve) pendingDriveAuthResolve(accessToken);
           
           if (typeof fetchAndRenderGoogleCalendarEvents === "function" && currentView === "dashboard") {
@@ -103,7 +104,7 @@ function initGoogleDrive() {
         pendingDriveAuthResolve = pendingDriveAuthReject = null;
       }
     });
-    console.log("Google Drive & Calendar APIs initialized");
+    console.log("Google Drive & Calendar APIs initialized with least-privilege scopes");
   } catch (err) {
     console.error("Failed to initialize Google Services Client:", err);
   }
@@ -786,6 +787,7 @@ async function uploadProfilePhotoToDrive(dataUrl, folderId, profileName) {
   }
   const { id: fileId } = await res.json();
 
+  // EXPLICIT SECURITY SCOPE: Only profile avatar photos are granted public thumbnail reader permissions
   await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
     method: "POST",
     headers: {
