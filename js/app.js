@@ -19,6 +19,14 @@ window.toggleSidebar = function() {
 })();
 
 // ═══════════════════════════════════════════════════════════════
+//  EMAIL VALIDATION HELPER
+// ═══════════════════════════════════════════════════════════════
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+window.isValidEmail = isValidEmail;
+
+// ═══════════════════════════════════════════════════════════════
 //  DELETE CONFIRMATION & MODAL CONTROLLERS
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
@@ -203,7 +211,6 @@ window.confirmAndEnableTwoFactor = async function() {
   try {
     showToast("Enabling Two-Factor Security...");
     
-    // Save secret exclusively in isolated private subcollection
     const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
     const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
     
@@ -213,7 +220,6 @@ window.confirmAndEnableTwoFactor = async function() {
       twoFactorBackupCodes: generatedBackupCodes
     }, { merge: true });
 
-    // Mark public profile flag
     await dbUpdateProfile(myProf.id, {
       twoFactorEnabled: true
     });
@@ -794,7 +800,7 @@ async function saveShareSettings() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILE FORM (WITH INCOMPLETE RED VALIDATION)
+//  PROFILE FORM (WITH EMAIL & NUMBER VALIDATION)
 // ═══════════════════════════════════════════════════════════════
 let pfDriveConnected = false;
 
@@ -1057,36 +1063,40 @@ async function saveProfile() {
 
   const nameInput = document.getElementById("pf-name");
   const roleInput = document.getElementById("pf-role");
+  const emailInput = document.getElementById("pf-email");
   const nameLabel = document.getElementById("lbl-pf-name");
   const roleLabel = document.getElementById("lbl-pf-role");
 
   const name = (nameInput?.value || "").trim();
   const role = (roleInput?.value || "").trim();
+  const email = (emailInput?.value || "").trim();
   let valid = true;
 
   if (!name) {
-    const errEl = document.getElementById("pf-name-err");
-    if (errEl) errEl.classList.remove("hidden");
     if (nameInput) nameInput.classList.add("err");
     if (nameLabel) nameLabel.classList.add("err");
     valid = false;
   }
   if (!role) {
-    const errEl = document.getElementById("pf-role-err");
-    if (errEl) errEl.classList.remove("hidden");
     if (roleInput) roleInput.classList.add("err");
     if (roleLabel) roleLabel.classList.add("err");
     valid = false;
   }
+  if (!email || !isValidEmail(email)) {
+    if (emailInput) emailInput.classList.add("err");
+    showToast("Please enter a valid email address.", "error");
+    valid = false;
+  }
+
   if (!valid) {
-    showToast("Please fill in the required fields highlighted in red.", "error");
+    showToast("Please correct the fields highlighted in red.", "error");
     return;
   }
 
   const data = {
     name, role,
     contact: (document.getElementById("pf-contact")?.value || "").trim(),
-    email: (document.getElementById("pf-email")?.value || "").trim(),
+    email: email,
     avatarColor: pfColor,
     photoDataUrl: null
   };
