@@ -204,7 +204,7 @@
         </select>
       </div>
 
-      <!-- Password Reset & Recovery Tool -->
+      <!-- Password Recovery Tool -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
         <div>
           <div style="font-size:12px;font-weight:700;color:var(--text)">Password Recovery</div>
@@ -233,13 +233,11 @@
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
 
-<!-- Security Verification, Directory Load, Edit and Registration Script -->
 <script type="module">
   import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-  // Obfuscated runtime credentials
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
   const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
@@ -257,13 +255,15 @@
   let db, auth;
   let adminProfiles = [];
 
+  function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
   function bounceUser(msg) {
     const el = document.getElementById("gate-message");
     if (el) el.innerHTML = `<span style="color:var(--red)">❌ ${msg}</span><br><br><a href="index.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
     showToast(msg, "error");
-    setTimeout(() => {
-      window.location.replace("index.html");
-    }, 2800);
+    setTimeout(() => { window.location.replace("index.html"); }, 2800);
   }
 
   async function runAdminVerification() {
@@ -332,12 +332,6 @@
   } else {
     document.addEventListener("firebase-ready", runAdminVerification);
   }
-
-  setTimeout(() => {
-    if (document.getElementById("loading-screen")?.style.display !== "none" && window._db) {
-      runAdminVerification();
-    }
-  }, 1200);
 
   async function initAdminConsole() {
     await loadDirectoryProfiles();
@@ -453,6 +447,10 @@
       showToast("Full Name and Email are required.", "error");
       return;
     }
+    if (!isValidEmail(email)) {
+      showToast("Please enter a valid email address (e.g. name@domain.com).", "error");
+      return;
+    }
 
     const btn = document.getElementById("btn-edit-submit");
     btn.disabled = true;
@@ -477,10 +475,13 @@
     }
   };
 
-  // ── Admin Password Reset Tool ─────────────────────────────
   window.adminSendPasswordReset = async function() {
     if (!currentEditingProfile || !currentEditingProfile.email) {
       showToast("Selected profile has no valid email address.", "error");
+      return;
+    }
+    if (!isValidEmail(currentEditingProfile.email)) {
+      showToast("The assigned email address is not formatted correctly.", "error");
       return;
     }
     if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
@@ -570,6 +571,10 @@
 
     if (!name || !email || !password) {
       showToast("All fields marked with an asterisk are required.", "error");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      showToast("Please enter a valid email address (e.g. name@domain.com).", "error");
       return;
     }
     if (password.length < 6) {
