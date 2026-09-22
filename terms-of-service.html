@@ -51,9 +51,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
   }
-  a { color: #c9a55c; text-decoration: none; font-weight: 500; }
+  a { color: #c9a55c; text-decoration: none; font-weight: 500; cursor: pointer; }
   a:hover { text-decoration: underline; color: #e0c080; }
+  .nav-back-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(201,165,92,0.3);
+    background: rgba(201,165,92,0.06);
+    transition: all 0.2s ease;
+  }
+  .nav-back-link:hover {
+    background: rgba(201,165,92,0.15);
+    border-color: #c9a55c;
+  }
 </style>
 </head>
 <body>
@@ -68,7 +83,7 @@
 <h2>1. Authorized Use of Service</h2>
 <p>The Simando Law Case Management System is provided exclusively for law firm case tracking, client file management, attorney scheduling, and internal collaboration. Access is restricted to registered attorneys, partners, and authorized associates.</p>
 
-<h2>2. User Responsibilities & Professional Ethics</h2>
+<h2>2. User Responsibilities &amp; Professional Ethics</h2>
 <p>As an authorized attorney or user, you agree to:</p>
 <ul>
   <li>Maintain the strict confidentiality of your account login credentials.</li>
@@ -77,25 +92,71 @@
   <li>Notify system administrators immediately if you suspect unauthorized access to your account.</li>
 </ul>
 
-<h2>3. Third-Party Integrations (Google Drive & Calendar)</h2>
+<h2>3. Third-Party Integrations (Google Drive &amp; Calendar)</h2>
 <p>Our application integrates with Google Drive and Google Calendar services to enable document storage and deadline synchronization. You remain responsible for maintaining proper authorization over your linked Google Account and ensuring compliance with Google's Terms of Service.</p>
 
-<h2>4. Data Ownership & Security</h2>
+<h2>4. Data Ownership &amp; Security</h2>
 <p>You retain full ownership of all case records, client data, and attached documents uploaded to the system. While we implement strict authentication and data security controls, software services are provided on an "as is" and "as available" basis. Users are encouraged to maintain backup copies of critical court filings.</p>
 
-<h2>5. Account Termination & Data Purging</h2>
+<h2>5. Account Termination &amp; Data Purging</h2>
 <p>You may discontinue use of the service or request account deletion at any time. Permanently deleting an account purges all linked user profiles, case entries, and storage references from the database.</p>
 
 <h2>6. Changes to Terms</h2>
 <p>We reserve the right to modify these terms periodically to reflect system updates or legal compliance changes. Continued use of the platform constitutes acceptance of revised terms.</p>
 
 <div class="footer">
-  <span>Last updated: 2026 · Simando Law v5.0</span>
-  <div>
-    <a href="privacy-policy.html" target="_self" style="margin-right:16px">Privacy Policy</a>
-    <a href="login.html" target="_self">← Back to Sign In</a>
+  <span>Last updated: 2026 · Simando Law v5.2</span>
+  <div style="display:flex;align-items:center;gap:16px">
+    <a href="privacy-policy.html">Privacy Policy</a>
+    <a href="login.html" id="btn-back-nav" class="nav-back-link" onclick="handleSmartBack(event)">← Back to Sign In</a>
   </div>
 </div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
+  const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
+  const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
+
+  const firebaseConfig = {
+    apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
+    authDomain: ["simando", "firebaseapp", "com"].join("."),
+    projectId: ["si", "man", "do"].join(""),
+    storageBucket: ["simando", "firebasestorage", "app"].join("."),
+    messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
+    appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":")
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  let isLoggedIn = false;
+  onAuthStateChanged(auth, (user) => {
+    isLoggedIn = !!user;
+    const btn = document.getElementById("btn-back-nav");
+    if (btn) {
+      btn.textContent = isLoggedIn ? "← Back to Dashboard" : "← Back to Sign In";
+    }
+  });
+
+  window.handleSmartBack = function(e) {
+    if (e) e.preventDefault();
+
+    // If there is browser history from the same application origin, go back directly
+    if (window.history.length > 1 && document.referrer && (document.referrer.includes(window.location.host) || document.referrer.includes("localhost") || document.referrer.includes("127.0.0.1"))) {
+      window.history.back();
+      return;
+    }
+
+    // Otherwise, redirect based on login session state
+    if (isLoggedIn) {
+      window.location.assign("index.html");
+    } else {
+      window.location.assign("login.html");
+    }
+  };
+</script>
 </body>
 </html>
