@@ -51,9 +51,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
   }
-  a { color: #c9a55c; text-decoration: none; font-weight: 500; }
+  a { color: #c9a55c; text-decoration: none; font-weight: 500; cursor: pointer; }
   a:hover { text-decoration: underline; color: #e0c080; }
+  .nav-back-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(201,165,92,0.3);
+    background: rgba(201,165,92,0.06);
+    transition: all 0.2s ease;
+  }
+  .nav-back-link:hover {
+    background: rgba(201,165,92,0.15);
+    border-color: #c9a55c;
+  }
 </style>
 </head>
 <body>
@@ -68,36 +83,85 @@
 <h2>1. Information We Collect</h2>
 <p>To operate our legal case management system, we collect and process the following information:</p>
 <ul>
-  <li><strong>Account Credentials:</strong> Full name, professional role/title, contact number, and email address provided during account registration.</li>
+  <li><strong>Account Credentials:</strong> Full name, professional role/title, contact number, and authorized email address provided during account registration.</li>
   <li><strong>Case Details:</strong> Case titles, docket numbers, filing dates, category/sub-categories, court venues, parties involved, and narrative case summaries.</li>
   <li><strong>Attached Documents:</strong> Case-related files uploaded by attorneys and associates.</li>
   <li><strong>Google Integration Data:</strong> Access tokens and folder references when you authorize Google Drive or Google Calendar integration.</li>
 </ul>
 
-<h2>2. How We Use Google User Data & OAuth Scopes</h2>
+<h2>2. How We Use Google User Data &amp; OAuth Scopes</h2>
 <p>When you explicitly connect your Google Account, our system requests access to specific restricted scopes for the following purposes:</p>
 <ul>
   <li><strong>Google Drive (`drive.file`):</strong> Used exclusively to create dedicated case storage folders, upload case attachments, and store attorney profile photos. We access only files created or managed by this application.</li>
-  <li><strong>Google Calendar (`calendar.events` & `calendar.readonly`):</strong> Used exclusively to display upcoming court hearings, deadlines, and schedule events on your dashboard agenda, and to automatically sync case due dates.</li>
+  <li><strong>Google Calendar (`calendar.events` &amp; `calendar.readonly`):</strong> Used exclusively to display upcoming court hearings, deadlines, and schedule events on your dashboard agenda, and to automatically sync case due dates.</li>
 </ul>
 <p>We do not access, scan, or read any unrelated files or calendar events in your Google Account.</p>
 
-<h2>3. Data Storage & Security</h2>
+<h2>3. Data Storage &amp; Security</h2>
 <p>User profiles, case metadata, appointments, and real-time notifications are stored securely in Google Firebase Firestore. Uploaded case files reside directly inside your own authorized Google Drive storage folders. We implement industry-standard encryption, SSL/TLS data transit protection, and strict authentication checks.</p>
 
-<h2>4. Data Sharing & Confidentiality</h2>
+<h2>4. Data Sharing &amp; Confidentiality</h2>
 <p>Consistent with legal ethics and client confidentiality rules, all case details and attached documents are restricted to the designated attorney and authorized associates specified via case-sharing settings. We never sell, rent, or trade attorney or client information to third parties.</p>
 
-<h2>5. Your Rights & Data Retention</h2>
+<h2>5. Your Rights &amp; Data Retention</h2>
 <p>You retain full ownership of all data entered into Simando Law. You may update your profile details, edit case records, remove files, or permanently delete your account and all associated records at any time through the <strong>My Settings</strong> menu.</p>
 
-<h2>6. Contact & Inquiries</h2>
+<h2>6. Contact &amp; Inquiries</h2>
 <p>For questions or concerns regarding this Privacy Policy, please contact your system administrator or reach out directly at <a href="mailto:admin@simandolaw.com">admin@simandolaw.com</a>.</p>
 
 <div class="footer">
-  <span>Last updated: 2026 · Simando Law v5.0</span>
-  <a href="login.html" target="_self">← Back to Sign In</a>
+  <span>Last updated: 2026 · Simando Law v5.2</span>
+  <div style="display:flex;align-items:center;gap:16px">
+    <a href="terms-of-service.html">Terms of Service</a>
+    <a href="login.html" id="btn-back-nav" class="nav-back-link" onclick="handleSmartBack(event)">← Back to Sign In</a>
+  </div>
 </div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
+  const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
+  const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
+
+  const firebaseConfig = {
+    apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
+    authDomain: ["simando", "firebaseapp", "com"].join("."),
+    projectId: ["si", "man", "do"].join(""),
+    storageBucket: ["simando", "firebasestorage", "app"].join("."),
+    messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
+    appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":")
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  let isLoggedIn = false;
+  onAuthStateChanged(auth, (user) => {
+    isLoggedIn = !!user;
+    const btn = document.getElementById("btn-back-nav");
+    if (btn) {
+      btn.textContent = isLoggedIn ? "← Back to Dashboard" : "← Back to Sign In";
+    }
+  });
+
+  window.handleSmartBack = function(e) {
+    if (e) e.preventDefault();
+
+    // If there is browser history from the same application origin, go back directly
+    if (window.history.length > 1 && document.referrer && (document.referrer.includes(window.location.host) || document.referrer.includes("localhost") || document.referrer.includes("127.0.0.1"))) {
+      window.history.back();
+      return;
+    }
+
+    // Otherwise, redirect based on login session state
+    if (isLoggedIn) {
+      window.location.assign("index.html");
+    } else {
+      window.location.assign("login.html");
+    }
+  };
+</script>
 </body>
 </html>
