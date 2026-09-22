@@ -150,7 +150,6 @@
       return;
     }
 
-    // Automatically close notifications popup when opening chat
     const notifDropdown = document.getElementById("notif-dropdown");
     if (notifDropdown && !notifDropdown.classList.contains("hidden")) {
       notifDropdown.classList.add("hidden");
