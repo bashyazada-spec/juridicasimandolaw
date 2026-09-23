@@ -598,11 +598,61 @@
           <div id="cf-parties-err" class="field-err hidden">At least one party on both sides is required</div>
         </div>
 
-        <label class="field-label">Due Date / Next Hearing (Optional)</label>
-        <input type="date" class="field-input mb-12" id="cf-due"/>
+        <!-- 1. PLEADING / DOCUMENT DUE DATE (OPTIONAL) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" class="mb-12">
+          <div>
+            <label class="field-label">Doc Due Date (Optional)</label>
+            <input type="date" class="field-input" id="cf-due"/>
+          </div>
+          <div>
+            <label class="field-label">Pleading Subtype</label>
+            <input class="field-input" id="cf-doc-type" placeholder="e.g. Formal Offer"/>
+          </div>
+        </div>
 
-        <label class="field-label">Document Type / Subtype (Optional)</label>
-        <input class="field-input mb-12" id="cf-doc-type" placeholder="e.g. Complaint, Answer, Motion"/>
+        <!-- 2. MANDATORY HEARINGS & HISTORY TRACKER -->
+        <div class="card mb-12" style="background:var(--surface2);padding:14px;border:1.5px solid var(--gold-border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:12px;font-weight:700;color:var(--text)">⚖️ Hearings &amp; History *</div>
+            <span id="cf-hearing-status-badge" class="badge" style="background:rgba(248,113,113,0.15);color:var(--red);font-size:9.5px">REQUIRED: 0</span>
+          </div>
+          <div style="font-size:10.5px;color:var(--text-dim);margin-bottom:8px">At least 1 hearing is required. All past appearances stay logged.</div>
+
+          <!-- Dynamic List of Hearings -->
+          <div id="cf-hearings-list" style="margin-bottom:8px"></div>
+          <div id="cf-hearings-err" class="field-err hidden" style="margin-bottom:8px">At least 1 court hearing date is required.</div>
+
+          <!-- Sub-form to Add Hearing -->
+          <div style="background:var(--surface3);border:1px dashed var(--gold-border);border-radius:9px;padding:10px">
+            <div style="font-size:11px;font-weight:700;color:var(--gold-light);margin-bottom:6px">+ Add Hearing Appearance</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" class="mb-8">
+              <div>
+                <label class="field-label">Date *</label>
+                <input type="date" class="field-input" id="cf-new-hearing-date"/>
+              </div>
+              <div>
+                <label class="field-label">Time</label>
+                <input type="time" class="field-input" id="cf-new-hearing-time" value="08:30"/>
+              </div>
+            </div>
+            <label class="field-label">Purpose *</label>
+            <select class="field-input mb-8" id="cf-new-hearing-purpose">
+              <option value="Pre-Trial Conference">Pre-Trial Conference</option>
+              <option value="Arraignment and Plea">Arraignment and Plea</option>
+              <option value="Presentation of Prosecution Evidence">Presentation of Prosecution Evidence</option>
+              <option value="Presentation of Defense Evidence">Presentation of Defense Evidence</option>
+              <option value="Cross-Examination of Witness">Cross-Examination of Witness</option>
+              <option value="Judicial Dispute Resolution (JDR)">Judicial Dispute Resolution (JDR)</option>
+              <option value="Hearing on Motion">Hearing on Motion</option>
+              <option value="Promulgation of Judgment">Promulgation of Judgment</option>
+              <option value="Other Court Appearance">Other Court Appearance</option>
+            </select>
+            <label class="field-label">Remarks / Notes</label>
+            <input type="text" class="field-input mb-8" id="cf-new-hearing-notes" placeholder="e.g. Witness presented, reset to next month"/>
+
+            <button type="button" class="btn btn-primary btn-sm" onclick="addCaseHearing()" style="width:100%!important">+ Log Hearing Date</button>
+          </div>
+        </div>
 
         <label class="field-label">Case Narrative / Summary *</label>
         <textarea class="field-input mb-12" id="cf-narrative" rows="3" placeholder="Briefly summarize background and claims..."></textarea>
@@ -649,6 +699,7 @@
       <div style="font-weight:700;font-size:20px;color:var(--text);margin-bottom:8px" id="cd-title"></div>
       <div id="cd-profile-chip" style="display:inline-flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;cursor:pointer" onclick="openCurrentProfile()"></div>
       <div class="card mb-12" id="cd-info" style="padding:16px"></div>
+      <div class="card mb-12" id="cd-hearings" style="padding:16px"></div>
       <div class="card mb-12" id="cd-docs" style="padding:16px"></div>
       <div class="card" id="cd-status-panel" style="padding:16px"></div>
     </div>
