@@ -362,46 +362,54 @@ window.confirmAndEnableTwoFactor = async function() {
   }
 };
 
-window.disableTwoFactor = async function() {
-  if (!confirm("Are you sure you want to disable Two-Factor Authentication?\nYour account will rely only on your password.")) return;
-
+// 5. BRANDED TWO-FACTOR AUTH DEACTIVATION CONFIRMATION
+window.disableTwoFactor = function() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   if (!myProf) return;
 
-  try {
-    showToast("Disabling 2FA...");
-    
-    const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
-    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-    
-    await setDoc(secRef, {
-      twoFactorEnabled: false,
-      twoFactorSecret: null,
-      twoFactorBackupCodes: []
-    }, { merge: true });
+  window.openConfirmModal({
+    icon: "🔓",
+    title: "Disable Two-Factor Auth?",
+    body: "Are you sure you want to disable Two-Factor Authentication (2FA)? Your account will rely only on your password.",
+    confirmText: "Disable 2FA",
+    confirmStyle: "btn-danger",
+    onConfirm: async () => {
+      try {
+        showToast("Disabling 2FA...");
+        
+        const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
+        const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        
+        await setDoc(secRef, {
+          twoFactorEnabled: false,
+          twoFactorSecret: null,
+          twoFactorBackupCodes: []
+        }, { merge: true });
 
-    await dbUpdateProfile(myProf.id, {
-      twoFactorEnabled: false
-    });
+        await dbUpdateProfile(myProf.id, {
+          twoFactorEnabled: false
+        });
 
-    myProf.twoFactorEnabled = false;
-    myProf.twoFactorSecret = null;
-    myProf.twoFactorBackupCodes = [];
+        myProf.twoFactorEnabled = false;
+        myProf.twoFactorSecret = null;
+        myProf.twoFactorBackupCodes = [];
 
-    sessionStorage.removeItem("simando_2fa_verified");
+        sessionStorage.removeItem("simando_2fa_verified");
 
-    if (typeof dbLogAuditAction === "function") {
-      dbLogAuditAction("2FA_DISABLED", { profileId: myProf.id });
+        if (typeof dbLogAuditAction === "function") {
+          dbLogAuditAction("2FA_DISABLED", { profileId: myProf.id });
+        }
+
+        showToast("Two-Factor Authentication disabled.");
+        if (typeof renderMyProfile === "function") renderMyProfile();
+      } catch (err) {
+        console.error("2FA disable error:", err);
+        showToast("Failed to disable 2FA: " + err.message, "error");
+      }
     }
-
-    showToast("Two-Factor Authentication disabled.");
-    if (typeof renderMyProfile === "function") renderMyProfile();
-  } catch (err) {
-    console.error("2FA disable error:", err);
-    showToast("Failed to disable 2FA: " + err.message, "error");
-  }
+  });
 };
 
 // ═══════════════════════════════════════════════════════════════
