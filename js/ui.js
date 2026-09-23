@@ -46,7 +46,7 @@ function setElVal(id, val) {
 window.setElVal = setElVal;
 
 function clearCaseErrors() {
-  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err"].forEach(id => {
+  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err", "cf-hearings-err"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
@@ -667,7 +667,7 @@ function renderAllCases() {
 window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL
+//  CASE DETAIL (WITH LIVE HEARINGS & TIMELINE HISTORY)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -698,7 +698,6 @@ function renderCaseDetail() {
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
   if (wrapEl) wrapEl.innerHTML = actionButtons;
 
-  // Unconditionally attach the back navigation handler
   const backBtn = document.getElementById("cd-back-btn");
   if (backBtn) {
     backBtn.onclick = window.handleCaseDetailBack;
@@ -714,6 +713,7 @@ function renderCaseDetail() {
     }
   }
 
+  // 1. General Case Information Card
   const infoEl = document.getElementById("cd-info");
   if (infoEl) {
     infoEl.innerHTML = `
@@ -722,22 +722,76 @@ function renderCaseDetail() {
       </div>
       <hr class="divider"/>
       ${[
-        ["Parties", c.parties || "None"],
-        ["Venue", c.venue || "N/A"],
+        ["Parties Involved", c.parties || "None"],
+        ["Venue / Court", c.venue || "N/A"],
         ["Date Case Filed", formatDate(c.filedDate)],
-        ["Due Date", c.dueDate ? formatDate(c.dueDate) : "Not set"],
-        ["Added", c.createdAt || "N/A"]
+        ["Case / Docket Number", c.caseNumber || "Not indicated"],
+        ["Date Added", c.createdAt || "N/A"]
       ].map(([l, v]) => `
         <div style="margin-bottom:16px">
           <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;font-weight:600">${l}</div>
-          <div style="font-size:15px;color:var(--text)">${escHtml(v)}</div>
+          <div style="font-size:14px;color:var(--text)">${escHtml(v)}</div>
         </div>`).join("")}
       <div>
-        <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Narrative</div>
-        <div style="font-size:15px;color:var(--text-muted);line-height:1.8">${escHtml(c.narrative || "")}</div>
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-weight:600">Case Narrative</div>
+        <div style="font-size:14px;color:var(--text-muted);line-height:1.8">${escHtml(c.narrative || "")}</div>
       </div>`;
   }
 
+  // 2. Court Hearings & Schedule History Log Card
+  const hearingsEl = document.getElementById("cd-hearings");
+  if (hearingsEl) {
+    const hearingsList = Array.isArray(c.hearings) ? c.hearings : [];
+    const todayStr = new Date().toISOString().split("T")[0];
+    const sorted = [...hearingsList].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    let hHtml = `
+      <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:6px">⚖️ Court Hearings &amp; History (${sorted.length})</span>
+      </div>
+    `;
+
+    if (sorted.length === 0) {
+      hHtml += `<div style="font-size:12px;color:var(--text-muted);padding:10px 0">No court appearances on record.</div>`;
+    } else {
+      hHtml += `<div style="display:flex;flex-direction:column;gap:8px">`;
+      sorted.forEach(h => {
+        const isPast = h.date < todayStr;
+        const badgeMarkup = isPast
+          ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px">Past Hearing</span>`
+          : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px">Upcoming Hearing</span>`;
+
+        hHtml += `
+          <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${isPast ? 'var(--text-dim)' : 'var(--green)'};border-radius:8px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
+              ${badgeMarkup}
+              <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)}</span>
+              ${h.time ? `<span style="font-size:11px;color:var(--text-muted)">⏰ ${h.time}</span>` : ''}
+            </div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>
+            ${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(h.notes)}"</div>` : ''}
+          </div>
+        `;
+      });
+      hHtml += `</div>`;
+    }
+
+    if (c.docDueDate) {
+      hHtml += `
+        <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:10.5px;color:var(--text-dim);text-transform:uppercase;font-weight:700">Pleading Due Date</div>
+            <div style="font-size:12.5px;color:var(--gold-light);font-weight:600">${formatDate(c.docDueDate)} ${c.docType ? `(${escHtml(c.docType)})` : ''}</div>
+          </div>
+          ${dueBadge(c.docDueDate)}
+        </div>
+      `;
+    }
+
+    hearingsEl.innerHTML = hHtml;
+  }
+
+  // 3. Documents Card
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
@@ -1188,7 +1242,7 @@ function renderMonthlyCalendarGrid() {
     if (dayEvents.length > 0) {
       dotsHtml = `<div style="display:flex;gap:4px;margin-top:auto;padding-top:4px;justify-content:center;flex-wrap:wrap">`;
       if (hasBusy) dotsHtml += `<span title="Unavailable / Out of Office" style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span>`;
-      if (hasCase) dotsHtml += `<span title="Case Deadline" style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block"></span>`;
+      if (hasCase) dotsHtml += `<span title="Case Hearing / Deadline" style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block"></span>`;
       if (hasAppt) dotsHtml += `<span title="Appointment / Meeting" style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block"></span>`;
       dotsHtml += `</div>`;
     }
@@ -1244,21 +1298,24 @@ window.openDateScheduleModal = function(dateStr) {
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
 
-  const dateCases = getAccessibleCases().filter(c => c.dueDate === dateStr);
+  const dateCases = getAccessibleCases().filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
   const dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
 
   const allItems = [];
 
   dateCases.forEach(c => {
     const p = profiles.find(x => x.id === c.profileId);
+    const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
+    
     allItems.push({
       id: c.id,
       kind: "case",
       badgeColor: "var(--gold)",
-      badgeLabel: "Case Deadline",
+      badgeLabel: specificHearing ? "Court Hearing" : "Document Deadline",
       title: c.title,
-      sub: `${p?.name || "Attorney"} · ${c.type || c.category || "Case"} · ${c.venue || "Venue N/A"}`,
-      desc: c.narrative || "No narrative available.",
+      time: specificHearing?.time || "All Day",
+      sub: `${p?.name || "Attorney"} · ${specificHearing?.purpose || c.type || c.category || "Case"} · ${c.venue || "Venue N/A"}`,
+      desc: specificHearing?.notes || c.narrative || "No notes available.",
       canDelete: false
     });
   });
@@ -1288,7 +1345,7 @@ window.openDateScheduleModal = function(dateStr) {
       <div class="empty-state" style="padding:28px 14px">
         <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px">☀️</div>
         <div style="font-size:13px;color:var(--text-muted)">
-          ${isPast ? "No past events recorded for this date." : "No events, deadlines, or appointments scheduled for this date."}
+          ${isPast ? "No past events recorded for this date." : "No events, deadlines, or appearances scheduled for this date."}
         </div>
       </div>
     `;
@@ -2296,112 +2353,6 @@ function populateCaseSelects(isEdit = false) {
 }
 
 window.populateCaseSelects = populateCaseSelects;
-
-async function openAddCase() {
-  caseFormOrigin = currentView;
-  
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u) return;
-
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf) {
-    showToast("Your attorney profile is still loading. Please wait a moment.", "error");
-    return;
-  }
-
-  if (typeof hasValidToken === "function" && !hasValidToken()) {
-    openDriveWarningModal();
-    return;
-  }
-
-  selProfile = myProf;
-  caseFormMode = "add";
-  pendingDocs = [];
-  cfPetitioners = selProfile.name ? [selProfile.name] : [];
-  cfRespondents = [];
-  
-  populateCaseSelects(false);
-
-  setElText("cf-title", "New Case");
-  setElText("cf-save-btn", "Add Case");
-  setElVal("cf-case-title", "");
-  setElVal("cf-narrative", "");
-  setElVal("cf-filed", "");
-  setElVal("cf-due", "");
-  setElVal("cf-case-number", "");
-  setElVal("cf-doc-type", "");
-  setElVal("cf-type-input", "");
-  setElVal("cf-status", "On-going");
-  setVenueValue(VENUES[0]);
-  setElText("drive-status", "");
-  
-  const backBtn = document.getElementById("cf-back-btn");
-  if (backBtn) backBtn.onclick = () => navTo(caseFormOrigin);
-
-  const cancelBtn = document.getElementById("cf-cancel-btn");
-  if (cancelBtn) cancelBtn.onclick = () => navTo(caseFormOrigin);
-  
-  const firstCat = CASE_CATEGORIES[0];
-  setElVal("cf-category", firstCat);
-  await onCategoryChange(firstCat);
-  renderPartyLists();
-  serializeParties();
-  renderPendingDocs();
-  clearCaseErrors();
-  updateCfChip();
-  updateDriveFolderChip();
-  showView("caseForm");
-}
-
-async function openEditCase() {
-  const c = selCase;
-  if (!c) return;
-
-  if (typeof hasValidToken === "function" && !hasValidToken()) {
-    openDriveWarningModal();
-    return;
-  }
-
-  caseFormMode = "edit";
-  pendingDocs = [...(c.documents || [])];
-  parsePartiesString(c.parties);
-  
-  populateCaseSelects(true);
-
-  setElText("cf-title", "Edit Case");
-  setElText("cf-save-btn", "Save Changes");
-  setElVal("cf-case-title", c.title);
-  setElVal("cf-narrative", c.narrative);
-  setElVal("cf-filed", c.filedDate || "");
-  setElVal("cf-due", c.dueDate || "");
-  setElVal("cf-case-number", c.caseNumber || "");
-  setElVal("cf-doc-type", c.docType || "");
-  setVenueValue(c.venue);
-  
-  const cat = c.category || CASE_CATEGORIES[0];
-  setElVal("cf-category", cat);
-  await onCategoryChange(cat);
-  setElVal("cf-type-input", c.type || "");
-  
-  setElText("drive-status", pendingDocs.length ? `${pendingDocs.length} file(s)` : "");
-
-  const backBtn = document.getElementById("cf-back-btn");
-  if (backBtn) backBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
-
-  const cancelBtn = document.getElementById("cf-cancel-btn");
-  if (cancelBtn) cancelBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
-
-  renderPartyLists();
-  serializeParties();
-  renderPendingDocs();
-  clearCaseErrors();
-  updateCfChip();
-  updateDriveFolderChip();
-  showView("caseForm");
-}
-
-window.openAddCase = openAddCase;
-window.openEditCase = openEditCase;
 
 // ═══════════════════════════════════════════════════════════════
 //  GOOGLE DRIVE EXPLORER REPLICA (WITH ZERO CELL OVERFLOW)
