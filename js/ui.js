@@ -74,6 +74,68 @@ window.handleCaseDetailBack = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
+//  UNSAVED CASE FORM CHANGES INTERCEPTION & DISCARD GUARD
+// ═══════════════════════════════════════════════════════════════
+let pendingNavigationDestination = null;
+
+function hasUnsavedCaseChanges() {
+  if (currentView !== "caseForm") return false;
+  const title = (document.getElementById("cf-case-title")?.value || "").trim();
+  const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
+  const caseNumber = (document.getElementById("cf-case-number")?.value || "").trim();
+  const docDue = (document.getElementById("cf-due")?.value || "").trim();
+  const docType = (document.getElementById("cf-doc-type")?.value || "").trim();
+  const hasDocs = Array.isArray(pendingDocs) && pendingDocs.length > 0;
+  const hasHearings = Array.isArray(window.cfHearings) && window.cfHearings.length > 0;
+  
+  return Boolean(title || narrative || caseNumber || docDue || docType || hasDocs || hasHearings);
+}
+
+window.hasUnsavedCaseChanges = hasUnsavedCaseChanges;
+
+window.promptDiscardCase = function(destination) {
+  pendingNavigationDestination = destination;
+  const modal = document.getElementById("discard-case-modal");
+  if (modal) modal.classList.remove("hidden");
+};
+
+window.cancelDiscardCase = function() {
+  pendingNavigationDestination = null;
+  const modal = document.getElementById("discard-case-modal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.confirmDiscardCase = function() {
+  const target = pendingNavigationDestination || caseFormOrigin || "allcases";
+  pendingNavigationDestination = null;
+  const modal = document.getElementById("discard-case-modal");
+  if (modal) modal.classList.add("hidden");
+
+  // Discard pending files and temporary hearings
+  if (typeof pendingDocs !== "undefined") pendingDocs = [];
+  if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
+
+  executeNavigation(target);
+};
+
+window.handleCaseCancelOrExit = function() {
+  if (hasUnsavedCaseChanges()) {
+    window.promptDiscardCase(caseFormOrigin || "allcases");
+  } else {
+    executeNavigation(caseFormOrigin || "allcases");
+  }
+};
+
+// Guard against tab close or page reload when unsaved changes exist
+window.addEventListener("beforeunload", (e) => {
+  if (hasUnsavedCaseChanges()) {
+    e.preventDefault();
+    e.returnValue = "You have unsaved case changes. Are you sure you want to leave?";
+    return e.returnValue;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 //  VALIDATION HELPERS (MOBILE & EMAIL)
 // ═══════════════════════════════════════════════════════════════
 function isValidMobile(num) {
@@ -193,7 +255,7 @@ function initPasswordStrengthChecker() {
 window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 
 // ═══════════════════════════════════════════════════════════════
-//  NAVIGATION (ACTIVE TAB HIGHLIGHTING)
+//  NAVIGATION (ACTIVE TAB HIGHLIGHTING & SAFE GUARD)
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
@@ -220,6 +282,15 @@ function showView(name) {
 }
 
 function navTo(view) {
+  // If editing an unsaved case and attempting to click another view, prompt with discard modal
+  if (currentView === "caseForm" && view !== "caseForm" && hasUnsavedCaseChanges()) {
+    window.promptDiscardCase(view);
+    return;
+  }
+  executeNavigation(view);
+}
+
+function executeNavigation(view) {
   const pd = document.getElementById("pd-search");
   const ac = document.getElementById("ac-search");
   if (pd) pd.value = "";
@@ -242,6 +313,7 @@ function navTo(view) {
 
 window.showView = showView;
 window.navTo = navTo;
+window.executeNavigation = executeNavigation;
 
 // ═══════════════════════════════════════════════════════════════
 //  DASHBOARD (STRICT 5 CASES LIMIT & EXPAND TOGGLE)
@@ -1161,7 +1233,7 @@ function renderMonthlyCalendarGrid() {
 
   const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
 
-  let activeCases = getAccessibleCases().filter(c => c.dueDate);
+  let activeCases = getAccessibleCases().filter(c => c.dueDate || (Array.isArray(c.hearings) && c.hearings.length > 0));
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
   if (filter !== "Everyone") {
@@ -1172,15 +1244,35 @@ function renderMonthlyCalendarGrid() {
 
   const eventsByDate = {};
   activeCases.forEach(c => {
-    if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
-    eventsByDate[c.dueDate].push({ 
-      id: c.id, 
-      type: "case", 
-      title: c.title, 
-      category: c.category || "Case", 
-      typeName: c.type || "Case", 
-      venue: c.venue || "N/A" 
-    });
+    // Register primary due date / next hearing
+    if (c.dueDate) {
+      if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
+      eventsByDate[c.dueDate].push({ 
+        id: c.id, 
+        type: "case", 
+        title: c.title, 
+        category: c.category || "Case", 
+        typeName: c.type || "Case", 
+        venue: c.venue || "N/A" 
+      });
+    }
+
+    // Register all logged court hearings on the calendar
+    if (Array.isArray(c.hearings)) {
+      c.hearings.forEach(h => {
+        if (h.date && h.date !== c.dueDate) {
+          if (!eventsByDate[h.date]) eventsByDate[h.date] = [];
+          eventsByDate[h.date].push({ 
+            id: c.id, 
+            type: "case", 
+            title: `Hearing: ${c.title}`, 
+            category: c.category || "Case", 
+            typeName: h.purpose || c.type || "Hearing", 
+            venue: c.venue || "N/A" 
+          });
+        }
+      });
+    }
   });
 
   activeAppts.forEach(a => {
