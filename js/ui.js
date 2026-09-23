@@ -58,6 +58,52 @@ function clearCaseErrors() {
 window.clearCaseErrors = clearCaseErrors;
 
 // ═══════════════════════════════════════════════════════════════
+//  UNIVERSAL ACTION CONFIRMATION MODAL CONTROLLER
+// ═══════════════════════════════════════════════════════════════
+let pendingActionConfirmCallback = null;
+
+window.openConfirmModal = function({ icon = "⚖️", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", confirmStyle = "btn-primary", onConfirm = null }) {
+  const modal = document.getElementById("universal-confirm-modal");
+  const iconEl = document.getElementById("ucm-icon");
+  const titleEl = document.getElementById("ucm-title");
+  const bodyEl = document.getElementById("ucm-body");
+  const btn = document.getElementById("ucm-confirm-btn");
+
+  if (!modal) return;
+
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = title;
+  if (bodyEl) bodyEl.innerHTML = body;
+
+  if (btn) {
+    btn.textContent = confirmText;
+    btn.className = `btn ${confirmStyle}`;
+  }
+
+  pendingActionConfirmCallback = onConfirm;
+  modal.classList.remove("hidden");
+};
+
+window.closeConfirmModal = function() {
+  const modal = document.getElementById("universal-confirm-modal");
+  if (modal) modal.classList.add("hidden");
+  pendingActionConfirmCallback = null;
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("ucm-confirm-btn");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      const cb = pendingActionConfirmCallback;
+      window.closeConfirmModal();
+      if (typeof cb === "function") {
+        cb();
+      }
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
 //  CASE DETAIL BACK NAVIGATION (DYNAMIC ORIGIN TRACKING)
 // ═══════════════════════════════════════════════════════════════
 let caseDetailOrigin = "allcases";
@@ -282,7 +328,6 @@ function showView(name) {
 }
 
 function navTo(view) {
-  // If editing an unsaved case and attempting to click another view, prompt with discard modal
   if (currentView === "caseForm" && view !== "caseForm" && hasUnsavedCaseChanges()) {
     window.promptDiscardCase(view);
     return;
@@ -911,17 +956,17 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
   }
@@ -948,14 +993,18 @@ function renderCaseDetail() {
   }
 }
 
-window.confirmUpdateCaseStatus = async function(st) {
-  if (!selCase) return;
-  if (selCase.status === st) return;
-  
-  if (!confirm(`Are you sure you want to update the status of "${selCase.title}" to "${st}"?`)) {
-    return;
-  }
-  updateCaseStatus(st);
+// 1. BRANDED CASE STATUS CONFIRMATION
+window.confirmUpdateCaseStatus = function(st) {
+  if (!selCase || selCase.status === st) return;
+
+  window.openConfirmModal({
+    icon: "⚖️",
+    title: "Update Case Status?",
+    body: `Are you sure you want to update the status of <strong>"${escHtml(selCase.title)}"</strong> to <strong style="color:${statusColor(st)}">"${st}"</strong>?`,
+    confirmText: "Update Status",
+    confirmStyle: "btn-primary",
+    onConfirm: () => updateCaseStatus(st)
+  });
 };
 
 async function updateCaseStatus(st) {
@@ -971,29 +1020,35 @@ async function updateCaseStatus(st) {
   }
 }
 
+// 2. BRANDED CASE DOCUMENT DELETION CONFIRMATION
 async function removeDocFromCase(idx) {
   const docs = selCase.documents || [];
   const doc = docs[idx];
   if (!doc) return;
 
-  if (!confirm(`Are you sure you want to delete "${doc.name}"?\nThis removes the document from the case and Google Drive.`)) {
-    return;
-  }
-
-  try {
-    showToast("Deleting file...");
-    if (doc.driveFileId && typeof deleteDriveFile === "function") {
-      await deleteDriveFile(doc.driveFileId);
+  window.openConfirmModal({
+    icon: "📄",
+    title: "Delete Case Document?",
+    body: `Are you sure you want to delete <strong>"${escHtml(doc.name)}"</strong>?<br>This will permanently remove the document from this case and Google Drive.`,
+    confirmText: "Delete Document",
+    confirmStyle: "btn-danger",
+    onConfirm: async () => {
+      try {
+        showToast("Deleting file...");
+        if (doc.driveFileId && typeof deleteDriveFile === "function") {
+          await deleteDriveFile(doc.driveFileId);
+        }
+        const updDocs = docs.filter((_, i) => i !== idx);
+        await dbUpdateCase(selCase.id, { documents: updDocs });
+        selCase = { ...selCase, documents: updDocs };
+        renderCaseDetail();
+        showToast("Document deleted successfully!");
+      } catch (err) {
+        console.error("removeDocFromCase error:", err);
+        showToast("Failed to remove document: " + (err.message || "Unknown error"), "error");
+      }
     }
-    const updDocs = docs.filter((_, i) => i !== idx);
-    await dbUpdateCase(selCase.id, { documents: updDocs });
-    selCase = { ...selCase, documents: updDocs };
-    renderCaseDetail();
-    showToast("Document deleted successfully!");
-  } catch (err) {
-    console.error("removeDocFromCase error:", err);
-    showToast("Failed to remove document: " + (err.message || "Unknown error"), "error");
-  }
+  });
 }
 
 window.renderCaseDetail = renderCaseDetail;
@@ -1211,8 +1266,8 @@ function nextCalMonth() {
 
 function todayCalMonth() {
   const now = new Date();
-  currentCalYear = now.getFullYear();
-  currentCalMonth = now.getMonth();
+  modalCalYear = now.getFullYear();
+  modalCalMonth = now.getMonth();
   renderMonthlyCalendarGrid();
 }
 
@@ -1294,7 +1349,7 @@ function renderMonthlyCalendarGrid() {
   const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
   const startingDayOfWeek = firstDayObj.getDay();
   const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-  const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
+  const prevMonthDays = new Date(currentCalYear, currentCalMonth + 0).getDate();
 
   const todayObj = new Date();
   const todayY = todayObj.getFullYear();
@@ -2575,19 +2630,26 @@ window.loadExplorerFiles = async function() {
   }
 };
 
-window.adminDeleteDriveExplorerFile = async function(fileId, fileName) {
-  if (!confirm(`Are you sure you want to delete "${fileName}" from Google Drive?`)) {
-    return;
-  }
-  try {
-    showToast("Deleting file from Drive...");
-    await deleteDriveFile(fileId);
-    showToast("File deleted from Google Drive.");
-    loadExplorerFiles();
-  } catch (err) {
-    console.error("Delete explorer file error:", err);
-    showToast("Failed to delete file: " + err.message, "error");
-  }
+// 3. BRANDED FIRM DRIVE FILE DELETION CONFIRMATION
+window.adminDeleteDriveExplorerFile = function(fileId, fileName) {
+  window.openConfirmModal({
+    icon: "📁",
+    title: "Delete from Firm Drive?",
+    body: `Are you sure you want to delete <strong>"${escHtml(fileName)}"</strong> directly from Google Drive?<br>This action cannot be undone.`,
+    confirmText: "Delete from Drive",
+    confirmStyle: "btn-danger",
+    onConfirm: async () => {
+      try {
+        showToast("Deleting file from Drive...");
+        await deleteDriveFile(fileId);
+        showToast("File deleted from Google Drive.");
+        loadExplorerFiles();
+      } catch (err) {
+        console.error("Delete explorer file error:", err);
+        showToast("Failed to delete file: " + err.message, "error");
+      }
+    }
+  });
 };
 
 window.navigateIntoFolder = function(id, name) {
