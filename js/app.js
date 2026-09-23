@@ -681,10 +681,10 @@ async function openAddCase() {
   setElText("drive-status", "");
   
   const backBtn = document.getElementById("cf-back-btn");
-  if (backBtn) backBtn.onclick = () => navTo(caseFormOrigin);
+  if (backBtn) backBtn.onclick = () => window.handleCaseCancelOrExit();
 
   const cancelBtn = document.getElementById("cf-cancel-btn");
-  if (cancelBtn) cancelBtn.onclick = () => navTo(caseFormOrigin);
+  if (cancelBtn) cancelBtn.onclick = () => window.handleCaseCancelOrExit();
   
   const firstCat = CASE_CATEGORIES[0];
   setElVal("cf-category", firstCat);
@@ -745,10 +745,10 @@ async function openEditCase() {
   setElText("drive-status", pendingDocs.length ? `${pendingDocs.length} file(s)` : "");
 
   const backBtn = document.getElementById("cf-back-btn");
-  if (backBtn) backBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
+  if (backBtn) backBtn.onclick = () => window.handleCaseCancelOrExit();
 
   const cancelBtn = document.getElementById("cf-cancel-btn");
-  if (cancelBtn) cancelBtn.onclick = () => { showView("caseDetail"); renderCaseDetail(); };
+  if (cancelBtn) cancelBtn.onclick = () => window.handleCaseCancelOrExit();
 
   renderPartyLists();
   serializeParties();
@@ -1272,6 +1272,7 @@ async function saveCase() {
     }
 
     if (typeof pendingDocs !== "undefined") pendingDocs = [];
+    cfHearings = [];
 
     if (typeof renderDashboard === "function") renderDashboard();
     if (typeof renderAllCases === "function") renderAllCases();
