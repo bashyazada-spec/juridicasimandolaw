@@ -27,6 +27,19 @@
   ⚠️ <strong>Firebase not connected.</strong> Data is stored in memory only and will be lost on refresh.
 </div>
 
+<!-- Universal Action Confirmation Modal -->
+<div id="universal-confirm-modal" class="modal-overlay hidden" style="z-index: 10008;" onclick="if(event.target===this)closeConfirmModal()">
+  <div class="modal-box" style="max-width: 440px; text-align: center;">
+    <div id="ucm-icon" style="font-size: 38px; margin-bottom: 12px; line-height: 1;">⚖️</div>
+    <div id="ucm-title" style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 8px;">Confirm Action</div>
+    <div id="ucm-body" style="font-size: 13px; color: var(--text-muted); line-height: 1.55; margin-bottom: 22px;">Are you sure you want to proceed?</div>
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button class="btn btn-secondary" type="button" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-primary" type="button" id="ucm-confirm-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <!-- Discard Case Changes Confirmation Modal -->
 <div id="discard-case-modal" class="modal-overlay hidden" style="z-index: 10010;" onclick="if(event.target===this)cancelDiscardCase()">
   <div class="modal-box" style="max-width: 420px; text-align: center;">
