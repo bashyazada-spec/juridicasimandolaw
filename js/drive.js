@@ -35,8 +35,25 @@ function clearPersistedToken() {
   try { sessionStorage.removeItem("gDriveToken"); } catch (e) { /* ignore */ }
 }
 
+// 4. BRANDED GOOGLE DRIVE DISCONNECTION CONFIRMATION
 window.disconnectDriveAccount = function() {
-  if (!confirm("Disconnect your Google Drive account?\nYou will need to reconnect to upload or browse files in Drive.")) return;
+  if (typeof window.openConfirmModal === "function") {
+    window.openConfirmModal({
+      icon: "☁️",
+      title: "Disconnect Google Drive?",
+      body: "Are you sure you want to disconnect your Google Drive account?<br>You will need to reconnect to upload or browse files in the system.",
+      confirmText: "Disconnect",
+      confirmStyle: "btn-danger",
+      onConfirm: () => {
+        executeDriveDisconnect();
+      }
+    });
+  } else {
+    executeDriveDisconnect();
+  }
+};
+
+function executeDriveDisconnect() {
   clearPersistedToken();
   if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2 && accessToken) {
     try {
@@ -49,7 +66,7 @@ window.disconnectDriveAccount = function() {
   tokenExpiresAt = 0;
   showToast("Google Drive disconnected successfully.");
   if (typeof renderMyProfile === "function") renderMyProfile();
-};
+}
 
 function initGoogleDrive() {
   if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
