@@ -16,6 +16,28 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1Pg4DzHgHA10ewwjPBnx+xOo5a8WhZVC8GhnZHA9CoLKSGYlUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/desktop.css"/>
+<style>
+  /* ── SYSTEM STATUS INDICATOR STYLES ── */
+  @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+  @keyframes pulseAmber { 0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0); } 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); } }
+  @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(248, 113, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); } }
+
+  .status-pill { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s; user-select: none; margin-left: 4px; }
+  .status-pill:hover { border-color: var(--gold-border); background: rgba(201,165,92,0.08); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.healthy { background: var(--green); animation: pulseGreen 2s infinite; }
+  .status-dot.warning { background: var(--amber); animation: pulseAmber 2s infinite; }
+  .status-dot.danger { background: var(--red); animation: pulseRed 2s infinite; }
+
+  .diagnostic-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  .diagnostic-item-left { display: flex; align-items: center; gap: 10px; }
+  .diag-icon { font-size: 18px; width: 28px; text-align: center; }
+  .diag-name { font-weight: 700; font-size: 13px; color: var(--text); }
+  .diag-sub { font-size: 11px; color: var(--text-muted); }
+  .badge-pass { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-warn { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .badge-fail { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+</style>
 </head>
 <body>
 
@@ -72,6 +94,61 @@
     <div style="display:flex;gap:12px;justify-content:center">
       <button class="btn btn-ghost" type="button" onclick="closeDeleteModal()">Cancel</button>
       <button class="btn btn-danger" type="button" id="del-confirm-btn" onclick="executeDelete()" disabled style="opacity:0.5;cursor:not-allowed">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- System Diagnostic Modal -->
+<div id="diagnostic-modal" class="modal-overlay hidden" style="z-index: 10009;" onclick="if(event.target===this)closeDiagnosticModal()">
+  <div class="modal-box" style="max-width: 480px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
+      <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+        🩺 System Health &amp; Diagnostics
+      </div>
+      <button onclick="closeDiagnosticModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>
+    </div>
+
+    <div id="diagnostic-items-list">
+      <!-- Network -->
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">📡</div>
+          <div>
+            <div class="diag-name">Network &amp; Courtroom Connection</div>
+            <div class="diag-sub" id="diag-network-sub">Active internet connection detected</div>
+          </div>
+        </div>
+        <span class="badge badge-pass" id="diag-network-badge">Online</span>
+      </div>
+
+      <!-- Database -->
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">⚡</div>
+          <div>
+            <div class="diag-name">Cloud Firestore Sync</div>
+            <div class="diag-sub" id="diag-db-sub">Real-time listeners active (Long Polling)</div>
+          </div>
+        </div>
+        <span class="badge badge-pass" id="diag-db-badge">Connected</span>
+      </div>
+
+      <!-- Google Drive -->
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">☁️</div>
+          <div>
+            <div class="diag-name">Google Drive Storage Space</div>
+            <div class="diag-sub" id="diag-drive-sub">OAuth token valid · Case folder linked</div>
+          </div>
+        </div>
+        <span class="badge badge-pass" id="diag-drive-badge">Linked</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;border-top:1px solid var(--border);padding-top:14px">
+      <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)">↻ Re-run Health Check</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeDiagnosticModal()">Close</button>
     </div>
   </div>
 </div>
@@ -412,6 +489,15 @@
             <div id="notifications-list" style="overflow-y:auto;max-height:350px;padding:10px"></div>
           </div>
         </div>
+
+        <div class="top-capsule-divider"></div>
+        
+        <!-- STATUS PILL -->
+        <div class="status-pill" onclick="openDiagnosticModal()" title="View System Diagnostics">
+          <span class="status-dot healthy" id="status-indicator-dot"></span>
+          <span id="status-indicator-text" style="color:var(--green)">Workspace Active</span>
+        </div>
+
       </div>
     </div>
 
@@ -820,35 +906,6 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES ── -->
-    <div id="view-allcases" class="view hidden">
-      <div class="page-hdr">
-        <div>
-          <div class="page-title">All Cases</div>
-          <div class="page-sub" id="allcases-count"></div>
-        </div>
-        <button class="btn btn-primary" onclick="openAddCase()">+ New Case</button>
-      </div>
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <input class="field-input" style="max-width:240px;flex:1;min-width:140px" placeholder="Search cases or attorneys…" id="ac-search" oninput="renderAllCases()"/>
-        <select class="filter-select" id="ac-status" onchange="renderAllCases()" title="Filter by status">
-          <option value="All">All Statuses</option>
-        </select>
-        <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')" title="Filter by category">
-          <option value="All">All Categories</option>
-        </select>
-        <select class="filter-select" id="ac-type" onchange="renderAllCases()" title="Filter by type">
-          <option value="All">All Types</option>
-        </select>
-        <select class="filter-select" id="ac-sort" onchange="renderAllCases()" title="Sort by due date">
-          <option value="asc">Due: Soonest First</option>
-          <option value="desc">Due: Furthest First</option>
-          <option value="none">Date Added</option>
-        </select>
-      </div>
-      <div id="all-cases-list"></div>
-    </div>
-
     <!-- ── CASE DETAIL ── -->
     <div id="view-caseDetail" class="view hidden">
       <div class="flex-center gap-10" style="margin-bottom:24px;padding-right:64px">
@@ -1063,6 +1120,58 @@
 
   </div><!-- /main -->
 </div><!-- /app -->
+
+<!-- System Diagnostic Modal -->
+<div id="diagnostic-modal" class="modal-overlay hidden" style="z-index: 10009;" onclick="if(event.target===this)closeDiagnosticModal()">
+  <div class="modal-box" style="max-width: 480px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
+      <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+        🩺 System Health &amp; Diagnostics
+      </div>
+      <button onclick="closeDiagnosticModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>
+    </div>
+
+    <div id="diagnostic-items-list">
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">📡</div>
+          <div>
+            <div class="diag-name">Network &amp; Courtroom Connection</div>
+            <div class="diag-sub" id="diag-network-sub">Checking...</div>
+          </div>
+        </div>
+        <span class="badge" id="diag-network-badge">...</span>
+      </div>
+
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">⚡</div>
+          <div>
+            <div class="diag-name">Cloud Firestore Sync</div>
+            <div class="diag-sub" id="diag-db-sub">Checking...</div>
+          </div>
+        </div>
+        <span class="badge" id="diag-db-badge">...</span>
+      </div>
+
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">☁️</div>
+          <div>
+            <div class="diag-name">Google Drive Storage Space</div>
+            <div class="diag-sub" id="diag-drive-sub">Checking...</div>
+          </div>
+        </div>
+        <span class="badge" id="diag-drive-badge">...</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;border-top:1px solid var(--border);padding-top:14px">
+      <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)">↻ Re-run Health Check</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeDiagnosticModal()">Close</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
