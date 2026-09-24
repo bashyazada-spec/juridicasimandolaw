@@ -97,11 +97,11 @@ async function updateWorkspaceStatus(manualRun = false) {
   if (netBadge && netSub) {
     if (isNetworkOk) {
       netBadge.className = "badge badge-pass";
-      netBadge.textContent = "Online";
+      netBadge.innerHTML = `<i class="bi bi-wifi" style="color:var(--green)"></i> Online`;
       netSub.textContent = "Active internet connection detected";
     } else {
       netBadge.className = "badge badge-fail";
-      netBadge.textContent = "Offline";
+      netBadge.innerHTML = `<i class="bi bi-wifi-off" style="color:var(--red)"></i> Offline`;
       netSub.textContent = "No network connection. Offline changes won't sync.";
     }
   }
@@ -110,15 +110,15 @@ async function updateWorkspaceStatus(manualRun = false) {
   if (dbBadge && dbSub) {
     if (isDbOk) {
       dbBadge.className = "badge badge-pass";
-      dbBadge.textContent = "Connected";
+      dbBadge.innerHTML = `<i class="bi bi-database-check" style="color:var(--green)"></i> Connected`;
       dbSub.textContent = "Firestore real-time listeners synchronized (Long Polling)";
     } else if (localMode) {
       dbBadge.className = "badge badge-warn";
-      dbBadge.textContent = "Memory Mode";
+      dbBadge.innerHTML = `<i class="bi bi-hdd-network" style="color:var(--amber)"></i> Memory Mode`;
       dbSub.textContent = "Running in memory. Data will not persist on refresh.";
     } else {
       dbBadge.className = "badge badge-fail";
-      dbBadge.textContent = "Connecting...";
+      dbBadge.innerHTML = `<i class="bi bi-arrow-repeat"></i> Connecting...`;
       dbSub.textContent = "Waiting for cloud database handshake.";
     }
   }
@@ -127,15 +127,15 @@ async function updateWorkspaceStatus(manualRun = false) {
   if (driveBadge && driveSub) {
     if (isDriveOk && hasDriveFolder) {
       driveBadge.className = "badge badge-pass";
-      driveBadge.textContent = "Linked";
+      driveBadge.innerHTML = `<i class="bi bi-cloud-check-fill" style="color:var(--green)"></i> Linked`;
       driveSub.textContent = "OAuth active · Dedicated firm storage folder verified";
     } else if (isDriveOk && !hasDriveFolder) {
       driveBadge.className = "badge badge-warn";
-      driveBadge.textContent = "No Folder";
+      driveBadge.innerHTML = `<i class="bi bi-folder-x" style="color:var(--amber)"></i> No Folder`;
       driveSub.textContent = "Drive connected but no root case folder created yet.";
     } else {
       driveBadge.className = "badge badge-warn";
-      driveBadge.textContent = "Not Connected";
+      driveBadge.innerHTML = `<i class="bi bi-cloud-slash" style="color:var(--amber)"></i> Not Connected`;
       driveSub.textContent = "Connect Google Account under My Settings to enable filing & docs.";
     }
   }
@@ -171,7 +171,7 @@ async function updateWorkspaceStatus(manualRun = false) {
 
 window.updateWorkspaceStatus = updateWorkspaceStatus;
 
-// Run automated health check every 25 seconds
+// Automated health check every 25 seconds
 if (!window._healthIntervalId) {
   window._healthIntervalId = setInterval(() => {
     if (document.visibilityState === "visible") {
@@ -187,7 +187,7 @@ window.addEventListener("offline", () => updateWorkspaceStatus(false));
 // ═══════════════════════════════════════════════════════════════
 let pendingActionConfirmCallback = null;
 
-window.openConfirmModal = function({ icon = "⚖️", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", confirmStyle = "btn-primary", onConfirm = null }) {
+window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", confirmStyle = "btn-primary", onConfirm = null }) {
   const modal = document.getElementById("universal-confirm-modal");
   const iconEl = document.getElementById("ucm-icon");
   const titleEl = document.getElementById("ucm-title");
@@ -196,7 +196,10 @@ window.openConfirmModal = function({ icon = "⚖️", title = "Confirm Action", 
 
   if (!modal) return;
 
-  if (iconEl) iconEl.textContent = icon;
+  if (iconEl) {
+    const iconClass = icon.startsWith("bi-") ? icon : (icon === "📁" ? "bi-folder2-open" : (icon === "📄" ? "bi-file-earmark-text" : (icon === "🔓" ? "bi-unlock-fill" : "bi-shield-check")));
+    iconEl.innerHTML = `<i class="bi ${iconClass}" style="color:var(--gold)"></i>`;
+  }
   if (titleEl) titleEl.textContent = title;
   if (bodyEl) bodyEl.innerHTML = body;
 
@@ -282,7 +285,6 @@ window.confirmDiscardCase = function() {
   const modal = document.getElementById("discard-case-modal");
   if (modal) modal.classList.add("hidden");
 
-  // Discard pending files and temporary hearings
   if (typeof pendingDocs !== "undefined") pendingDocs = [];
   if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
 
@@ -297,7 +299,6 @@ window.handleCaseCancelOrExit = function() {
   }
 };
 
-// Guard against tab close or page reload when unsaved changes exist
 window.addEventListener("beforeunload", (e) => {
   if (hasUnsavedCaseChanges()) {
     e.preventDefault();
@@ -332,13 +333,13 @@ function autoDetectDevice() {
   document.body.classList.remove("device-mobile", "device-tablet", "device-desktop");
 
   let deviceLabel = "Desktop";
-  let deviceIcon = "💻";
+  let deviceIcon = "bi-laptop";
 
   if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua) || (w >= 600 && w <= 1024 && isTouch)) {
     document.body.classList.add("device-tablet");
     window.deviceType = "tablet";
     deviceLabel = "Tablet";
-    deviceIcon = "📱";
+    deviceIcon = "bi-tablet";
   } else if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile/i.test(ua) || w < 600) {
     document.body.classList.add("device-mobile");
     if (!document.body.classList.contains("sidebar-collapsed")) {
@@ -346,24 +347,24 @@ function autoDetectDevice() {
     }
     window.deviceType = "mobile";
     deviceLabel = "Phone";
-    deviceIcon = "📱";
+    deviceIcon = "bi-phone";
   } else {
     document.body.classList.add("device-desktop");
     window.deviceType = "desktop";
     deviceLabel = "Desktop";
-    deviceIcon = "💻";
+    deviceIcon = "bi-laptop";
   }
 
   const chip = document.getElementById("settings-device-chip");
   if (chip) {
-    chip.innerHTML = `${deviceIcon} Connected as ${deviceLabel}`;
+    chip.innerHTML = `<i class="bi ${deviceIcon}" style="color:var(--gold);margin-right:4px"></i> Connected as ${deviceLabel}`;
   }
 
   if (!window._deviceToastShown) {
     window._deviceToastShown = true;
     setTimeout(() => {
       if (typeof showToast === "function") {
-        showToast(`${deviceIcon} Connected as ${deviceLabel}`, "success");
+        showToast(`Connected as ${deviceLabel}`, "success");
       }
     }, 1200);
   }
@@ -373,7 +374,7 @@ window.addEventListener("DOMContentLoaded", autoDetectDevice);
 window.addEventListener("resize", autoDetectDevice);
 
 // ═══════════════════════════════════════════════════════════════
-//  PASSWORD STRENGTH CHECKER
+//  PASSWORD STRENGTH CHECKER (WITH BOOTSTRAP CHECK/X ICONS)
 // ═══════════════════════════════════════════════════════════════
 function initPasswordStrengthChecker() {
   const passInput = document.getElementById("setting-password");
@@ -407,10 +408,10 @@ function initPasswordStrengthChecker() {
         const icon = rule.el.querySelector(".req-icon");
         if (passed) {
           rule.el.style.color = "var(--green, #22c55e)";
-          if (icon) icon.textContent = "✅";
+          if (icon) icon.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>`;
         } else {
           rule.el.style.color = "var(--text-dim)";
-          if (icon) icon.textContent = "❌";
+          if (icon) icon.innerHTML = `<i class="bi bi-x-circle" style="color:var(--red)"></i>`;
         }
       }
     }
@@ -494,7 +495,7 @@ window.toggleExpandRecentCases = function() {
   recentCasesExpanded = !recentCasesExpanded;
   const btn = document.getElementById("btn-toggle-expand-cases");
   if (btn) {
-    btn.textContent = recentCasesExpanded ? "▲ Collapse" : "↕ Expand View";
+    btn.innerHTML = recentCasesExpanded ? `<i class="bi bi-arrows-collapse"></i> Collapse` : `<i class="bi bi-arrows-expand"></i> Expand View`;
   }
   renderDashboard();
 };
@@ -531,7 +532,7 @@ function renderDashboard() {
   const displayCases = recentCasesExpanded ? userCases : userCases.slice(0, 5);
 
   dcEl.innerHTML = displayCases.length === 0
-    ? '<div class="empty-state"><div class="empty-state-icon">📁</div><div>No active cases yet.</div></div>'
+    ? '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div><div>No active cases yet.</div></div>'
     : displayCases.map(c => {
       const p = profiles.find(x => x.id === c.profileId);
       const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
@@ -579,7 +580,7 @@ function renderDashProfiles() {
   );
 
   if (profiles.length === 0) {
-    dpEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏛️</div><div>No attorneys yet. Add your first attorney profile.</div></div>';
+    dpEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-bank"></i></div><div>No attorneys yet. Add your first attorney profile.</div></div>';
     return;
   }
   if (filtered.length === 0) {
@@ -639,7 +640,7 @@ function renderProfiles() {
   const userCases = getAccessibleCases();
 
   if (profiles.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">👥</div><div style="font-size:13px;color:var(--text-muted)">No associate attorneys are currently registered.</div></div>`;
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-people"></i></div><div style="font-size:13px;color:var(--text-muted)">No associate attorneys are currently registered.</div></div>`;
     return;
   }
 
@@ -667,7 +668,7 @@ function renderProfiles() {
           <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
             <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
             ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
-            <span style="font-size:14px;color:var(--gold)">→</span>
+            <span style="font-size:14px;color:var(--gold)"><i class="bi bi-arrow-right"></i></span>
           </div>
         </div>
       `;
@@ -694,8 +695,8 @@ function renderProfiles() {
             </div>
           </div>
           <hr class="divider"/>
-          ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px">✉ ${escHtml(p.email)}</div>` : ""}
-          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">📞 ${escHtml(p.contact)}</div>` : ""}
+          ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.email)}</div>` : ""}
+          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
           <div style="display:flex;justify-content:space-between;align-items:center">
             <span style="font-size:13px;color:var(--text-dim)">Cases Accessible (${pc.length})</span>
             ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
@@ -723,20 +724,20 @@ function renderProfileDetail() {
 
   if (isOwner) {
     driveChip = p.driveFolderId
-      ? `<a href="https://drive.google.com/drive/folders/${p.driveFolderId}" target="_blank" style="font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:500;padding:4px 10px;background:rgba(34,197,94,0.08);border-radius:6px;border:1px solid rgba(34,197,94,0.2)" title="Open Drive Folder">📁 Drive Folder →</a>`
+      ? `<a href="https://drive.google.com/drive/folders/${p.driveFolderId}" target="_blank" style="font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:500;padding:4px 10px;background:rgba(34,197,94,0.08);border-radius:6px;border:1px solid rgba(34,197,94,0.2)" title="Open Drive Folder"><i class="bi bi-google"></i> Drive Folder <i class="bi bi-arrow-right"></i></a>`
       : (accessToken
-          ? `<button onclick="createProfileFolderManual()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:4px 10px;border-radius:6px;transition:all 0.2s">📁 Create Drive Folder</button>`
-          : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px">📁 Drive not connected</span>`);
+          ? `<button onclick="createProfileFolderManual()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:4px 10px;border-radius:6px;transition:all 0.2s"><i class="bi bi-folder-plus"></i> Create Drive Folder</button>`
+          : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px"><i class="bi bi-cloud-slash"></i> Drive not connected</span>`);
 
     actionButtons = `
-      <button class="btn btn-secondary btn-sm" onclick="openEditProfile()">✏️ Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="confirmDeleteProfile()">🗑 Delete</button>
-      <button class="btn btn-primary btn-sm" onclick="openAddCase()">+ Add Case</button>
+      <button class="btn btn-secondary btn-sm" onclick="openEditProfile()"><i class="bi bi-pencil-square"></i> Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDeleteProfile()"><i class="bi bi-trash3"></i> Delete</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-circle"></i> Add Case</button>
     `;
   } else {
-    driveChip = `<span style="font-size:12px;color:var(--text-dim)">📁 Files Protected</span>`;
+    driveChip = `<span style="font-size:12px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Files Protected</span>`;
     actionButtons = `
-      <button class="btn btn-primary btn-sm" onclick="openAppointmentModal('${p.id}')">📅 Request Schedule</button>
+      <button class="btn btn-primary btn-sm" onclick="openAppointmentModal('${p.id}')"><i class="bi bi-calendar-plus"></i> Request Schedule</button>
     `;
   }
 
@@ -748,9 +749,9 @@ function renderProfileDetail() {
         <div style="font-size:24px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
         <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${escHtml(p.role || "Attorney")}</div>
         <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
-          ${p.email ? `<span style="font-size:12px;color:var(--text-muted)">✉ ${escHtml(p.email)}</span>` : ""}
-          ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)">📞 ${escHtml(p.contact)}</span>` : ""}
-          <span style="font-size:12px;color:var(--text-dim)">📅 Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
+          ${p.email ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.email)}</span>` : ""}
+          ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.contact)}</span>` : ""}
+          <span style="font-size:12px;color:var(--text-dim)"><i class="bi bi-calendar-check" style="color:var(--gold);margin-right:4px"></i>Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
           ${driveChip}
         </div>
       </div>
@@ -818,8 +819,8 @@ function renderProfileCases() {
 
   if (filtered.length === 0) {
     el.innerHTML = `<div class="empty-state">${pc.length === 0
-      ? '<div class="empty-state-icon">🏛️</div><div>No accessible cases yet</div>'
-      : '<div class="empty-state-icon">🔍</div><div>No cases match your filters.</div>'
+      ? '<div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-bank"></i></div><div>No accessible cases yet</div>'
+      : '<div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your filters.</div>'
     }</div>`;
     return;
   }
@@ -883,7 +884,7 @@ function renderAllCases() {
   if (!el) return;
 
   if (filtered.length === 0) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><div>No cases match your access permissions or filters.</div></div>';
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your access permissions or filters.</div></div>';
     return;
   }
   el.innerHTML = filtered.map(c => {
@@ -932,10 +933,10 @@ function renderCaseDetail() {
   const canDelete = isOwner || isGroupAdmin;
 
   let actionButtons = "";
-  if (canEdit) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()">✏️ Edit</button>`;
-  if (canShare) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()">👥 Share</button>`;
-  if (canDelete) actionButtons += `<button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()">🗑 Delete</button>`;
-  if (userPerm === "viewer") actionButtons += `<span class="badge" style="background:rgba(129,140,248,0.15);color:#818cf8;padding:6px 12px;font-size:12px">👁 Viewer Access</span>`;
+  if (canEdit) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit</button>`;
+  if (canShare) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share</button>`;
+  if (canDelete) actionButtons += `<button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
+  if (userPerm === "viewer") actionButtons += `<span class="badge" style="background:rgba(129,140,248,0.15);color:#818cf8;padding:6px 12px;font-size:12px"><i class="bi bi-eye-fill"></i> Viewer Access</span>`;
 
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
   if (wrapEl) wrapEl.innerHTML = actionButtons;
@@ -948,7 +949,7 @@ function renderCaseDetail() {
   const chip = document.getElementById("cd-profile-chip");
   if (chip) {
     if (p) {
-      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px">→ view profile</span>`;
+      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px"><i class="bi bi-arrow-right"></i> view profile</span>`;
       chip.style.display = "inline-flex";
     } else {
       chip.style.display = "none";
@@ -989,7 +990,7 @@ function renderCaseDetail() {
 
     let hHtml = `
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
-        <span style="display:flex;align-items:center;gap:6px">⚖️ Court Hearings &amp; History (${sorted.length})</span>
+        <span style="display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearings &amp; History (${sorted.length})</span>
       </div>
     `;
 
@@ -1000,15 +1001,15 @@ function renderCaseDetail() {
       sorted.forEach(h => {
         const isPast = h.date < todayStr;
         const badgeMarkup = isPast
-          ? `<span class="badge" style="background:rgba(255,255,200,0.06);color:var(--text-dim);font-size:9.5px">Past Hearing</span>`
-          : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px">Upcoming Hearing</span>`;
+          ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
+          : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px"><i class="bi bi-calendar-event"></i> Upcoming Hearing</span>`;
 
         hHtml += `
           <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${isPast ? 'var(--text-dim)' : 'var(--green)'};border-radius:8px">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
               ${badgeMarkup}
               <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)}</span>
-              ${h.time ? `<span style="font-size:11px;color:var(--text-muted)">⏰ ${h.time}</span>` : ''}
+              ${h.time ? `<span style="font-size:11px;color:var(--text-muted)"><i class="bi bi-clock" style="margin-right:2px"></i>${h.time}</span>` : ''}
             </div>
             <div style="font-size:12.5px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>
             ${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(h.notes)}"</div>` : ''}
@@ -1041,19 +1042,19 @@ function renderCaseDetail() {
       <div style="display:inline-flex;align-items:center;gap:10px">
         <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 10px">
           <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-            <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> 📥 In
+            <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> <i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> In
           </label>
           <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-            <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> 📤 Out
+            <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> <i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Out
           </label>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="addDocToCase()">+ Upload Document</button>
-      </div>` : `<span style="font-size:11px;color:var(--text-dim)">Protected File Repository</span>`
+        <button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload Document</button>
+      </div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected File Repository</span>`
     }
   </div>`;
 
   if (docs.length === 0) {
-    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:26px;margin-bottom:4px">📎</div><div>${canEdit ? 'Click to attach a document' : 'No document records uploaded'}</div></div>`;
+    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:26px;margin-bottom:4px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Click to attach a document' : 'No document records uploaded'}</div></div>`;
   } else {
     const inboundDocs = docs.filter(d => d.fileType === "Inbound");
     const outboundDocs = docs.filter(d => d.fileType === "Outbound");
@@ -1061,37 +1062,41 @@ function renderCaseDetail() {
 
     const renderDocRow = (doc) => {
       const realIdx = docs.findIndex(x => x === doc || (x.driveFileId && x.driveFileId === doc.driveFileId && x.name === doc.name));
+      const fileIcon = doc.name.toLowerCase().endsWith(".pdf") 
+        ? `<i class="bi bi-file-earmark-pdf-fill" style="color:var(--red);margin-right:6px"></i>`
+        : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);margin-right:6px"></i>`;
+
       return `
         <div class="doc-item" style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
             <div>
               <div style="font-size:13px;color:var(--text);font-weight:600">
                 <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
-                  📄 ${escHtml(doc.name)}
+                  ${fileIcon}${escHtml(doc.name)}
                 </span>
               </div>
               <div style="font-size:12px;color:var(--text-muted)">
-                ${doc.size} · ${doc.date}${doc.driveFileId ? " · ✅ Drive" : ""}
+                ${doc.size} · ${doc.date}${doc.driveFileId ? ` · <span style="color:var(--green)"><i class="bi bi-check-circle-fill"></i> Drive</span>` : ""}
               </div>
             </div>
-            ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})" title="Delete File">🗑️</button>` : ""}
+            ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:15px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
           </div>
         </div>
       `;
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-files" style="color:var(--gold)"></i> Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
   }
@@ -1106,7 +1111,7 @@ function renderCaseDetail() {
         <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">Update Status</div>
         ${STATUS_OPTIONS.map(st => `
           <button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 16px;border-radius:10px;border:1px solid ${c.status === st ? statusColor(st) : "var(--border)"};background:${c.status === st ? statusColor(st) + "18" : "transparent"};color:${c.status === st ? statusColor(st) : "var(--text)"};text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);font-weight:${c.status === st ? 700 : 500};transition:all 0.2s">
-            ${c.status === st ? "✓ " : ""}${st}
+            ${c.status === st ? '<i class="bi bi-check-lg" style="margin-right:6px"></i>' : ""}${st}
           </button>`).join("")}`;
     } else {
       statusPanelEl.innerHTML = `
@@ -1123,7 +1128,7 @@ window.confirmUpdateCaseStatus = function(st) {
   if (!selCase || selCase.status === st) return;
 
   window.openConfirmModal({
-    icon: "⚖️",
+    icon: "bi-arrow-repeat",
     title: "Update Case Status?",
     body: `Are you sure you want to update the status of <strong>"${escHtml(selCase.title)}"</strong> to <strong style="color:${statusColor(st)}">"${st}"</strong>?`,
     confirmText: "Update Status",
@@ -1152,7 +1157,7 @@ async function removeDocFromCase(idx) {
   if (!doc) return;
 
   window.openConfirmModal({
-    icon: "📄",
+    icon: "bi-trash3",
     title: "Delete Case Document?",
     body: `Are you sure you want to delete <strong>"${escHtml(doc.name)}"</strong>?<br>This will permanently remove the document from this case and Google Drive.`,
     confirmText: "Delete Document",
@@ -1276,15 +1281,15 @@ function dueBadge(dueDate) {
   if (!dueDate) return '<span style="font-size:11px;color:var(--text-dim)">No due date</span>';
   const days = Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
   const formatted = formatDate(dueDate);
-  if (days < 0)   return `<span style="font-size:11px;font-weight:700;color:var(--red)">Overdue (${formatted})</span>`;
-  if (days === 0) return `<span style="font-size:11px;font-weight:700;color:var(--red)">Due today</span>`;
+  if (days < 0)   return `<span style="font-size:11px;font-weight:700;color:var(--red)"><i class="bi bi-exclamation-circle-fill" style="margin-right:3px"></i>Overdue (${formatted})</span>`;
+  if (days === 0) return `<span style="font-size:11px;font-weight:700;color:var(--red)"><i class="bi bi-exclamation-circle-fill" style="margin-right:3px"></i>Due today</span>`;
   if (days <= 7)  return `<span style="font-size:11px;font-weight:700;color:var(--amber)">${days}d left (${formatted})</span>`;
   if (days <= 30) return `<span style="font-size:11px;font-weight:600;color:var(--gold)">${days}d (${formatted})</span>`;
   return `<span style="font-size:11px;color:var(--text-muted)">Due ${formatted}</span>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  FILTER DROPDOWNS (CLEAN LABELS, ZERO EMOJIS)
+//  FILTER DROPDOWNS
 // ═══════════════════════════════════════════════════════════════
 function updateAllFilterDropdowns() {
   ["pd", "ac"].forEach(prefix => {
@@ -1361,7 +1366,7 @@ function renderCalendarView() {
     
     profiles.forEach(p => {
       const designation = p.role ? ` (${p.role})` : "";
-      optionsHtml += `<option value="${p.ownerUid}">👤 ${p.name}${designation}</option>`;
+      optionsHtml += `<option value="${p.ownerUid}">${p.name}${designation}</option>`;
     });
 
     select.innerHTML = optionsHtml;
@@ -1424,7 +1429,6 @@ function renderMonthlyCalendarGrid() {
 
   const eventsByDate = {};
   activeCases.forEach(c => {
-    // Register primary due date / next hearing
     if (c.dueDate) {
       if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
       eventsByDate[c.dueDate].push({ 
@@ -1437,7 +1441,6 @@ function renderMonthlyCalendarGrid() {
       });
     }
 
-    // Register all logged court hearings on the calendar
     if (Array.isArray(c.hearings)) {
       c.hearings.forEach(h => {
         if (h.date && h.date !== c.dueDate) {
@@ -1565,7 +1568,7 @@ window.openDateScheduleModal = function(dateStr) {
   if (isToday) headerBadge = ` <span style="font-size:10px;background:var(--gold);color:#060c13;font-weight:800;padding:2px 6px;border-radius:4px">TODAY</span>`;
   else if (isPast) headerBadge = ` <span style="font-size:10px;background:var(--surface3);color:var(--text-dim);font-weight:600;padding:2px 6px;border-radius:4px">PAST DATE</span>`;
 
-  if (titleEl) titleEl.innerHTML = `📅 Schedule for ${formattedDate}${headerBadge}`;
+  if (titleEl) titleEl.innerHTML = `<i class="bi bi-calendar3" style="color:var(--gold);margin-right:6px"></i> Schedule for ${formattedDate}${headerBadge}`;
 
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
@@ -1615,7 +1618,7 @@ window.openDateScheduleModal = function(dateStr) {
   if (allItems.length === 0) {
     listEl.innerHTML = `
       <div class="empty-state" style="padding:28px 14px">
-        <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px">☀️</div>
+        <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-calendar-x"></i></div>
         <div style="font-size:13px;color:var(--text-muted)">
           ${isPast ? "No past events recorded for this date." : "No events, deadlines, or appearances scheduled for this date."}
         </div>
@@ -1629,8 +1632,8 @@ window.openDateScheduleModal = function(dateStr) {
             ${item.badgeLabel}
           </span>
           <div style="display:flex;align-items:center;gap:8px">
-            ${item.time ? `<span style="font-size:11.5px;color:var(--text-muted);font-weight:600">⏰ ${item.time}</span>` : ""}
-            ${item.canDelete ? `<button onclick="deleteBusySlot('${item.id}', '${item.dateStr}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px" title="Delete availability entry">Remove</button>` : ""}
+            ${item.time ? `<span style="font-size:11.5px;color:var(--text-muted);font-weight:600"><i class="bi bi-clock" style="margin-right:3px"></i>${item.time}</span>` : ""}
+            ${item.canDelete ? `<button onclick="deleteBusySlot('${item.id}', '${item.dateStr}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px" title="Delete availability entry"><i class="bi bi-trash3"></i> Remove</button>` : ""}
           </div>
         </div>
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(item.title)}</div>
@@ -1718,14 +1721,14 @@ function renderMyProfile() {
   if (statusEl && btn && btnText) {
     if (hasValidToken()) {
       statusEl.className = "drive-status-chip connected";
-      statusEl.textContent = "● Connected";
+      statusEl.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i> Connected`;
       btnText.textContent = "✓ Connected";
       btn.classList.add("connected");
       btn.disabled = true;
       if (disconnectBtn) disconnectBtn.classList.remove("hidden");
     } else {
       statusEl.className = "drive-status-chip disconnected";
-      statusEl.textContent = "● Not Connected";
+      statusEl.innerHTML = `<i class="bi bi-circle-fill" style="color:var(--amber)"></i> Not Connected`;
       btnText.textContent = "Connect Google Drive";
       btn.classList.remove("connected");
       btn.disabled = false;
@@ -1742,10 +1745,10 @@ function renderMyProfile() {
       tfaBadge.className = "badge";
       tfaBadge.style.background = "rgba(52,211,153,0.15)";
       tfaBadge.style.color = "var(--green)";
-      tfaBadge.textContent = "● 2FA Active";
+      tfaBadge.innerHTML = `<i class="bi bi-shield-check"></i> 2FA Active`;
 
       tfaBtn.className = "btn btn-danger btn-sm";
-      tfaBtn.textContent = "Disable 2FA";
+      tfaBtn.innerHTML = `<i class="bi bi-shield-x"></i> Disable 2FA`;
       tfaBtn.onclick = disableTwoFactor;
 
       if (tfaBackupWrap) tfaBackupWrap.style.display = "block";
@@ -1753,10 +1756,10 @@ function renderMyProfile() {
       tfaBadge.className = "badge";
       tfaBadge.style.background = "rgba(251,191,36,0.15)";
       tfaBadge.style.color = "var(--amber)";
-      tfaBadge.textContent = "● Not Configured";
+      tfaBadge.innerHTML = `<i class="bi bi-circle-fill" style="font-size:8px"></i> Not Configured`;
 
       tfaBtn.className = "btn btn-primary btn-sm";
-      tfaBtn.textContent = "Configure Authenticator";
+      tfaBtn.innerHTML = `<i class="bi bi-qr-code-scan"></i> Configure Authenticator`;
       tfaBtn.onclick = openTwoFactorSetupModal;
 
       if (tfaBackupWrap) tfaBackupWrap.style.display = "none";
@@ -2068,7 +2071,6 @@ async function executeDeleteAccountWipe() {
       await dbDeleteProfile(myProf.id).catch(() => {});
     }
 
-    // Explicitly delete user's Google token on account deletion
     if (typeof clearPersistedToken === "function") {
       clearPersistedToken(u.uid);
     }
@@ -2091,14 +2093,10 @@ async function executeDeleteAccountWipe() {
 window.confirmDeleteUserAccount = confirmDeleteUserAccount;
 window.executeDeleteAccountWipe = executeDeleteAccountWipe;
 
-// ═══════════════════════════════════════════════════════════════
-//  SIGN OUT: PRESERVES DRIVE TOKEN UNDER USER-SCOPED STORAGE
-// ═══════════════════════════════════════════════════════════════
 async function handleLogout() {
   try {
     if (typeof dbUnsubscribe === "function") dbUnsubscribe();
     if (window._fbSignOut) {
-      // Sign out from Firebase without clearing the attorney's user-scoped Google authorization
       sessionStorage.removeItem("simando_2fa_verified");
       await window._fbSignOut(window._auth);
       window.location.replace("login.html");
@@ -2189,7 +2187,7 @@ window.openCalendarEventModal = function(index) {
     timeString += " (All Day)";
   }
 
-  if (titleEl) titleEl.innerHTML = `📅 ${escHtml(ev.summary || "No Title")}`;
+  if (titleEl) titleEl.innerHTML = `<i class="bi bi-calendar-event" style="color:var(--gold);margin-right:6px"></i> ${escHtml(ev.summary || "No Title")}`;
   if (timeEl) timeEl.textContent = timeString;
   if (locationEl) locationEl.textContent = ev.location || "No venue/location specified";
   if (descEl) descEl.textContent = ev.description || "No description provided.";
@@ -2217,14 +2215,14 @@ async function fetchAndRenderGoogleCalendarEvents() {
 
   let html = `<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px;justify-content:space-between">
     <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:20px">📅</span> Google Calendar Agenda
+      <i class="bi bi-calendar3" style="color:var(--gold);font-size:18px"></i> Google Calendar Agenda
     </div>
-    <button onclick="fetchAndRenderGoogleCalendarEvents()" class="btn btn-ghost" style="font-size:11px;padding:4px 8px" title="Refresh Agenda">↻ Refresh</button>
+    <button onclick="fetchAndRenderGoogleCalendarEvents()" class="btn btn-ghost" style="font-size:11px;padding:4px 8px" title="Refresh Agenda"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
   </div>`;
 
   if (!hasValidToken()) {
     html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px">
-      <div style="font-size:24px;margin-bottom:8px">☁️</div>
+      <div style="font-size:24px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div>
       <div style="font-size:12px;font-weight:600">Google Calendar Not Synced</div>
       <div style="font-size:11px;margin-top:4px">Authorize Google Calendar under <a href="#" onclick="navTo('myprofile'); return false;" style="color:var(--gold);text-decoration:underline">My Settings</a> to sync case deadlines and view your agenda live.</div>
     </div>`;
@@ -2270,7 +2268,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
         const timeStr   = parsedStart.timeStr;
         const eventDate = parsedStart.dateObj;
         
-        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px">📍 ${escHtml(ev.location)}</div>` : "";
+        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px"><i class="bi bi-geo-alt-fill" style="color:var(--gold)"></i> ${escHtml(ev.location)}</div>` : "";
         const descriptionMarkup = ev.description ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic">"${escHtml(ev.description.slice(0, 50))}${ev.description.length > 50 ? '...' : ''}"</div>` : "";
 
         const weekdayStr = eventDate.toLocaleDateString("en-US", { weekday: "short" });
@@ -2283,7 +2281,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
             </div>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary || 'No Title')}">${escHtml(ev.summary || 'No Title')}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">📅 ${dateStr} · ⏰ ${timeStr}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><i class="bi bi-calendar-event" style="color:var(--gold);margin-right:2px"></i> ${dateStr} · <i class="bi bi-clock" style="color:var(--gold);margin-right:2px"></i> ${timeStr}</div>
               ${locationMarkup}
               ${descriptionMarkup}
             </div>
@@ -2302,7 +2300,7 @@ async function fetchAndRenderGoogleCalendarEvents() {
 
     if (err.status === 403) {
       html += `<div style="text-align:left;padding:16px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px;line-height:1.5">
-        <strong style="color:var(--amber)">Google Calendar API Access Denied (403)</strong><br>
+        <strong style="color:var(--amber)"><i class="bi bi-shield-exclamation"></i> Google Calendar API Access Denied (403)</strong><br>
         Please ensure the <strong>Google Calendar API</strong> is enabled inside your Google Cloud Console for this project Client ID.
       </div>`;
     } else {
@@ -2392,7 +2390,7 @@ function renderNotificationsView() {
   if (!listEl) return;
 
   if (notifications.length === 0) {
-    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px">🔔</div><div style="font-size:12px;color:var(--text-muted)">No notifications found.</div></div>`;
+    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px;color:var(--gold)"><i class="bi bi-bell-slash"></i></div><div style="font-size:12px;color:var(--text-muted)">No notifications found.</div></div>`;
     return;
   }
 
@@ -2404,19 +2402,19 @@ function renderNotificationsView() {
     if (n.type === "appointment_request" && n.appointmentStatus === "pending") {
       actions = `
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); acceptAppointmentRequest('${n.id}', '${n.relatedId}')">Accept Proposal</button>
-          <button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); declineAppointmentRequest('${n.id}', '${n.relatedId}')">Decline</button>
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')">💬 Go to Chat</button>
+          <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); acceptAppointmentRequest('${n.id}', '${n.relatedId}')"><i class="bi bi-check2"></i> Accept</button>
+          <button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); declineAppointmentRequest('${n.id}', '${n.relatedId}')"><i class="bi bi-x"></i> Decline</button>
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')"><i class="bi bi-chat-dots-fill" style="color:var(--gold)"></i> Chat</button>
         </div>
       `;
     } else if (n.type === "appointment_request") {
       const statusText = (n.appointmentStatus || "").toUpperCase();
       const colorVal = n.appointmentStatus === "accepted" ? "var(--green)" : "var(--red)";
-      actions = `<div style="font-size:10px;font-weight:700;color:${colorVal};margin-top:6px">● PROPOSAL ${statusText}</div>`;
+      actions = `<div style="font-size:10px;font-weight:700;color:${colorVal};margin-top:6px"><i class="bi bi-circle-fill" style="font-size:7px;margin-right:3px"></i>PROPOSAL ${statusText}</div>`;
     } else if (n.type === "availability_request" || n.type === "availability_confirmed") {
       actions = `
         <div style="margin-top:8px">
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')">💬 Go to Chat Stream</button>
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')"><i class="bi bi-chat-dots-fill" style="color:var(--gold)"></i> Go to Chat Stream</button>
         </div>
       `;
     }
@@ -2578,7 +2576,7 @@ window.acceptAppointmentRequest = async function(notifId, apptId) {
         toUid: appt.requesterUid,
         fromUid: window._currentUser.uid,
         fromName: appt.targetName,
-        title: "Appointment Approved ✅",
+        title: "Appointment Approved",
         message: `${appt.targetName} accepted your proposed date "${appt.title}" on ${formatDate(appt.date)} at ${appt.time}.`,
         type: "appointment_update",
         relatedId: apptId,
@@ -2603,7 +2601,7 @@ window.declineAppointmentRequest = async function(notifId, apptId) {
         toUid: appt.requesterUid,
         fromUid: window._currentUser.uid,
         fromName: appt.targetName,
-        title: "Appointment Declined ❌",
+        title: "Appointment Declined",
         message: `${appt.targetName} declined your proposed date "${appt.title}" on ${formatDate(a.date)}.`,
         type: "appointment_update",
         relatedId: apptId,
@@ -2635,7 +2633,7 @@ function populateCaseSelects(isEdit = false) {
 window.populateCaseSelects = populateCaseSelects;
 
 // ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA (WITH ZERO CELL OVERFLOW)
+//  GOOGLE DRIVE EXPLORER REPLICA
 // ═══════════════════════════════════════════════════════════════
 let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
@@ -2677,7 +2675,7 @@ window.loadExplorerFiles = async function() {
 
   if (!hasValidToken()) {
     listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
-      <div style="font-size:24px;margin-bottom:8px">☁️</div>
+      <div style="font-size:28px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div>
       <div style="font-size:13px;font-weight:600">Google Drive Session Expired</div>
       <div style="font-size:11px;margin-top:4px">Please re-authenticate under My Settings to view file explorer records.</div>
     </div>`;
@@ -2728,7 +2726,12 @@ window.loadExplorerFiles = async function() {
 
     listEl.innerHTML = files.map(f => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
-      const icon = isFolder ? "📁" : "📄";
+      const icon = isFolder 
+        ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>` 
+        : (f.name.toLowerCase().endsWith(".pdf") 
+          ? `<i class="bi bi-file-earmark-pdf-fill" style="color:var(--red);font-size:32px"></i>`
+          : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`);
+
       const onClickAction = isFolder 
         ? "onclick=\"navigateIntoFolder('" + f.id + "', '" + f.name.replace(/'/g, "\\'") + "')\""
         : "onclick=\"window.open('" + f.webViewLink + "', '_blank')\"";
@@ -2738,12 +2741,12 @@ window.loadExplorerFiles = async function() {
       return `
         <div style="min-width:0;max-width:100%;overflow:hidden;position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
           <div ${onClickAction} style="min-width:0;max-width:100%;overflow:hidden">
-            <div style="font-size:32px;margin-bottom:8px">${icon}</div>
+            <div style="margin-bottom:8px">${icon}</div>
             <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
             ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sizeText + '</div>' : ""}
           </div>
           <button onclick="event.stopPropagation(); adminDeleteDriveExplorerFile('${f.id}', '${f.name.replace(/'/g, "\\'")}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;border-radius:4px;opacity:0.6;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete file from Google Drive">
-            🗑️
+            <i class="bi bi-trash3"></i>
           </button>
         </div>
       `;
@@ -2753,7 +2756,7 @@ window.loadExplorerFiles = async function() {
     console.warn("loadExplorerFiles notice:", err);
     listEl.innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:30px 16px;color:var(--text-muted)">
-        <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+        <div style="font-size:28px;margin-bottom:8px;color:var(--amber)"><i class="bi bi-exclamation-triangle-fill"></i></div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">Google Drive API Notice (403)</div>
         <div style="font-size:11.5px;margin-top:6px;line-height:1.5">
           Unable to browse folder contents. Please ensure the <strong>Google Drive API</strong> is enabled in your Google Cloud Console for your project credentials, or click <strong>Open in Google Drive</strong> above to view your files directly.
@@ -2766,7 +2769,7 @@ window.loadExplorerFiles = async function() {
 // 3. BRANDED FIRM DRIVE FILE DELETION CONFIRMATION
 window.adminDeleteDriveExplorerFile = function(fileId, fileName) {
   window.openConfirmModal({
-    icon: "📁",
+    icon: "bi-trash3",
     title: "Delete from Firm Drive?",
     body: `Are you sure you want to delete <strong>"${escHtml(fileName)}"</strong> directly from Google Drive?<br>This action cannot be undone.`,
     confirmText: "Delete from Drive",
@@ -2804,7 +2807,7 @@ function renderExplorerBreadcrumbs() {
   el.innerHTML = explorerBreadcrumbs.map((b, idx) => {
     const isLast = idx === explorerBreadcrumbs.length - 1;
     if (isLast) {
-      return '<span style="color:var(--gold)">' + escHtml(b.name) + '</span>';
+      return '<span style="color:var(--gold)"><i class="bi bi-folder-fill" style="margin-right:4px"></i>' + escHtml(b.name) + '</span>';
     }
     return '<span onclick="navigateBreadcrumb(' + idx + ')" style="cursor:pointer;color:var(--text-muted);text-decoration:underline" onmouseover="this.style.color=\'var(--text)\'" onmouseout="this.style.color=\'var(--text-muted)\'">' + escHtml(b.name) + '</span> <span style="font-size:11px;opacity:0.4">/</span>';
   }).join(" ");
