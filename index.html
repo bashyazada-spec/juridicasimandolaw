@@ -22,7 +22,7 @@
   @keyframes pulseAmber { 0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0); } 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); } }
   @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); } 70% { box-shadow: 0 0 0 7px rgba(248, 113, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); } }
 
-  .status-pill { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s; user-select: none; margin-left: 4px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-soft, #1c2d3f); border-radius: 20px; padding: 5px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s; user-select: none; margin-left: 4px; }
   .status-pill:hover { border-color: var(--gold-border); background: rgba(201,165,92,0.08); }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .status-dot.healthy { background: var(--green); animation: pulseGreen 2s infinite; }
@@ -100,7 +100,7 @@
 
 <!-- System Diagnostic Modal -->
 <div id="diagnostic-modal" class="modal-overlay hidden" style="z-index: 10009;" onclick="if(event.target===this)closeDiagnosticModal()">
-  <div class="modal-box" style="max-width: 480px;">
+  <div class="modal-box" style="max-width: 500px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
       <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
         🩺 System Health &amp; Diagnostics
@@ -492,8 +492,8 @@
 
         <div class="top-capsule-divider"></div>
         
-        <!-- STATUS PILL -->
-        <div class="status-pill" onclick="openDiagnosticModal()" title="View System Diagnostics">
+        <!-- STATUS PILL INDICATOR -->
+        <div class="status-pill" onclick="openDiagnosticModal()" title="View System Health &amp; Diagnostics">
           <span class="status-dot healthy" id="status-indicator-dot"></span>
           <span id="status-indicator-text" style="color:var(--green)">Workspace Active</span>
         </div>
@@ -983,6 +983,19 @@
             </div>
           </div>
 
+          <!-- System Health & Diagnostic Access Point -->
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:16px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:8px">
+                🩺 System Health &amp; Diagnostic Console
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="openDiagnosticModal()">Open Diagnostics</button>
+            </div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.5">
+              Verify your courtroom internet connection, Firestore real-time database state, and linked Google Drive file storage space.
+            </div>
+          </div>
+
           <!-- Help, Suggest & Legal Policies -->
           <div class="card">
             <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:8px">
@@ -1120,58 +1133,6 @@
 
   </div><!-- /main -->
 </div><!-- /app -->
-
-<!-- System Diagnostic Modal -->
-<div id="diagnostic-modal" class="modal-overlay hidden" style="z-index: 10009;" onclick="if(event.target===this)closeDiagnosticModal()">
-  <div class="modal-box" style="max-width: 480px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
-      <div style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
-        🩺 System Health &amp; Diagnostics
-      </div>
-      <button onclick="closeDiagnosticModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>
-    </div>
-
-    <div id="diagnostic-items-list">
-      <div class="diagnostic-item">
-        <div class="diagnostic-item-left">
-          <div class="diag-icon">📡</div>
-          <div>
-            <div class="diag-name">Network &amp; Courtroom Connection</div>
-            <div class="diag-sub" id="diag-network-sub">Checking...</div>
-          </div>
-        </div>
-        <span class="badge" id="diag-network-badge">...</span>
-      </div>
-
-      <div class="diagnostic-item">
-        <div class="diagnostic-item-left">
-          <div class="diag-icon">⚡</div>
-          <div>
-            <div class="diag-name">Cloud Firestore Sync</div>
-            <div class="diag-sub" id="diag-db-sub">Checking...</div>
-          </div>
-        </div>
-        <span class="badge" id="diag-db-badge">...</span>
-      </div>
-
-      <div class="diagnostic-item">
-        <div class="diagnostic-item-left">
-          <div class="diag-icon">☁️</div>
-          <div>
-            <div class="diag-name">Google Drive Storage Space</div>
-            <div class="diag-sub" id="diag-drive-sub">Checking...</div>
-          </div>
-        </div>
-        <span class="badge" id="diag-drive-badge">...</span>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;border-top:1px solid var(--border);padding-top:14px">
-      <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)">↻ Re-run Health Check</button>
-      <button class="btn btn-ghost btn-sm" onclick="closeDiagnosticModal()">Close</button>
-    </div>
-  </div>
-</div>
 
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
