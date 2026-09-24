@@ -14,10 +14,47 @@
 <script src="js/redirect.js"></script>
 <script type="module" src="js/firebase-init.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1Pg4DzHgHA10ewwjPBnx+xOo5a8WhZVC8GhnZHA9CoLKSGYlUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+  /* ── MOBILE SYSTEM HEALTH PILL & MODAL STYLES ── */
+  @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+  @keyframes pulseAmber { 0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); } 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); } }
+  @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(248, 113, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); } }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .status-dot.healthy { background: var(--green); animation: pulseGreen 2s infinite; }
+  .status-dot.warning { background: var(--amber); animation: pulseAmber 2s infinite; }
+  .status-dot.danger  { background: var(--red);   animation: pulseRed 2s infinite; }
+
+  .mobile-status-trigger {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    height: 36px;
+    padding: 0 9px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mobile-status-trigger:hover {
+    border-color: var(--gold-border);
+    background: var(--surface3);
+  }
+
+  .diagnostic-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  .diagnostic-item-left { display: flex; align-items: center; gap: 10px; }
+  .diag-icon { font-size: 17px; width: 24px; text-align: center; }
+  .diag-name { font-weight: 700; font-size: 12.5px; color: var(--text); }
+  .diag-sub { font-size: 10.5px; color: var(--text-muted); }
+  .badge-pass { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-warn { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .badge-fail { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+</style>
 </head>
 <body>
 
-<!-- Mobile Top Header Bar with Option 2 Classical Pillar Emblem -->
+<!-- Mobile Top Header Bar with Classical Pillar Emblem & Controls -->
 <div class="mobile-top-bar">
   <div class="mobile-top-logo">
     <svg width="24" height="24" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
@@ -33,7 +70,14 @@
     </svg>
     <span>Simando Law</span>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div style="display:flex;align-items:center;gap:8px">
+    
+    <!-- System Health Indicator Button -->
+    <div class="mobile-status-trigger" onclick="openDiagnosticModal()" title="View System Status">
+      <span class="status-dot healthy" id="status-indicator-dot"></span>
+      <span id="status-indicator-text" style="font-size:11px;font-weight:700;color:var(--green)">Active</span>
+    </div>
+
     <!-- Chat Icon Trigger -->
     <button onclick="window._chat ? window._chat.toggleDock(event) : null" class="mobile-top-icon-btn" title="Messages" type="button">
       💬
@@ -118,6 +162,61 @@
   </div>
 </div>
 
+<!-- System Diagnostic Modal for Mobile -->
+<div id="diagnostic-modal" class="modal-overlay hidden" style="z-index: 10009;" onclick="if(event.target===this)closeDiagnosticModal()">
+  <div class="modal-box" style="max-width: 480px; padding: 18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+        🩺 System Health Check
+      </div>
+      <button onclick="closeDiagnosticModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>
+    </div>
+
+    <div id="diagnostic-items-list">
+      <!-- Network -->
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">📡</div>
+          <div>
+            <div class="diag-name">Network Connection</div>
+            <div class="diag-sub" id="diag-network-sub">Active connection detected</div>
+          </div>
+        </div>
+        <span class="badge badge-pass" id="diag-network-badge">Online</span>
+      </div>
+
+      <!-- Database -->
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">⚡</div>
+          <div>
+            <div class="diag-name">Cloud Database Sync</div>
+            <div class="diag-sub" id="diag-db-sub">Firestore listeners active</div>
+          </div>
+        </div>
+        <span class="badge badge-pass" id="diag-db-badge">Connected</span>
+      </div>
+
+      <!-- Google Drive -->
+      <div class="diagnostic-item">
+        <div class="diagnostic-item-left">
+          <div class="diag-icon">☁️</div>
+          <div>
+            <div class="diag-name">Google Drive Storage</div>
+            <div class="diag-sub" id="diag-drive-sub">OAuth token active &amp; linked</div>
+          </div>
+        </div>
+        <span class="badge badge-pass" id="diag-drive-badge">Linked</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+      <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)">↻ Re-run Health Check</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeDiagnosticModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Google Account Mandatory Connection Modal Popup -->
 <div id="drive-warning-modal" class="modal-overlay hidden" style="z-index: 10003;" onclick="if(event.target===this){closeDriveWarningModal(); navTo('dashboard');}">
   <div class="modal-box" style="max-width: 420px; text-align: center; padding:20px">
@@ -197,7 +296,7 @@
   </div>
 </div>
 
-<!-- Two-Factor Authentication Setup Modal on Mobile (Clean Typography) -->
+<!-- Two-Factor Authentication Setup Modal on Mobile -->
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;" onclick="if(event.target===this)closeTwoFactorSetupModal()">
   <div class="modal-box" style="max-width: 440px; padding: 20px; text-align: center;">
     <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">
@@ -753,7 +852,7 @@
         </button>
       </div>
 
-      <!-- Theme Switcher Card (Clean Typography) -->
+      <!-- Theme Switcher Card -->
       <div class="card mb-16" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
@@ -764,6 +863,17 @@
               <div class="theme-switch-thumb"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- System Diagnostic Access Card -->
+      <div class="card mb-16" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--gold)">🩺 System Health &amp; Diagnostics</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Test network, database, &amp; Drive storage</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="openDiagnosticModal()" style="width:auto !important;padding:5px 12px !important">Run Check</button>
         </div>
       </div>
 
