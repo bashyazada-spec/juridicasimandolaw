@@ -6,42 +6,76 @@ let pendingDriveAuthReject  = null;
 let driveInitAttempts = 0;
 const MAX_DRIVE_INIT_ATTEMPTS = 10;
 
-// ── Token persistence across page refreshes ──────────────────────────────────
-(function restoreTokenFromSession() {
+// ── User-Scoped Token Persistence (Saved per specific account UID) ───────────
+function getActiveUserUid() {
+  return window._currentUser?.uid || window._auth?.currentUser?.uid || null;
+}
+
+function restoreTokenForUser(uid) {
+  const targetUid = uid || getActiveUserUid();
+  if (!targetUid) return false;
+
   try {
-    const saved = sessionStorage.getItem("gDriveToken");
+    const key = `gDriveToken_${targetUid}`;
+    const saved = localStorage.getItem(key);
     if (saved) {
       const { token, expiresAt } = JSON.parse(saved);
       if (token && expiresAt && Date.now() < expiresAt - 60000) {
         accessToken    = token;
         tokenExpiresAt = expiresAt;
-      } else {
-        sessionStorage.removeItem("gDriveToken");
+        console.log(`Restored persistent Google Drive token for attorney account (${targetUid}).`);
+        return true;
       }
     }
   } catch (e) { /* ignore */ }
-})();
-
-function persistToken(token, expiresIn) {
-  tokenExpiresAt = Date.now() + (expiresIn || 3600) * 1000;
-  try {
-    sessionStorage.setItem("gDriveToken", JSON.stringify({ token, expiresAt: tokenExpiresAt }));
-  } catch (e) { /* ignore */ }
+  return false;
 }
 
-function clearPersistedToken() {
+function persistTokenForUser(token, expiresIn, uid) {
+  const targetUid = uid || getActiveUserUid();
+  tokenExpiresAt = Date.now() + (expiresIn || 3600) * 1000;
+  accessToken = token;
+
+  if (targetUid) {
+    try {
+      const key = `gDriveToken_${targetUid}`;
+      localStorage.setItem(key, JSON.stringify({ token, expiresAt: tokenExpiresAt }));
+    } catch (e) { /* ignore */ }
+  }
+}
+
+function clearPersistedToken(uid) {
+  const targetUid = uid || getActiveUserUid();
   accessToken    = null;
   tokenExpiresAt = 0;
-  try { sessionStorage.removeItem("gDriveToken"); } catch (e) { /* ignore */ }
+  if (targetUid) {
+    try { 
+      localStorage.removeItem(`gDriveToken_${targetUid}`); 
+    } catch (e) { /* ignore */ }
+  }
 }
 
-// 4. BRANDED GOOGLE DRIVE DISCONNECTION CONFIRMATION
+// Automatically restore token as soon as Firebase confirms the signed-in account
+window.addEventListener("firebase-ready", () => {
+  if (window._auth && typeof window._fbOnAuth === "function") {
+    window._fbOnAuth(window._auth, (user) => {
+      if (user) {
+        restoreTokenForUser(user.uid);
+        if (typeof updateWorkspaceStatus === "function") {
+          updateWorkspaceStatus(false);
+        }
+      }
+    });
+  }
+});
+
+// Explicit Manual Disconnection by the user in My Settings
 window.disconnectDriveAccount = function() {
   if (typeof window.openConfirmModal === "function") {
     window.openConfirmModal({
       icon: "☁️",
       title: "Disconnect Google Drive?",
-      body: "Are you sure you want to disconnect your Google Drive account?<br>You will need to reconnect to upload or browse files in the system.",
+      body: "Are you sure you want to unlink your Google Drive account from this profile?<br>You will need to re-authorize to store case documents.",
       confirmText: "Disconnect",
       confirmStyle: "btn-danger",
       onConfirm: () => {
@@ -54,18 +88,18 @@ window.disconnectDriveAccount = function() {
 };
 
 function executeDriveDisconnect() {
-  clearPersistedToken();
+  const activeUid = getActiveUserUid();
   if (typeof google !== "undefined" && google.accounts && google.accounts.oauth2 && accessToken) {
     try {
       google.accounts.oauth2.revoke(accessToken, () => {
-        console.log("Google token revoked.");
+        console.log("Google Drive access token revoked.");
       });
     } catch (e) { /* ignore */ }
   }
-  accessToken = null;
-  tokenExpiresAt = 0;
+  clearPersistedToken(activeUid);
   showToast("Google Drive disconnected successfully.");
   if (typeof renderMyProfile === "function") renderMyProfile();
+  if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
 }
 
 function initGoogleDrive() {
@@ -81,13 +115,14 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      // SCOPE MINIMIZATION: 'drive.file' restricts access strictly to files/folders created by this application
+      // Least-privilege scope: drive.file only accesses files created by this CMS app
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
-          accessToken = response.access_token;
-          persistToken(response.access_token, response.expires_in);
+          const currentUid = getActiveUserUid();
+          persistTokenForUser(response.access_token, response.expires_in, currentUid);
           console.log("Drive & Calendar auth success (Scope: drive.file)");
+          
           if (pendingDriveAuthResolve) pendingDriveAuthResolve(accessToken);
           
           if (typeof fetchAndRenderGoogleCalendarEvents === "function" && currentView === "dashboard") {
@@ -95,6 +130,9 @@ function initGoogleDrive() {
           }
           if (typeof renderMyProfile === "function") {
             renderMyProfile();
+          }
+          if (typeof updateWorkspaceStatus === "function") {
+            updateWorkspaceStatus(false);
           }
         } else {
           console.warn("Drive & Calendar auth response error:", response);
@@ -127,7 +165,7 @@ function initGoogleDrive() {
   }
 }
 
-function promptDriveAuth() {
+function promptDriveAuth(interactive = true) {
   if (!gTokenClient) {
     initGoogleDrive();
   }
@@ -141,9 +179,13 @@ function promptDriveAuth() {
     pendingDriveAuthReject = reject;
     try {
       const u = window._currentUser || window._auth?.currentUser;
-      const authParams = {
-        prompt: "select_account"
-      };
+      const authParams = {};
+
+      if (!interactive) {
+        authParams.prompt = "none"; // Silent background refresh
+      } else {
+        authParams.prompt = "select_account";
+      }
 
       if (u && u.email) {
         authParams.hint = u.email;
@@ -158,7 +200,10 @@ function promptDriveAuth() {
 }
 
 function hasValidToken() {
-  return accessToken && Date.now() < tokenExpiresAt - 60000;
+  if (!accessToken) {
+    restoreTokenForUser();
+  }
+  return !!(accessToken && Date.now() < tokenExpiresAt - 60000);
 }
 
 // ── Resilient Folder Creation with Stale Parent ID Recovery ──
@@ -350,7 +395,12 @@ async function convertWordToPdfAndUpload(file, folderId) {
 
 async function uploadSingleFileToDrive(file, folderId) {
   if (!hasValidToken()) {
-    throw new Error("Missing or invalid Google Drive access token.");
+    // Attempt silent refresh before failing
+    try {
+      await promptDriveAuth(false);
+    } catch (silentErr) {
+      throw new Error("Missing or expired Google Drive access token.");
+    }
   }
 
   const ext = file.name.split('.').pop().toLowerCase();
@@ -441,8 +491,7 @@ async function uploadSingleFileToDrive(file, folderId) {
   } else {
     const err = await res.json().catch(() => ({}));
     if (res.status === 401 || err.error?.code === 401) {
-      clearPersistedToken();
-      showToast("Drive session expired. Please re-authenticate.", "error");
+      showToast("Drive session expired. Auto-refreshing...", "error");
     } else {
       showToast(`Upload warning: ${err.error?.message || "Saved locally"}`, "error");
     }
@@ -462,9 +511,9 @@ async function addDocToCase() {
     if (!files.length) return;
 
     if (!hasValidToken()) {
-      showToast("Session expired — reconnecting…");
+      showToast("Drive session expired — reconnecting…");
       try {
-        await promptDriveAuth();
+        await promptDriveAuth(true);
         showToast("Reconnected — uploading files…");
       } catch (authErr) {
         console.warn("Re-auth failed:", authErr);
@@ -576,7 +625,7 @@ function updateDriveFolderChip() {
       chip.style.display = "inline-flex";
       chip.onclick = async () => {
         try {
-          await promptDriveAuth();
+          await promptDriveAuth(true);
           updateDriveFolderChip();
           showToast("Drive reconnected ✅");
         } catch (e) {
