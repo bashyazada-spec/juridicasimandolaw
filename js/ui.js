@@ -1000,7 +1000,7 @@ function renderCaseDetail() {
       sorted.forEach(h => {
         const isPast = h.date < todayStr;
         const badgeMarkup = isPast
-          ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px">Past Hearing</span>`
+          ? `<span class="badge" style="background:rgba(255,255,200,0.06);color:var(--text-dim);font-size:9.5px">Past Hearing</span>`
           : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px">Upcoming Hearing</span>`;
 
         hHtml += `
@@ -1081,17 +1081,17 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📥 Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📤 Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px">📋 Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
   }
@@ -1206,7 +1206,7 @@ function openProfile(id) {
 }
 
 function openCase(id) {
-  caseDetailOrigin = currentView; // Tracks exact origin: dashboard, allcases, or profileDetail
+  caseDetailOrigin = currentView;
   selCase = cases.find(c => c.id === id);
   if (!selCase) return;
   const p = profiles.find(x => x.id === selCase.profileId);
@@ -1775,7 +1775,7 @@ async function connectDriveFromSettings() {
   if (btnText) btnText.textContent = "Connecting...";
 
   try {
-    await promptDriveAuth();
+    await promptDriveAuth(true);
     showToast("Google Drive connected successfully!");
     renderMyProfile();
     updateWorkspaceStatus(false);
@@ -2068,6 +2068,11 @@ async function executeDeleteAccountWipe() {
       await dbDeleteProfile(myProf.id).catch(() => {});
     }
 
+    // Explicitly delete user's Google token on account deletion
+    if (typeof clearPersistedToken === "function") {
+      clearPersistedToken(u.uid);
+    }
+
     showToast("Deleting security credential...");
     await window._fbDeleteUser(u);
     
@@ -2086,13 +2091,16 @@ async function executeDeleteAccountWipe() {
 window.confirmDeleteUserAccount = confirmDeleteUserAccount;
 window.executeDeleteAccountWipe = executeDeleteAccountWipe;
 
+// ═══════════════════════════════════════════════════════════════
+//  SIGN OUT: PRESERVES DRIVE TOKEN UNDER USER-SCOPED STORAGE
+// ═══════════════════════════════════════════════════════════════
 async function handleLogout() {
   try {
     if (typeof dbUnsubscribe === "function") dbUnsubscribe();
     if (window._fbSignOut) {
-      await window._fbSignOut(window._auth);
-      clearPersistedToken();
+      // Sign out from Firebase without clearing the attorney's user-scoped Google authorization
       sessionStorage.removeItem("simando_2fa_verified");
+      await window._fbSignOut(window._auth);
       window.location.replace("login.html");
     }
   } catch (err) {
@@ -2288,9 +2296,6 @@ async function fetchAndRenderGoogleCalendarEvents() {
     console.error("fetchAndRenderGoogleCalendarEvents error:", err);
     
     if (err.status === 401) {
-      if (typeof clearPersistedToken === "function") {
-        clearPersistedToken();
-      }
       fetchAndRenderGoogleCalendarEvents();
       return;
     }
