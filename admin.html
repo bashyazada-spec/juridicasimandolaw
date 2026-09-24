@@ -9,6 +9,8 @@
 <script src="js/redirect.js"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 <link rel="stylesheet" href="css/style.css"/>
 <script type="module" src="js/firebase-init.js"></script>
 
@@ -80,10 +82,10 @@
     </div>
     <div style="flex:1">
       <div class="nav-section">Controls</div>
-      <button class="nav-btn active">👥&nbsp;&nbsp;Attorney Directory</button>
+      <button class="nav-btn active"><i class="bi bi-people-fill" style="color:var(--gold);margin-right:8px"></i> Attorney Directory</button>
     </div>
     <div class="sidebar-footer">
-      <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:12px;color:var(--gold-light)">↩ Return to CMS</a>
+      <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:12px;color:var(--gold-light)"><i class="bi bi-arrow-return-left"></i> Return to CMS</a>
       Simando Law Admin v2.0
     </div>
   </div>
@@ -98,7 +100,7 @@
           <div class="page-title">Attorney Directory</div>
           <div class="page-sub" id="admin-directory-sub">Managing firm access profiles &amp; administrative credentials</div>
         </div>
-        <button class="btn btn-primary" onclick="openCreateModal()">+ Create Account</button>
+        <button class="btn btn-primary" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
       </div>
       <div class="card">
         <div style="overflow-x:auto">
@@ -128,7 +130,7 @@
 <div id="create-modal" class="modal-overlay hidden" style="z-index: 10000;">
   <div class="modal-box" style="max-width: 480px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-      👤 Create New Account
+      <i class="bi bi-person-plus-fill" style="color:var(--gold)"></i> Create New Account
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px;line-height:1.5">
       Register a new associate's login credentials and initialize their attorney profile.
@@ -159,7 +161,7 @@
     </div>
     <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
-      <button class="btn btn-primary" id="btn-create-submit">Create Account</button>
+      <button class="btn btn-primary" id="btn-create-submit"><i class="bi bi-check-lg"></i> Create Account</button>
     </div>
   </div>
 </div>
@@ -168,7 +170,7 @@
 <div id="edit-modal" class="modal-overlay hidden" style="z-index: 10001;">
   <div class="modal-box" style="max-width: 500px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-      ✏️ Edit Attorney Account
+      <i class="bi bi-pencil-square" style="color:var(--gold)"></i> Edit Attorney Account
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px;line-height:1.5">
       Update profile information, contact details, role privileges, and security settings.
@@ -207,25 +209,25 @@
       <!-- Password Recovery Tool -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:12px;font-weight:700;color:var(--text)">Password Recovery</div>
-          <div style="font-size:11px;color:var(--text-dim)">Send reset email or set temporary password</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-key-fill" style="color:var(--gold)"></i> Password Recovery</div>
+          <div style="font-size:11px;color:var(--text-dim)">Send password reset email to user</div>
         </div>
-        <button class="btn btn-secondary btn-sm" type="button" onclick="adminSendPasswordReset()">Send Reset Email</button>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="adminSendPasswordReset()"><i class="bi bi-envelope"></i> Send Reset Email</button>
       </div>
 
       <!-- 2FA Administration -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:12px;font-weight:700;color:var(--text)">Two-Factor Security (2FA)</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-shield-lock-fill" style="color:var(--gold)"></i> Two-Factor Security (2FA)</div>
           <div id="edit-2fa-status-desc" style="font-size:11px;color:var(--text-dim)">Checking 2FA status...</div>
         </div>
-        <button id="btn-admin-reset-2fa" class="btn btn-danger btn-sm" type="button" onclick="adminResetUser2FA()" style="display:none">Reset 2FA</button>
+        <button id="btn-admin-reset-2fa" class="btn btn-danger btn-sm" type="button" onclick="adminResetUser2FA()" style="display:none"><i class="bi bi-arrow-counterclockwise"></i> Reset 2FA</button>
       </div>
     </div>
 
     <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeAdminEditModal()">Cancel</button>
-      <button class="btn btn-primary" id="btn-edit-submit" onclick="saveAdminProfileEdit()">Save Changes</button>
+      <button class="btn btn-primary" id="btn-edit-submit" onclick="saveAdminProfileEdit()"><i class="bi bi-check-lg"></i> Save Changes</button>
     </div>
   </div>
 </div>
@@ -255,20 +257,19 @@
   let db, auth;
   let adminProfiles = [];
 
-  // SPECIFIC DOMAIN VALIDATOR (Requires @gmail.com or @outlook.com)
   function isValidEmail(email) {
     return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
   }
 
   function isValidMobile(num) {
-    if (!num) return true; // optional unless filled
+    if (!num) return true;
     const cleaned = num.replace(/\D/g, "");
     return cleaned.length === 11;
   }
 
   function bounceUser(msg) {
     const el = document.getElementById("gate-message");
-    if (el) el.innerHTML = `<span style="color:var(--red)">❌ ${msg}</span><br><br><a href="index.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
+    if (el) el.innerHTML = `<span style="color:var(--red)"><i class="bi bi-x-circle-fill"></i> ${msg}</span><br><br><a href="index.html" target="_self" style="color:var(--gold);text-decoration:underline;font-size:12px">Return to Case Manager</a>`;
     showToast(msg, "error");
     setTimeout(() => { window.location.replace("index.html"); }, 2800);
   }
@@ -385,24 +386,24 @@
           </td>
           <td>${escHtml(p.email || "N/A")}</td>
           <td>
-            <span style="font-size:12px;font-weight:700;color:${isAdminProfile ? 'var(--gold)' : 'var(--text)'}">
-              ${isAdminProfile ? "Firm Administrator" : escHtml(p.role || "Attorney")}
+            <span style="font-size:12px;font-weight:700;color:${isAdminProfile ? 'var(--gold)' : 'var(--text)'};display:inline-flex;align-items:center;gap:4px">
+              ${isAdminProfile ? '<i class="bi bi-shield-check"></i> Firm Administrator' : escHtml(p.role || "Attorney")}
             </span>
           </td>
           <td>
             ${p.driveFolderId 
-              ? `<span style="color:var(--green);font-size:12px;font-weight:600">● Connected</span>`
-              : `<span style="color:var(--amber);font-size:12px;font-weight:500">⚠ Not Connected</span>`}
+              ? `<span style="color:var(--green);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-check-circle-fill"></i> Connected</span>`
+              : `<span style="color:var(--amber);font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-exclamation-triangle-fill"></i> Not Connected</span>`}
           </td>
           <td>
             ${is2FA 
-              ? `<span style="color:var(--green);font-size:12px;font-weight:700">Active</span>` 
+              ? `<span style="color:var(--green);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-lock-fill"></i> Active</span>` 
               : `<span style="font-size:12px;color:var(--text-dim)">Disabled</span>`}
           </td>
           <td>
             <div class="action-btn-group">
-              <button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')">✏️ Edit</button>
-              <button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Remove</button>
+              <button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')"><i class="bi bi-pencil-square"></i> Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${p.name.replace(/'/g, "\\'")}')"><i class="bi bi-trash3"></i> Remove</button>
             </div>
           </td>
         </tr>
@@ -428,7 +429,7 @@
     const resetBtn2FA = document.getElementById("btn-admin-reset-2fa");
 
     if (p.twoFactorEnabled) {
-      if (desc2FA) desc2FA.innerHTML = `<span style="color:var(--green);font-weight:600">Active (Authenticator)</span>`;
+      if (desc2FA) desc2FA.innerHTML = `<span style="color:var(--green);font-weight:600"><i class="bi bi-shield-check"></i> Active (Authenticator)</span>`;
       if (resetBtn2FA) resetBtn2FA.style.display = "inline-flex";
     } else {
       if (desc2FA) desc2FA.innerHTML = `Not enabled on this account.`;
@@ -482,7 +483,7 @@
       showToast("Failed to save changes: " + err.message, "error");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Save Changes";
+      btn.innerHTML = `<i class="bi bi-check-lg"></i> Save Changes`;
     }
   };
 
@@ -640,14 +641,13 @@
       showToast(friendlyMsg, "error");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Create Account";
+      btn.innerHTML = `<i class="bi bi-check-lg"></i> Create Account`;
       if (secondaryApp) {
         await deleteApp(secondaryApp).catch(console.error);
       }
     }
   });
 
-  // Ensure contact inputs are strictly digits
   document.getElementById("edit-contact").addEventListener("input", function(e) {
     this.value = this.value.replace(/\D/g, '');
   });
