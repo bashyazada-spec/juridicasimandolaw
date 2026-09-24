@@ -10,6 +10,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
 
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 <link rel="stylesheet" href="css/mobile.css"/>
 <script src="js/redirect.js"></script>
 <script type="module" src="js/firebase-init.js"></script>
@@ -80,21 +82,21 @@
 
     <!-- Chat Icon Trigger -->
     <button onclick="window._chat ? window._chat.toggleDock(event) : null" class="mobile-top-icon-btn" title="Messages" type="button">
-      💬
+      <i class="bi bi-chat-dots-fill" style="color:var(--gold-light)"></i>
       <span id="chat-dock-badge" class="chat-badge hidden" style="position:absolute;top:-2px;right:-4px;font-size:8.5px;padding:2px 4px">0</span>
     </button>
 
     <!-- Notification Bell & Dropdown Widget -->
     <div style="position:relative">
       <button onclick="toggleNotifDropdown()" class="mobile-top-icon-btn" title="Notifications" type="button">
-        🔔
+        <i class="bi bi-bell-fill" style="color:var(--gold-light)"></i>
         <span id="global-notif-badge" class="badge" style="position:absolute;top:-2px;right:-4px;background:var(--red);color:#fff;display:none;padding:2px 5px;font-size:9px;border-radius:10px">0</span>
       </button>
 
       <!-- Dropdown Popup Widget -->
       <div id="notif-dropdown" class="hidden">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2)">
-          <span style="font-size:12px;font-weight:700;color:var(--text)">Notifications</span>
+          <span style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-bell" style="color:var(--gold)"></i> Notifications</span>
           <button onclick="markAllNotificationsAsRead()" style="font-size:10.5px;color:var(--gold);background:none;border:none;cursor:pointer;font-weight:600">Mark all read</button>
         </div>
         <div id="notifications-list" style="overflow-y:auto;max-height:320px;padding:8px"></div>
@@ -110,13 +112,13 @@
 
 <!-- Config warning banner -->
 <div id="config-banner">
-  ⚠️ <strong>Firebase not connected.</strong> Running in local memory mode.
+  <i class="bi bi-exclamation-triangle-fill" style="color:var(--amber);margin-right:6px"></i> <strong>Firebase not connected.</strong> Running in local memory mode.
 </div>
 
 <!-- Universal Action Confirmation Modal (Touch Optimized) -->
 <div id="universal-confirm-modal" class="modal-overlay hidden" style="z-index: 10008;" onclick="if(event.target===this)closeConfirmModal()">
   <div class="modal-box" style="max-width: 440px; text-align: center; padding: 22px 18px;">
-    <div id="ucm-icon" style="font-size: 38px; margin-bottom: 12px; line-height: 1;">⚖️</div>
+    <div id="ucm-icon" style="font-size: 38px; margin-bottom: 12px; line-height: 1; color: var(--gold);"><i class="bi bi-shield-check"></i></div>
     <div id="ucm-title" style="font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px;">Confirm Action</div>
     <div id="ucm-body" style="font-size: 12.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">Are you sure you want to proceed?</div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -129,7 +131,7 @@
 <!-- Discard Case Changes Confirmation Modal -->
 <div id="discard-case-modal" class="modal-overlay hidden" style="z-index: 10010;" onclick="if(event.target===this)cancelDiscardCase()">
   <div class="modal-box" style="max-width: 420px; text-align: center; padding: 20px;">
-    <div style="font-size:36px;margin-bottom:8px">⚠️</div>
+    <div style="font-size:36px;margin-bottom:8px;color:var(--amber)"><i class="bi bi-exclamation-octagon-fill"></i></div>
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Discard Unsaved Changes?</div>
     <div style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin-bottom:18px">
       You have unsaved case information, court hearings, or attached files. Leaving now will discard your progress.
@@ -144,7 +146,7 @@
 <!-- Delete confirm modal -->
 <div id="delete-modal" class="modal-overlay hidden" onclick="if(event.target===this)closeDeleteModal()">
   <div class="modal-box" style="padding:20px">
-    <div style="text-align:center;margin-bottom:8px;font-size:32px">⚠️</div>
+    <div style="text-align:center;margin-bottom:8px;font-size:32px;color:var(--red)"><i class="bi bi-trash3-fill"></i></div>
     <div id="del-title" style="font-size:18px;font-weight:700;color:var(--text);text-align:center;margin-bottom:8px">Delete Case?</div>
     <div id="del-body" style="font-size:13px;color:var(--text-muted);text-align:center;margin-bottom:8px;line-height:1.6">This action cannot be undone.</div>
     <div style="font-size:12px;color:var(--text-dim);text-align:center;margin-bottom:4px">
@@ -167,16 +169,16 @@
   <div class="modal-box" style="max-width: 480px; padding: 18px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
       <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
-        🩺 System Health Check
+        <i class="bi bi-activity" style="color:var(--gold)"></i> System Health Check
       </div>
-      <button onclick="closeDiagnosticModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>
+      <button onclick="closeDiagnosticModal()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer"><i class="bi bi-x-lg"></i></button>
     </div>
 
     <div id="diagnostic-items-list">
       <!-- Network -->
       <div class="diagnostic-item">
         <div class="diagnostic-item-left">
-          <div class="diag-icon">📡</div>
+          <div class="diag-icon" style="color:var(--gold)"><i class="bi bi-broadcast-pin"></i></div>
           <div>
             <div class="diag-name">Network Connection</div>
             <div class="diag-sub" id="diag-network-sub">Active connection detected</div>
@@ -188,7 +190,7 @@
       <!-- Database -->
       <div class="diagnostic-item">
         <div class="diagnostic-item-left">
-          <div class="diag-icon">⚡</div>
+          <div class="diag-icon" style="color:var(--gold)"><i class="bi bi-database-check"></i></div>
           <div>
             <div class="diag-name">Cloud Database Sync</div>
             <div class="diag-sub" id="diag-db-sub">Firestore listeners active</div>
@@ -200,7 +202,7 @@
       <!-- Google Drive -->
       <div class="diagnostic-item">
         <div class="diagnostic-item-left">
-          <div class="diag-icon">☁️</div>
+          <div class="diag-icon" style="color:var(--gold)"><i class="bi bi-cloud-check-fill"></i></div>
           <div>
             <div class="diag-name">Google Drive Storage</div>
             <div class="diag-sub" id="diag-drive-sub">OAuth token active &amp; linked</div>
@@ -211,7 +213,7 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
-      <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)">↻ Re-run Health Check</button>
+      <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)"><i class="bi bi-arrow-clockwise"></i> Re-run Health Check</button>
       <button class="btn btn-ghost btn-sm" onclick="closeDiagnosticModal()">Close</button>
     </div>
   </div>
@@ -220,13 +222,13 @@
 <!-- Google Account Mandatory Connection Modal Popup -->
 <div id="drive-warning-modal" class="modal-overlay hidden" style="z-index: 10003;" onclick="if(event.target===this){closeDriveWarningModal(); navTo('dashboard');}">
   <div class="modal-box" style="max-width: 420px; text-align: center; padding:20px">
-    <div style="font-size:36px;margin-bottom:8px">☁️</div>
+    <div style="font-size:36px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-cloud-arrow-up-fill"></i></div>
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Google Account Required</div>
     <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px">
       A connected Google Account is required to manage cases, store client court documents, and synchronize deadlines. Please authorize your Google Account to proceed.
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-primary" type="button" onclick="closeDriveWarningModal(); navTo('myprofile');">Connect Google Account</button>
+      <button class="btn btn-primary" type="button" onclick="closeDriveWarningModal(); navTo('myprofile');"><i class="bi bi-google"></i> Connect Google Account</button>
       <button class="btn btn-ghost" type="button" onclick="closeDriveWarningModal(); navTo('dashboard');">Cancel</button>
     </div>
   </div>
@@ -236,10 +238,10 @@
 <div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()">
   <div class="modal-box" style="max-width: 520px; padding:20px">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      📅 Set Schedule &amp; Availability
+      <i class="bi bi-calendar2-range-fill" style="color:var(--gold)"></i> Set Schedule &amp; Availability
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
-      Click dates on the calendar below to toggle your availability. <span style="color:var(--red)">Red</span> = Out of Office.
+      Click dates on the calendar below to toggle your availability. <span style="color:var(--red)"><i class="bi bi-dash-circle-fill"></i> Red</span> = Out of Office.
     </div>
     
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
@@ -252,9 +254,9 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="font-size:13px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
           <div style="display:flex;gap:4px">
-            <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="prevModalCalMonth()">◄</button>
+            <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="prevModalCalMonth()"><i class="bi bi-chevron-left"></i></button>
             <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="todayModalCalMonth()">Today</button>
-            <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="nextModalCalMonth()">►</button>
+            <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="nextModalCalMonth()"><i class="bi bi-chevron-right"></i></button>
           </div>
         </div>
         
@@ -272,7 +274,7 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()">Save Schedule</button>
+      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()"><i class="bi bi-check-lg"></i> Save Schedule</button>
       <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
     </div>
   </div>
@@ -283,9 +285,9 @@
   <div class="modal-box" style="max-width: 480px; padding: 20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
       <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px" id="dsm-title">
-        📅 Schedule Details
+        <i class="bi bi-calendar3" style="color:var(--gold)"></i> Schedule Details
       </div>
-      <button onclick="closeDateScheduleModal()" style="font-size:22px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0 4px;line-height:1" title="Close">×</button>
+      <button onclick="closeDateScheduleModal()" style="font-size:18px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:0 4px;line-height:1" title="Close"><i class="bi bi-x-lg"></i></button>
     </div>
 
     <div id="dsm-events-list" style="max-height:340px;overflow-y:auto;padding-right:2px"></div>
@@ -300,7 +302,7 @@
 <div id="tfa-setup-modal" class="modal-overlay hidden" style="z-index: 10007;" onclick="if(event.target===this)closeTwoFactorSetupModal()">
   <div class="modal-box" style="max-width: 440px; padding: 20px; text-align: center;">
     <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">
-      Two-Factor Authentication (2FA)
+      <i class="bi bi-shield-lock-fill" style="color:var(--gold)"></i> Two-Factor Authentication (2FA)
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.4">
       Scan this QR code with <strong>Microsoft Authenticator</strong>, <strong>Google Authenticator</strong>, or <strong>Apple Passwords</strong> on your phone.
@@ -326,7 +328,7 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()">Verify &amp; Activate 2FA</button>
+      <button class="btn btn-primary" onclick="confirmAndEnableTwoFactor()"><i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA</button>
       <button class="btn btn-ghost" onclick="closeTwoFactorSetupModal()">Cancel</button>
     </div>
   </div>
@@ -336,15 +338,15 @@
 <div id="share-modal" class="modal-overlay hidden" style="z-index:10000" onclick="if(event.target===this)closeShareModal()">
   <div class="modal-box" style="max-width:480px">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
-      👥 Share Case Access
+      <i class="bi bi-people-fill" style="color:var(--gold)"></i> Share Case Access
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Select associate attorneys and assign their access level (Viewer 👁 or Editor ✏️).
+      Select associate attorneys and assign their access permissions.
     </div>
     <div id="share-modal-list" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:20px;padding-right:4px"></div>
     <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeShareModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveShareSettings()">Save Permissions</button>
+      <button class="btn btn-primary" onclick="saveShareSettings()"><i class="bi bi-check2"></i> Save Permissions</button>
     </div>
   </div>
 </div>
@@ -354,8 +356,8 @@
   <div style="position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.5);backdrop-filter:blur(8px)">
     <div id="fpm-title" style="font-size:14px;font-weight:600;color:#fff;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
     <div style="display:flex;gap:10px;align-items:center">
-      <a id="fpm-download" download style="font-size:12px;color:#c9a84c;text-decoration:none;padding:6px 14px;border:1px solid #c9a84c;border-radius:6px;font-weight:600">⬇ Download</a>
-      <button onclick="closeFilePreview()" style="background:transparent;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0 4px">×</button>
+      <a id="fpm-download" download style="font-size:12px;color:#c9a84c;text-decoration:none;padding:6px 14px;border:1px solid #c9a84c;border-radius:6px;font-weight:600"><i class="bi bi-download"></i> Download</a>
+      <button onclick="closeFilePreview()" style="background:transparent;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0 4px"><i class="bi bi-x-lg"></i></button>
     </div>
   </div>
   <div id="fpm-body" style="margin-top:56px;width:100%;height:calc(100vh - 56px);overflow:auto;display:flex;align-items:center;justify-content:center"></div>
@@ -365,7 +367,7 @@
 <div id="calendar-event-modal" class="modal-overlay hidden" style="z-index: 10001;" onclick="if(event.target===this)closeCalendarModal()">
   <div class="modal-box" style="max-width: 500px;">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px" id="cem-title">
-      📅 Event Details
+      <i class="bi bi-calendar-event" style="color:var(--gold)"></i> Event Details
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
       <div>
@@ -383,7 +385,7 @@
     </div>
     <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeCalendarModal()">Close</button>
-      <a id="cem-link" class="btn btn-primary" href="#" target="_blank">Open in Google Calendar</a>
+      <a id="cem-link" class="btn btn-primary" href="#" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Open in Google Calendar</a>
     </div>
   </div>
 </div>
@@ -392,7 +394,7 @@
 <div id="appointment-modal" class="modal-overlay hidden" style="z-index:10002;" onclick="if(event.target===this)closeAppointmentModal()">
   <div class="modal-box" style="max-width:460px">
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px">
-      🤝 Request Appointment Date
+      <i class="bi bi-calendar-plus-fill" style="color:var(--gold)"></i> Request Appointment Date
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:18px;line-height:1.5" id="appointment-modal-sub">
       Propose a schedule date with attorney
@@ -419,7 +421,7 @@
     </div>
     <div style="display:flex;gap:12px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeAppointmentModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAppointmentRequest()">Send Request</button>
+      <button class="btn btn-primary" onclick="submitAppointmentRequest()"><i class="bi bi-send-fill"></i> Send Request</button>
     </div>
   </div>
 </div>
@@ -435,7 +437,7 @@
           <div class="page-title">Command Center</div>
           <div class="page-sub" id="today-date"></div>
         </div>
-        <button class="btn btn-primary mt-8" onclick="openAddCase()">+ Quick Add Case</button>
+        <button class="btn btn-primary mt-8" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> Quick Add Case</button>
       </div>
 
       <!-- Stat Cards -->
@@ -462,9 +464,9 @@
         <div>
           <div class="card" style="padding:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-              <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">📁 Recent Active Cases</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-folder-fill" style="color:var(--gold)"></i> Recent Active Cases</div>
               <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11px;padding:3px 8px;width:auto !important;border:1px solid var(--border)">
-                ↕ Expand
+                <i class="bi bi-arrows-expand"></i> Expand
               </button>
             </div>
             <div id="dash-cases"></div>
@@ -473,7 +475,7 @@
         </div>
 
         <div class="card mt-16" style="padding:14px">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">👥 Attorney Roster</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px"><i class="bi bi-people-fill" style="color:var(--gold)"></i> Attorney Roster</div>
           <input class="field-input mb-12" id="dash-profile-search" placeholder="Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px"/>
           <div id="dash-profiles"></div>
         </div>
@@ -487,12 +489,12 @@
           <div class="page-title">Firm Schedule</div>
           <div class="page-sub">Tap dates with colored indicators to view details</div>
         </div>
-        <button class="btn btn-primary mt-8" onclick="openBusyModal()">📅 Set Availability</button>
+        <button class="btn btn-primary mt-8" onclick="openBusyModal()"><i class="bi bi-calendar-event"></i> Set Availability</button>
       </div>
 
       <div class="schedule-filter-bar">
         <div class="schedule-filter-info">
-          <div class="schedule-filter-icon">👥</div>
+          <div class="schedule-filter-icon"><i class="bi bi-people-fill" style="color:var(--gold)"></i></div>
           <div>
             <div class="schedule-filter-label">Filter Calendar View</div>
             <div class="schedule-filter-sub">Select attorney or firm overview</div>
@@ -509,9 +511,9 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <div style="font-size:15px;font-weight:700;color:var(--text)" id="cal-month-title">Month</div>
           <div style="display:flex;gap:4px">
-            <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()">◄</button>
+            <button class="btn btn-secondary btn-sm" onclick="prevCalMonth()"><i class="bi bi-chevron-left"></i></button>
             <button class="btn btn-ghost btn-sm" onclick="todayCalMonth()">Today</button>
-            <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()">►</button>
+            <button class="btn btn-secondary btn-sm" onclick="nextCalMonth()"><i class="bi bi-chevron-right"></i></button>
           </div>
         </div>
         <div class="cal-grid" id="calendar-grid-container" style="gap:2px"></div>
@@ -525,7 +527,7 @@
           <div class="page-title">All Cases</div>
           <div class="page-sub" id="allcases-count"></div>
         </div>
-        <button class="btn btn-primary mt-8" onclick="openAddCase()">+ New Case</button>
+        <button class="btn btn-primary mt-8" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> New Case</button>
       </div>
 
       <div class="card mb-12" style="padding:12px">
@@ -558,13 +560,13 @@
           <div class="page-title">Firm Drive</div>
           <div class="page-sub">Direct, secure replica of system Drive</div>
         </div>
-        <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm mt-8" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px">📁 Open in Google Drive ↗</a>
+        <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm mt-8" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px"><i class="bi bi-google"></i> Open in Google Drive <i class="bi bi-box-arrow-up-right"></i></a>
       </div>
       <div class="card" style="padding:14px">
         <div id="mydrive-breadcrumbs" class="mb-12"></div>
         <div id="mydrive-explorer-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
         <div id="mydrive-empty-state" class="empty-state hidden">
-          <div class="empty-state-icon">📁</div>
+          <div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div>
           <div style="font-size:13px">This folder is empty.</div>
         </div>
       </div>
@@ -579,8 +581,8 @@
             <div class="page-sub" id="profiles-count"></div>
           </div>
           <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px">
-            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">🔲 Tiles</button>
-            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important">☰ List</button>
+            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important"><i class="bi bi-grid-fill"></i> Tiles</button>
+            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="width:auto !important;padding:4px 8px !important;font-size:11px !important"><i class="bi bi-list-ul"></i> List</button>
           </div>
         </div>
       </div>
@@ -589,11 +591,11 @@
 
     <!-- ── PROFILE DETAIL ── -->
     <div id="view-profileDetail" class="view hidden">
-      <button class="btn btn-ghost btn-sm mb-12" onclick="navTo('profiles')">← Back to Attorneys</button>
+      <button class="btn btn-ghost btn-sm mb-12" onclick="navTo('profiles')"><i class="bi bi-arrow-left"></i> Back to Attorneys</button>
       <div class="card mb-12" id="profile-header-card" style="padding:16px"></div>
       <div class="grid4 mb-12" style="grid-template-columns:1fr 1fr !important; gap:8px !important;" id="profile-stats-row"></div>
       <div id="profile-restricted-notice" class="card mb-12" style="display:none;text-align:center;padding:24px;border-color:var(--border)">
-        <span style="font-size:28px">🔒</span>
+        <span style="font-size:28px;color:var(--amber)"><i class="bi bi-lock-fill"></i></span>
         <div style="font-size:15px;font-weight:700;color:var(--text);margin-top:8px">Access Restricted</div>
         <div style="font-size:12px;color:var(--text-dim);margin-top:4px">For privacy reasons, you can only access documents and cases belonging to your own account.</div>
       </div>
@@ -624,17 +626,17 @@
     <!-- ── PROFILE FORM (CREATE / EDIT) ── -->
     <div id="view-profileForm" class="view hidden">
       <div class="flex-center gap-10 mb-16">
-        <button class="btn btn-ghost btn-sm" id="pf-back-btn" onclick="navTo('profiles')">← Cancel</button>
+        <button class="btn btn-ghost btn-sm" id="pf-back-btn" onclick="navTo('profiles')"><i class="bi bi-arrow-left"></i> Cancel</button>
         <div style="font-size:18px;font-weight:700;color:var(--text)" id="pf-title">New Attorney Profile</div>
       </div>
       <div class="card" style="padding:16px">
         <div id="pf-drive-section" style="margin-bottom:16px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <span style="font-size:12px;font-weight:600;color:var(--text)">Google Drive Integration *</span>
-            <span id="pf-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-google" style="color:var(--gold)"></i> Google Drive Integration *</span>
+            <span id="pf-drive-status" class="drive-status-chip disconnected"><i class="bi bi-circle-fill"></i> Not Connected</span>
           </div>
           <button type="button" class="gdrive-btn" id="pf-connect-drive-btn" onclick="connectDriveForProfile()" style="width:100%;justify-content:center;padding:10px">
-            <span id="pf-connect-drive-text">Connect Google Drive Account</span>
+            <i class="bi bi-google"></i> <span id="pf-connect-drive-text">Connect Google Drive Account</span>
           </button>
           <div id="pf-drive-error" class="field-err hidden" style="margin-top:6px"></div>
         </div>
@@ -655,7 +657,7 @@
           <input class="field-input mb-16" id="pf-email" placeholder="attorney@gmail.com" type="email"/>
           
           <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()"><span id="pf-save-btn-text">Create Profile</span></button>
+            <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()"><i class="bi bi-check-lg"></i> <span id="pf-save-btn-text">Create Profile</span></button>
             <button class="btn btn-ghost" id="pf-cancel-btn" onclick="navTo('profiles')">Cancel</button>
           </div>
         </div>
@@ -665,7 +667,7 @@
     <!-- ── CASE FORM (CREATE / EDIT) ── -->
     <div id="view-caseForm" class="view hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <button class="btn btn-ghost btn-sm" id="cf-back-btn" onclick="handleCaseCancelOrExit()">← Cancel</button>
+        <button class="btn btn-ghost btn-sm" id="cf-back-btn" onclick="handleCaseCancelOrExit()"><i class="bi bi-arrow-left"></i> Cancel</button>
         <div style="font-size:18px;font-weight:700;color:var(--text)" id="cf-title">New Case</div>
         <div></div>
       </div>
@@ -702,14 +704,16 @@
 
         <!-- Parties Card -->
         <div class="card mb-12" style="background:var(--surface2);padding:14px">
-          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Parties Involved *</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <i class="bi bi-people-fill" style="color:var(--gold)"></i> Parties Involved *
+          </div>
           <input type="hidden" id="cf-parties"/>
           
           <div class="mb-12">
             <label class="field-label" id="cf-party-a-label">Petitioner / Plaintiff</label>
             <div style="display:flex;gap:6px">
               <input class="field-input" id="cf-petitioner-input" placeholder="Name..." onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('petitioner');}"/>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('petitioner')">+</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('petitioner')"><i class="bi bi-plus-lg"></i></button>
             </div>
             <div id="cf-petitioners-list" style="margin-top:6px"></div>
           </div>
@@ -718,7 +722,7 @@
             <label class="field-label" id="cf-party-b-label">Respondent / Defendant</label>
             <div style="display:flex;gap:6px">
               <input class="field-input" id="cf-respondent-input" placeholder="Name..." onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('respondent');}"/>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('respondent')">+</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addParty('respondent')"><i class="bi bi-plus-lg"></i></button>
             </div>
             <div id="cf-respondents-list" style="margin-top:6px"></div>
           </div>
@@ -740,7 +744,7 @@
         <!-- 2. MANDATORY HEARINGS & HISTORY TRACKER -->
         <div class="card mb-12" style="background:var(--surface2);padding:14px;border:1.5px solid var(--gold-border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div style="font-size:12px;font-weight:700;color:var(--text)">⚖️ Hearings &amp; History *</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Hearings &amp; History *</div>
             <span id="cf-hearing-status-badge" class="badge" style="background:rgba(248,113,113,0.15);color:var(--red);font-size:9.5px">REQUIRED: 0</span>
           </div>
           <div style="font-size:10.5px;color:var(--text-dim);margin-bottom:8px">At least 1 hearing is required. All past appearances stay logged.</div>
@@ -751,7 +755,7 @@
 
           <!-- Sub-form to Add Hearing -->
           <div style="background:var(--surface3);border:1px dashed var(--gold-border);border-radius:9px;padding:10px">
-            <div style="font-size:11px;font-weight:700;color:var(--gold-light);margin-bottom:6px">+ Add Hearing Appearance</div>
+            <div style="font-size:11px;font-weight:700;color:var(--gold-light);margin-bottom:6px"><i class="bi bi-plus-circle"></i> Add Hearing Appearance</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" class="mb-8">
               <div>
                 <label class="field-label">Date *</label>
@@ -777,7 +781,7 @@
             <label class="field-label">Remarks / Notes</label>
             <input type="text" class="field-input mb-8" id="cf-new-hearing-notes" placeholder="e.g. Witness presented, reset to next month"/>
 
-            <button type="button" class="btn btn-primary btn-sm" onclick="addCaseHearing()" style="width:100%!important">+ Log Hearing Date</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="addCaseHearing()" style="width:100%!important"><i class="bi bi-plus-lg"></i> Log Hearing Date</button>
           </div>
         </div>
 
@@ -788,21 +792,21 @@
         <!-- Upload Control -->
         <div class="card mb-16" style="background:var(--surface2);padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-size:12px;font-weight:700;color:var(--text)">Attach Documents</span>
+            <span style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-paperclip" style="color:var(--gold)"></i> Attach Documents</span>
             <span id="drive-status" style="font-size:10px;color:var(--text-dim)"></span>
           </div>
           
           <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
             <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer">
-              <input type="radio" name="cf-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> 📥 Inbound
+              <input type="radio" name="cf-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> <i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound
             </label>
             <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer">
-              <input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold)"/> 📤 Outbound
+              <input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold)"/> <i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound
             </label>
           </div>
 
           <div class="upload-area" onclick="triggerLocalAttach()" style="padding:14px">
-            <div style="font-size:20px;margin-bottom:2px">📁</div>
+            <div style="font-size:20px;margin-bottom:2px;color:var(--gold)"><i class="bi bi-cloud-arrow-up"></i></div>
             <div style="font-size:11px">Click to select files</div>
           </div>
           <input type="file" id="local-file-input" multiple style="display:none" onchange="handleLocalAttach(event)"/>
@@ -811,7 +815,7 @@
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="btn btn-primary" id="cf-save-btn" onclick="saveCase()">Add Case</button>
+          <button class="btn btn-primary" id="cf-save-btn" onclick="saveCase()"><i class="bi bi-check2-circle"></i> Add Case</button>
           <button class="btn btn-ghost" id="cf-cancel-btn" onclick="handleCaseCancelOrExit()">Cancel</button>
         </div>
       </div>
@@ -820,7 +824,7 @@
     <!-- ── CASE DETAIL ── -->
     <div id="view-caseDetail" class="view hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px">
-        <button class="btn btn-ghost btn-sm" id="cd-back-btn" onclick="handleCaseDetailBack()">← Back</button>
+        <button class="btn btn-ghost btn-sm" id="cd-back-btn" onclick="handleCaseDetailBack()"><i class="bi bi-arrow-left"></i> Back</button>
         <div id="cd-action-buttons-wrap" style="display:flex;gap:6px;align-items:center"></div>
       </div>
       <div style="font-weight:700;font-size:20px;color:var(--text);margin-bottom:8px" id="cd-title"></div>
@@ -841,14 +845,14 @@
       <!-- Admin Console Card -->
       <div class="card mb-16" id="mobile-admin-portal-card" style="display:none;background:rgba(201,168,76,0.08);border:1.5px solid var(--gold);padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:15px;font-weight:700;color:var(--gold)">Admin Control Console</div>
+          <div style="font-size:15px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:6px"><i class="bi bi-shield-lock-fill"></i> Admin Control Console</div>
           <span class="badge" style="background:var(--gold);color:#060c13;font-weight:700;font-size:10px">ADMIN ACCESS</span>
         </div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.4">
           Manage firm attorney accounts, edit designations, grant admin privileges, and manage security settings.
         </div>
         <button class="btn btn-primary" onclick="window.location.assign('admin.html')" style="width:100%;font-weight:700">
-          Open Admin Console →
+          Open Admin Console <i class="bi bi-arrow-right"></i>
         </button>
       </div>
 
@@ -858,8 +862,8 @@
           <div style="font-size:13px;font-weight:700;color:var(--text)">Display Mode</div>
           <div class="theme-switch" onclick="toggleTheme()" title="Toggle dark/light mode" role="button" aria-label="Toggle theme">
             <div class="theme-switch-track">
-              <span class="theme-switch-icon theme-switch-moon">🌙</span>
-              <span class="theme-switch-icon theme-switch-sun">☀️</span>
+              <span class="theme-switch-icon theme-switch-moon"><i class="bi bi-moon-stars-fill" style="color:var(--gold)"></i></span>
+              <span class="theme-switch-icon theme-switch-sun"><i class="bi bi-sun-fill" style="color:var(--amber)"></i></span>
               <div class="theme-switch-thumb"></div>
             </div>
           </div>
@@ -870,17 +874,17 @@
       <div class="card mb-16" style="padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--gold)">🩺 System Health &amp; Diagnostics</div>
+            <div style="font-size:13px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:6px"><i class="bi bi-activity"></i> System Health Check</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Test network, database, &amp; Drive storage</div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="openDiagnosticModal()" style="width:auto !important;padding:5px 12px !important">Run Check</button>
+          <button class="btn btn-secondary btn-sm" onclick="openDiagnosticModal()" style="width:auto !important;padding:5px 12px !important"><i class="bi bi-wrench"></i> Run Check</button>
         </div>
       </div>
 
       <!-- Profile Details Card -->
       <div class="card mb-16" style="padding:18px;border:1.5px solid var(--gold-border)">
         <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:6px">
-          👤 Profile Details
+          <i class="bi bi-person-circle"></i> Profile Details
         </div>
         <label class="field-label" id="lbl-setting-name" style="color:var(--gold-light);font-weight:700">Complete Name / Display Name *</label>
         <input class="field-input mb-12" id="setting-name" placeholder="e.g. Atty. Maria Garcia" style="border-color:var(--gold-border);font-weight:600"/>
@@ -894,7 +898,7 @@
         <label class="field-label">Attorney Profile Photo</label>
         <div id="setting-photo-upload-area" style="margin-top:4px;margin-bottom:16px">
           <div id="setting-photo-dropzone" onclick="document.getElementById('setting-photo-input').click()" style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--bg)">
-            <div style="font-size:20px;margin-bottom:4px">📷</div>
+            <div style="font-size:20px;margin-bottom:4px;color:var(--gold)"><i class="bi bi-camera-fill"></i></div>
             <div style="font-size:12px;color:var(--text-muted);font-weight:500">Click to upload photo</div>
             <div style="font-size:10px;color:var(--text-dim);margin-top:2px">Max size: 2MB</div>
           </div>
@@ -906,72 +910,65 @@
               <div id="setting-name-preview" style="font-size:13px;font-weight:600;color:var(--text)">Name</div>
               <div id="setting-role-preview" style="font-size:11px;color:var(--text-dim)">Role</div>
             </div>
-            <button onclick="removeSettingsPhoto()" class="btn btn-ghost btn-sm" style="padding:3px 6px;font-size:10px">Remove</button>
+            <button onclick="removeSettingsPhoto()" class="btn btn-ghost btn-sm" style="padding:3px 6px;font-size:10px"><i class="bi bi-x-circle"></i> Remove</button>
           </div>
         </div>
 
         <div style="display:flex;justify-content:center;margin-top:8px">
-          <button class="btn btn-primary" onclick="saveUserSettings()" style="width:100%">Save Profile Settings</button>
+          <button class="btn btn-primary" onclick="saveUserSettings()" style="width:100%"><i class="bi bi-check2"></i> Save Profile Settings</button>
         </div>
       </div>
 
       <!-- Suggestion & Legal Policy Card -->
       <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px">⚖️ Firm Guidelines &amp; Support</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px"><i class="bi bi-shield-shaded"></i> Firm Guidelines &amp; Support</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
-            💬 Suggest / Report Issue ↗
+            <i class="bi bi-chat-square-quote-fill" style="color:var(--gold)"></i> Suggest / Report Issue <i class="bi bi-box-arrow-up-right"></i>
           </a>
           <div style="display:flex;gap:8px">
-            <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Privacy Policy</a>
-            <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Terms</a>
+            <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center"><i class="bi bi-file-earmark-lock"></i> Privacy Policy</a>
+            <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center"><i class="bi bi-file-earmark-text"></i> Terms</a>
           </div>
         </div>
       </div>
 
       <!-- Google Drive Connection Card -->
       <div class="card mb-16" style="padding:18px;border: 1.5px solid var(--gold-border); background: linear-gradient(180deg, var(--surface) 0%, rgba(201,165,92,0.04) 100%);">
-        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px">☁️ Google Drive Connection</div>
+        <div style="font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="bi bi-google"></i> Google Drive Connection</div>
         <div style="font-size:12.5px;color:var(--text-muted);line-height:1.4;margin-bottom:14px">
           Connect your Google Drive account to enable document uploads, file storage, and profile photo syncing.
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <span style="font-size:12.5px;font-weight:600">Status:</span>
-          <span id="settings-drive-status" class="drive-status-chip disconnected">● Not Connected</span>
+          <span id="settings-drive-status" class="drive-status-chip disconnected"><i class="bi bi-circle-fill"></i> Not Connected</span>
         </div>
         
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
           <button class="gdrive-btn gdrive-highlight-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()" style="flex:1;justify-content:center;padding:11px">
-            <svg width="18" height="18" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-              <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-              <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-              <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-              <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-              <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-            </svg>
+            <i class="bi bi-google"></i>
             <span id="settings-connect-drive-text">Connect Google Account</span>
           </button>
           <button class="btn btn-danger btn-sm hidden" id="settings-disconnect-drive-btn" onclick="disconnectDriveAccount()" style="width:auto !important;padding:11px 14px !important">
-            Disconnect
+            <i class="bi bi-x-circle"></i> Disconnect
           </button>
         </div>
       </div>
 
       <!-- Two-Factor Authentication Security Card -->
       <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px">Two-Factor Authentication (2FA)</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="bi bi-shield-lock-fill"></i> Two-Factor Authentication (2FA)</div>
         <div style="font-size:12px;color:var(--text-muted);line-height:1.4;margin-bottom:12px">
           Secure case documents using Microsoft Authenticator or Google Authenticator.
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <span style="font-size:12px;font-weight:600">Status:</span>
-          <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)">● Not Enabled</span>
+          <span id="setting-2fa-status-badge" class="badge" style="background:rgba(251,191,36,0.15);color:var(--amber)"><i class="bi bi-circle-fill" style="font-size:8px"></i> Not Enabled</span>
         </div>
         
         <div style="display:flex;justify-content:center">
           <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()" style="min-width:200px;width:auto !important;justify-content:center;padding:9px 18px">
-            Configure Authenticator
+            <i class="bi bi-qr-code-scan"></i> Configure Authenticator
           </button>
         </div>
         <div id="setting-2fa-backup-wrap" style="display:none;margin-top:10px;text-align:center">
@@ -981,7 +978,7 @@
 
       <!-- Login & Security Card -->
       <div class="card mb-16" style="padding:16px">
-        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px">🔒 Login &amp; Security</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:6px"><i class="bi bi-key-fill"></i> Login &amp; Security</div>
         
         <label class="field-label">Email Address (@gmail.com or @outlook.com)</label>
         <input class="field-input mb-12" id="setting-email" placeholder="attorney@gmail.com or @outlook.com" type="email"/>
@@ -991,10 +988,10 @@
         
         <div id="password-requirements" style="display:none;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:8px">
           <div style="font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase">Password Requirements</div>
-          <div id="req-length" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> Min. 6 characters</div>
-          <div id="req-upper" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> One uppercase letter (A-Z)</div>
-          <div id="req-number" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> One number (0-9)</div>
-          <div id="req-special" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon">❌</span> One special character</div>
+          <div id="req-length" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> Min. 6 characters</div>
+          <div id="req-upper" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> One uppercase letter (A-Z)</div>
+          <div id="req-number" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> One number (0-9)</div>
+          <div id="req-special" style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> One special character</div>
         </div>
 
         <div id="setting-reauth-panel" style="display:none;background:rgba(201,168,76,0.06);border:1px solid var(--gold-border);border-radius:10px;padding:12px;margin-bottom:12px">
@@ -1002,13 +999,13 @@
           <input type="password" class="field-input" id="setting-current-password" placeholder="Current Password"/>
         </div>
 
-        <button class="btn btn-secondary" onclick="saveSecuritySettings()" style="width:100%">Update Credentials</button>
+        <button class="btn btn-secondary" onclick="saveSecuritySettings()" style="width:100%"><i class="bi bi-shield-check"></i> Update Credentials</button>
       </div>
 
       <!-- Sign Out -->
       <div class="card" style="padding:16px">
         <button class="btn btn-danger" onclick="handleLogout()" style="width:100%;gap:8px">
-          <span style="font-size:15px">⎋</span> Sign Out
+          <i class="bi bi-box-arrow-right" style="font-size:15px"></i> Sign Out
         </button>
       </div>
     </div>
@@ -1019,23 +1016,23 @@
 <!-- Fixed Bottom Navigation Bar -->
 <div class="mobile-bottom-nav">
   <button class="mobile-nav-item active" data-nav="dashboard" onclick="navTo('dashboard')">
-    <span class="mobile-nav-item-icon">🏛️</span>
+    <span class="mobile-nav-item-icon"><i class="bi bi-columns-gap"></i></span>
     <span>Home</span>
   </button>
   <button class="mobile-nav-item" data-nav="allcases" onclick="navTo('allcases')">
-    <span class="mobile-nav-item-icon">📋</span>
+    <span class="mobile-nav-item-icon"><i class="bi bi-briefcase"></i></span>
     <span>Cases</span>
   </button>
   <button class="mobile-nav-item" data-nav="calendar" onclick="navTo('calendar')">
-    <span class="mobile-nav-item-icon">📅</span>
+    <span class="mobile-nav-item-icon"><i class="bi bi-calendar3"></i></span>
     <span>Schedule</span>
   </button>
   <button class="mobile-nav-item" data-nav="mydrive" onclick="navTo('mydrive')">
-    <span class="mobile-nav-item-icon">📁</span>
+    <span class="mobile-nav-item-icon"><i class="bi bi-folder2-open"></i></span>
     <span>Drive</span>
   </button>
   <button class="mobile-nav-item" data-nav="myprofile" onclick="navTo('myprofile')">
-    <span class="mobile-nav-item-icon">⚙️</span>
+    <span class="mobile-nav-item-icon"><i class="bi bi-gear"></i></span>
     <span>Settings</span>
   </button>
 </div>
