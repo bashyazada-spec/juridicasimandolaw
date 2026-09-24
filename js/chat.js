@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — MESSENGER-STYLE CHAT DOCK & CONVERSATIONS
-//  Clean Floating Trigger on Desktop · Top Header Bar on Mobile
+//  Styled with Bootstrap Icons · Floating Dock & Top Header Bar
 //  Mutually Exclusive with Notification Dropdown Popup
 // ═══════════════════════════════════════════════════════════════
 
@@ -66,7 +66,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  UI BUILD — EXPANDABLE PANEL (TRIGGERED FROM TOP BAR ICON)
+  //  UI BUILD — EXPANDABLE PANEL WITH BOOTSTRAP ICONS
   // ═══════════════════════════════════════════════════════════
   function buildUI() {
     // Chat Panel (Expanded State)
@@ -77,11 +77,11 @@
       <!-- Header -->
       <div class="chat-header" id="chat-panel-header" onclick="window._chat.toggleDock(event)" style="cursor:pointer;" title="Click header to minimize">
         <div class="chat-header-left" style="pointer-events:none;">
-          <span class="chat-header-icon">⚖️</span>
+          <span class="chat-header-icon" style="color:var(--gold)"><i class="bi bi-chat-square-text-fill"></i></span>
           <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
         </div>
         <div class="chat-header-actions" style="pointer-events:auto;">
-          <button class="chat-icon-btn" title="Minimize" type="button" onclick="window._chat.toggleDock(event)">─</button>
+          <button class="chat-icon-btn" title="Minimize" type="button" onclick="window._chat.toggleDock(event)"><i class="bi bi-dash-lg"></i></button>
         </div>
       </div>
 
@@ -93,7 +93,7 @@
       <!-- Single Chat Messages View -->
       <div id="chat-view-single" class="chat-view hidden">
         <div class="dm-conv-header">
-          <button class="dm-back-btn" type="button" onclick="window._chat.backToList()">← Back to Chats</button>
+          <button class="dm-back-btn" type="button" onclick="window._chat.backToList()"><i class="bi bi-arrow-left"></i> Back to Chats</button>
           <span id="dm-conv-title" style="font-weight:700;font-size:13px;color:var(--text)"></span>
         </div>
 
@@ -101,7 +101,9 @@
 
         <!-- Inline Availability Picker -->
         <div id="chat-avail-picker" class="chat-avail-picker hidden">
-          <div style="font-size:12px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:8px">📅 Ask Availability</div>
+          <div style="font-size:12px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+            <i class="bi bi-calendar-event"></i> Ask Availability
+          </div>
           <input id="avail-title-input" class="chat-input" style="margin-bottom:6px" placeholder="Purpose (e.g. Case Strategy Sync)" autocomplete="off"/>
           <div style="display:flex;gap:6px;margin-bottom:8px">
             <input id="avail-date-input" type="date" class="chat-input"/>
@@ -109,7 +111,7 @@
           </div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
             <button class="chat-icon-btn" type="button" onclick="window._chat.toggleAvailPicker()">Cancel</button>
-            <button class="chat-send-btn" type="button" onclick="window._chat.sendAvailRequest()">Send Card</button>
+            <button class="chat-send-btn" type="button" onclick="window._chat.sendAvailRequest()"><i class="bi bi-send-fill"></i> Send Card</button>
           </div>
         </div>
 
@@ -118,10 +120,10 @@
 
         <!-- Input Row -->
         <div class="chat-input-row">
-          <button class="chat-avail-btn" type="button" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()">📎</button>
-          <button class="chat-avail-btn" type="button" title="Ask Availability" onclick="window._chat.toggleAvailPicker()">📅</button>
+          <button class="chat-avail-btn" type="button" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()"><i class="bi bi-paperclip"></i></button>
+          <button class="chat-avail-btn" type="button" title="Ask Availability" onclick="window._chat.toggleAvailPicker()"><i class="bi bi-calendar-plus"></i></button>
           <input id="chat-msg-input" class="chat-input" type="text" placeholder="Type a message…" maxlength="1000"/>
-          <button class="chat-send-btn" type="button" id="chat-send-btn">Send</button>
+          <button class="chat-send-btn" type="button" id="chat-send-btn"><i class="bi bi-send-fill"></i> Send</button>
         </div>
       </div>
     `;
@@ -240,9 +242,9 @@
     let groupPreview = "No messages yet";
     if (latestGroupMsg) {
       if (latestGroupMsg.cardType === "availability_request") {
-        groupPreview = `<span style="color:var(--gold,#c9a84c);font-weight:700">📅 Availability Request: "${escHtml(latestGroupMsg.reqTitle || 'Meeting')}"</span>`;
+        groupPreview = `<span style="color:var(--gold,#c9a84c);font-weight:700"><i class="bi bi-calendar-event"></i> Availability Request: "${escHtml(latestGroupMsg.reqTitle || 'Meeting')}"</span>`;
       } else if (latestGroupMsg.cardType === "file_attachment") {
-        groupPreview = `📎 Attached File: ${escHtml(latestGroupMsg.fileName || 'File')}`;
+        groupPreview = `<i class="bi bi-paperclip"></i> Attached: ${escHtml(latestGroupMsg.fileName || 'File')}`;
       } else {
         groupPreview = `${escHtml(latestGroupMsg.name || 'User')}: ${escHtml(latestGroupMsg.text)}`;
       }
@@ -251,8 +253,8 @@
     const conversations = [
       {
         id: "group",
-        name: "📢 Firm Group Chat",
-        avatar: "⚖️",
+        name: "Firm Group Chat",
+        avatar: `<i class="bi bi-megaphone-fill" style="color:var(--gold)"></i>`,
         isGroup: true,
         timeMs: groupTimeMs,
         preview: groupPreview,
@@ -271,9 +273,9 @@
       let preview = "Start conversation…";
       if (lastMsg) {
         if (lastMsg.cardType === "availability_request") {
-          preview = `<span style="color:var(--gold,#c9a84c);font-weight:700">📅 Availability Request: "${escHtml(lastMsg.reqTitle || 'Meeting')}"</span>`;
+          preview = `<span style="color:var(--gold,#c9a84c);font-weight:700"><i class="bi bi-calendar-event"></i> Availability Request: "${escHtml(lastMsg.reqTitle || 'Meeting')}"</span>`;
         } else if (lastMsg.cardType === "file_attachment") {
-          preview = `📎 Attached File: ${escHtml(lastMsg.fileName || 'File')}`;
+          preview = `<i class="bi bi-paperclip"></i> Attached: ${escHtml(lastMsg.fileName || 'File')}`;
         } else {
           preview = escHtml(lastMsg.text);
         }
@@ -302,7 +304,7 @@
           </div>
           <div class="chat-conv-preview ${c.unread ? 'bold' : ''}">${c.preview}</div>
         </div>
-        ${c.unread ? '<span class="chat-unseen-dot" title="Unread message">●</span>' : ''}
+        ${c.unread ? '<span class="chat-unseen-dot" title="Unread message"><i class="bi bi-circle-fill" style="color:var(--gold);font-size:8px"></i></span>' : ''}
       </div>
     `).join("");
 
@@ -358,7 +360,7 @@
     }
 
     const payload = {
-      text: `📎 Attached File: ${file.name}`,
+      text: `Attached File: ${file.name}`,
       cardType: "file_attachment",
       fileName: file.name,
       fileSize: (file.size / 1024).toFixed(1) + " KB",
@@ -380,7 +382,7 @@
         await window._fbAddDoc(window._fbCol(window._db, COLLECTION_DM + "_" + channelId), payload);
         setSeenTimestamp(channelId);
       }
-      if (window.showToast) window.showToast("File sent to chat! 📄");
+      if (window.showToast) window.showToast("File sent to chat!");
     } catch (e) {
       console.error("handleFileAttachment error:", e);
       if (window.showToast) window.showToast("Failed to send file: " + e.message, "error");
@@ -516,7 +518,7 @@
     }
 
     const payload = {
-      text: `📅 Availability Request: "${title}" on ${date} at ${time}`,
+      text: `Availability Request: "${title}" on ${date} at ${time}`,
       cardType: "availability_request",
       reqTitle: title,
       reqDate: date,
@@ -538,7 +540,7 @@
               toUid: p.ownerUid,
               fromUid: myUid,
               fromName: myName,
-              title: "📅 Availability Request",
+              title: "Availability Request",
               message: `${myName} requested availability for "${title}" on ${date} at ${time}.`,
               type: "availability_request",
               status: "unread"
@@ -556,7 +558,7 @@
             toUid: activeChannel,
             fromUid: myUid,
             fromName: myName,
-            title: "📅 Direct Availability Request",
+            title: "Direct Availability Request",
             message: `${myName} sent you an availability request for "${title}" on ${date} at ${time}.`,
             type: "availability_request",
             status: "unread"
@@ -598,7 +600,7 @@
 
         if (msgData) {
           const apptData = {
-            title: "🤝 " + (msgData.reqTitle || "Chat Meeting"),
+            title: (msgData.reqTitle || "Chat Meeting"),
             date: msgData.reqDate,
             time: msgData.reqTime || "All Day",
             description: `Confirmed in Chat by ${myName}`,
@@ -617,7 +619,7 @@
               toUid: msgData.uid,
               fromUid: myUid,
               fromName: myName,
-              title: "Availability Confirmed ✅",
+              title: "Availability Confirmed",
               message: `${myName} confirmed availability for "${msgData.reqTitle || 'Meeting'}" on ${msgData.reqDate}.`,
               type: "availability_confirmed",
               status: "unread"
@@ -642,7 +644,7 @@
     if (!el) return;
 
     if (msgs.length === 0) {
-      el.innerHTML = `<div class="chat-empty">No messages yet. Say hello! 👋</div>`;
+      el.innerHTML = `<div class="chat-empty"><i class="bi bi-chat-square-text" style="font-size:24px;color:var(--gold);display:block;margin-bottom:6px"></i>No messages yet. Say hello!</div>`;
       return;
     }
 
@@ -653,16 +655,16 @@
 
       if (m.cardType === "availability_request") {
         const reqStatus = m.reqStatus || "pending";
-        let statusBadge = `<span class="avail-badge pending">⏳ Pending</span>`;
-        if (reqStatus === "accepted") statusBadge = `<span class="avail-badge accepted">✅ Confirmed (${escHtml(m.respondedByName || 'Available')})</span>`;
-        if (reqStatus === "declined") statusBadge = `<span class="avail-badge declined">🚫 Busy (${escHtml(m.respondedByName || 'Unavailable')})</span>`;
+        let statusBadge = `<span class="avail-badge pending"><i class="bi bi-hourglass-split"></i> Pending</span>`;
+        if (reqStatus === "accepted") statusBadge = `<span class="avail-badge accepted"><i class="bi bi-check-circle-fill"></i> Confirmed (${escHtml(m.respondedByName || 'Available')})</span>`;
+        if (reqStatus === "declined") statusBadge = `<span class="avail-badge declined"><i class="bi bi-slash-circle-fill"></i> Busy (${escHtml(m.respondedByName || 'Unavailable')})</span>`;
 
         let actionBtns = "";
         if (!isMine && reqStatus === "pending") {
           actionBtns = `
             <div style="display:flex;gap:6px;margin-top:10px">
-              <button class="chat-card-btn confirm" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'accepted')">✅ Confirm Available</button>
-              <button class="chat-card-btn decline" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'declined')">🚫 Busy</button>
+              <button class="chat-card-btn confirm" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'accepted')"><i class="bi bi-check2"></i> Confirm Available</button>
+              <button class="chat-card-btn decline" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'declined')"><i class="bi bi-x"></i> Busy</button>
             </div>
           `;
         }
@@ -671,9 +673,9 @@
           <div class="chat-msg-wrap ${isMine ? "mine" : "theirs"}">
             ${showName ? `<div class="chat-msg-sender">${escHtml(m.name || "Unknown")}</div>` : ""}
             <div class="chat-avail-card ${isMine ? "mine" : "theirs"}">
-              <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">📅 Availability Request</div>
+              <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;gap:4px"><i class="bi bi-calendar-event"></i> Availability Request</div>
               <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(m.reqTitle || "Meeting")}</div>
-              <div style="font-size:11.5px;color:var(--text-muted)">📆 ${m.reqDate || ''} · ⏰ ${m.reqTime || ''}</div>
+              <div style="font-size:11.5px;color:var(--text-muted)"><i class="bi bi-calendar3"></i> ${m.reqDate || ''} · <i class="bi bi-clock"></i> ${m.reqTime || ''}</div>
               <div style="margin-top:8px">${statusBadge}</div>
               ${actionBtns}
               <span class="chat-ts">${ts}</span>
@@ -682,14 +684,14 @@
         `;
       } else if (m.cardType === "file_attachment") {
         const linkMarkup = m.driveLink 
-          ? `<a href="${m.driveLink}" target="_blank" style="color:var(--gold,#c9a84c);text-decoration:underline;font-weight:700">📄 ${escHtml(m.fileName)}</a>`
-          : `📄 ${escHtml(m.fileName)}`;
+          ? `<a href="${m.driveLink}" target="_blank" style="color:var(--gold,#c9a84c);text-decoration:underline;font-weight:700"><i class="bi bi-file-earmark-text-fill"></i> ${escHtml(m.fileName)}</a>`
+          : `<i class="bi bi-file-earmark-text-fill"></i> ${escHtml(m.fileName)}`;
 
         return `
           <div class="chat-msg-wrap ${isMine ? "mine" : "theirs"}">
             ${showName ? `<div class="chat-msg-sender">${escHtml(m.name || "Unknown")}</div>` : ""}
             <div class="chat-bubble-msg ${isMine ? "mine" : "theirs"}" style="border:1px solid var(--gold-border, rgba(201,165,92,0.3))">
-              <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:2px">📎 File Attachment</div>
+              <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:2px"><i class="bi bi-paperclip"></i> File Attachment</div>
               <div style="font-size:13px">${linkMarkup}</div>
               <div style="font-size:10px;opacity:.85;margin-top:2px">${m.fileSize || ''}</div>
               <span class="chat-ts">${ts}</span>
@@ -820,7 +822,7 @@
       .chat-header-actions { display: flex; gap: 6px; }
       .chat-icon-btn {
         background: transparent; border: none; color: var(--text-dim);
-        font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
+        font-size: 14px; cursor: pointer; padding: 4px 8px; border-radius: 6px;
         transition: background .15s, color .15s;
       }
       .chat-icon-btn:hover { background: var(--border, #162033); color: var(--text); }
@@ -853,7 +855,7 @@
       .chat-conv-preview { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .chat-conv-preview.bold { color: var(--text); font-weight: 600; }
 
-      .chat-unseen-dot { color: var(--gold, #c9a84c); font-size: 12px; margin-left: 4px; flex-shrink: 0; }
+      .chat-unseen-dot { margin-left: 4px; flex-shrink: 0; }
 
       .chat-messages {
         flex: 1; overflow-y: auto; padding: 12px 12px 6px;
@@ -879,7 +881,7 @@
         box-shadow: 0 4px 14px rgba(0,0,0,0.3); position: relative;
       }
       .avail-badge {
-        display: inline-block; font-size: 10px; font-weight: 700;
+        display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700;
         padding: 2px 8px; border-radius: 4px;
       }
       .avail-badge.pending  { background: rgba(251,191,36,0.15); color: #fbbf24; }
@@ -889,6 +891,7 @@
       .chat-card-btn {
         flex: 1; padding: 6px 8px; border-radius: 6px; border: none;
         font-size: 11px; font-weight: 700; cursor: pointer; transition: opacity .15s;
+        display: inline-flex; align-items: center; justify-content: center; gap: 4px;
       }
       .chat-card-btn.confirm { background: #34d399; color: #040810; }
       .chat-card-btn.decline { background: transparent; border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
@@ -901,12 +904,13 @@
 
       .chat-avail-btn {
         background: transparent; border: 1px solid var(--border, #162033);
-        color: var(--gold, #c9a84c); font-size: 15px; border-radius: 10px;
+        color: var(--gold, #c9a84c); font-size: 16px; border-radius: 10px;
         padding: 6px 10px; cursor: pointer; transition: background .15s;
+        display: flex; align-items: center; justify-content: center;
       }
       .chat-avail-btn:hover { background: rgba(201,168,76,0.1); }
 
-      .chat-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border, #162033); flex-shrink: 0; }
+      .chat-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border, #162033); flex-shrink: 0; align-items: center; }
       .chat-input {
         flex: 1; background: var(--bg, #060c13); border: 1px solid var(--border, #162033);
         border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;
@@ -916,12 +920,12 @@
       .chat-send-btn {
         background: var(--gold, #c9a84c); color: #111; border: none;
         border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 700;
-        cursor: pointer; flex-shrink: 0;
+        cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
       }
       .chat-send-btn:hover { opacity: .85; }
 
       .dm-conv-header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border, #162033); }
-      .dm-back-btn { background: transparent; border: none; color: var(--gold, #c9a84c); font-size: 12px; cursor: pointer; padding: 4px 8px; font-weight: 600; }
+      .dm-back-btn { background: transparent; border: none; color: var(--gold, #c9a84c); font-size: 12px; cursor: pointer; padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
       .chat-ts { font-size: 9px; opacity: .85; margin-left: 8px; vertical-align: bottom; }
 
       @media (max-width: 600px) {
