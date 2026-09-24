@@ -58,6 +58,131 @@ function clearCaseErrors() {
 window.clearCaseErrors = clearCaseErrors;
 
 // ═══════════════════════════════════════════════════════════════
+//  SYSTEM HEALTH & DIAGNOSTIC ENGINE
+// ═══════════════════════════════════════════════════════════════
+let systemHealthStatus = "healthy"; // "healthy" | "warning" | "danger"
+
+window.openDiagnosticModal = function() {
+  const modal = document.getElementById("diagnostic-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  updateWorkspaceStatus(true);
+};
+
+window.closeDiagnosticModal = function() {
+  const modal = document.getElementById("diagnostic-modal");
+  if (modal) modal.classList.add("hidden");
+};
+
+async function updateWorkspaceStatus(manualRun = false) {
+  const netBadge   = document.getElementById("diag-network-badge");
+  const netSub     = document.getElementById("diag-network-sub");
+  const dbBadge    = document.getElementById("diag-db-badge");
+  const dbSub      = document.getElementById("diag-db-sub");
+  const driveBadge = document.getElementById("diag-drive-badge");
+  const driveSub   = document.getElementById("diag-drive-sub");
+
+  const dot = document.getElementById("status-indicator-dot");
+  const txt = document.getElementById("status-indicator-text");
+
+  let isNetworkOk = navigator.onLine;
+  let isDbOk = !localMode && !!window._db && dbReady;
+  let isDriveOk = typeof hasValidToken === "function" ? hasValidToken() : false;
+
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+  const hasDriveFolder = !!(myProf && myProf.driveFolderId);
+
+  // 1. Network
+  if (netBadge && netSub) {
+    if (isNetworkOk) {
+      netBadge.className = "badge badge-pass";
+      netBadge.textContent = "Online";
+      netSub.textContent = "Active internet connection detected";
+    } else {
+      netBadge.className = "badge badge-fail";
+      netBadge.textContent = "Offline";
+      netSub.textContent = "No network connection. Offline changes won't sync.";
+    }
+  }
+
+  // 2. Database Sync
+  if (dbBadge && dbSub) {
+    if (isDbOk) {
+      dbBadge.className = "badge badge-pass";
+      dbBadge.textContent = "Connected";
+      dbSub.textContent = "Firestore real-time listeners synchronized (Long Polling)";
+    } else if (localMode) {
+      dbBadge.className = "badge badge-warn";
+      dbBadge.textContent = "Memory Mode";
+      dbSub.textContent = "Running in memory. Data will not persist on refresh.";
+    } else {
+      dbBadge.className = "badge badge-fail";
+      dbBadge.textContent = "Connecting...";
+      dbSub.textContent = "Waiting for cloud database handshake.";
+    }
+  }
+
+  // 3. Google Drive
+  if (driveBadge && driveSub) {
+    if (isDriveOk && hasDriveFolder) {
+      driveBadge.className = "badge badge-pass";
+      driveBadge.textContent = "Linked";
+      driveSub.textContent = "OAuth active · Dedicated firm storage folder verified";
+    } else if (isDriveOk && !hasDriveFolder) {
+      driveBadge.className = "badge badge-warn";
+      driveBadge.textContent = "No Folder";
+      driveSub.textContent = "Drive connected but no root case folder created yet.";
+    } else {
+      driveBadge.className = "badge badge-warn";
+      driveBadge.textContent = "Not Connected";
+      driveSub.textContent = "Connect Google Account under My Settings to enable filing & docs.";
+    }
+  }
+
+  // Overall workspace assessment
+  if (!isNetworkOk || (!isDbOk && !localMode)) {
+    systemHealthStatus = "danger";
+    if (dot) dot.className = "status-dot danger";
+    if (txt) {
+      txt.textContent = "System Disconnected";
+      txt.style.color = "var(--red)";
+    }
+  } else if (!isDriveOk || localMode || !hasDriveFolder) {
+    systemHealthStatus = "warning";
+    if (dot) dot.className = "status-dot warning";
+    if (txt) {
+      txt.textContent = !isDriveOk ? "Connect Drive" : "Memory Mode";
+      txt.style.color = "var(--amber)";
+    }
+  } else {
+    systemHealthStatus = "healthy";
+    if (dot) dot.className = "status-dot healthy";
+    if (txt) {
+      txt.textContent = "Workspace Active";
+      txt.style.color = "var(--green)";
+    }
+  }
+
+  if (manualRun && typeof showToast === "function") {
+    showToast(`Health check complete: ${systemHealthStatus === "healthy" ? "All systems healthy" : "Issues detected"}`, systemHealthStatus === "healthy" ? "success" : "error");
+  }
+}
+
+window.updateWorkspaceStatus = updateWorkspaceStatus;
+
+// Run automated health check every 25 seconds
+if (!window._healthIntervalId) {
+  window._healthIntervalId = setInterval(() => {
+    if (document.visibilityState === "visible") {
+      updateWorkspaceStatus(false);
+    }
+  }, 25000);
+}
+window.addEventListener("online", () => updateWorkspaceStatus(false));
+window.addEventListener("offline", () => updateWorkspaceStatus(false));
+
+// ═══════════════════════════════════════════════════════════════
 //  UNIVERSAL ACTION CONFIRMATION MODAL CONTROLLER
 // ═══════════════════════════════════════════════════════════════
 let pendingActionConfirmCallback = null;
@@ -1653,6 +1778,7 @@ async function connectDriveFromSettings() {
     await promptDriveAuth();
     showToast("Google Drive connected successfully!");
     renderMyProfile();
+    updateWorkspaceStatus(false);
     
     const u = window._currentUser;
     const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
@@ -1664,6 +1790,7 @@ async function connectDriveFromSettings() {
           await dbUpdateProfile(myProf.id, { driveFolderId: folderId }).catch(e => console.warn("Profile update note:", e));
           myProf.driveFolderId = folderId;
           showToast("Storage folder created!");
+          updateWorkspaceStatus(false);
         }
       } catch (folderErr) {
         console.warn("Folder initialization notice:", folderErr);
@@ -1803,6 +1930,7 @@ async function saveUserSettings() {
     selProfile = { ...myProf, ...upd };
     showToast("Profile settings updated!");
     renderMyProfile();
+    updateWorkspaceStatus(false);
   } catch (err) {
     console.error("saveUserSettings error:", err);
     showToast("Failed to save settings: " + err.message, "error");
