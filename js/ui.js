@@ -251,8 +251,10 @@ window.handleCaseDetailBack = function() {
 //  UNSAVED CASE FORM CHANGES INTERCEPTION & DISCARD GUARD
 // ═══════════════════════════════════════════════════════════════
 let pendingNavigationDestination = null;
+let _isSubmittingCase = false;
 
 function hasUnsavedCaseChanges() {
+  if (_isSubmittingCase) return false;
   if (currentView !== "caseForm") return false;
   const title = (document.getElementById("cf-case-title")?.value || "").trim();
   const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
@@ -285,8 +287,8 @@ window.confirmDiscardCase = function() {
   const modal = document.getElementById("discard-case-modal");
   if (modal) modal.classList.add("hidden");
 
-  if (typeof pendingDocs !== "undefined") pendingDocs = [];
-  if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
+  // Reset form contents
+  resetCaseFormFields();
 
   executeNavigation(target);
 };
@@ -295,9 +297,27 @@ window.handleCaseCancelOrExit = function() {
   if (hasUnsavedCaseChanges()) {
     window.promptDiscardCase(caseFormOrigin || "allcases");
   } else {
+    resetCaseFormFields();
     executeNavigation(caseFormOrigin || "allcases");
   }
 };
+
+function resetCaseFormFields() {
+  setElVal("cf-case-title", "");
+  setElVal("cf-narrative", "");
+  setElVal("cf-filed", "");
+  setElVal("cf-due", "");
+  setElVal("cf-case-number", "");
+  setElVal("cf-doc-type", "");
+  setElVal("cf-type-input", "");
+  
+  if (typeof pendingDocs !== "undefined") pendingDocs = [];
+  if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
+  if (typeof window.cfPetitioners !== "undefined") window.cfPetitioners = [];
+  if (typeof window.cfRespondents !== "undefined") window.cfRespondents = [];
+
+  clearCaseErrors();
+}
 
 window.addEventListener("beforeunload", (e) => {
   if (hasUnsavedCaseChanges()) {
@@ -374,7 +394,7 @@ window.addEventListener("DOMContentLoaded", autoDetectDevice);
 window.addEventListener("resize", autoDetectDevice);
 
 // ═══════════════════════════════════════════════════════════════
-//  PASSWORD STRENGTH CHECKER (WITH BOOTSTRAP CHECK/X ICONS)
+//  PASSWORD STRENGTH CHECKER
 // ═══════════════════════════════════════════════════════════════
 function initPasswordStrengthChecker() {
   const passInput = document.getElementById("setting-password");
@@ -845,7 +865,7 @@ window.renderProfileDetail = renderProfileDetail;
 window.renderProfileCases = renderProfileCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  ALL CASES (WITH LIVE NAME & TITLE SEARCH FILTER)
+//  ALL CASES (DESKTOP & MOBILE RENDERER)
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
   updateAllFilterDropdowns(); 
@@ -1001,7 +1021,7 @@ function renderCaseDetail() {
       sorted.forEach(h => {
         const isPast = h.date < todayStr;
         const badgeMarkup = isPast
-          ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
+          ? `<span class="badge" style="background:rgba(255,255,200,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
           : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px"><i class="bi bi-calendar-event"></i> Upcoming Hearing</span>`;
 
         hHtml += `
@@ -2093,6 +2113,9 @@ async function executeDeleteAccountWipe() {
 window.confirmDeleteUserAccount = confirmDeleteUserAccount;
 window.executeDeleteAccountWipe = executeDeleteAccountWipe;
 
+// ═══════════════════════════════════════════════════════════════
+//  SIGN OUT: PRESERVES DRIVE TOKEN UNDER USER-SCOPED STORAGE
+// ═══════════════════════════════════════════════════════════════
 async function handleLogout() {
   try {
     if (typeof dbUnsubscribe === "function") dbUnsubscribe();
