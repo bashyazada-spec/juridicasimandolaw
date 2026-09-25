@@ -600,6 +600,42 @@
       </div>
     </div>
 
+    <!-- ── ALL CASES (RESTORED ON DESKTOP) ── -->
+    <div id="view-allcases" class="view hidden">
+      <div class="page-hdr">
+        <div>
+          <div class="page-title">All Cases</div>
+          <div class="page-sub" id="allcases-count"></div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> New Case</button>
+      </div>
+
+      <div class="card mb-16" style="padding:16px">
+        <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+          <div style="position:relative;flex:1">
+            <input class="field-input" placeholder="Search cases by title, parties, or docket number…" id="ac-search" oninput="renderAllCases()" style="padding-left:36px"/>
+            <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:14px"></i>
+          </div>
+          <select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')">
+            <option value="All">All Categories</option>
+          </select>
+          <select class="filter-select" id="ac-status" onchange="renderAllCases()">
+            <option value="All">All Statuses</option>
+          </select>
+          <select class="filter-select" id="ac-type" onchange="renderAllCases()">
+            <option value="All">All Types</option>
+          </select>
+          <select class="filter-select" id="ac-sort" onchange="renderAllCases()">
+            <option value="asc">Due: Soonest First</option>
+            <option value="desc">Due: Furthest First</option>
+            <option value="none">Date Added</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="all-cases-list"></div>
+    </div>
+
     <!-- ── GOOGLE DRIVE EXPLORER REPLICA ── -->
     <div id="view-mydrive" class="view hidden">
       <div class="page-hdr">
