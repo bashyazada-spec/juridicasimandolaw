@@ -1,6 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
-//  GLOBAL SIDEBAR TOGGLE & RETRACTION STATE
+//  SIMANDO LAW — APPLICATION CONTROLLER & CASE LIFECYCLE
 // ═══════════════════════════════════════════════════════════════
+
+// Global Sidebar Toggle & Collapse State
 window.toggleSidebar = function() {
   document.body.classList.toggle("sidebar-collapsed");
   const isCollapsed = document.body.classList.contains("sidebar-collapsed");
@@ -27,7 +29,7 @@ function isValidEmail(email) {
 window.isValidEmail = isValidEmail;
 
 function isValidMobile(num) {
-  if (!num) return true; // Optional field
+  if (!num) return true;
   const cleaned = num.replace(/\D/g, "");
   return cleaned.length === 11;
 }
@@ -37,7 +39,7 @@ window.isValidMobile = isValidMobile;
 //  DOM HELPERS & ERROR CLEARING
 // ═══════════════════════════════════════════════════════════════
 let _pendingDeleteTarget = null;
-let caseFormOrigin = "profileDetail";
+let caseFormOrigin = "allcases";
 
 function setElText(id, text) {
   const el = document.getElementById(id);
@@ -102,7 +104,7 @@ function renderCaseHearings() {
   if (count === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:12px">
-        ⚠️ No hearing dates logged. Please add at least <strong>1 hearing date</strong> below.
+        <i class="bi bi-exclamation-circle-fill" style="color:var(--amber);margin-right:4px"></i> No hearing dates logged. Please add at least <strong>1 hearing date</strong> below.
       </div>
     `;
     return;
@@ -114,8 +116,8 @@ function renderCaseHearings() {
   container.innerHTML = sorted.map((h, i) => {
     const isPast = h.date < todayStr;
     const badgeMarkup = isPast
-      ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px">Past Hearing</span>`
-      : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px">Upcoming Hearing</span>`;
+      ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
+      : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px"><i class="bi bi-calendar-event"></i> Upcoming Hearing</span>`;
 
     return `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-left:4px solid ${isPast ? 'var(--text-dim)' : 'var(--gold)'};border-radius:8px;margin-bottom:6px">
@@ -123,12 +125,12 @@ function renderCaseHearings() {
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
             ${badgeMarkup}
             <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)}</span>
-            ${h.time ? `<span style="font-size:11px;color:var(--text-muted)">⏰ ${h.time}</span>` : ''}
+            ${h.time ? `<span style="font-size:11px;color:var(--text-muted)"><i class="bi bi-clock"></i> ${h.time}</span>` : ''}
           </div>
           <div style="font-size:12px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>
           ${h.notes ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(h.notes)}"</div>` : ''}
         </div>
-        <button type="button" onclick="removeCaseHearing(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="Remove hearing">✕</button>
+        <button type="button" onclick="removeCaseHearing(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="Remove hearing"><i class="bi bi-x-lg"></i></button>
       </div>
     `;
   }).join("");
@@ -172,7 +174,7 @@ window.addCaseHearing = addCaseHearing;
 window.removeCaseHearing = removeCaseHearing;
 
 // ═══════════════════════════════════════════════════════════════
-//  TWO-FACTOR AUTHENTICATION (TOTP / GOOGLE & MICROSOFT AUTH)
+//  TWO-FACTOR AUTHENTICATION (TOTP ENGINE)
 // ═══════════════════════════════════════════════════════════════
 let generated2FASecret = null;
 let generatedBackupCodes = [];
@@ -362,7 +364,6 @@ window.confirmAndEnableTwoFactor = async function() {
   }
 };
 
-// 5. BRANDED TWO-FACTOR AUTH DEACTIVATION CONFIRMATION
 window.disableTwoFactor = function() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
@@ -370,7 +371,7 @@ window.disableTwoFactor = function() {
   if (!myProf) return;
 
   window.openConfirmModal({
-    icon: "🔓",
+    icon: "bi-unlock-fill",
     title: "Disable Two-Factor Auth?",
     body: "Are you sure you want to disable Two-Factor Authentication (2FA)? Your account will rely only on your password.",
     confirmText: "Disable 2FA",
@@ -542,8 +543,7 @@ async function executeDelete() {
       
       if (typeof renderDashboard === "function") renderDashboard();
       if (typeof renderAllCases === "function") renderAllCases();
-      if (typeof showView === "function") showView("profileDetail");
-      if (typeof renderProfileDetail === "function") renderProfileDetail();
+      if (typeof showView === "function") showView("allcases");
     } else if (target.type === "profile") {
       const toDelete = cases.filter(c => c.profileId === target.id);
       for (const c of toDelete) {
@@ -572,7 +572,7 @@ async function executeDelete() {
 window.executeDelete = executeDelete;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM (SECURE ACCESS PERMISSIONS)
+//  CASE SHARING SYSTEM
 // ═══════════════════════════════════════════════════════════════
 window.openShareCaseModal = function() {
   if (!selCase) return;
@@ -650,7 +650,7 @@ window.saveShareSettings = saveShareSettings;
 //  CASE FORM OPEN & EDIT
 // ═══════════════════════════════════════════════════════════════
 async function openAddCase() {
-  caseFormOrigin = currentView;
+  caseFormOrigin = currentView === "dashboard" ? "dashboard" : "allcases";
   
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
@@ -721,7 +721,6 @@ async function openEditCase() {
   pendingDocs = [...(c.documents || [])];
   parsePartiesString(c.parties);
   
-  // Load hearings array or generate initial hearing from legacy due date
   cfHearings = Array.isArray(c.hearings) ? [...c.hearings] : [];
   if (cfHearings.length === 0 && c.dueDate) {
     cfHearings.push({
@@ -1116,7 +1115,7 @@ setTimeout(() => {
 }, 8000);
 
 // ═══════════════════════════════════════════════════════════════
-//  SAVE CASE (ENFORCING AT LEAST 1 COURT HEARING)
+//  SAVE CASE: FORM RESET & DIRECT ALL-CASES NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 async function saveCase() {
   const petInp = document.getElementById("cf-petitioner-input");
@@ -1160,7 +1159,7 @@ async function saveCase() {
     if (err) err.classList.remove("hidden");
     valid = false;
   }
-  // MANDATORY REQUIREMENT: At least 1 hearing date must be logged
+  // MANDATORY: At least 1 hearing date required
   if (cfHearings.length === 0) {
     const hErr = document.getElementById("cf-hearings-err");
     if (hErr) hErr.classList.remove("hidden");
@@ -1183,6 +1182,9 @@ async function saveCase() {
     saveBtn.textContent = "Saving...";
   }
 
+  // Flag that we are intentionally saving so navigation isn't blocked by unsaved changes guard
+  window._isSubmittingCase = true;
+
   const category = document.getElementById("cf-category")?.value || CASE_CATEGORIES[0];
   const caseType = (document.getElementById("cf-type-input")?.value || "").trim();
   if (caseType) await saveCaseTypeIfNew(category, caseType);
@@ -1190,7 +1192,6 @@ async function saveCase() {
   const u = window._currentUser || window._auth?.currentUser;
   const myProf = profiles.find(p => p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase())) || selProfile;
 
-  // Chronologically sort hearings to determine next hearing appearance
   const sortedHearings = [...cfHearings].sort((a, b) => new Date(a.date) - new Date(b.date));
   const todayStr = new Date().toISOString().split("T")[0];
   const nextHearing = sortedHearings.find(h => h.date >= todayStr) || sortedHearings[sortedHearings.length - 1];
@@ -1198,9 +1199,9 @@ async function saveCase() {
   const data = {
     title,
     filedDate: filed,
-    dueDate: nextHearing ? nextHearing.date : null, // Primary schedule date for calendar views
-    docDueDate: docDue || null, // Optional document due date
-    hearings: sortedHearings, // Permanent chronological hearing history log
+    dueDate: nextHearing ? nextHearing.date : null,
+    docDueDate: docDue || null,
+    hearings: sortedHearings,
     parties,
     narrative,
     category,
@@ -1243,6 +1244,8 @@ async function saveCase() {
       }
     }
 
+    let savedCaseId = null;
+
     if (caseFormMode === "add") {
       data.profileId = myProf?.id || (selProfile?.id || "unassigned");
       data.createdAt = new Date().toISOString().slice(0, 10);
@@ -1257,8 +1260,10 @@ async function saveCase() {
       
       if (newCaseObj && typeof cases !== "undefined" && !cases.some(c => c.id === newCaseObj.id)) {
         cases.unshift(newCaseObj);
+        savedCaseId = newCaseObj.id;
       } else if (typeof cases !== "undefined" && !cases.some(c => c.title === data.title && c.filedDate === data.filedDate)) {
         cases.unshift(data);
+        savedCaseId = data.id;
       }
 
       showToast("Case created with hearing timeline logged!");
@@ -1275,26 +1280,45 @@ async function saveCase() {
         if (idx >= 0) cases[idx] = { ...cases[idx], ...data };
       }
       selCase = { ...selCase, ...data };
+      savedCaseId = selCase.id;
 
       showToast("Case and hearing schedule updated!");
     }
 
-    if (typeof pendingDocs !== "undefined") pendingDocs = [];
+    // Clear form inputs and temp state completely before navigating
+    setElVal("cf-case-title", "");
+    setElVal("cf-narrative", "");
+    setElVal("cf-filed", "");
+    setElVal("cf-due", "");
+    setElVal("cf-case-number", "");
+    setElVal("cf-doc-type", "");
+    setElVal("cf-type-input", "");
+    pendingDocs = [];
     cfHearings = [];
+    cfPetitioners = [];
+    cfRespondents = [];
 
+    // Turn off submission flag so future forms work normally
+    window._isSubmittingCase = false;
+
+    // Refresh directory views
     if (typeof renderDashboard === "function") renderDashboard();
     if (typeof renderAllCases === "function") renderAllCases();
     if (caseFormOrigin === "profileDetail" && selProfile && typeof renderProfileDetail === "function") {
       renderProfileDetail();
     }
 
-    if (typeof navTo === "function") {
-      navTo(caseFormMode === "add" ? (caseFormOrigin === "profileDetail" ? "profileDetail" : "allcases") : "caseDetail");
+    // Direct clean navigation to All Cases on add, or Case Detail on edit
+    if (caseFormMode === "add") {
+      executeNavigation("allcases");
+    } else {
+      executeNavigation("caseDetail");
+      if (typeof renderCaseDetail === "function") renderCaseDetail();
     }
-    if (caseFormMode === "edit" && typeof renderCaseDetail === "function") renderCaseDetail();
 
   } catch (err) {
     console.error("saveCase error:", err);
+    window._isSubmittingCase = false;
     showToast("Failed to save case: " + (err.message || "Unknown error"), "error");
   } finally {
     if (saveBtn) {
