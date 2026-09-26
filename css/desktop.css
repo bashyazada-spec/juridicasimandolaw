@@ -126,14 +126,17 @@ a { color: inherit; text-decoration: none; }
   display: none !important;
 }
 
-/* ── TOP ACTION BAR CAPSULE (OPTION 1: PERMANENT OBSIDIAN BOX) ── */
+/* ── TOP-RIGHT DOCK: CAPSULE + ACTIONS STACKED DIRECTLY BELOW ── */
 #top-hdr-actions {
   position: fixed;
   top: 20px;
   right: 32px;
   z-index: 950;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none; /* Allows clicks to pass through transparent gaps */
 }
 
 .top-action-capsule {
@@ -146,6 +149,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,165,92,0.12);
   backdrop-filter: blur(14px);
   transition: all 0.25s ease;
+  pointer-events: auto;
 }
 
 .top-action-capsule:hover {
@@ -203,10 +207,22 @@ a { color: inherit; text-decoration: none; }
   line-height: 1 !important;
 }
 
+/* ── ACTION SLOT DOCKED DIRECTLY UNDERNEATH THE CAPSULE ── */
+.top-action-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.top-action-slot:empty {
+  display: none;
+}
+
 /* ── LAYOUT ── */
 #app { display: flex; min-height: 100vh; position: relative; }
 
-/* ── SIDEBAR (DESKTOP ONLY COLLAPSE LOGIC) ── */
+/* ── SIDEBAR ── */
 #sidebar {
   width: var(--sidebar-w) !important;
   background: linear-gradient(175deg, #0a1624 0%, #06101a 55%, #040c15 100%) !important;
@@ -319,7 +335,6 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   transition: stroke 0.25s ease;
 }
 
-/* Clean Left Indent Alignment */
 .nav-section { 
   padding: 18px 24px 6px; 
   font-size: 9px; 
@@ -343,7 +358,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .nav-btn:hover { background: rgba(201,165,92,0.05); color: #ffffff; border-left-color: rgba(201,165,92,0.5); }
 .nav-btn.active { background: linear-gradient(90deg, rgba(201,165,92,0.15), rgba(201,165,92,0.03)); border-left-color: var(--gold); color: var(--gold-light); font-weight: 600; }
 
-/* ── SIDEBAR FOOTER (Inside permanently dark sidebar) ── */
+/* ── SIDEBAR FOOTER ── */
 .sidebar-footer { 
   padding: 10px 0 20px 0 !important; 
   border-top: 1px solid rgba(201,165,92,0.08); 
@@ -555,7 +570,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .case-row { display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
 .case-row:hover { border-color: var(--gold-border); background: var(--surface3); transform: translateX(4px); box-shadow: var(--shadow-sm); }
 
-/* ── ATTORNEY LIST VIEW (TABLE / COMPACT LIST MODE) ── */
+/* ── ATTORNEY LIST VIEW ── */
 .profiles-list-container {
   display: flex;
   flex-direction: column;
@@ -628,7 +643,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 .btn-danger { background: transparent; border: 1px solid rgba(248,113,113,0.2); color: var(--red); }
 .btn-danger:hover { background: rgba(248,113,113,0.07); border-color: rgba(248,113,113,0.42); }
 
-/* ── GOOGLE DRIVE BUTTON STYLING (ALWAYS HIGH CONTRAST IN LIGHT & DARK) ── */
+/* ── GOOGLE DRIVE BUTTON STYLING ── */
 .gdrive-btn {
   display: inline-flex;
   align-items: center;
@@ -678,16 +693,13 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
 
+/* ── CLEAN PAGE HEADER (ACTIONS DOCKED BELOW CAPSULE) ── */
 .page-hdr { 
   display: flex; 
+  flex-direction: column;
   align-items: flex-start; 
-  justify-content: space-between; 
-  margin-bottom: 36px; 
-  padding-right: 64px !important;
-}
-
-#view-caseDetail .flex-center.gap-10 {
-  padding-right: 64px !important;
+  margin-bottom: 28px; 
+  position: relative;
 }
 
 .page-title { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.15; }
