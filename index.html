@@ -467,7 +467,10 @@
 
     <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation"><i class="bi bi-list"></i></button>
 
+    <!-- ── TOP-RIGHT DOCK: CAPSULE + ACTION BUTTONS DOCKED DIRECTLY UNDERNEATH ── -->
     <div id="top-hdr-actions">
+      
+      <!-- Top Capsule -->
       <div class="top-action-capsule">
         <button onclick="window._chat ? window._chat.toggleDock(event) : null" class="top-capsule-btn" title="Messages / Conversations">
           <i class="bi bi-chat-dots-fill" style="color:var(--gold-light)"></i>
@@ -498,8 +501,26 @@
           <span class="status-dot healthy" id="status-indicator-dot"></span>
           <span id="status-indicator-text" style="color:var(--green)">Workspace Active</span>
         </div>
-
       </div>
+
+      <!-- Action Button Docked Below Capsule for All Cases -->
+      <div class="top-action-slot" id="slot-allcases-action" style="display:none">
+        <button class="btn btn-primary" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> New Case</button>
+      </div>
+
+      <!-- Action Button Docked Below Capsule for Attorney Profiles -->
+      <div class="top-action-slot" id="slot-profiles-action" style="display:none">
+        <div class="view-mode-toggle" style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px;box-shadow:0 4px 14px rgba(0,0,0,0.3)">
+          <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="padding:4px 10px;font-size:12px"><i class="bi bi-grid-fill"></i> Tile View</button>
+          <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="padding:4px 10px;font-size:12px"><i class="bi bi-list-ul"></i> List View</button>
+        </div>
+      </div>
+
+      <!-- Action Button Docked Below Capsule for Firm Drive -->
+      <div class="top-action-slot" id="slot-mydrive-action" style="display:none">
+        <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px"><i class="bi bi-google"></i> Open in Google Drive <i class="bi bi-box-arrow-up-right"></i></a>
+      </div>
+
     </div>
 
     <!-- ── DASHBOARD ── -->
@@ -600,14 +621,11 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES (RESTORED ON DESKTOP) ── -->
+    <!-- ── ALL CASES (CLEAN PAGE HEADER) ── -->
     <div id="view-allcases" class="view hidden">
       <div class="page-hdr">
-        <div>
-          <div class="page-title">All Cases</div>
-          <div class="page-sub" id="allcases-count"></div>
-        </div>
-        <button class="btn btn-primary" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> New Case</button>
+        <div class="page-title">All Cases</div>
+        <div class="page-sub" id="allcases-count"></div>
       </div>
 
       <div class="card mb-16" style="padding:16px">
@@ -636,14 +654,11 @@
       <div id="all-cases-list"></div>
     </div>
 
-    <!-- ── GOOGLE DRIVE EXPLORER REPLICA ── -->
+    <!-- ── GOOGLE DRIVE EXPLORER REPLICA (CLEAN PAGE HEADER) ── -->
     <div id="view-mydrive" class="view hidden">
       <div class="page-hdr">
-        <div>
-          <div class="page-title">Firm Drive</div>
-          <div class="page-sub">Direct, secure replica of your system Google Drive storage space</div>
-        </div>
-        <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px"><i class="bi bi-google"></i> Open in Google Drive <i class="bi bi-box-arrow-up-right"></i></a>
+        <div class="page-title">Firm Drive</div>
+        <div class="page-sub">Direct, secure replica of your system Google Drive storage space</div>
       </div>
 
       <div class="card">
@@ -659,19 +674,11 @@
       </div>
     </div>
 
-    <!-- ── ALL PROFILES (WITH LIST / TILE VIEW SWITCHER) ── -->
+    <!-- ── ALL PROFILES (CLEAN PAGE HEADER) ── -->
     <div id="view-profiles" class="view hidden">
       <div class="page-hdr">
-        <div>
-          <div class="page-title">Attorney Profiles</div>
-          <div class="page-sub" id="profiles-count"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <div class="view-mode-toggle" style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px">
-            <button id="btn-view-tile" class="btn btn-sm btn-secondary active" onclick="setProfilesViewMode('tile')" style="padding:4px 10px;font-size:12px"><i class="bi bi-grid-fill"></i> Tile View</button>
-            <button id="btn-view-list" class="btn btn-sm btn-ghost" onclick="setProfilesViewMode('list')" style="padding:4px 10px;font-size:12px"><i class="bi bi-list-ul"></i> List View</button>
-          </div>
-        </div>
+        <div class="page-title">Attorney Profiles</div>
+        <div class="page-sub" id="profiles-count"></div>
       </div>
       <div id="profiles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px"></div>
     </div>
@@ -1176,5 +1183,22 @@
 <script src="https://accounts.google.com/gsi/client" async defer onload="if(window.onGoogleLibraryLoad)window.onGoogleLibraryLoad()"></script>
 <script src="js/app.js"></script>
 <script src="js/chat.js"></script>
+
+<!-- Script to activate the action slot based on current view -->
+<script>
+  const _origShowView = window.showView;
+  window.showView = function(viewName) {
+    if (typeof _origShowView === "function") _origShowView(viewName);
+
+    // Hide all top action slots
+    const allcasesSlot = document.getElementById("slot-allcases-action");
+    const profilesSlot = document.getElementById("slot-profiles-action");
+    const mydriveSlot  = document.getElementById("slot-mydrive-action");
+
+    if (allcasesSlot) allcasesSlot.style.display = (viewName === "allcases") ? "flex" : "none";
+    if (profilesSlot) profilesSlot.style.display = (viewName === "profiles") ? "flex" : "none";
+    if (mydriveSlot)  mydriveSlot.style.display  = (viewName === "mydrive")  ? "flex" : "none";
+  };
+</script>
 </body>
 </html>
