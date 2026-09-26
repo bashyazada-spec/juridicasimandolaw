@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Simando Law — Mobile Case Manager</title>
 
+<!-- PWA Web App Manifest & Mobile Capability Tags -->
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#060c13"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Simando Law"/>
+
 <!-- Match Desktop Google Fonts Configuration -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -52,9 +60,71 @@
   .badge-pass { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
   .badge-warn { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
   .badge-fail { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+
+  /* ── PWA SMART INSTALL BANNER & MODAL ── */
+  #pwa-install-banner {
+    position: fixed;
+    bottom: 68px;
+    left: 12px;
+    right: 12px;
+    background: linear-gradient(145deg, #0f1d2e 0%, #0a1624 100%);
+    border: 1.5px solid var(--gold-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    z-index: 995;
+    animation: slideUpBanner 0.3s ease;
+  }
+  @keyframes slideUpBanner {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .pwa-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .pwa-banner-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(201,165,92,0.14);
+    border: 1px solid var(--gold-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold-light);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
+
+<!-- PWA Smart Install Banner (Appears dynamically if installable) -->
+<div id="pwa-install-banner" class="hidden">
+  <div class="pwa-banner-left">
+    <div class="pwa-banner-icon"><i class="bi bi-shield-fill-check"></i></div>
+    <div style="min-width:0">
+      <div style="font-weight:700;font-size:12.5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Simando Law App</div>
+      <div style="font-size:10.5px;color:var(--text-muted)">Install for fast full-screen access</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    <button class="btn btn-primary btn-sm" onclick="triggerPwaInstall()" style="padding:6px 12px !important;font-size:11px !important">
+      <i class="bi bi-download"></i> Install
+    </button>
+    <button onclick="dismissPwaBanner()" style="background:none;border:none;color:var(--text-dim);font-size:18px;padding:0 4px;cursor:pointer">
+      <i class="bi bi-x"></i>
+    </button>
+  </div>
+</div>
 
 <!-- Mobile Top Header Bar with Classical Pillar Emblem & Controls -->
 <div class="mobile-top-bar">
@@ -216,6 +286,32 @@
       <button class="btn btn-secondary btn-sm" onclick="updateWorkspaceStatus(true)"><i class="bi bi-arrow-clockwise"></i> Re-run Health Check</button>
       <button class="btn btn-ghost btn-sm" onclick="closeDiagnosticModal()">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- Apple iOS Step-by-Step PWA Install Instructions Modal -->
+<div id="pwa-ios-modal" class="modal-overlay hidden" style="z-index: 10012;" onclick="if(event.target===this)closeIosInstallModal()">
+  <div class="modal-box" style="max-width: 440px; padding: 22px; text-align: center;">
+    <div style="font-size:32px;color:var(--gold);margin-bottom:8px"><i class="bi bi-apple"></i></div>
+    <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:6px">Install on iPhone / iPad</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.4">
+      Follow these simple steps in Safari to add Simando Law to your home screen:
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12.5px">
+      <div style="font-size:18px;color:var(--gold-light)"><i class="bi bi-share"></i></div>
+      <div>1. Tap the <strong>Share</strong> button in Safari's bottom toolbar.</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12.5px">
+      <div style="font-size:18px;color:var(--gold-light)"><i class="bi bi-plus-square"></i></div>
+      <div>2. Scroll down and tap <strong>"Add to Home Screen"</strong>.</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;text-align:left;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12.5px">
+      <div style="font-size:18px;color:var(--green)"><i class="bi bi-check2-circle"></i></div>
+      <div>3. Tap <strong>Add</strong> in the top-right corner to launch as an app!</div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="closeIosInstallModal()" style="width:100%;margin-top:10px">Got it!</button>
   </div>
 </div>
 
@@ -842,6 +938,21 @@
         <div class="page-sub">Personal profile, Drive connection, &amp; 2FA security</div>
       </div>
 
+      <!-- Progressive Web App (PWA) Install Card -->
+      <div class="card mb-16" id="mobile-pwa-install-card" style="padding:16px;background:rgba(201,165,92,0.06);border:1.5px solid var(--gold-border)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:6px">
+              <i class="bi bi-phone"></i> Install as Mobile App
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">1-tap home screen access without URL bar</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="triggerPwaInstall()" style="width:auto !important;padding:6px 14px !important">
+            <i class="bi bi-download"></i> Install
+          </button>
+        </div>
+      </div>
+
       <!-- Admin Console Card -->
       <div class="card mb-16" id="mobile-admin-portal-card" style="display:none;background:rgba(201,168,76,0.08);border:1.5px solid var(--gold);padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1046,5 +1157,75 @@
 <script src="https://accounts.google.com/gsi/client" async defer onload="if(window.onGoogleLibraryLoad)window.onGoogleLibraryLoad()"></script>
 <script src="js/app.js"></script>
 <script src="js/chat.js"></script>
+
+<!-- Progressive Web App (PWA) Engine Script -->
+<script>
+  let deferredPrompt = null;
+  const isIos = () => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+  // 1. Service Worker Registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        console.log('[PWA] ServiceWorker active with scope:', reg.scope);
+      }).catch((err) => {
+        console.warn('[PWA] ServiceWorker registration notice:', err);
+      });
+    });
+  }
+
+  // 2. Capture Browser Installation Prompt (Android, Chrome, Edge)
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Show floating banner if user hasn't dismissed it this session
+    if (!sessionStorage.getItem('pwa_banner_dismissed') && !isInStandaloneMode()) {
+      const banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.classList.remove('hidden');
+    }
+  });
+
+  // 3. Trigger Installation Flow
+  window.triggerPwaInstall = async function() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('[PWA] User response to install prompt:', outcome);
+      deferredPrompt = null;
+      dismissPwaBanner();
+    } else if (isIos()) {
+      // Show Apple iOS instruction sheet
+      const modal = document.getElementById('pwa-ios-modal');
+      if (modal) modal.classList.remove('hidden');
+    } else {
+      if (typeof showToast === 'function') {
+        showToast('App is already installed or open in browser menu -> "Install App".', 'info');
+      }
+    }
+  };
+
+  window.dismissPwaBanner = function() {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.classList.add('hidden');
+    sessionStorage.setItem('pwa_banner_dismissed', 'true');
+  };
+
+  window.closeIosInstallModal = function() {
+    const modal = document.getElementById('pwa-ios-modal');
+    if (modal) modal.classList.add('hidden');
+  };
+
+  // Hide install controls if already running inside standalone app mode
+  window.addEventListener('DOMContentLoaded', () => {
+    if (isInStandaloneMode() || window.matchMedia('(display-mode: standalone)').matches) {
+      const banner = document.getElementById('pwa-install-banner');
+      const settingsCard = document.getElementById('mobile-pwa-install-card');
+      if (banner) banner.remove();
+      if (settingsCard) settingsCard.style.display = 'none';
+    }
+  });
+</script>
 </body>
 </html>
