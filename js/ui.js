@@ -58,9 +58,205 @@ function clearCaseErrors() {
 window.clearCaseErrors = clearCaseErrors;
 
 // ═══════════════════════════════════════════════════════════════
+//  SET AVAILABILITY MODAL (MATCHING CHAT ASK-AVAILABILITY)
+// ═══════════════════════════════════════════════════════════════
+window.openBusyModal = function() {
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) {
+    if (typeof showToast === "function") showToast("Please wait for your session to load.", "error");
+    return;
+  }
+
+  let modal = document.getElementById("busy-modal");
+
+  // If the old modal layout exists in HTML, dynamically update its content to match the chat card design
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "busy-modal";
+    modal.className = "modal-overlay hidden";
+    modal.style.zIndex = "10004";
+    modal.onclick = (e) => { if (e.target === modal) window.closeBusyModal(); };
+    document.body.appendChild(modal);
+  }
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const defaultDate = tomorrow.toISOString().split("T")[0];
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== u.uid);
+
+  let associateOptions = `<option value="personal">🔒 Personal Schedule (My Out of Office / Hearing)</option>`;
+  associates.forEach(p => {
+    associateOptions += `<option value="${p.ownerUid}">👤 ${escHtml(p.name)} (${escHtml(p.role || "Attorney")})</option>`;
+  });
+
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width: 460px; padding: 22px;">
+      <div style="font-size: 17px; font-weight: 700; color: var(--gold-light); display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="bi bi-calendar-event"></i> Set / Propose Availability
+        </span>
+        <button onclick="window.closeBusyModal()" style="background: none; border: none; color: var(--text-dim); font-size: 18px; cursor: pointer; padding: 0 4px;"><i class="bi bi-x-lg"></i></button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+        <div>
+          <label class="field-label">Purpose / Session Title *</label>
+          <input class="field-input" id="avail-modal-title" placeholder="e.g. Case Strategy Sync / Court Appearance" value="Case Strategy Sync" autocomplete="off"/>
+        </div>
+
+        <div class="grid2">
+          <div>
+            <label class="field-label">Date *</label>
+            <input type="date" class="field-input" id="avail-modal-date" value="${defaultDate}"/>
+          </div>
+          <div>
+            <label class="field-label">Time *</label>
+            <input type="time" class="field-input" id="avail-modal-time" value="14:00"/>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label">Assign To / Invite Associate</label>
+          <select class="field-input" id="avail-modal-target">
+            ${associateOptions}
+          </select>
+        </div>
+
+        <div>
+          <label class="field-label">Brief Description (Optional)</label>
+          <input class="field-input" id="avail-modal-notes" placeholder="e.g. Discuss formal offer or pre-trial notes"/>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 14px;">
+        <button class="btn btn-ghost" type="button" onclick="window.closeBusyModal()">Cancel</button>
+        <button class="btn btn-primary" type="button" id="btn-submit-avail-modal" onclick="window.submitAvailabilityFromModal()">
+          <i class="bi bi-send-fill"></i> Save Availability
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+};
+
+window.closeBusyModal = function() {
+  const modal = document.getElementById("busy-modal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.submitAvailabilityFromModal = async function() {
+  const title = (document.getElementById("avail-modal-title")?.value || "").trim() || "Availability Session";
+  const date = document.getElementById("avail-modal-date")?.value || "";
+  const time = document.getElementById("avail-modal-time")?.value || "14:00";
+  const targetVal = document.getElementById("avail-modal-target")?.value || "personal";
+  const notes = (document.getElementById("avail-modal-notes")?.value || "").trim();
+
+  if (!date) {
+    if (typeof showToast === "function") showToast("Please select a valid date.", "error");
+    return;
+  }
+
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+
+  const btn = document.getElementById("btn-submit-avail-modal");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
+
+  try {
+    if (typeof showToast === "function") showToast("Saving schedule...");
+
+    if (targetVal === "personal") {
+      // 1. Personal Out of Office / Busy block
+      const busyData = {
+        title: title,
+        date: date,
+        time: time,
+        description: notes,
+        type: "busy",
+        targetUid: u.uid,
+        targetName: myProf?.name || u.displayName || u.email,
+        requesterUid: u.uid,
+        requesterName: myProf?.name || u.displayName || u.email,
+        status: "accepted"
+      };
+
+      if (typeof dbAddAppointment === "function") {
+        await dbAddAppointment(busyData);
+      }
+      if (typeof showToast === "function") showToast("Availability logged to schedule! 📅");
+    } else {
+      // 2. Direct Proposal to another attorney
+      const targetProf = profiles.find(p => p.ownerUid === targetVal);
+      const apptData = {
+        title: title,
+        date: date,
+        time: time,
+        description: notes,
+        requesterUid: u.uid,
+        requesterName: myProf?.name || u.displayName || u.email,
+        targetUid: targetVal,
+        targetName: targetProf?.name || "Attorney",
+        status: "pending"
+      };
+
+      let apptId = null;
+      if (typeof dbAddAppointment === "function") {
+        apptId = await dbAddAppointment(apptData);
+      }
+
+      if (typeof dbAddNotification === "function") {
+        await dbAddNotification({
+          toUid: targetVal,
+          fromUid: u.uid,
+          fromName: myProf?.name || u.displayName || u.email,
+          title: "📅 Availability Request",
+          message: `${myProf?.name || "An attorney"} requested availability for "${title}" on ${date} at ${time}.`,
+          type: "appointment_request",
+          relatedId: apptId,
+          status: "unread",
+          appointmentStatus: "pending"
+        });
+      }
+      if (typeof showToast === "function") showToast("Availability proposal card sent & notified! 📅");
+    }
+
+    window.closeBusyModal();
+    if (typeof renderCalendarView === "function") renderCalendarView();
+  } catch (err) {
+    console.error("submitAvailabilityFromModal error:", err);
+    if (typeof showToast === "function") showToast("Failed to save: " + err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-send-fill"></i> Save Availability`;
+    }
+  }
+};
+
+window.deleteBusySlot = async function(id, dateStr) {
+  if (!confirm("Remove this unavailable/busy schedule entry?")) return;
+  try {
+    if (typeof dbDeleteAppointment === "function") {
+      await dbDeleteAppointment(id);
+    }
+    if (typeof showToast === "function") showToast("Availability entry removed!");
+    if (typeof closeDateScheduleModal === "function") closeDateScheduleModal();
+    if (typeof renderCalendarView === "function") renderCalendarView();
+  } catch (err) {
+    console.error("deleteBusySlot error:", err);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  SYSTEM HEALTH & DIAGNOSTIC ENGINE
 // ═══════════════════════════════════════════════════════════════
-let systemHealthStatus = "healthy"; // "healthy" | "warning" | "danger"
+let systemHealthStatus = "healthy";
 
 window.openDiagnosticModal = function() {
   const modal = document.getElementById("diagnostic-modal");
@@ -140,7 +336,6 @@ async function updateWorkspaceStatus(manualRun = false) {
     }
   }
 
-  // Overall workspace assessment
   if (!isNetworkOk || (!isDbOk && !localMode)) {
     systemHealthStatus = "danger";
     if (dot) dot.className = "status-dot danger";
@@ -171,7 +366,6 @@ async function updateWorkspaceStatus(manualRun = false) {
 
 window.updateWorkspaceStatus = updateWorkspaceStatus;
 
-// Automated health check every 25 seconds
 if (!window._healthIntervalId) {
   window._healthIntervalId = setInterval(() => {
     if (document.visibilityState === "visible") {
@@ -197,7 +391,7 @@ window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm 
   if (!modal) return;
 
   if (iconEl) {
-    const iconClass = icon.startsWith("bi-") ? icon : (icon === "📁" ? "bi-folder2-open" : (icon === "📄" ? "bi-file-earmark-text" : (icon === "🔓" ? "bi-unlock-fill" : "bi-shield-check")));
+    const iconClass = icon.startsWith("bi-") ? icon : "bi-shield-check";
     iconEl.innerHTML = `<i class="bi ${iconClass}" style="color:var(--gold)"></i>`;
   }
   if (titleEl) titleEl.textContent = title;
@@ -232,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL BACK NAVIGATION (DYNAMIC ORIGIN TRACKING)
+//  CASE DETAIL BACK NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 let caseDetailOrigin = "allcases";
 
@@ -287,9 +481,7 @@ window.confirmDiscardCase = function() {
   const modal = document.getElementById("discard-case-modal");
   if (modal) modal.classList.add("hidden");
 
-  // Reset form contents
   resetCaseFormFields();
-
   executeNavigation(target);
 };
 
@@ -328,7 +520,7 @@ window.addEventListener("beforeunload", (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  VALIDATION HELPERS (MOBILE & EMAIL)
+//  VALIDATION HELPERS
 // ═══════════════════════════════════════════════════════════════
 function isValidMobile(num) {
   if (!num) return true;
@@ -343,7 +535,7 @@ function isValidEmail(email) {
 window.isValidEmail = isValidEmail;
 
 // ═══════════════════════════════════════════════════════════════
-//  AUTOMATIC DEVICE DETECTION & CONNECTION NOTIFICATION
+//  DEVICE DETECTION
 // ═══════════════════════════════════════════════════════════════
 function autoDetectDevice() {
   const w = window.innerWidth;
@@ -447,7 +639,7 @@ function initPasswordStrengthChecker() {
 window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 
 // ═══════════════════════════════════════════════════════════════
-//  NAVIGATION (ACTIVE TAB HIGHLIGHTING & SAFE GUARD)
+//  NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
@@ -507,7 +699,7 @@ window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (STRICT 5 CASES LIMIT & EXPAND TOGGLE)
+//  DASHBOARD
 // ═══════════════════════════════════════════════════════════════
 let recentCasesExpanded = false;
 
@@ -626,7 +818,7 @@ window.renderDashboard = renderDashboard;
 window.renderDashProfiles = renderDashProfiles;
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES (LIST VIEW VS TILE VIEW CONTROLLER)
+//  PROFILES VIEW MODES
 // ═══════════════════════════════════════════════════════════════
 let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
 
@@ -865,7 +1057,7 @@ window.renderProfileDetail = renderProfileDetail;
 window.renderProfileCases = renderProfileCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  ALL CASES (DESKTOP & MOBILE RENDERER)
+//  ALL CASES VIEW
 // ═══════════════════════════════════════════════════════════════
 function renderAllCases() {
   updateAllFilterDropdowns(); 
@@ -930,7 +1122,7 @@ function renderAllCases() {
 window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (WITH LIVE HEARINGS & TIMELINE HISTORY)
+//  CASE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -976,7 +1168,6 @@ function renderCaseDetail() {
     }
   }
 
-  // 1. General Case Information Card
   const infoEl = document.getElementById("cd-info");
   if (infoEl) {
     infoEl.innerHTML = `
@@ -1001,7 +1192,6 @@ function renderCaseDetail() {
       </div>`;
   }
 
-  // 2. Court Hearings & Schedule History Log Card
   const hearingsEl = document.getElementById("cd-hearings");
   if (hearingsEl) {
     const hearingsList = Array.isArray(c.hearings) ? c.hearings : [];
@@ -1029,7 +1219,7 @@ function renderCaseDetail() {
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap">
               ${badgeMarkup}
               <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)}</span>
-              ${h.time ? `<span style="font-size:11px;color:var(--text-muted)"><i class="bi bi-clock" style="margin-right:2px"></i>${h.time}</span>` : ''}
+              ${h.time ? `<span style="font-size:11px;color:var(--text-muted)"><i class="bi bi-clock"></i> ${h.time}</span>` : ''}
             </div>
             <div style="font-size:12.5px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>
             ${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(h.notes)}"</div>` : ''}
@@ -1054,7 +1244,6 @@ function renderCaseDetail() {
     hearingsEl.innerHTML = hHtml;
   }
 
-  // 3. Documents Card
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
@@ -1372,7 +1561,7 @@ window.refreshFilterTypes = refreshFilterTypes;
 window.onFilterCategoryChange = onFilterCategoryChange;
 
 // ═══════════════════════════════════════════════════════════════
-//  REAL-TIME MONTHLY CALENDAR GRID
+//  CALENDAR MONTH VIEW
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
@@ -1450,1429 +1639,4 @@ function renderMonthlyCalendarGrid() {
   const eventsByDate = {};
   activeCases.forEach(c => {
     if (c.dueDate) {
-      if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
-      eventsByDate[c.dueDate].push({ 
-        id: c.id, 
-        type: "case", 
-        title: c.title, 
-        category: c.category || "Case", 
-        typeName: c.type || "Case", 
-        venue: c.venue || "N/A" 
-      });
-    }
-
-    if (Array.isArray(c.hearings)) {
-      c.hearings.forEach(h => {
-        if (h.date && h.date !== c.dueDate) {
-          if (!eventsByDate[h.date]) eventsByDate[h.date] = [];
-          eventsByDate[h.date].push({ 
-            id: c.id, 
-            type: "case", 
-            title: `Hearing: ${c.title}`, 
-            category: c.category || "Case", 
-            typeName: h.purpose || c.type || "Hearing", 
-            venue: c.venue || "N/A" 
-          });
-        }
-      });
-    }
-  });
-
-  activeAppts.forEach(a => {
-    if (!eventsByDate[a.date]) eventsByDate[a.date] = [];
-    const isBusy = a.type === "busy";
-    eventsByDate[a.date].push({ 
-      id: a.id, 
-      type: isBusy ? "busy" : "appt", 
-      title: a.title || (isBusy ? "Out of Office" : "Appointment"), 
-      time: a.time || "All Day",
-      description: a.description || "",
-      requesterName: a.requesterName || "",
-      targetName: a.targetName || "",
-      requesterUid: a.requesterUid || "",
-      targetUid: a.targetUid || ""
-    });
-  });
-
-  const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
-  const startingDayOfWeek = firstDayObj.getDay();
-  const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-  const prevMonthDays = new Date(currentCalYear, currentCalMonth + 0).getDate();
-
-  const todayObj = new Date();
-  const todayY = todayObj.getFullYear();
-  const todayM = String(todayObj.getMonth() + 1).padStart(2, '0');
-  const todayD = String(todayObj.getDate()).padStart(2, '0');
-  const todayStr = `${todayY}-${todayM}-${todayD}`;
-
-  let html = `
-    <div class="cal-day-header">Sun</div>
-    <div class="cal-day-header">Mon</div>
-    <div class="cal-day-header">Tue</div>
-    <div class="cal-day-header">Wed</div>
-    <div class="cal-day-header">Thu</div>
-    <div class="cal-day-header">Fri</div>
-    <div class="cal-day-header">Sat</div>
-  `;
-
-  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-    const dayNum = prevMonthDays - i;
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${dayNum}</span></div>`;
-  }
-
-  for (let day = 1; day <= daysInMonth; day++) {
-    const mStr = String(currentCalMonth + 1).padStart(2, '0');
-    const dStr = String(day).padStart(2, '0');
-    const fullDateStr = `${currentCalYear}-${mStr}-${dStr}`;
-
-    const isToday = fullDateStr === todayStr;
-    const isPast = fullDateStr < todayStr;
-    const dayEvents = eventsByDate[fullDateStr] || [];
-
-    const hasBusy = dayEvents.some(e => e.type === "busy");
-    const hasCase = dayEvents.some(e => e.type === "case");
-    const hasAppt = dayEvents.some(e => e.type === "appt");
-
-    let dotsHtml = "";
-    if (dayEvents.length > 0) {
-      dotsHtml = `<div style="display:flex;gap:4px;margin-top:auto;padding-top:4px;justify-content:center;flex-wrap:wrap">`;
-      if (hasBusy) dotsHtml += `<span title="Unavailable / Out of Office" style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span>`;
-      if (hasCase) dotsHtml += `<span title="Case Hearing / Deadline" style="width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block"></span>`;
-      if (hasAppt) dotsHtml += `<span title="Appointment / Meeting" style="width:7px;height:7px;border-radius:50%;background:var(--violet);display:inline-block"></span>`;
-      dotsHtml += `</div>`;
-    }
-
-    const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold);color:#060c13;font-weight:800;padding:1px 5px;border-radius:3px;letter-spacing:0.5px">TODAY</span>` : "";
-
-    html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''}" 
-           onclick="openDateScheduleModal('${fullDateStr}')" 
-           title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span class="cal-day-num">${day}</span>
-          ${todayTag}
-        </div>
-        ${dotsHtml}
-      </div>
-    `;
-  }
-
-  const totalCells = startingDayOfWeek + daysInMonth;
-  const remainingCells = (7 - (totalCells % 7)) % 7;
-  for (let i = 1; i <= remainingCells; i++) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span></div>`;
-  }
-
-  gridEl.innerHTML = html;
-}
-
-window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
-
-// ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL CONTROLLER
-// ═══════════════════════════════════════════════════════════════
-window.openDateScheduleModal = function(dateStr) {
-  const modal = document.getElementById("date-schedule-modal");
-  const titleEl = document.getElementById("dsm-title");
-  const listEl = document.getElementById("dsm-events-list");
-
-  if (!modal || !listEl) return;
-
-  const formattedDate = formatDate(dateStr);
-  const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
-  const isPast = dateStr < todayStr;
-  const isToday = dateStr === todayStr;
-
-  let headerBadge = "";
-  if (isToday) headerBadge = ` <span style="font-size:10px;background:var(--gold);color:#060c13;font-weight:800;padding:2px 6px;border-radius:4px">TODAY</span>`;
-  else if (isPast) headerBadge = ` <span style="font-size:10px;background:var(--surface3);color:var(--text-dim);font-weight:600;padding:2px 6px;border-radius:4px">PAST DATE</span>`;
-
-  if (titleEl) titleEl.innerHTML = `<i class="bi bi-calendar3" style="color:var(--gold);margin-right:6px"></i> Schedule for ${formattedDate}${headerBadge}`;
-
-  const u = window._currentUser || window._auth?.currentUser;
-  const currentUid = u?.uid || "";
-
-  const dateCases = getAccessibleCases().filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
-  const dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
-
-  const allItems = [];
-
-  dateCases.forEach(c => {
-    const p = profiles.find(x => x.id === c.profileId);
-    const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
-    
-    allItems.push({
-      id: c.id,
-      kind: "case",
-      badgeColor: "var(--gold)",
-      badgeLabel: specificHearing ? "Court Hearing" : "Document Deadline",
-      title: c.title,
-      time: specificHearing?.time || "All Day",
-      sub: `${p?.name || "Attorney"} · ${specificHearing?.purpose || c.type || c.category || "Case"} · ${c.venue || "Venue N/A"}`,
-      desc: specificHearing?.notes || c.narrative || "No notes available.",
-      canDelete: false
-    });
-  });
-
-  dateAppts.forEach(a => {
-    const isBusy = a.type === "busy";
-    const isMyBusy = isBusy && (a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid);
-
-    allItems.push({
-      id: a.id,
-      kind: isBusy ? "busy" : "appt",
-      badgeColor: isBusy ? "var(--red)" : "var(--violet)",
-      badgeLabel: isBusy ? "Out of Office / Busy" : "Approved Appointment",
-      title: a.title,
-      time: a.time,
-      sub: isBusy 
-        ? `Attorney: ${a.targetName || a.requesterName || "Firm Attorney"}`
-        : `Proposer: ${a.requesterName} · Host: ${a.targetName}`,
-      desc: a.description || "",
-      canDelete: isMyBusy,
-      dateStr: dateStr
-    });
-  });
-
-  if (allItems.length === 0) {
-    listEl.innerHTML = `
-      <div class="empty-state" style="padding:28px 14px">
-        <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-calendar-x"></i></div>
-        <div style="font-size:13px;color:var(--text-muted)">
-          ${isPast ? "No past events recorded for this date." : "No events, deadlines, or appearances scheduled for this date."}
-        </div>
-      </div>
-    `;
-  } else {
-    listEl.innerHTML = allItems.map(item => `
-      <div style="background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:10px;padding:14px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px">
-          <span style="font-size:11px;font-weight:700;color:${item.badgeColor};background:${item.badgeColor}18;padding:2px 8px;border-radius:4px">
-            ${item.badgeLabel}
-          </span>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${item.time ? `<span style="font-size:11.5px;color:var(--text-muted);font-weight:600"><i class="bi bi-clock" style="margin-right:3px"></i>${item.time}</span>` : ""}
-            ${item.canDelete ? `<button onclick="deleteBusySlot('${item.id}', '${item.dateStr}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px" title="Delete availability entry"><i class="bi bi-trash3"></i> Remove</button>` : ""}
-          </div>
-        </div>
-        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${escHtml(item.title)}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">${escHtml(item.sub)}</div>
-        ${item.desc ? `<div style="font-size:12px;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;line-height:1.5;white-space:pre-wrap">${escHtml(item.desc)}</div>` : ""}
-      </div>
-    `).join("");
-  }
-
-  modal.classList.remove("hidden");
-};
-
-window.closeDateScheduleModal = function() {
-  const modal = document.getElementById("date-schedule-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  PERSONAL SETTINGS & 2FA CLEAN BUTTON
-// ═══════════════════════════════════════════════════════════════
-let settingsPhotoDataUrl = null;
-
-function renderMyProfile() {
-  const u = window._currentUser;
-  if (!u) return;
-
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf) return;
-
-  const nameEl = document.getElementById("setting-name");
-  const roleEl = document.getElementById("setting-role");
-  const contactEl = document.getElementById("setting-contact");
-  const emailEl = document.getElementById("setting-email");
-  const passEl = document.getElementById("setting-password");
-  const curPassEl = document.getElementById("setting-current-password");
-  const reauthEl = document.getElementById("setting-reauth-panel");
-
-  if (nameEl) {
-    nameEl.value = myProf.name || "";
-    nameEl.classList.remove("err");
-    nameEl.oninput = () => {
-      nameEl.classList.remove("err");
-      document.getElementById("lbl-setting-name")?.classList.remove("err");
-    };
-  }
-  if (roleEl) {
-    roleEl.value = myProf.role || "Attorney";
-    roleEl.classList.remove("err");
-    roleEl.oninput = () => {
-      roleEl.classList.remove("err");
-      document.getElementById("lbl-setting-role")?.classList.remove("err");
-    };
-  }
-  if (contactEl) {
-    contactEl.value = myProf.contact || "";
-    contactEl.classList.remove("err");
-    contactEl.oninput = () => {
-      contactEl.value = contactEl.value.replace(/\D/g, "");
-      contactEl.classList.remove("err");
-    };
-  }
-  if (emailEl) emailEl.value = u.email || "";
-  if (passEl) passEl.value = "";
-  if (curPassEl) curPassEl.value = "";
-  if (reauthEl) reauthEl.style.display = "none";
-
-  const mobileAdminCard = document.getElementById("mobile-admin-portal-card");
-  if (mobileAdminCard) {
-    const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
-    mobileAdminCard.style.display = isAdmin ? "block" : "none";
-  }
-
-  settingsPhotoDataUrl = myProf.photoUrl || null;
-  if (settingsPhotoDataUrl) {
-    showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
-  } else {
-    resetSettingsPhotoUpload();
-  }
-
-  const statusEl = document.getElementById("settings-drive-status");
-  const btn = document.getElementById("settings-connect-drive-btn");
-  const btnText = document.getElementById("settings-connect-drive-text");
-  const disconnectBtn = document.getElementById("settings-disconnect-drive-btn");
-
-  if (statusEl && btn && btnText) {
-    if (hasValidToken()) {
-      statusEl.className = "drive-status-chip connected";
-      statusEl.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i> Connected`;
-      btnText.textContent = "✓ Connected";
-      btn.classList.add("connected");
-      btn.disabled = true;
-      if (disconnectBtn) disconnectBtn.classList.remove("hidden");
-    } else {
-      statusEl.className = "drive-status-chip disconnected";
-      statusEl.innerHTML = `<i class="bi bi-circle-fill" style="color:var(--amber)"></i> Not Connected`;
-      btnText.textContent = "Connect Google Drive";
-      btn.classList.remove("connected");
-      btn.disabled = false;
-      if (disconnectBtn) disconnectBtn.classList.add("hidden");
-    }
-  }
-
-  const tfaBadge = document.getElementById("setting-2fa-status-badge");
-  const tfaBtn = document.getElementById("setting-2fa-action-btn");
-  const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
-
-  if (tfaBadge && tfaBtn) {
-    if (myProf.twoFactorEnabled) {
-      tfaBadge.className = "badge";
-      tfaBadge.style.background = "rgba(52,211,153,0.15)";
-      tfaBadge.style.color = "var(--green)";
-      tfaBadge.innerHTML = `<i class="bi bi-shield-check"></i> 2FA Active`;
-
-      tfaBtn.className = "btn btn-danger btn-sm";
-      tfaBtn.innerHTML = `<i class="bi bi-shield-x"></i> Disable 2FA`;
-      tfaBtn.onclick = disableTwoFactor;
-
-      if (tfaBackupWrap) tfaBackupWrap.style.display = "block";
-    } else {
-      tfaBadge.className = "badge";
-      tfaBadge.style.background = "rgba(251,191,36,0.15)";
-      tfaBadge.style.color = "var(--amber)";
-      tfaBadge.innerHTML = `<i class="bi bi-circle-fill" style="font-size:8px"></i> Not Configured`;
-
-      tfaBtn.className = "btn btn-primary btn-sm";
-      tfaBtn.innerHTML = `<i class="bi bi-qr-code-scan"></i> Configure Authenticator`;
-      tfaBtn.onclick = openTwoFactorSetupModal;
-
-      if (tfaBackupWrap) tfaBackupWrap.style.display = "none";
-    }
-  }
-}
-
-window.renderMyProfile = renderMyProfile;
-
-async function connectDriveFromSettings() {
-  const btn = document.getElementById("settings-connect-drive-btn");
-  const btnText = document.getElementById("settings-connect-drive-text");
-  if (!btn) return;
-
-  btn.disabled = true;
-  if (btnText) btnText.textContent = "Connecting...";
-
-  try {
-    await promptDriveAuth(true);
-    showToast("Google Drive connected successfully!");
-    renderMyProfile();
-    updateWorkspaceStatus(false);
-    
-    const u = window._currentUser;
-    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
-    if (myProf && !myProf.driveFolderId) {
-      showToast("Initializing attorney Drive storage folder...");
-      try {
-        const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
-        if (folderId) {
-          await dbUpdateProfile(myProf.id, { driveFolderId: folderId }).catch(e => console.warn("Profile update note:", e));
-          myProf.driveFolderId = folderId;
-          showToast("Storage folder created!");
-          updateWorkspaceStatus(false);
-        }
-      } catch (folderErr) {
-        console.warn("Folder initialization notice:", folderErr);
-      }
-    }
-  } catch (err) {
-    console.error("Settings drive auth failed:", err);
-    if (btnText) btnText.textContent = "Connect Google Drive";
-    btn.disabled = false;
-    showToast("Drive connection failed: " + err.message, "error");
-  }
-}
-
-window.connectDriveFromSettings = connectDriveFromSettings;
-
-function showSettingsPhotoPreview(url, name, role) {
-  const dropzone = document.getElementById("setting-photo-dropzone");
-  const wrap = document.getElementById("setting-photo-preview-wrap");
-  const img = document.getElementById("setting-photo-preview-img");
-  const namePrev = document.getElementById("setting-name-preview");
-  const rolePrev = document.getElementById("setting-role-preview");
-
-  if (dropzone) dropzone.style.display = "none";
-  if (wrap) wrap.style.display = "flex";
-  if (img) img.src = url;
-  if (namePrev) namePrev.textContent = name || "Attorney Name";
-  if (rolePrev) rolePrev.textContent = role || "Role";
-}
-
-function resetSettingsPhotoUpload() {
-  const dropzone = document.getElementById("setting-photo-dropzone");
-  const wrap = document.getElementById("setting-photo-preview-wrap");
-  const input = document.getElementById("setting-photo-input");
-
-  if (dropzone) dropzone.style.display = "block";
-  if (wrap) wrap.style.display = "none";
-  if (input) input.value = "";
-  settingsPhotoDataUrl = null;
-}
-
-function handleSettingsPhotoUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) {
-    showToast("Photo must be under 2MB", "error");
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    settingsPhotoDataUrl = e.target.result;
-    const nameVal = document.getElementById("setting-name")?.value || "";
-    const roleVal = document.getElementById("setting-role")?.value || "";
-    showSettingsPhotoPreview(settingsPhotoDataUrl, nameVal, roleVal);
-  };
-  reader.readAsDataURL(file);
-}
-
-function removeSettingsPhoto() {
-  resetSettingsPhotoUpload();
-}
-
-window.handleSettingsPhotoUpload = handleSettingsPhotoUpload;
-window.removeSettingsPhoto = removeSettingsPhoto;
-
-async function saveUserSettings() {
-  const u = window._currentUser;
-  if (!u) return;
-
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf) return;
-
-  const nameInput = document.getElementById("setting-name");
-  const roleInput = document.getElementById("setting-role");
-  const contactInput = document.getElementById("setting-contact");
-  
-  const nameLabel = document.getElementById("lbl-setting-name");
-  const roleLabel = document.getElementById("lbl-setting-role");
-
-  const name = (nameInput?.value || "").trim();
-  const role = (roleInput?.value || "").trim();
-  const contact = (contactInput?.value || "").trim();
-
-  let hasError = false;
-
-  if (!name) {
-    if (nameInput) nameInput.classList.add("err");
-    if (nameLabel) nameLabel.classList.add("err");
-    hasError = true;
-  }
-  if (!role) {
-    if (roleInput) roleInput.classList.add("err");
-    if (roleLabel) roleLabel.classList.add("err");
-    hasError = true;
-  }
-  if (contact && !isValidMobile(contact)) {
-    if (contactInput) contactInput.classList.add("err");
-    showToast("Contact number must be exactly 11 digits.", "error");
-    return;
-  } else if (contactInput) {
-    contactInput.classList.remove("err");
-  }
-
-  if (hasError) {
-    showToast("Please complete all required fields highlighted in red.", "error");
-    return;
-  }
-
-  const upd = { name, role, contact };
-
-  try {
-    showToast("Saving settings...");
-
-    if (settingsPhotoDataUrl && settingsPhotoDataUrl.startsWith("data:")) {
-      if (myProf.photoFileId && hasValidToken()) {
-        await deleteDriveFile(myProf.photoFileId).catch(() => {});
-      }
-      if (hasValidToken()) {
-        const folderId = myProf.driveFolderId || null;
-        const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(settingsPhotoDataUrl, folderId, name);
-        upd.photoFileId = fileId;
-        upd.photoUrl = thumbnailUrl;
-      } else {
-        showToast("Drive not connected. Profile photo was not uploaded to storage.", "error");
-      }
-    } else if (!settingsPhotoDataUrl && myProf.photoFileId) {
-      if (hasValidToken()) await deleteDriveFile(myProf.photoFileId).catch(() => {});
-      upd.photoFileId = null;
-      upd.photoUrl = null;
-    }
-
-    await dbUpdateProfile(myProf.id, upd);
-    
-    if (typeof window._fbUpdateProfile === "function") {
-      await window._fbUpdateProfile(u, { displayName: name, photoURL: upd.photoUrl || null });
-    }
-
-    selProfile = { ...myProf, ...upd };
-    showToast("Profile settings updated!");
-    renderMyProfile();
-    updateWorkspaceStatus(false);
-  } catch (err) {
-    console.error("saveUserSettings error:", err);
-    showToast("Failed to save settings: " + err.message, "error");
-  }
-}
-
-async function saveSecuritySettings() {
-  const u = window._currentUser;
-  if (!u) return;
-
-  const email = (document.getElementById("setting-email")?.value || "").trim();
-  const pass = document.getElementById("setting-password")?.value || "";
-  const currentPass = document.getElementById("setting-current-password")?.value || "";
-
-  if (email === u.email && !pass) {
-    showToast("No security modifications requested.");
-    return;
-  }
-
-  if (email && !isValidEmail(email)) {
-    showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
-    return;
-  }
-
-  if (pass) {
-    const isLengthValid = pass.length >= 6;
-    const isUpperValid = /[A-Z]/.test(pass);
-    const isNumberValid = /\d/.test(pass);
-    const isSpecialValid = /[^A-Za-z0-9]/.test(pass);
-
-    if (!isLengthValid || !isUpperValid || !isNumberValid || !isSpecialValid) {
-      showToast("Please ensure your new password meets all security requirements.", "error");
-      return;
-    }
-  }
-
-  const reauthPanel = document.getElementById("setting-reauth-panel");
-  if (reauthPanel && reauthPanel.style.display === "none") {
-    reauthPanel.style.display = "block";
-    showToast("Enter your current password to verify identity.", "error");
-    return;
-  }
-
-  if (!currentPass) {
-    showToast("Please enter your current password to proceed.", "error");
-    return;
-  }
-
-  try {
-    showToast("Verifying credentials...");
-    const credential = window._fbEmailCred(u.email, currentPass);
-    await window._fbReauth(u, credential);
-
-    if (email !== u.email) {
-      await window._fbUpdateEmail(u, email);
-      const myProf = profiles.find(p => p.ownerUid === u.uid);
-      if (myProf) {
-        await dbUpdateProfile(myProf.id, { email: email });
-      }
-    }
-
-    if (pass) {
-      await window._fbUpdatePassword(u, pass);
-    }
-
-    showToast("Credentials updated successfully!");
-    if (reauthPanel) reauthPanel.style.display = "none";
-    const passInp = document.getElementById("setting-password");
-    const curPassInp = document.getElementById("setting-current-password");
-    const reqsBox = document.getElementById("password-requirements");
-    if (passInp) passInp.value = "";
-    if (curPassInp) curPassInp.value = "";
-    if (reqsBox) reqsBox.style.display = "none"; 
-  } catch (err) {
-    console.error("Credentials update failed:", err);
-    showToast("Verification failed: " + err.message, "error");
-  }
-}
-
-window.saveUserSettings = saveUserSettings;
-window.saveSecuritySettings = saveSecuritySettings;
-
-function confirmDeleteUserAccount() {
-  const u = window._currentUser;
-  if (!u) return;
-  
-  const pending = { type: "account_delete", email: u.email };
-  _pendingDeleteTarget = pending;
-
-  const delTitle = document.getElementById("del-title");
-  const delBody = document.getElementById("del-body");
-  const label = document.getElementById("del-confirm-target-text");
-
-  if (delTitle) delTitle.textContent = "Delete Your Account?";
-  if (delBody) {
-    delBody.innerHTML = 
-      `You are about to permanently delete your account, attorney profile, and all cases.<br>This cannot be undone. To proceed, please type your email address exactly:<br><strong>${u.email}</strong>`;
-  }
-  if (label) {
-    label.textContent = u.email;
-    label.style.color = "var(--red)";
-  }
-
-  openDeleteModal();
-}
-
-async function executeDeleteAccountWipe() {
-  const u = window._currentUser;
-  if (!u) return;
-
-  try {
-    showToast("Purging your files & database records...");
-
-    const myProf = profiles.find(p => p.ownerUid === u.uid);
-    const myCases = cases.filter(c => c.ownerUid === u.uid);
-
-    for (const c of myCases) {
-      if (c.documents) {
-        for (const doc of c.documents) {
-          if (doc.driveFileId && hasValidToken()) {
-            await deleteDriveFile(doc.driveFileId).catch(() => {});
-          }
-        }
-      }
-      await dbDeleteCase(c.id).catch(() => {});
-    }
-
-    if (myProf) {
-      if (myProf.photoFileId && hasValidToken()) {
-        await deleteDriveFile(myProf.photoFileId).catch(() => {});
-      }
-      if (myProf.driveFolderId && hasValidToken()) {
-        await deleteDriveFile(myProf.driveFolderId).catch(() => {});
-      }
-      await dbDeleteProfile(myProf.id).catch(() => {});
-    }
-
-    if (typeof clearPersistedToken === "function") {
-      clearPersistedToken(u.uid);
-    }
-
-    showToast("Deleting security credential...");
-    await window._fbDeleteUser(u);
-    
-    showToast("Account deleted successfully.");
-    window.location.replace("login.html");
-  } catch (err) {
-    console.error("Account wipe failure:", err);
-    if (err.code === "auth/requires-recent-login") {
-      showToast("Verification expired. Re-authenticate in My Settings and try again.", "error");
-    } else {
-      showToast("Cleanup finished with network warnings: " + err.message, "error");
-    }
-  }
-}
-
-window.confirmDeleteUserAccount = confirmDeleteUserAccount;
-window.executeDeleteAccountWipe = executeDeleteAccountWipe;
-
-// ═══════════════════════════════════════════════════════════════
-//  SIGN OUT: PRESERVES DRIVE TOKEN UNDER USER-SCOPED STORAGE
-// ═══════════════════════════════════════════════════════════════
-async function handleLogout() {
-  try {
-    if (typeof dbUnsubscribe === "function") dbUnsubscribe();
-    if (window._fbSignOut) {
-      sessionStorage.removeItem("simando_2fa_verified");
-      await window._fbSignOut(window._auth);
-      window.location.replace("login.html");
-    }
-  } catch (err) {
-    console.error("Signout error:", err);
-  }
-}
-
-window.handleLogout = handleLogout;
-
-function escHtml(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function parseGoogleDateTime(isoString) {
-  if (!isoString) return { dateStr: "", timeStr: "", dateObj: new Date(), isAllDay: false };
-
-  if (isoString.length === 10 && !isoString.includes("T")) {
-    const parts = isoString.split("-");
-    const yr = parseInt(parts[0], 10);
-    const mo = parseInt(parts[1], 10) - 1;
-    const dy = parseInt(parts[2], 10);
-    const dateObj = new Date(yr, mo, dy);
-    const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    return { dateStr, timeStr: "All Day", dateObj, isAllDay: true };
-  }
-
-  const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-  if (!match) {
-    const d = new Date(isoString);
-    return {
-      dateStr: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
-      dateObj: d,
-      isAllDay: false
-    };
-  }
-
-  const yr = parseInt(match[1], 10);
-  const mo = parseInt(match[2], 10) - 1;
-  const dy = parseInt(match[3], 10);
-  const hh = parseInt(match[4], 10);
-  const mm = match[5];
-
-  const dateObj = new Date(yr, mo, dy, hh, parseInt(mm, 10));
-  const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-  const ampm = hh >= 12 ? "PM" : "AM";
-  const displayHour = hh % 12 === 0 ? 12 : hh % 12;
-  const timeStr = `${displayHour}:${mm} ${ampm}`;
-
-  return { dateStr, timeStr, dateObj, isAllDay: false };
-}
-
-window.openCalendarEventModal = function(index) {
-  const events = window._fetchedCalendarEvents;
-  if (!events || !events[index]) return;
-  const ev = events[index];
-
-  const modal = document.getElementById("calendar-event-modal");
-  if (!modal) return;
-
-  const titleEl    = document.getElementById("cem-title");
-  const timeEl     = document.getElementById("cem-time");
-  const locationEl = document.getElementById("cem-location");
-  const descEl     = document.getElementById("cem-desc");
-  const linkEl     = document.getElementById("cem-link");
-
-  const start = ev.start.dateTime || ev.start.date;
-  const end   = ev.end?.dateTime || ev.end?.date;
-  
-  const parsedStart = parseGoogleDateTime(start);
-  const parsedEnd   = parseGoogleDateTime(end);
-
-  let timeString = parsedStart.dateStr;
-  if (!parsedStart.isAllDay) {
-    timeString += ` · ${parsedStart.timeStr}`;
-    if (end && parsedEnd.timeStr && !parsedEnd.isAllDay) {
-      timeString += ` - ${parsedEnd.timeStr}`;
-    }
-  } else {
-    timeString += " (All Day)";
-  }
-
-  if (titleEl) titleEl.innerHTML = `<i class="bi bi-calendar-event" style="color:var(--gold);margin-right:6px"></i> ${escHtml(ev.summary || "No Title")}`;
-  if (timeEl) timeEl.textContent = timeString;
-  if (locationEl) locationEl.textContent = ev.location || "No venue/location specified";
-  if (descEl) descEl.textContent = ev.description || "No description provided.";
-  
-  if (linkEl) {
-    if (ev.htmlLink) {
-      linkEl.href = ev.htmlLink;
-      linkEl.style.display = "inline-flex";
-    } else {
-      linkEl.style.display = "none";
-    }
-  }
-
-  modal.classList.remove("hidden");
-};
-
-window.closeCalendarModal = function() {
-  const modal = document.getElementById("calendar-event-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-async function fetchAndRenderGoogleCalendarEvents() {
-  const card = document.getElementById("dash-calendar-card");
-  if (!card) return;
-
-  let html = `<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px;justify-content:space-between">
-    <div style="display:flex;align-items:center;gap:8px">
-      <i class="bi bi-calendar3" style="color:var(--gold);font-size:18px"></i> Google Calendar Agenda
-    </div>
-    <button onclick="fetchAndRenderGoogleCalendarEvents()" class="btn btn-ghost" style="font-size:11px;padding:4px 8px" title="Refresh Agenda"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-  </div>`;
-
-  if (!hasValidToken()) {
-    html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px">
-      <div style="font-size:24px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div>
-      <div style="font-size:12px;font-weight:600">Google Calendar Not Synced</div>
-      <div style="font-size:11px;margin-top:4px">Authorize Google Calendar under <a href="#" onclick="navTo('myprofile'); return false;" style="color:var(--gold);text-decoration:underline">My Settings</a> to sync case deadlines and view your agenda live.</div>
-    </div>`;
-    card.innerHTML = html;
-    return;
-  }
-
-  try {
-    card.innerHTML = html + `<div style="text-align:center;padding:20px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const timeMin = today.toISOString();
-    
-    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=6`;
-    
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const errorObj = new Error(errData.error?.message || "Failed to load events");
-      errorObj.status = res.status;
-      throw errorObj;
-    }
-
-    const data = await res.json();
-    const events = data.items || [];
-    window._fetchedCalendarEvents = events;
-
-    if (events.length === 0) {
-      html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px">
-        No upcoming events found on your Google Calendar.
-      </div>`;
-    } else {
-      html += `<div style="display:flex;flex-direction:column;gap:10px">`;
-      events.forEach((ev, i) => {
-        const start = ev.start.date || ev.start.dateTime;
-        const parsedStart = parseGoogleDateTime(start);
-        
-        const dateStr   = parsedStart.dateStr;
-        const timeStr   = parsedStart.timeStr;
-        const eventDate = parsedStart.dateObj;
-        
-        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px"><i class="bi bi-geo-alt-fill" style="color:var(--gold)"></i> ${escHtml(ev.location)}</div>` : "";
-        const descriptionMarkup = ev.description ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic">"${escHtml(ev.description.slice(0, 50))}${ev.description.length > 50 ? '...' : ''}"</div>` : "";
-
-        const weekdayStr = eventDate.toLocaleDateString("en-US", { weekday: "short" });
-
-        html += `
-          <div onclick="openCalendarEventModal(${i})" style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
-            <div style="text-align:center;background:rgba(201,168,76,0.1);border:1px solid var(--gold-border);border-radius:8px;padding:6px;min-width:48px">
-              <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase">${weekdayStr}</div>
-              <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px">${eventDate.getDate()}</div>
-            </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary || 'No Title')}">${escHtml(ev.summary || 'No Title')}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><i class="bi bi-calendar-event" style="color:var(--gold);margin-right:2px"></i> ${dateStr} · <i class="bi bi-clock" style="color:var(--gold);margin-right:2px"></i> ${timeStr}</div>
-              ${locationMarkup}
-              ${descriptionMarkup}
-            </div>
-          </div>
-        `;
-      });
-      html += `</div>`;
-    }
-  } catch (err) {
-    console.error("fetchAndRenderGoogleCalendarEvents error:", err);
-    
-    if (err.status === 401) {
-      fetchAndRenderGoogleCalendarEvents();
-      return;
-    }
-
-    if (err.status === 403) {
-      html += `<div style="text-align:left;padding:16px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px;line-height:1.5">
-        <strong style="color:var(--amber)"><i class="bi bi-shield-exclamation"></i> Google Calendar API Access Denied (403)</strong><br>
-        Please ensure the <strong>Google Calendar API</strong> is enabled inside your Google Cloud Console for this project Client ID.
-      </div>`;
-    } else {
-      html += `<div style="text-align:center;padding:20px;color:var(--red);font-size:12px">
-        Failed to load Google Calendar Agenda. Click refresh to try again.
-      </div>`;
-    }
-  }
-  card.innerHTML = html;
-}
-
-window.fetchAndRenderGoogleCalendarEvents = fetchAndRenderGoogleCalendarEvents;
-
-if (!window._calendarIntervalId) {
-  window._calendarIntervalId = setInterval(() => {
-    if (currentView === "dashboard" && hasValidToken() && document.visibilityState === "visible" && typeof fetchAndRenderGoogleCalendarEvents === "function") {
-      fetchAndRenderGoogleCalendarEvents();
-    }
-  }, 15000); 
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  MUTUALLY EXCLUSIVE NOTIFICATIONS & CHAT DROPDOWNS
-// ═══════════════════════════════════════════════════════════════
-window.toggleNotifDropdown = function() {
-  const dropdown = document.getElementById("notif-dropdown");
-  if (!dropdown) return;
-  
-  const willOpen = dropdown.classList.contains("hidden");
-  dropdown.classList.toggle("hidden");
-
-  if (willOpen) {
-    const chatPanel = document.getElementById("chat-panel");
-    if (chatPanel && !chatPanel.classList.contains("hidden")) {
-      chatPanel.classList.add("hidden");
-    }
-    renderNotificationsView();
-  }
-};
-
-document.addEventListener("click", (e) => {
-  const container = document.getElementById("top-hdr-actions");
-  const dropdown = document.getElementById("notif-dropdown");
-  if (container && dropdown && !container.contains(e.target)) {
-    dropdown.classList.add("hidden");
-  }
-});
-
-function updateNotificationBadge() {
-  const badgeEl = document.getElementById("global-notif-badge");
-  if (!badgeEl) return;
-  const unreadCount = notifications.filter(n => n.status === "unread").length;
-  if (unreadCount > 0) {
-    badgeEl.textContent = unreadCount;
-    badgeEl.style.display = "inline-flex";
-  } else {
-    badgeEl.style.display = "none";
-  }
-}
-
-window.updateNotificationBadge = updateNotificationBadge;
-
-window.handleNotifClick = async function(notifId, type, relatedId, fromUid, fromName) {
-  if (notifId) {
-    markNotificationRead(notifId);
-  }
-
-  const dropdown = document.getElementById("notif-dropdown");
-  if (dropdown) dropdown.classList.add("hidden");
-
-  if ((type === "case_due" || type === "case_share") && relatedId) {
-    openCase(relatedId);
-  } else if (type === "availability_request" || type === "availability_confirmed") {
-    if (window._chat) {
-      if (typeof window._chat.toggleDock === "function" && !document.getElementById("chat-panel")?.classList.contains("open")) {
-        window._chat.toggleDock();
-      }
-      if (fromUid && typeof window._chat.openConversation === "function") {
-        window._chat.openConversation(fromUid, fromName || "Attorney", false);
-      }
-    }
-  }
-};
-
-function renderNotificationsView() {
-  const listEl = document.getElementById("notifications-list");
-  if (!listEl) return;
-
-  if (notifications.length === 0) {
-    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px;color:var(--gold)"><i class="bi bi-bell-slash"></i></div><div style="font-size:12px;color:var(--text-muted)">No notifications found.</div></div>`;
-    return;
-  }
-
-  listEl.innerHTML = notifications.map(n => {
-    const isUnread = n.status === "unread";
-    const dateStr = n.createdAt ? new Date(n.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "N/A";
-    
-    let actions = "";
-    if (n.type === "appointment_request" && n.appointmentStatus === "pending") {
-      actions = `
-        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); acceptAppointmentRequest('${n.id}', '${n.relatedId}')"><i class="bi bi-check2"></i> Accept</button>
-          <button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); declineAppointmentRequest('${n.id}', '${n.relatedId}')"><i class="bi bi-x"></i> Decline</button>
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')"><i class="bi bi-chat-dots-fill" style="color:var(--gold)"></i> Chat</button>
-        </div>
-      `;
-    } else if (n.type === "appointment_request") {
-      const statusText = (n.appointmentStatus || "").toUpperCase();
-      const colorVal = n.appointmentStatus === "accepted" ? "var(--green)" : "var(--red)";
-      actions = `<div style="font-size:10px;font-weight:700;color:${colorVal};margin-top:6px"><i class="bi bi-circle-fill" style="font-size:7px;margin-right:3px"></i>PROPOSAL ${statusText}</div>`;
-    } else if (n.type === "availability_request" || n.type === "availability_confirmed") {
-      actions = `
-        <div style="margin-top:8px">
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')"><i class="bi bi-chat-dots-fill" style="color:var(--gold)"></i> Go to Chat Stream</button>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="doc-item" onclick="handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')" style="border-left: 3px solid ${isUnread ? 'var(--gold)' : 'var(--border)'}; background: ${isUnread ? 'var(--surface2)' : 'transparent'}; margin-bottom: 8px; padding: 10px 12px; font-size: 12px; cursor: pointer;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
-          <div style="flex:1;min-width:0;padding-right:6px">
-            <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:2px">${escHtml(n.title)}</div>
-            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4">${escHtml(n.message)}</div>
-            <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${dateStr}</div>
-            ${actions}
-          </div>
-          ${isUnread ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;flex-shrink:0" onclick="event.stopPropagation(); markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-window.renderNotificationsView = renderNotificationsView;
-
-window.markNotificationRead = async function(id) {
-  const notif = notifications.find(n => n.id === id);
-  if (notif) {
-    notif.status = "read";
-    updateNotificationBadge();
-    renderNotificationsView();
-  }
-  try {
-    await dbUpdateNotification(id, { status: "read" });
-  } catch (err) {
-    console.error("markNotificationRead error:", err);
-  }
-};
-
-window.markAllNotificationsAsRead = async function() {
-  notifications.forEach(n => { n.status = "read"; });
-  updateNotificationBadge();
-  renderNotificationsView();
-
-  try {
-    showToast("Clearing alerts...");
-    for (const n of notifications) {
-      await dbUpdateNotification(n.id, { status: "read" });
-    }
-    showToast("All notifications cleared!");
-  } catch (err) {
-    console.error("markAllNotificationsAsRead error:", err);
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  APPOINTMENTS / SCHEDULING SYSTEM CONTROLLERS
-// ═══════════════════════════════════════════════════════════════
-let targetApptProfile = null;
-
-window.openAppointmentModal = function(profileId) {
-  const p = profiles.find(x => x.id === profileId);
-  if (!p) return;
-  targetApptProfile = p;
-
-  const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
-
-  const titleInp = document.getElementById("appt-title");
-  const dateInp = document.getElementById("appt-date");
-  const timeInp = document.getElementById("appt-time");
-  const descInp = document.getElementById("appt-desc");
-  const modalSub = document.getElementById("appointment-modal-sub");
-
-  if (titleInp) titleInp.value = "";
-  if (dateInp) {
-    dateInp.value = "";
-    dateInp.min = todayStr;
-  }
-  if (timeInp) timeInp.value = "";
-  if (descInp) descInp.value = "";
-  if (modalSub) modalSub.textContent = `Propose an appointment or schedule date with ${p.name}`;
-  
-  const modal = document.getElementById("appointment-modal");
-  if (modal) modal.classList.remove("hidden");
-};
-
-window.closeAppointmentModal = function() {
-  const modal = document.getElementById("appointment-modal");
-  if (modal) modal.classList.add("hidden");
-  targetApptProfile = null;
-};
-
-window.submitAppointmentRequest = async function() {
-  const title = (document.getElementById("appt-title")?.value || "").trim();
-  const date = document.getElementById("appt-date")?.value || "";
-  const time = document.getElementById("appt-time")?.value || "";
-  const desc = (document.getElementById("appt-desc")?.value || "").trim();
-
-  if (!title || !date || !time) {
-    showToast("Please fill in all required fields.", "error");
-    return;
-  }
-
-  const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
-  if (date < todayStr) {
-    showToast("Cannot propose appointments on past dates.", "error");
-    return;
-  }
-
-  const u = window._currentUser;
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf || !targetApptProfile) return;
-
-  try {
-    showToast("Sending request...");
-    
-    const apptData = {
-      title,
-      date,
-      time,
-      description: desc,
-      requesterUid: u.uid,
-      requesterName: myProf.name,
-      targetUid: targetApptProfile.ownerUid,
-      targetName: targetApptProfile.name,
-      status: "pending"
-    };
-    const apptId = await dbAddAppointment(apptData);
-
-    const notifData = {
-      toUid: targetApptProfile.ownerUid,
-      fromUid: u.uid,
-      fromName: myProf.name,
-      title: "New Appointment Proposal",
-      message: `${myProf.name} proposed an appointment "${title}" on ${formatDate(date)} at ${time}.`,
-      type: "appointment_request",
-      relatedId: apptId,
-      status: "unread",
-      appointmentStatus: "pending"
-    };
-    await dbAddNotification(notifData);
-
-    showToast("Schedule request sent!");
-    closeAppointmentModal();
-  } catch (err) {
-    console.error("submitAppointmentRequest error:", err);
-    showToast("Failed to request appointment: " + err.message, "error");
-  }
-};
-
-window.acceptAppointmentRequest = async function(notifId, apptId) {
-  try {
-    showToast("Approving proposal...");
-    await dbUpdateAppointment(apptId, { status: "accepted" });
-    await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" });
-    
-    const appt = appointments.find(a => a.id === apptId);
-    if (appt) {
-      await dbAddNotification({
-        toUid: appt.requesterUid,
-        fromUid: window._currentUser.uid,
-        fromName: appt.targetName,
-        title: "Appointment Approved",
-        message: `${appt.targetName} accepted your proposed date "${appt.title}" on ${formatDate(appt.date)} at ${appt.time}.`,
-        type: "appointment_update",
-        relatedId: apptId,
-        status: "unread"
-      });
-    }
-    showToast("Appointment confirmed!");
-  } catch (err) {
-    console.error("acceptAppointmentRequest error:", err);
-  }
-};
-
-window.declineAppointmentRequest = async function(notifId, apptId) {
-  try {
-    showToast("Declining request...");
-    await dbUpdateAppointment(apptId, { status: "declined" });
-    await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" });
-    
-    const appt = appointments.find(a => a.id === apptId);
-    if (appt) {
-      await dbAddNotification({
-        toUid: appt.requesterUid,
-        fromUid: window._currentUser.uid,
-        fromName: appt.targetName,
-        title: "Appointment Declined",
-        message: `${appt.targetName} declined your proposed date "${appt.title}" on ${formatDate(a.date)}.`,
-        type: "appointment_update",
-        relatedId: apptId,
-        status: "unread"
-      });
-    }
-    showToast("Request declined.");
-  } catch (err) {
-    console.error("declineAppointmentRequest error:", err);
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  CASE FORM INITIALIZATION
-// ═══════════════════════════════════════════════════════════════
-function populateCaseSelects(isEdit = false) {
-  const catSel = document.getElementById("cf-category");
-  const statusSel = document.getElementById("cf-status");
-  const venueSel = document.getElementById("cf-venue");
-  
-  if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-  
-  const optionsToUse = isEdit ? STATUS_OPTIONS : (typeof NEW_CASE_STATUS_OPTIONS !== "undefined" ? NEW_CASE_STATUS_OPTIONS : ["On-going", "Pending"]);
-  if (statusSel) statusSel.innerHTML = optionsToUse.map(t => `<option value="${t}">${t}</option>`).join("");
-  
-  if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
-}
-
-window.populateCaseSelects = populateCaseSelects;
-
-// ═══════════════════════════════════════════════════════════════
-//  GOOGLE DRIVE EXPLORER REPLICA
-// ═══════════════════════════════════════════════════════════════
-let currentExplorerFolderId = "root";
-let explorerBreadcrumbs = [];
-
-window.initDriveExplorer = function() {
-  const u = window._currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
-  const startFolder = (myProf && myProf.driveFolderId) ? myProf.driveFolderId : (DRIVE_FOLDER_ID || "root");
-
-  currentExplorerFolderId = startFolder;
-  explorerBreadcrumbs = [{ id: currentExplorerFolderId, name: "Firm Drive" }];
-  loadExplorerFiles();
-};
-
-window.loadExplorerFiles = async function() {
-  const listEl = document.getElementById("mydrive-explorer-list");
-  const emptyEl = document.getElementById("mydrive-empty-state");
-  const nativeBtn = document.getElementById("mydrive-open-native-btn");
-
-  if (!listEl) return;
-
-  renderExplorerBreadcrumbs();
-
-  if (nativeBtn) {
-    const u = window._currentUser;
-    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
-    const targetFolder = (currentExplorerFolderId && currentExplorerFolderId !== "root") 
-      ? currentExplorerFolderId 
-      : (myProf?.driveFolderId || DRIVE_FOLDER_ID || "");
-
-    if (targetFolder && targetFolder !== "root") {
-      nativeBtn.href = "https://drive.google.com/drive/folders/" + targetFolder;
-      nativeBtn.style.display = "inline-flex";
-    } else {
-      nativeBtn.href = "https://drive.google.com";
-      nativeBtn.style.display = "inline-flex";
-    }
-  }
-
-  if (!hasValidToken()) {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">
-      <div style="font-size:28px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div>
-      <div style="font-size:13px;font-weight:600">Google Drive Session Expired</div>
-      <div style="font-size:11px;margin-top:4px">Please re-authenticate under My Settings to view file explorer records.</div>
-    </div>`;
-    if (emptyEl) emptyEl.classList.add("hidden");
-    return;
-  }
-
-  try {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
-    if (emptyEl) emptyEl.classList.add("hidden");
-
-    let folderQueryId = currentExplorerFolderId;
-    if (!folderQueryId || folderQueryId === "root") {
-      folderQueryId = "root";
-    }
-
-    const q = encodeURIComponent("'" + folderQueryId + "' in parents and trashed = false");
-    const url = "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name,mimeType,size,webViewLink)&orderBy=folder,name";
-
-    const res = await fetch(url, {
-      headers: { Authorization: "Bearer " + accessToken }
-    });
-
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      if (res.status === 403 || res.status === 404) {
-        if (folderQueryId !== "root") {
-          console.warn("Folder query 403/404. Falling back to root drive view.");
-          currentExplorerFolderId = "root";
-          explorerBreadcrumbs = [{ id: "root", name: "Firm Drive" }];
-          loadExplorerFiles();
-          return;
-        }
-      }
-      throw new Error(errBody.error?.message || `Google Drive API error (${res.status})`);
-    }
-
-    const data = await res.json();
-    const files = data.files || [];
-
-    if (files.length === 0) {
-      listEl.innerHTML = "";
-      if (emptyEl) emptyEl.classList.remove("hidden");
-      return;
-    }
-
-    if (emptyEl) emptyEl.classList.add("hidden");
-
-    listEl.innerHTML = files.map(f => {
-      const isFolder = f.mimeType === "application/vnd.google-apps.folder";
-      const icon = isFolder 
-        ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>` 
-        : (f.name.toLowerCase().endsWith(".pdf") 
-          ? `<i class="bi bi-file-earmark-pdf-fill" style="color:var(--red);font-size:32px"></i>`
-          : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`);
-
-      const onClickAction = isFolder 
-        ? "onclick=\"navigateIntoFolder('" + f.id + "', '" + f.name.replace(/'/g, "\\'") + "')\""
-        : "onclick=\"window.open('" + f.webViewLink + "', '_blank')\"";
-      
-      const sizeText = f.size ? (f.size / (1024 * 1024)).toFixed(2) + " MB" : "";
-
-      return `
-        <div style="min-width:0;max-width:100%;overflow:hidden;position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
-          <div ${onClickAction} style="min-width:0;max-width:100%;overflow:hidden">
-            <div style="margin-bottom:8px">${icon}</div>
-            <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:block" title="${escHtml(f.name)}">${escHtml(f.name)}</div>
-            ${sizeText ? '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sizeText + '</div>' : ""}
-          </div>
-          <button onclick="event.stopPropagation(); adminDeleteDriveExplorerFile('${f.id}', '${f.name.replace(/'/g, "\\'")}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:4px;border-radius:4px;opacity:0.6;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'" title="Delete file from Google Drive">
-            <i class="bi bi-trash3"></i>
-          </button>
-        </div>
-      `;
-    }).join("");
-
-  } catch (err) {
-    console.warn("loadExplorerFiles notice:", err);
-    listEl.innerHTML = `
-      <div style="grid-column:1/-1;text-align:center;padding:30px 16px;color:var(--text-muted)">
-        <div style="font-size:28px;margin-bottom:8px;color:var(--amber)"><i class="bi bi-exclamation-triangle-fill"></i></div>
-        <div style="font-size:13px;font-weight:600;color:var(--text)">Google Drive API Notice (403)</div>
-        <div style="font-size:11.5px;margin-top:6px;line-height:1.5">
-          Unable to browse folder contents. Please ensure the <strong>Google Drive API</strong> is enabled in your Google Cloud Console for your project credentials, or click <strong>Open in Google Drive</strong> above to view your files directly.
-        </div>
-      </div>
-    `;
-  }
-};
-
-// 3. BRANDED FIRM DRIVE FILE DELETION CONFIRMATION
-window.adminDeleteDriveExplorerFile = function(fileId, fileName) {
-  window.openConfirmModal({
-    icon: "bi-trash3",
-    title: "Delete from Firm Drive?",
-    body: `Are you sure you want to delete <strong>"${escHtml(fileName)}"</strong> directly from Google Drive?<br>This action cannot be undone.`,
-    confirmText: "Delete from Drive",
-    confirmStyle: "btn-danger",
-    onConfirm: async () => {
-      try {
-        showToast("Deleting file from Drive...");
-        await deleteDriveFile(fileId);
-        showToast("File deleted from Google Drive.");
-        loadExplorerFiles();
-      } catch (err) {
-        console.error("Delete explorer file error:", err);
-        showToast("Failed to delete file: " + err.message, "error");
-      }
-    }
-  });
-};
-
-window.navigateIntoFolder = function(id, name) {
-  explorerBreadcrumbs.push({ id, name });
-  currentExplorerFolderId = id;
-  loadExplorerFiles();
-};
-
-window.navigateBreadcrumb = function(index) {
-  explorerBreadcrumbs = explorerBreadcrumbs.slice(0, index + 1);
-  currentExplorerFolderId = explorerBreadcrumbs[index].id;
-  loadExplorerFiles();
-};
-
-function renderExplorerBreadcrumbs() {
-  const el = document.getElementById("mydrive-breadcrumbs");
-  if (!el) return;
-
-  el.innerHTML = explorerBreadcrumbs.map((b, idx) => {
-    const isLast = idx === explorerBreadcrumbs.length - 1;
-    if (isLast) {
-      return '<span style="color:var(--gold)"><i class="bi bi-folder-fill" style="margin-right:4px"></i>' + escHtml(b.name) + '</span>';
-    }
-    return '<span onclick="navigateBreadcrumb(' + idx + ')" style="cursor:pointer;color:var(--text-muted);text-decoration:underline" onmouseover="this.style.color=\'var(--text)\'" onmouseout="this.style.color=\'var(--text-muted)\'">' + escHtml(b.name) + '</span> <span style="font-size:11px;opacity:0.4">/</span>';
-  }).join(" ");
-}
-
-function openMyDriveFolder() {
-  const u = window._currentUser;
-  if (!u) { showToast("Not logged in.", "error"); return; }
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (myProf && myProf.driveFolderId) {
-    window.open(`https://drive.google.com/drive/folders/${myProf.driveFolderId}`, "_blank");
-  } else {
-    showToast("No Drive folder linked. Please connect Google Drive in Settings first.", "error");
-  }
-}
-
-window.openMyDriveFolder = openMyDriveFolder;
-
-// ═══════════════════════════════════════════════════════════════
-//  FILE PREVIEW CONTROLLER
-// ═══════════════════════════════════════════════════════════════
-window.openFilePreview = function(doc) {
-  if (!doc) return;
-
-  if (doc.driveLink) {
-    window.open(doc.driveLink, "_blank");
-    return;
-  }
-
-  if (doc._localTempId && typeof pendingLocalFiles !== "undefined") {
-    const file = pendingLocalFiles[doc._localTempId];
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      window.open(objectUrl, "_blank");
-      return;
-    }
-  }
-
-  showToast("File link not found.", "error");
-};
-
-window.closeFilePreview = function() {
-  const modal = document.getElementById("file-preview-modal");
-  if (modal) modal.style.display = "none";
-};
+      if (!eventsBy
