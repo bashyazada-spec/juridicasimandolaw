@@ -1,0 +1,25 @@
+{
+  "name": "Simando Law — Case Manager",
+  "short_name": "Simando Law",
+  "description": "Simando Law Firm Litigation and Case Management System",
+  "start_url": "mobile.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060c13",
+  "theme_color": "#060c13",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%230a1624'/%3E%3Cg transform='translate(46, 36)'%3E%3Cpath d='M10 24 L50 6 L90 24 Z' fill='%23c9a55c'/%3E%3Cline x1='4' y1='30' x2='96' y2='30' stroke='%23c9a55c' stroke-width='4'/%3E%3Cline x1='22' y1='36' x2='22' y2='90' stroke='%23ffffff' stroke-width='5'/%3E%3Cline x1='36' y1='36' x2='36' y2='90' stroke='%23c9a55c' stroke-width='4'/%3E%3Cline x1='50' y1='34' x2='50' y2='92' stroke='%23c9a55c' stroke-width='6'/%3E%3Cline x1='64' y1='36' x2='64' y2='90' stroke='%23c9a55c' stroke-width='4'/%3E%3Cline x1='78' y1='36' x2='78' y2='90' stroke='%23ffffff' stroke-width='5'/%3E%3Cline x1='10' y1='96' x2='90' y2='96' stroke='%23c9a55c' stroke-width='4'/%3E%3Crect x='4' y='101' width='92' height='8' rx='2' fill='%23c9a55c'/%3E%3C/g%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='96' fill='%230a1624'/%3E%3Cg transform='translate(126, 96)' scale='2.6'%3E%3Cpath d='M10 24 L50 6 L90 24 Z' fill='%23c9a55c'/%3E%3Cline x1='4' y1='30' x2='96' y2='30' stroke='%23c9a55c' stroke-width='4'/%3E%3Cline x1='22' y1='36' x2='22' y2='90' stroke='%23ffffff' stroke-width='5'/%3E%3Cline x1='36' y1='36' x2='36' y2='90' stroke='%23c9a55c' stroke-width='4'/%3E%3Cline x1='50' y1='34' x2='50' y2='92' stroke='%23c9a55c' stroke-width='6'/%3E%3Cline x1='64' y1='36' x2='64' y2='90' stroke='%23c9a55c' stroke-width='4'/%3E%3Cline x1='78' y1='36' x2='78' y2='90' stroke='%23ffffff' stroke-width='5'/%3E%3Cline x1='10' y1='96' x2='90' y2='96' stroke='%23c9a55c' stroke-width='4'/%3E%3Crect x='4' y='101' width='92' height='8' rx='2' fill='%23c9a55c'/%3E%3C/g%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
