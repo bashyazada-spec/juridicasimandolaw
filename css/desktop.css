@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   SIMANDO LAW — DESKTOP / LAPTOP STYLESHEET (index.html)
-   Refined legal luxury · Deep obsidian · Widescreen Grid
+   SIMANDO LAW — DESKTOP STYLESHEET (index.html)
+   Fluid Auto-Adjust on Minimized & Snapped Windows · Obsidian Theme
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -78,7 +78,11 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
+html, body { 
+  height: 100%; 
+  width: 100%;
+  overflow-x: hidden;
+}
 body {
   background: var(--bg);
   color: var(--text);
@@ -100,10 +104,7 @@ a { color: inherit; text-decoration: none; }
 ::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold-border); }
 
-/* REMOVE REDUNDANT BOTTOM MESSAGE DOCK */
-#chat-dock-bar {
-  display: none !important;
-}
+#chat-dock-bar { display: none !important; }
 
 /* OVERRIDE FOR NOTIFICATION DROPDOWN POPUP WIDGET */
 #notif-dropdown {
@@ -122,9 +123,7 @@ a { color: inherit; text-decoration: none; }
   overflow: hidden !important;
 }
 
-#notif-dropdown.hidden {
-  display: none !important;
-}
+#notif-dropdown.hidden { display: none !important; }
 
 /* ── TOP-RIGHT DOCK: CAPSULE + ACTIONS STACKED DIRECTLY BELOW ── */
 #top-hdr-actions {
@@ -136,7 +135,7 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
-  pointer-events: none; /* Allows clicks to pass through transparent gaps */
+  pointer-events: none;
 }
 
 .top-action-capsule {
@@ -207,7 +206,6 @@ a { color: inherit; text-decoration: none; }
   line-height: 1 !important;
 }
 
-/* ── ACTION SLOT DOCKED DIRECTLY UNDERNEATH THE CAPSULE ── */
 .top-action-slot {
   display: flex;
   align-items: center;
@@ -215,23 +213,32 @@ a { color: inherit; text-decoration: none; }
   pointer-events: auto;
 }
 
-.top-action-slot:empty {
-  display: none;
+.top-action-slot:empty { display: none; }
+
+/* ── LAYOUT ARCHITECTURE ── */
+#app { 
+  display: flex; 
+  min-height: 100vh; 
+  position: relative; 
+  width: 100%;
 }
 
-/* ── LAYOUT ── */
-#app { display: flex; min-height: 100vh; position: relative; }
-
-/* ── SIDEBAR ── */
+/* ── PERMANENT VERTICAL SIDEBAR ── */
 #sidebar {
-  width: var(--sidebar-w) !important;
-  background: linear-gradient(175deg, #0a1624 0%, #06101a 55%, #040c15 100%) !important;
-  position: fixed !important; top: 0 !important; bottom: 0 !important; left: 0 !important; z-index: 920 !important;
-  display: flex !important; flex-direction: column !important;
-  border-right: 1px solid rgba(201,165,92,0.1) !important;
-  overflow-y: auto !important; overflow-x: hidden !important;
-  box-shadow: 4px 0 40px rgba(0,0,0,0.45) !important;
-  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding-top 0.35s ease !important;
+  width: var(--sidebar-w);
+  background: linear-gradient(175deg, #0a1624 0%, #06101a 55%, #040c15 100%);
+  position: fixed; 
+  top: 0; 
+  bottom: 0; 
+  left: 0; 
+  z-index: 920;
+  display: flex; 
+  flex-direction: column;
+  border-right: 1px solid rgba(201,165,92,0.1);
+  overflow-y: auto; 
+  overflow-x: hidden;
+  box-shadow: 4px 0 40px rgba(0,0,0,0.45);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
 }
 
 #sidebar::before {
@@ -243,75 +250,127 @@ a { color: inherit; text-decoration: none; }
 #main {
   margin-left: var(--sidebar-w);
   flex: 1;
-  padding: 40px 48px 40px 84px !important;
+  padding: 40px 48px 40px 84px;
   min-height: 100vh;
   background: var(--bg);
-  transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s ease, background 0.3s;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+  width: calc(100% - var(--sidebar-w));
+  max-width: 100%;
 }
 
-/* DESKTOP COLLAPSED ICON DOCK */
-@media (min-width: 901px) {
-  body.sidebar-collapsed #sidebar {
-    width: 76px !important;
-    padding-top: 80px !important;
+/* ── HAMBURGER TOGGLE BUTTON ── */
+.hamburger-toggle-btn {
+  position: fixed; 
+  top: 22px; 
+  left: 212px; 
+  z-index: 999;
+  background: var(--surface2); 
+  border: 1px solid var(--gold-border);
+  color: var(--gold); 
+  width: 38px; 
+  height: 38px; 
+  border-radius: 9px;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-size: 16px; 
+  cursor: pointer; 
+  box-shadow: var(--shadow-sm);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, transform 0.2s;
+}
+
+.hamburger-toggle-btn:hover {
+  background: var(--surface3); 
+  border-color: var(--gold);
+  transform: scale(1.06); 
+  box-shadow: var(--shadow-gold);
+}
+
+body.sidebar-collapsed .hamburger-toggle-btn {
+  left: 19px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESKTOP AUTO-ADJUST: COLLAPSED ICON DOCK LOGIC
+   (Triggered via manual collapse OR when screen is minimized <1150px)
+   ═══════════════════════════════════════════════════════════════ */
+body.sidebar-collapsed #sidebar,
+@media (max-width: 1150px) {
+  #sidebar {
+    width: 72px !important;
+    padding-top: 76px !important;
   }
 
-  body.sidebar-collapsed #main {
-    margin-left: 76px !important;
-    padding-left: 54px !important;
+  #main {
+    margin-left: 72px !important;
+    width: calc(100% - 72px) !important;
+    padding: 30px 24px 40px 48px !important;
   }
 
-  body.sidebar-collapsed #sidebar .logo-wrap {
+  .hamburger-toggle-btn {
+    left: 17px !important;
+  }
+
+  #sidebar .logo-wrap,
+  #sidebar .logo-sub,
+  #sidebar .nav-section,
+  #sidebar .nav-label,
+  #sidebar .sidebar-footer .nav-label,
+  #sidebar #sidebar-user-chip > div:not(.avatar) {
     display: none !important;
   }
 
-  body.sidebar-collapsed #sidebar .logo-sub,
-  body.sidebar-collapsed #sidebar .nav-section,
-  body.sidebar-collapsed #sidebar .nav-label,
-  body.sidebar-collapsed #sidebar .sidebar-footer .theme-switch-container {
-    display: none !important;
-  }
-
-  body.sidebar-collapsed #sidebar .nav-btn,
-  body.sidebar-collapsed #sidebar #sidebar-user-chip.nav-btn {
+  #sidebar .nav-btn,
+  #sidebar #sidebar-user-chip.nav-btn {
     justify-content: center !important;
     padding: 14px 0 !important;
     font-size: 18px !important;
     gap: 0 !important;
   }
 
-  body.sidebar-collapsed #sidebar #sidebar-user-chip > div:not(.avatar) {
-    display: none !important;
-  }
-
-  body.sidebar-collapsed #sidebar .sidebar-footer {
+  #sidebar .sidebar-footer {
     padding: 8px 4px 16px 4px !important;
-    text-align: center !important;
+    align-items: center !important;
   }
 
-  body.sidebar-collapsed #sidebar .sidebar-footer button {
+  #sidebar .sidebar-footer button {
     justify-content: center !important;
     padding: 10px 0 !important;
   }
+
+  /* Responsive 2-column or 1-column adaptation when snapped */
+  .grid4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .dashboard-content-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .cal-cell {
+    min-height: 70px !important;
+  }
+
+  #top-hdr-actions {
+    right: 18px !important;
+  }
 }
 
-/* HAMBURGER TOGGLE BUTTON */
-.hamburger-toggle-btn {
-  position: fixed !important; top: 22px !important; left: 212px !important; z-index: 999 !important;
-  background: var(--surface2) !important; border: 1px solid var(--gold-border) !important;
-  color: var(--gold) !important; width: 38px !important; height: 38px !important; border-radius: 9px !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  font-size: 16px !important; cursor: pointer !important; box-shadow: var(--shadow-sm) !important;
-  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, border-color 0.2s, transform 0.2s !important;
-}
+@media (max-width: 850px) {
+  .grid4 {
+    grid-template-columns: 1fr !important;
+  }
 
-.hamburger-toggle-btn:hover {
-  background: var(--surface3) !important; border-color: var(--gold) !important;
-  transform: scale(1.06) !important; box-shadow: var(--shadow-gold) !important;
-}
+  .cal-day-cell {
+    min-height: 55px !important;
+    padding: 4px !important;
+  }
 
-body.sidebar-collapsed .hamburger-toggle-btn {
-  left: 19px !important;
+  .event-pill .text {
+    display: none !important;
+  }
 }
 
 .logo-wrap {
@@ -358,7 +417,6 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .nav-btn:hover { background: rgba(201,165,92,0.05); color: #ffffff; border-left-color: rgba(201,165,92,0.5); }
 .nav-btn.active { background: linear-gradient(90deg, rgba(201,165,92,0.15), rgba(201,165,92,0.03)); border-left-color: var(--gold); color: var(--gold-light); font-weight: 600; }
 
-/* ── SIDEBAR FOOTER ── */
 .sidebar-footer { 
   padding: 10px 0 20px 0 !important; 
   border-top: 1px solid rgba(201,165,92,0.08); 
@@ -434,12 +492,11 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 }
 .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent, var(--gold)), transparent); }
 
-/* Widescreen 4-Column Grid */
-.grid4 { display: grid; grid-template-columns: repeat(4, 1fr) !important; gap: 18px; }
-.dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr !important; gap: 24px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-/* ── LUXURY SCHEDULE FILTER BAR & CENTERING ── */
+/* ── SCHEDULE FILTER BAR ── */
 .schedule-filter-bar {
   display: flex;
   align-items: center;
@@ -489,7 +546,7 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 }
 
 .schedule-filter-select-wrap {
-  min-width: 280px;
+  min-width: 240px;
   max-width: 380px;
   flex: 1;
 }
@@ -528,23 +585,22 @@ body.sidebar-collapsed .hamburger-toggle-btn {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 2l4.5 4.5 4.5-4.5' stroke='%23aa7c11' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
-/* ── PERFECT CENTERING FOR SCHEDULE & MY SETTINGS ── */
+/* ── CENTERING FOR SCHEDULE & MY SETTINGS ── */
 #view-calendar .page-hdr,
 #view-calendar .schedule-filter-bar,
 #view-calendar #calendar-month-card {
   max-width: 1100px;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #view-myprofile .page-hdr,
 #view-myprofile > div:not(.page-hdr) {
   max-width: 1300px;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* ── CENTER NEW CASE / CASE FORM VIEW ── */
 #view-caseForm {
   display: flex;
   flex-direction: column;
@@ -556,21 +612,20 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 #view-caseForm .card {
   width: 100%;
   max-width: 800px;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #view-caseForm .page-hdr,
 #view-caseForm > div:not(.flex-center) {
   max-width: 800px;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .case-row { display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
 .case-row:hover { border-color: var(--gold-border); background: var(--surface3); transform: translateX(4px); box-shadow: var(--shadow-sm); }
 
-/* ── ATTORNEY LIST VIEW ── */
 .profiles-list-container {
   display: flex;
   flex-direction: column;
@@ -606,7 +661,6 @@ body.sidebar-collapsed .hamburger-toggle-btn {
 .field-input, select.field-input, textarea.field-input, input[type="date"].field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px 14px; font-size: 14px; outline: none; transition: all 0.2s; box-sizing: border-box; }
 .field-input:focus, select.field-input:focus, textarea.field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); background: var(--surface3); }
 
-/* ── NUMERIC ONLY MOBILE/CONTACT INPUTS ── */
 input[id*="contact"], input[id*="phone"], input[id*="mobile"] {
   -moz-appearance: textfield;
 }
@@ -616,7 +670,6 @@ input[id*="contact"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-/* ── RED HIGHLIGHT WHEN INCOMPLETE PROFILE FIELD ── */
 .field-input.err, select.field-input.err, textarea.field-input.err { 
   border-color: var(--red) !important; 
   box-shadow: 0 0 0 3px rgba(248,113,113,0.18) !important; 
@@ -643,7 +696,6 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 .btn-danger { background: transparent; border: 1px solid rgba(248,113,113,0.2); color: var(--red); }
 .btn-danger:hover { background: rgba(248,113,113,0.07); border-color: rgba(248,113,113,0.42); }
 
-/* ── GOOGLE DRIVE BUTTON STYLING ── */
 .gdrive-btn {
   display: inline-flex;
   align-items: center;
@@ -693,13 +745,14 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
 
-/* ── CLEAN PAGE HEADER (ACTIONS DOCKED BELOW CAPSULE) ── */
+/* ── CLEAN PAGE HEADER ── */
 .page-hdr { 
   display: flex; 
   flex-direction: column;
   align-items: flex-start; 
   margin-bottom: 28px; 
   position: relative;
+  width: 100%;
 }
 
 .page-title { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.15; }
@@ -718,22 +771,23 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 .delete-confirm-input { width: 100% !important; background: var(--surface2) !important; border: 1.5px solid var(--border) !important; border-radius: 9px !important; color: var(--text) !important; padding: 12px 14px !important; font-size: 15px !important; text-align: center !important; letter-spacing: 2px !important; font-weight: 600 !important; margin: 16px 0 !important; outline: none !important; box-sizing: border-box !important; }
 .delete-confirm-input:focus { border-color: var(--red) !important; box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18) !important; background: var(--surface3) !important; }
 
-/* ── CALENDAR CELL & HIGHLIGHT STYLES ── */
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
+/* ── FLUID ADAPTIVE CALENDAR GRID ── */
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 10px; width: 100%; }
 .cal-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 8px 0; text-transform: uppercase; letter-spacing: 1px; }
 
 .cal-day-cell { 
   background: var(--surface2); 
   border: 1px solid var(--border); 
   border-radius: 10px; 
-  min-height: 72px; 
+  min-height: 86px; 
   padding: 6px 8px; 
   cursor: pointer; 
   transition: all 0.2s ease; 
   display: flex; 
   flex-direction: column; 
-  justify-content: space-between; 
+  justify-content: flex-start; 
   position: relative; 
+  overflow: hidden;
 }
 .cal-day-cell:hover { 
   border-color: var(--gold-border); 
@@ -742,14 +796,12 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 }
 .cal-day-cell.other-month { opacity: 0.35; background: transparent; }
 
-/* Highlight Today's Date with Burnished Gold Aura */
 .cal-day-cell.is-today { 
   border-color: var(--gold) !important; 
   background: rgba(201, 165, 92, 0.08) !important;
   box-shadow: 0 0 14px rgba(201, 165, 92, 0.35), inset 0 0 0 1px var(--gold) !important; 
 }
 
-/* Gray Out Past Dates */
 .cal-day-cell.is-past { 
   opacity: 0.45 !important;
   background: rgba(0, 0, 0, 0.08) !important;
@@ -798,62 +850,3 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
   padding: 8px 30px 8px 12px; transition: all 0.18s; white-space: nowrap;
 }
 .filter-select:hover { border-color: var(--gold-border); color: var(--text); }
-
-/* ═══════════════════════════════════════════════════════════════
-   DEVICE AUTO-DETECTION & MOBILE OVERRIDES
-   ═══════════════════════════════════════════════════════════════ */
-
-/* Mobile Phones (<900px / device-mobile) */
-@media (max-width: 900px) {
-  #app { flex-direction: column; }
-  #sidebar {
-    width: 100% !important; position: sticky; top: 0;
-    flex-direction: row !important; align-items: center !important; justify-content: space-between !important;
-    padding: 12px 16px !important; z-index: 999;
-  }
-  #sidebar .logo-sub, #sidebar .nav-section, #sidebar .sidebar-footer { display: none !important; }
-  #sidebar div[style*="flex:1"] { display: flex !important; flex-direction: row !important; overflow-x: auto; gap: 6px !important; }
-  #sidebar .nav-btn { padding: 8px 12px !important; font-size: 12px !important; white-space: nowrap !important; }
-  
-  #main {
-    margin-left: 0 !important; width: 100% !important;
-    padding: 68px 16px 40px 16px !important;
-  }
-
-  .grid4, .grid3, .grid2, .dashboard-content-grid {
-    grid-template-columns: 1fr !important; gap: 16px !important;
-  }
-
-  .page-hdr { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; }
-
-  .hamburger-toggle-btn {
-    top: 14px !important; left: 14px !important;
-    width: 38px !important; height: 38px !important;
-  }
-
-  .case-row {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 10px !important;
-  }
-
-  .case-row > div:last-child {
-    align-items: flex-start !important;
-    flex-direction: row !important;
-    gap: 8px !important;
-  }
-
-  .chat-panel {
-    width: calc(100vw - 32px) !important;
-    right: 16px !important;
-    bottom: 80px !important;
-  }
-}
-
-/* Tablets / iPads (device-tablet) */
-body.device-tablet .grid4 { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
-body.device-tablet #main { padding: 28px 24px 28px 84px !important; }
-body.device-tablet .cal-day-cell { min-height: 80px !important; }
-
-/* Laptops / Desktops (device-desktop) */
-body.device-desktop .grid4 { grid-template-columns: repeat(4, 1fr) !important; }
