@@ -87,12 +87,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 14px;
+  /* Fluid Body Typography */
+  font-size: clamp(13px, 0.95vw, 14px);
   line-height: 1.6;
   font-variant-numeric: tabular-nums lining-nums;
   transition: background 0.3s, color 0.3s;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 button { font-family: var(--font-body); cursor: pointer; border: none; background: none; }
@@ -338,7 +341,6 @@ body.sidebar-collapsed #sidebar,
     padding: 10px 0 !important;
   }
 
-  /* Responsive 2-column or 1-column adaptation when snapped */
   .grid4 {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
@@ -482,13 +484,21 @@ body.sidebar-collapsed #sidebar,
 
 .card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 28px; transition: border-color 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+  border-radius: var(--radius-lg); 
+  padding: clamp(16px, 2vw, 28px); 
+  transition: border-color 0.2s, box-shadow 0.2s; 
+  position: relative; 
+  overflow: hidden;
 }
 .card:hover { border-color: rgba(201,165,92,0.2); box-shadow: var(--glow-gold); }
 
 .stat-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: 24px 26px 22px; transition: all 0.28s; position: relative; overflow: hidden;
+  border-radius: var(--radius-lg); 
+  padding: clamp(16px, 1.8vw, 24px) clamp(16px, 2vw, 26px); 
+  transition: all 0.28s; 
+  position: relative; 
+  overflow: hidden;
 }
 .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent, var(--gold)), transparent); }
 
@@ -533,14 +543,14 @@ body.sidebar-collapsed #sidebar,
 }
 
 .schedule-filter-label {
-  font-size: 13.5px;
+  font-size: clamp(12px, 1vw, 13.5px);
   font-weight: 700;
   color: var(--text);
   letter-spacing: 0.2px;
 }
 
 .schedule-filter-sub {
-  font-size: 11.5px;
+  font-size: clamp(10.5px, 0.9vw, 11.5px);
   color: var(--text-dim);
   margin-top: 1px;
 }
@@ -562,7 +572,7 @@ body.sidebar-collapsed #sidebar,
   border: 1.5px solid var(--gold-border);
   border-radius: 10px;
   color: var(--text);
-  font-size: 13.5px;
+  font-size: clamp(12.5px, 0.95vw, 13.5px);
   font-weight: 600;
   padding: 10px 38px 10px 14px;
   outline: none;
@@ -623,7 +633,18 @@ body.sidebar-collapsed #sidebar,
   margin-right: auto;
 }
 
-.case-row { display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+.case-row { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  padding: clamp(12px, 1.2vw, 16px); 
+  background: var(--surface2); 
+  border: 1px solid var(--border); 
+  border-radius: var(--radius); 
+  margin-bottom: 8px; 
+  cursor: pointer; 
+  transition: all 0.2s; 
+}
 .case-row:hover { border-color: var(--gold-border); background: var(--surface3); transform: translateX(4px); box-shadow: var(--shadow-sm); }
 
 .profiles-list-container {
@@ -658,7 +679,7 @@ body.sidebar-collapsed #sidebar,
 .upload-area:hover { border-color: var(--gold-border); color: var(--gold); background: var(--gold-dim); }
 
 .field-label { display: block; font-size: 10.5px; color: var(--text-dim); margin-bottom: 7px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; transition: color 0.2s; }
-.field-input, select.field-input, textarea.field-input, input[type="date"].field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px 14px; font-size: 14px; outline: none; transition: all 0.2s; box-sizing: border-box; }
+.field-input, select.field-input, textarea.field-input, input[type="date"].field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px 14px; font-size: clamp(13px, 0.95vw, 14px); outline: none; transition: all 0.2s; box-sizing: border-box; }
 .field-input:focus, select.field-input:focus, textarea.field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); background: var(--surface3); }
 
 input[id*="contact"], input[id*="phone"], input[id*="mobile"] {
@@ -745,7 +766,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
 
-/* ── CLEAN PAGE HEADER ── */
+/* ── CLEAN PAGE HEADER WITH FLUID TITLE ── */
 .page-hdr { 
   display: flex; 
   flex-direction: column;
@@ -755,7 +776,15 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
   width: 100%;
 }
 
-.page-title { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; line-height: 1.15; }
+.page-title { 
+  font-family: var(--font-display); 
+  /* Dynamic Fluid Headline */
+  font-size: clamp(22px, 2.2vw, 30px); 
+  font-weight: 700; 
+  color: var(--text); 
+  letter-spacing: -0.4px; 
+  line-height: 1.15; 
+}
 .page-sub { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
 .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
@@ -773,7 +802,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 /* ── FLUID ADAPTIVE CALENDAR GRID ── */
 .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 10px; width: 100%; }
-.cal-day-header { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 8px 0; text-transform: uppercase; letter-spacing: 1px; }
+.cal-day-header { text-align: center; font-size: clamp(9.5px, 0.8vw, 11px); font-weight: 700; color: var(--text-dim); padding: 8px 0; text-transform: uppercase; letter-spacing: 1px; }
 
 .cal-day-cell { 
   background: var(--surface2); 
@@ -811,7 +840,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 }
 
 .cal-day-cell.is-selected { background: rgba(201, 168, 76, 0.15) !important; border-color: var(--gold) !important; }
-.cal-day-num { font-size: 13px; font-weight: 700; color: var(--text); }
+.cal-day-num { font-size: clamp(11.5px, 0.9vw, 13px); font-weight: 700; color: var(--text); }
 
 #toast { position: fixed; bottom: 28px; right: 28px; padding: 13px 22px; border-radius: 12px; font-size: 13px; font-weight: 500; z-index: 100; transition: all 0.28s; pointer-events: none; opacity: 0; transform: translateY(20px); box-shadow: var(--shadow); max-width: 340px; line-height: 1.4; }
 #toast.show { opacity: 1; transform: translateY(0); }
@@ -832,7 +861,13 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 .drive-status-chip.connected { border-color: rgba(52,211,153,0.28); color: var(--green); background: rgba(52,211,153,0.08); }
 .drive-status-chip.disconnected { border-color: rgba(251,191,36,0.24); color: var(--amber); background: rgba(251,191,36,0.08); }
 
-.stat-number { font-family: var(--font-display); font-size: 46px; font-weight: 700; line-height: 1; margin-bottom: 10px; }
+.stat-number { 
+  font-family: var(--font-display); 
+  font-size: clamp(32px, 3.2vw, 46px); 
+  font-weight: 700; 
+  line-height: 1; 
+  margin-bottom: 10px; 
+}
 .stat-label { font-size: 9.5px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; font-weight: 600; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
