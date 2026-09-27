@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    SIMANDO LAW — DESKTOP STYLESHEET (index.html)
-   Fluid Auto-Adjust on Minimized & Snapped Windows · Obsidian Theme
+   Fluid Responsive · Smooth Sidebar Minimization · Obsidian Luxury
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -87,7 +87,6 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  /* Fluid Body Typography */
   font-size: clamp(13px, 0.95vw, 14px);
   line-height: 1.6;
   font-variant-numeric: tabular-nums lining-nums;
@@ -261,53 +260,91 @@ a { color: inherit; text-decoration: none; }
   max-width: 100%;
 }
 
-/* ── HAMBURGER TOGGLE BUTTON ── */
+/* ── HAMBURGER TOGGLE BUTTON (ELEVATED Z-INDEX) ── */
 .hamburger-toggle-btn {
-  position: fixed; 
-  top: 22px; 
-  left: 212px; 
-  z-index: 999;
-  background: var(--surface2); 
-  border: 1px solid var(--gold-border);
-  color: var(--gold); 
-  width: 38px; 
-  height: 38px; 
-  border-radius: 9px;
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  font-size: 16px; 
-  cursor: pointer; 
-  box-shadow: var(--shadow-sm);
-  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, transform 0.2s;
+  position: fixed !important; 
+  top: 22px !important; 
+  left: 212px !important; 
+  z-index: 1000 !important; /* Always sits cleanly above sidebar content */
+  background: var(--surface2) !important; 
+  border: 1.5px solid var(--gold-border) !important;
+  color: var(--gold-light) !important; 
+  width: 38px !important; 
+  height: 38px !important; 
+  border-radius: 9px !important;
+  display: flex !important; 
+  align-items: center !important; 
+  justify-content: center !important; 
+  font-size: 18px !important; 
+  cursor: pointer !important; 
+  box-shadow: var(--shadow-sm) !important;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, transform 0.2s !important;
 }
 
 .hamburger-toggle-btn:hover {
-  background: var(--surface3); 
-  border-color: var(--gold);
-  transform: scale(1.06); 
-  box-shadow: var(--shadow-gold);
-}
-
-body.sidebar-collapsed .hamburger-toggle-btn {
-  left: 19px;
+  background: var(--surface3) !important; 
+  border-color: var(--gold) !important;
+  transform: scale(1.06) !important; 
+  box-shadow: var(--shadow-gold) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DESKTOP AUTO-ADJUST: COLLAPSED ICON DOCK LOGIC
-   (Triggered via manual collapse OR when screen is minimized <1150px)
+   SIDEBAR MINIMIZATION / COLLAPSE RULES
+   (Applied smoothly when user clicks hamburger or screen is narrow)
    ═══════════════════════════════════════════════════════════════ */
-body.sidebar-collapsed #sidebar,
+body.sidebar-collapsed #sidebar {
+  width: 72px !important;
+  padding-top: 76px !important;
+}
+
+body.sidebar-collapsed #main {
+  margin-left: 72px !important;
+  width: calc(100% - 72px) !important;
+  padding-left: 54px !important;
+}
+
+body.sidebar-collapsed .hamburger-toggle-btn {
+  left: 17px !important;
+}
+
+body.sidebar-collapsed #sidebar .logo-wrap,
+body.sidebar-collapsed #sidebar .logo-sub,
+body.sidebar-collapsed #sidebar .nav-section,
+body.sidebar-collapsed #sidebar .nav-label,
+body.sidebar-collapsed #sidebar .sidebar-footer .nav-label,
+body.sidebar-collapsed #sidebar #sidebar-user-chip > div:not(.avatar) {
+  display: none !important;
+}
+
+body.sidebar-collapsed #sidebar .nav-btn,
+body.sidebar-collapsed #sidebar #sidebar-user-chip.nav-btn {
+  justify-content: center !important;
+  padding: 14px 0 !important;
+  font-size: 18px !important;
+  gap: 0 !important;
+}
+
+body.sidebar-collapsed #sidebar .sidebar-footer {
+  padding: 8px 4px 16px 4px !important;
+  align-items: center !important;
+}
+
+body.sidebar-collapsed #sidebar .sidebar-footer button {
+  justify-content: center !important;
+  padding: 10px 0 !important;
+}
+
+/* ── RESPONSIVE ADAPTATION ON NARROW SCREENS (<1150px) ── */
 @media (max-width: 1150px) {
   #sidebar {
-    width: 72px !important;
-    padding-top: 76px !important;
+    width: 72px;
+    padding-top: 76px;
   }
 
   #main {
-    margin-left: 72px !important;
-    width: calc(100% - 72px) !important;
-    padding: 30px 24px 40px 48px !important;
+    margin-left: 72px;
+    width: calc(100% - 72px);
+    padding: 30px 24px 40px 48px;
   }
 
   .hamburger-toggle-btn {
@@ -334,11 +371,6 @@ body.sidebar-collapsed #sidebar,
   #sidebar .sidebar-footer {
     padding: 8px 4px 16px 4px !important;
     align-items: center !important;
-  }
-
-  #sidebar .sidebar-footer button {
-    justify-content: center !important;
-    padding: 10px 0 !important;
   }
 
   .grid4 {
@@ -379,6 +411,7 @@ body.sidebar-collapsed #sidebar,
   padding: 28px 24px 22px;
   border-bottom: 1px solid rgba(201,165,92,0.08);
   position: relative;
+  overflow: hidden;
 }
 
 .logo-wrap::after {
@@ -778,7 +811,6 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 .page-title { 
   font-family: var(--font-display); 
-  /* Dynamic Fluid Headline */
   font-size: clamp(22px, 2.2vw, 30px); 
   font-weight: 700; 
   color: var(--text); 
