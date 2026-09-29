@@ -44,6 +44,17 @@
     align-items: center;
     gap: 8px;
   }
+  .developer-readonly-banner {
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
 </style>
 </head>
 <body>
@@ -78,7 +89,7 @@
         <text x="102" y="63" font-family="'Cormorant Garamond', Georgia, serif" font-size="17" font-weight="600" letter-spacing="6" fill="#c9a55c">LAW FIRM</text>
         <text x="102" y="82" font-family="'DM Sans', sans-serif" font-size="7.5" font-weight="500" letter-spacing="3" fill="#ffffff" opacity="0.85">EST. 2026 · LEGAL COUNSEL</text>
       </svg>
-      <div class="logo-sub">Firm Control Center</div>
+      <div class="logo-sub" id="admin-sub-tag">Firm Control Center</div>
     </div>
     <div style="flex:1">
       <div class="nav-section">Controls</div>
@@ -93,6 +104,18 @@
   <!-- ══════ MAIN CONTENT ══════ -->
   <div id="main">
 
+    <!-- Developer Read-Only Alert Banner -->
+    <div id="dev-readonly-banner" class="developer-readonly-banner" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="bi bi-shield-lock-fill" style="color:var(--cyan);font-size:18px"></i>
+        <div>
+          <span style="font-weight:700;color:var(--cyan)">Developer Diagnostic Mode (Read-Only)</span>
+          <div style="font-size:11.5px;color:var(--text-muted)">You can inspect the roster layout and components for testing. Creating, editing, and deleting profiles is disabled.</div>
+        </div>
+      </div>
+      <span class="badge" style="background:rgba(34,211,238,0.15);color:var(--cyan);border:1px solid rgba(34,211,238,0.3)">DEBUG ACCESS</span>
+    </div>
+
     <!-- ATTORNEY DATABASE PANEL -->
     <div id="tab-attorneys" class="admin-tab">
       <div class="page-hdr">
@@ -100,7 +123,7 @@
           <div class="page-title">Attorney Directory</div>
           <div class="page-sub" id="admin-directory-sub">Managing firm access profiles &amp; administrative credentials</div>
         </div>
-        <button class="btn btn-primary" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
+        <button class="btn btn-primary" id="btn-open-create-account" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
       </div>
       <div class="card">
         <div style="overflow-x:auto">
@@ -148,10 +171,8 @@
         <label class="field-label" style="color:var(--text-muted)">Role / Privilege Level *</label>
         <select class="field-input" id="new-role">
           <option value="Attorney">Attorney</option>
-          <option value="Associate Attorney">Associate Attorney</option>
-          <option value="Senior Partner">Senior Partner</option>
-          <option value="Managing Partner">Managing Partner</option>
-          <option value="admin">Firm Administrator</option>
+          <option value="admin">Firm Administrator 🛡️</option>
+          <option value="developer">System Developer (UI Testing / Sandbox) 🛠️</option>
         </select>
       </div>
       <div>
@@ -199,10 +220,8 @@
         <label class="field-label">Role &amp; Privilege Designation *</label>
         <select class="field-input" id="edit-role" style="font-weight:600">
           <option value="Attorney">Attorney</option>
-          <option value="Associate Attorney">Associate Attorney</option>
-          <option value="Senior Partner">Senior Partner</option>
-          <option value="Managing Partner">Managing Partner</option>
-          <option value="admin">Firm Administrator (Full Control)</option>
+          <option value="admin">Firm Administrator (Full Control) 🛡️</option>
+          <option value="developer">System Developer (UI Testing / Sandbox) 🛠️</option>
         </select>
       </div>
 
@@ -212,7 +231,7 @@
           <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-key-fill" style="color:var(--gold)"></i> Password Recovery</div>
           <div style="font-size:11px;color:var(--text-dim)">Send password reset email to user</div>
         </div>
-        <button class="btn btn-secondary btn-sm" type="button" onclick="adminSendPasswordReset()"><i class="bi bi-envelope"></i> Send Reset Email</button>
+        <button class="btn btn-secondary btn-sm" id="btn-admin-send-reset" type="button" onclick="adminSendPasswordReset()"><i class="bi bi-envelope"></i> Send Reset Email</button>
       </div>
 
       <!-- 2FA Administration -->
@@ -256,6 +275,7 @@
 
   let db, auth;
   let adminProfiles = [];
+  let isDeveloperSession = false;
 
   function isValidEmail(email) {
     return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
@@ -296,43 +316,67 @@
         const docRef = doc(db, "profiles", user.uid);
         const docSnap = await getDoc(docRef);
 
-        let isAdmin = false;
+        let isAuthorized = false;
 
-        if (docSnap.exists() && (docSnap.data().role === "admin" || isEmailAdmin)) {
-          isAdmin = true;
+        if (docSnap.exists()) {
+          const userRole = docSnap.data().role;
+          if (userRole === "admin" || isEmailAdmin) {
+            isAuthorized = true;
+          } else if (userRole === "developer") {
+            isAuthorized = true;
+            isDeveloperSession = true;
+          }
         } else {
           const pSnap = await getDocs(collection(db, "profiles"));
           const matched = pSnap.docs.find(d => {
             const data = d.data();
             return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) &&
-                   (data.role === "admin" || isEmailAdmin);
+                   (data.role === "admin" || data.role === "developer" || isEmailAdmin);
           });
           if (matched || isEmailAdmin) {
-            isAdmin = true;
+            isAuthorized = true;
+            if (matched && matched.data().role === "developer") {
+              isDeveloperSession = true;
+            }
           }
         }
 
-        if (isAdmin) {
+        if (isAuthorized) {
           const loader = document.getElementById("loading-screen");
           if (loader) loader.style.display = "none";
-          showToast("Admin Session Verified");
+
+          if (isDeveloperSession) {
+            showToast("Developer Mode: Read-Only Access", "info");
+            applyDeveloperRestrictions();
+          } else {
+            showToast("Admin Session Verified");
+          }
+
           initAdminConsole();
         } else {
-          bounceUser("Unauthorized. You do not possess administrative permissions.");
+          bounceUser("Unauthorized. Administrator or Developer access required.");
         }
       } catch (err) {
         console.error("Admin verification failed:", err);
-        const userEmail = (user.email || "").toLowerCase();
-        if (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail)) {
-          const loader = document.getElementById("loading-screen");
-          if (loader) loader.style.display = "none";
-          showToast("Admin Session Verified (Config)");
-          initAdminConsole();
-        } else {
-          bounceUser("Security verification failed: " + err.message);
-        }
+        bounceUser("Security verification failed: " + err.message);
       }
     });
+  }
+
+  function applyDeveloperRestrictions() {
+    const banner = document.getElementById("dev-readonly-banner");
+    const createBtn = document.getElementById("btn-open-create-account");
+    const subTag = document.getElementById("admin-sub-tag");
+
+    if (banner) banner.style.display = "flex";
+    if (subTag) subTag.innerHTML = `Developer Testing Sandbox 🛠️`;
+    if (createBtn) {
+      createBtn.disabled = true;
+      createBtn.style.opacity = "0.4";
+      createBtn.style.cursor = "not-allowed";
+      createBtn.title = "Account creation is disabled for Developer role.";
+      createBtn.innerHTML = `<i class="bi bi-lock-fill"></i> Create Account (Disabled)`;
+    }
   }
 
   if (window._fbReady) {
@@ -352,7 +396,7 @@
       adminProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const subEl = document.getElementById("admin-directory-sub");
       if (subEl) {
-        subEl.textContent = `${adminProfiles.length} active attorney profile${adminProfiles.length !== 1 ? 's' : ''}`;
+        subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
       }
     } catch (err) {
       console.error("Error loading directory:", err);
@@ -371,7 +415,33 @@
 
     tbody.innerHTML = adminProfiles.map(p => {
       const isAdminProfile = p.role === "admin";
+      const isDevProfile = p.role === "developer";
       const is2FA = !!(p.twoFactorEnabled);
+
+      let roleBadgeMarkup = `<span style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(p.role || "Attorney")}</span>`;
+      if (isAdminProfile) {
+        roleBadgeMarkup = `<span style="font-size:12px;font-weight:700;color:var(--gold);display:inline-flex;align-items:center;gap:4px"><i class="bi bi-shield-check"></i> Firm Administrator</span>`;
+      } else if (isDevProfile) {
+        roleBadgeMarkup = `<span style="font-size:12px;font-weight:700;color:var(--cyan);display:inline-flex;align-items:center;gap:4px"><i class="bi bi-code-slash"></i> System Developer 🛠️</span>`;
+      }
+
+      // If logged in as developer, Action Controls are completely locked
+      let actionControlsMarkup = `
+        <div class="action-btn-group">
+          <button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')"><i class="bi bi-pencil-square"></i> Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${p.name.replace(/'/g, "\\'")}')"><i class="bi bi-trash3"></i> Remove</button>
+        </div>
+      `;
+
+      if (isDeveloperSession) {
+        actionControlsMarkup = `
+          <div class="action-btn-group">
+            <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid var(--border)">
+              <i class="bi bi-lock-fill"></i> Read Only
+            </span>
+          </div>
+        `;
+      }
 
       return `
         <tr>
@@ -385,11 +455,7 @@
             </div>
           </td>
           <td>${escHtml(p.email || "N/A")}</td>
-          <td>
-            <span style="font-size:12px;font-weight:700;color:${isAdminProfile ? 'var(--gold)' : 'var(--text)'};display:inline-flex;align-items:center;gap:4px">
-              ${isAdminProfile ? '<i class="bi bi-shield-check"></i> Firm Administrator' : escHtml(p.role || "Attorney")}
-            </span>
-          </td>
+          <td>${roleBadgeMarkup}</td>
           <td>
             ${p.driveFolderId 
               ? `<span style="color:var(--green);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-check-circle-fill"></i> Connected</span>`
@@ -400,12 +466,7 @@
               ? `<span style="color:var(--green);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-lock-fill"></i> Active</span>` 
               : `<span style="font-size:12px;color:var(--text-dim)">Disabled</span>`}
           </td>
-          <td>
-            <div class="action-btn-group">
-              <button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')"><i class="bi bi-pencil-square"></i> Edit</button>
-              <button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${p.name.replace(/'/g, "\\'")}')"><i class="bi bi-trash3"></i> Remove</button>
-            </div>
-          </td>
+          <td>${actionControlsMarkup}</td>
         </tr>
       `;
     }).join("");
@@ -414,6 +475,11 @@
   let currentEditingProfile = null;
 
   window.openAdminEditModal = function(profileId) {
+    if (isDeveloperSession) {
+      showToast("Developers cannot edit attorney profiles.", "error");
+      return;
+    }
+
     const p = adminProfiles.find(x => x.id === profileId);
     if (!p) return;
 
@@ -445,6 +511,11 @@
   };
 
   window.saveAdminProfileEdit = async function() {
+    if (isDeveloperSession) {
+      showToast("Action blocked: Developer accounts cannot modify profiles.", "error");
+      return;
+    }
+
     const profId = document.getElementById("edit-profile-id").value;
     const name = document.getElementById("edit-name").value.trim();
     const email = document.getElementById("edit-email").value.trim();
@@ -469,7 +540,7 @@
     btn.textContent = "Saving...";
 
     try {
-      showToast("Updating attorney profile...");
+      showToast("Updating profile...");
       const updData = { name, email, contact, role };
 
       await updateDoc(doc(db, "profiles", profId), updData);
@@ -488,12 +559,12 @@
   };
 
   window.adminSendPasswordReset = async function() {
-    if (!currentEditingProfile || !currentEditingProfile.email) {
-      showToast("Selected profile has no valid email address.", "error");
+    if (isDeveloperSession) {
+      showToast("Action blocked: Developers cannot send password resets.", "error");
       return;
     }
-    if (!isValidEmail(currentEditingProfile.email)) {
-      showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
+    if (!currentEditingProfile || !currentEditingProfile.email) {
+      showToast("Selected profile has no valid email address.", "error");
       return;
     }
     if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
@@ -509,8 +580,12 @@
   };
 
   window.adminResetUser2FA = async function() {
+    if (isDeveloperSession) {
+      showToast("Action blocked: Developers cannot reset 2FA.", "error");
+      return;
+    }
     if (!currentEditingProfile) return;
-    if (!confirm(`Reset Two-Factor Authentication for ${currentEditingProfile.name}?\nThey will be able to log in with password only.`)) return;
+    if (!confirm(`Reset Two-Factor Authentication for ${currentEditingProfile.name}?`)) return;
 
     try {
       showToast("Resetting 2FA...");
@@ -523,7 +598,7 @@
       await updateDoc(doc(db, "profiles", currentEditingProfile.id), { twoFactorEnabled: false });
 
       currentEditingProfile.twoFactorEnabled = false;
-      document.getElementById("edit-2fa-status-desc").innerHTML = "2FA has been disabled for this account.";
+      document.getElementById("edit-2fa-status-desc").innerHTML = "2FA disabled for this account.";
       document.getElementById("btn-admin-reset-2fa").style.display = "none";
 
       showToast("2FA reset successfully!");
@@ -536,7 +611,11 @@
   };
 
   window.adminDeleteProfile = async function(profileId, name) {
-    if (!confirm(`Are you absolutely sure you want to delete profile: ${name}?\nThis action is permanent and cannot be undone.`)) return;
+    if (isDeveloperSession) {
+      showToast("Action blocked: Developers cannot remove profiles.", "error");
+      return;
+    }
+    if (!confirm(`Are you absolutely sure you want to delete profile: ${name}?\nThis action cannot be undone.`)) return;
 
     try {
       showToast("Removing directory entry...");
@@ -551,6 +630,10 @@
   };
 
   window.openCreateModal = function() {
+    if (isDeveloperSession) {
+      showToast("Developers cannot create accounts.", "error");
+      return;
+    }
     document.getElementById("new-name").value = "";
     document.getElementById("new-email").value = "";
     document.getElementById("new-password").value = "";
@@ -576,6 +659,11 @@
   };
 
   document.getElementById("btn-create-submit").addEventListener("click", async () => {
+    if (isDeveloperSession) {
+      showToast("Action blocked: Developers cannot register accounts.", "error");
+      return;
+    }
+
     const name = document.getElementById("new-name").value.trim();
     const email = document.getElementById("new-email").value.trim();
     const password = document.getElementById("new-password").value;
