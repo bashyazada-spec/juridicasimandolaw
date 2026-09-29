@@ -387,24 +387,37 @@ window.deleteBusySlot = async function(id) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CALENDAR MONTH VIEW (WITH DENSITY STACK & INTERACTIVE LEGEND)
+//  CALENDAR MONTH VIEW (WITH DEVELOPER ISOLATION & LEGEND)
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 
 function renderCalendarView() {
   const select = document.getElementById("calendar-filter-select");
-  if (select) {
-    const curVal = select.value;
-    let optionsHtml = `<option value="Everyone">Everyone (Firm Overview)</option>`;
-    
-    profiles.forEach(p => {
-      const designation = p.role ? ` (${p.role})` : "";
-      optionsHtml += `<option value="${p.ownerUid}">${p.name}${designation}</option>`;
-    });
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = profiles.find(p => p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase()));
+  const isDeveloper = myProf && myProf.role === "developer";
 
-    select.innerHTML = optionsHtml;
-    select.value = curVal || "Everyone";
+  if (select) {
+    if (isDeveloper) {
+      // Developer can only view their own test schedule
+      select.innerHTML = `<option value="${u.uid}">My Test Schedule (Sandbox Mode)</option>`;
+      select.value = u.uid;
+      select.disabled = true;
+    } else {
+      select.disabled = false;
+      const curVal = select.value;
+      let optionsHtml = `<option value="Everyone">Everyone (Firm Overview)</option>`;
+      
+      // Filter out developers so attorneys never see developer test entries
+      profiles.filter(p => p.role !== "developer").forEach(p => {
+        const designation = p.role ? ` (${p.role})` : "";
+        optionsHtml += `<option value="${p.ownerUid}">${p.name}${designation}</option>`;
+      });
+
+      select.innerHTML = optionsHtml;
+      select.value = curVal || "Everyone";
+    }
   }
 
   // Inject or update the Color Legend Bar right above the calendar card
@@ -472,17 +485,31 @@ function renderMonthlyCalendarGrid() {
     titleEl.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
   }
 
-  const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
+  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase()));
+  const isDeveloper = myProf && myProf.role === "developer";
+
+  const filter = isDeveloper ? currentUid : (document.getElementById("calendar-filter-select")?.value || "Everyone");
 
   let activeCases = cases.filter(c => c.dueDate || (Array.isArray(c.hearings) && c.hearings.length > 0));
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
-  if (filter !== "Everyone") {
+  // DEVELOPER BOUNDARY ENFORCEMENT:
+  // Developers strictly only process cases and appointments created by/for themselves
+  if (isDeveloper) {
+    activeCases = activeCases.filter(c => c.ownerUid === currentUid);
+    activeAppts = activeAppts.filter(a => a.targetUid === currentUid || a.requesterUid === currentUid);
+  } else if (filter !== "Everyone") {
     const matchedProf = profiles.find(p => p.ownerUid === filter);
     activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
     activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
+  } else {
+    // Firm Overview: Hide developer test appointments from practicing attorneys
+    activeAppts = activeAppts.filter(a => {
+      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
+      return creatorProf?.role !== "developer";
+    });
   }
 
   const eventsByDate = {};
@@ -491,7 +518,6 @@ function renderMonthlyCalendarGrid() {
     const isOwner = c.ownerUid === currentUid;
     const isExplicitlyShared = Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid);
     const isAllowed = Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid);
-    const myProf = profiles.find(p => p.ownerUid === currentUid);
     const isFirmAdmin = myProf && myProf.role === "admin";
     const hasAccess = isOwner || isExplicitlyShared || isAllowed || isFirmAdmin;
 
@@ -681,9 +707,16 @@ window.openDateScheduleModal = function(dateStr) {
   const currentUid = u?.uid || "";
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
   const isFirmAdmin = myProf && myProf.role === "admin";
+  const isDeveloper = myProf && myProf.role === "developer";
 
-  const dateCases = cases.filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
-  const dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
+  let dateCases = cases.filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
+  let dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
+
+  // DEVELOPER ISOLATION: Never expose other attorneys' hearings/appointments to developer
+  if (isDeveloper) {
+    dateCases = dateCases.filter(c => c.ownerUid === currentUid);
+    dateAppts = dateAppts.filter(a => a.targetUid === currentUid || a.requesterUid === currentUid);
+  }
 
   const allItems = [];
 
@@ -1365,7 +1398,7 @@ function renderDashboard() {
 window.renderDashboard = renderDashboard;
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES VIEW MODES & UPDATED FIRM ROLES
+//  PROFILES VIEW MODES & ATTORNEY DIRECTORY (DEVELOPERS EXCLUDED)
 // ═══════════════════════════════════════════════════════════════
 let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
 
@@ -1390,16 +1423,23 @@ function renderProfiles() {
   const u = window._currentUser;
   if (!u) return;
 
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+  const isFirmAdmin = myProf && myProf.role === "admin";
+
+  // DEVELOPER ROSTER ISOLATION:
+  // Hide developer accounts from the practicing attorney directory unless viewing own profile or firm admin
+  const visibleProfiles = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u.uid);
+
   const countEl = document.getElementById("profiles-count");
-  if (countEl) countEl.textContent = `${profiles.length} profile${profiles.length !== 1 ? "s" : ""} total`;
+  if (countEl) countEl.textContent = `${visibleProfiles.length} profile${visibleProfiles.length !== 1 ? "s" : ""} total`;
 
   const el = document.getElementById("profiles-grid");
   if (!el) return;
 
   const userCases = getAccessibleCases();
 
-  if (profiles.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-people"></i></div><div style="font-size:13px;color:var(--text-muted)">No associate attorneys are currently registered.</div></div>`;
+  if (visibleProfiles.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-people"></i></div><div style="font-size:13px;color:var(--text-muted)">No attorney profiles found.</div></div>`;
     return;
   }
 
@@ -1408,10 +1448,11 @@ function renderProfiles() {
     el.style.flexDirection = "column";
     el.style.gap = "8px";
 
-    el.innerHTML = profiles.map(p => {
+    el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
       const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
+      const isDev = p.role === "developer";
 
       return `
         <div class="profile-list-row" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
@@ -1419,7 +1460,9 @@ function renderProfiles() {
             ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
             <div style="min-width:0">
               <div style="font-weight:700;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                ${escHtml(p.name)} ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">YOU</span>' : ""}
+                ${escHtml(p.name)} 
+                ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">YOU</span>' : ""}
+                ${isDev ? '<span style="font-size:9.5px;color:var(--cyan);background:rgba(34,211,238,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">DEV</span>' : ""}
               </div>
               <div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
             </div>
@@ -1437,10 +1480,11 @@ function renderProfiles() {
     el.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
     el.style.gap = "20px";
 
-    el.innerHTML = profiles.map(p => {
+    el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
       const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
+      const isDev = p.role === "developer";
       
       return `
         <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
@@ -1448,7 +1492,9 @@ function renderProfiles() {
             ${avatarDiv(p.name, p.avatarColor, 50, p.photoUrl)}
             <div>
               <div style="font-weight:700;font-size:16px;color:var(--text)">
-                ${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
+                ${escHtml(p.name)} 
+                ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
+                ${isDev ? '<span style="font-size:10px;color:var(--cyan);background:rgba(34,211,238,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">DEV</span>' : ""}
               </div>
               <div style="font-size:13px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div>
             </div>
@@ -1467,6 +1513,48 @@ function renderProfiles() {
 }
 
 window.renderProfiles = renderProfiles;
+
+// ═══════════════════════════════════════════════════════════════
+//  CASE SHARING SYSTEM (DEVELOPERS OMITTED)
+// ═══════════════════════════════════════════════════════════════
+window.openShareCaseModal = function() {
+  if (!selCase) return;
+  const listEl = document.getElementById("share-modal-list");
+  if (!listEl) return;
+
+  const sharedUids = selCase.sharedWith || [];
+  const currentUid = window._currentUser?.uid;
+
+  // DEVELOPER ROLE RESTRICTION:
+  // Exclude accounts with role === "developer" so attorneys cannot share cases with developer sandbox accounts
+  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
+
+  if (associates.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
+  } else {
+    listEl.innerHTML = associates.map(p => {
+      const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
+      return `
+        <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
+          <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked} style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
+          ${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${p.email}</div>
+          </div>
+        </label>
+      `;
+    }).join("");
+  }
+
+  const modal = document.getElementById("share-modal");
+  if (modal) modal.classList.remove("hidden");
+};
+
+window.closeShareModal = function() {
+  const modal = document.getElementById("share-modal");
+  if (modal) modal.classList.add("hidden");
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  PROFILE DETAIL
@@ -1668,7 +1756,7 @@ function renderAllCases() {
 window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (WITH PERMISSION GRANTED FOR SHARED ATTORNEYS)
+//  CASE DETAIL (WITH FULL PERMISSION FOR SHARED USERS)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -2008,9 +2096,11 @@ function renderSidebarUser() {
   chip.style.display = "flex";
 
   const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
+  const isDev = myProf.role === "developer";
 
+  // Admins and Developers can access the console (Developers have read-only debug inspection)
   if (adminSection) {
-    adminSection.style.display = isAdmin ? "block" : "none";
+    adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
   }
 }
 
