@@ -112,7 +112,7 @@ function renderModalCalendarUI() {
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('⚖️ In Court / Hearing')"><i class="bi bi-bank"></i> In Court</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🚫 Out of Office / Leave')"><i class="bi bi-slash-circle"></i> Out of Office</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🤝 Client Meeting')"><i class="bi bi-people"></i> Consultation</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('📝 Pleading / Hearing Prep')"><i class="bi bi-pencil-square"></i> Preparation</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('📝 Hearing Preparation')"><i class="bi bi-pencil-square"></i> Preparation</button>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
@@ -158,8 +158,8 @@ function renderModalCalendarUI() {
         </div>
 
         <div>
-          <label class="field-label">Venue / Notes (Optional)</label>
-          <input class="field-input" id="busy-notes" placeholder="e.g. RTC Branch 20, Hall of Justice"/>
+          <label class="field-label">Description / Venue</label>
+          <input class="field-input" id="busy-notes" placeholder="Enter schedule description or venue..."/>
         </div>
       </div>
 
@@ -321,7 +321,7 @@ window.submitBusyDates = async function() {
   }
 
   const title = (document.getElementById("busy-title")?.value || "").trim() || "In Court / Out of Office";
-  const notes = (document.getElementById("busy-notes")?.value || "").trim();
+  const desc = (document.getElementById("busy-notes")?.value || "").trim();
   const allDay = document.getElementById("busy-all-day")?.checked;
   const startTime = document.getElementById("busy-start-time")?.value || "08:30";
   const endTime = document.getElementById("busy-end-time")?.value || "17:00";
@@ -344,7 +344,7 @@ window.submitBusyDates = async function() {
         title: title,
         date: date,
         time: timeStr,
-        description: notes,
+        description: desc,
         type: "busy",
         targetUid: u.uid,
         targetName: myProf?.name || u.displayName || u.email,
@@ -400,7 +400,6 @@ function renderCalendarView() {
 
   if (select) {
     if (isDeveloper) {
-      // Developer can only view their own test schedule
       select.innerHTML = `<option value="${u.uid}">My Test Schedule (Sandbox Mode)</option>`;
       select.value = u.uid;
       select.disabled = true;
@@ -409,7 +408,6 @@ function renderCalendarView() {
       const curVal = select.value;
       let optionsHtml = `<option value="Everyone">Everyone (Firm Overview)</option>`;
       
-      // Filter out developers so attorneys never see developer test entries
       profiles.filter(p => p.role !== "developer").forEach(p => {
         const designation = p.role ? ` (${p.role})` : "";
         optionsHtml += `<option value="${p.ownerUid}">${p.name}${designation}</option>`;
@@ -420,7 +418,6 @@ function renderCalendarView() {
     }
   }
 
-  // Inject or update the Color Legend Bar right above the calendar card
   let legendBar = document.getElementById("calendar-legend-bar");
   const calCard = document.getElementById("calendar-month-card");
 
@@ -495,8 +492,6 @@ function renderMonthlyCalendarGrid() {
   let activeCases = cases.filter(c => c.dueDate || (Array.isArray(c.hearings) && c.hearings.length > 0));
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
-  // DEVELOPER BOUNDARY ENFORCEMENT:
-  // Developers strictly only process cases and appointments created by/for themselves
   if (isDeveloper) {
     activeCases = activeCases.filter(c => c.ownerUid === currentUid);
     activeAppts = activeAppts.filter(a => a.targetUid === currentUid || a.requesterUid === currentUid);
@@ -505,7 +500,6 @@ function renderMonthlyCalendarGrid() {
     activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
     activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
   } else {
-    // Firm Overview: Hide developer test appointments from practicing attorneys
     activeAppts = activeAppts.filter(a => {
       const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
       return creatorProf?.role !== "developer";
@@ -611,7 +605,6 @@ function renderMonthlyCalendarGrid() {
     const isPast = fullDateStr < todayStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
-    // 2-Tier Stack & Overflow System
     let eventsMarkup = "";
     if (dayEvents.length > 0) {
       const topTwo = dayEvents.slice(0, 2);
@@ -682,7 +675,7 @@ function renderMonthlyCalendarGrid() {
 window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
 
 // ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL (CONFIDENTIALITY & STRICT EDIT PERMISSIONS)
+//  DATE POPUP MODAL (CONFIDENTIALITY & STRICT 1-PERSON EDIT)
 // ═══════════════════════════════════════════════════════════════
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
@@ -706,7 +699,6 @@ window.openDateScheduleModal = function(dateStr) {
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
-  const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
   let dateCases = cases.filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
@@ -724,14 +716,17 @@ window.openDateScheduleModal = function(dateStr) {
     const p = profiles.find(x => x.id === c.profileId);
     const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
     
-    // Strict Case Permission Verification Gate
     const isOwner = c.ownerUid === currentUid;
     const isExplicitlyShared = Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid);
     const isAllowed = Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid);
+    const isFirmAdmin = myProf && myProf.role === "admin";
     const hasAccess = isOwner || isExplicitlyShared || isAllowed || isFirmAdmin;
 
-    // USER RULE: You can only edit the description/notes of your OWN cases
-    const canEditNotes = isOwner || isFirmAdmin;
+    // USER RULE: The only person who can edit descriptions of their schedule is themselves only
+    const canEditDesc = isOwner;
+
+    // Use description cleanly (c.narrative or hearing purpose)
+    const currentDescription = specificHearing?.notes || specificHearing?.purpose || c.narrative || "";
 
     allItems.push({
       id: c.id,
@@ -742,33 +737,23 @@ window.openDateScheduleModal = function(dateStr) {
       title: hasAccess ? c.title : `Court Appearance (${p?.name || 'Associate Attorney'})`,
       time: specificHearing?.time || "8:30 AM",
       venue: c.venue || "Courtroom / Venue N/A",
-      stage: specificHearing?.purpose || c.type || "Litigation Session",
       attorneyName: p?.name || "Attorney",
       attorneyColor: p?.avatarColor || "#c9a84c",
       photoUrl: p?.photoUrl || null,
-      notes: hasAccess ? (specificHearing?.notes || c.narrative || "") : "Confidential attorney-client notes redacted.",
+      description: hasAccess ? currentDescription : "Confidential attorney-client information.",
       isOwner: isOwner,
-      canEditNotes: canEditNotes
+      canEditDesc: canEditDesc
     });
   });
 
   dateAppts.forEach(a => {
     const isBusy = a.type === "busy";
-    const isRequester = a.requesterUid === currentUid;
-    const isTarget = a.targetUid === currentUid;
-    const isOwner = a.ownerUid === currentUid;
-    const isParticipant = isRequester || isTarget || isOwner;
+    const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid;
+    const isParticipant = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
     const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
 
-    // USER RULE:
-    // If it's an approved appointment (status === "accepted"), BOTH participants can edit!
-    // Otherwise, only the creator/owner can edit.
-    let canEditNotes = false;
-    if (a.status === "accepted" && !isBusy) {
-      canEditNotes = isParticipant || isFirmAdmin; // 2 people can edit approved appointments
-    } else {
-      canEditNotes = isOwner || isRequester || isFirmAdmin; // personal/unconfirmed
-    }
+    // USER RULE: Only the person who created/scheduled this can edit its description
+    const canEditDesc = isOwner;
 
     allItems.push({
       id: a.id,
@@ -778,14 +763,13 @@ window.openDateScheduleModal = function(dateStr) {
       badgeLabel: isBusy ? "Out of Office / Busy" : "Appointment",
       title: a.title,
       time: a.time || "All Day",
-      venue: a.description || "",
-      stage: isBusy ? (a.targetName || a.requesterName || "Firm Attorney") : `Meeting with ${a.targetName}`,
+      venue: a.description ? "" : "",
       attorneyName: a.targetName || "Attorney",
       attorneyColor: targetProf?.avatarColor || "#ef4444",
       photoUrl: targetProf?.photoUrl || null,
-      notes: a.description || "",
-      canDelete: isParticipant || isFirmAdmin,
-      canEditNotes: canEditNotes
+      description: a.description || "",
+      canDelete: isOwner,
+      canEditDesc: canEditDesc
     });
   });
 
@@ -805,7 +789,7 @@ window.openDateScheduleModal = function(dateStr) {
       if (item.kind === "case") {
         if (item.hasAccess) {
           actionMarkup = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+            <div style="display:flex;justify-content:flex-end;margin-top:10px">
               <button class="btn btn-secondary btn-sm" onclick="window.closeDateScheduleModal(); openCase('${item.id}')">
                 Open Case File <i class="bi bi-arrow-right"></i>
               </button>
@@ -828,29 +812,27 @@ window.openDateScheduleModal = function(dateStr) {
         `;
       }
 
-      // Inline Notes: EDITABLE only if permitted; READ-ONLY if not
-      let notesBlock = "";
-      if (item.canEditNotes) {
-        notesBlock = `
-          <div style="margin-top:8px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
-            <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:flex;align-items:center;gap:4px">
-              <i class="bi bi-pencil-square" style="color:var(--gold)"></i> Notes &amp; Appearance Details:
+      // ONLY THE OWNER CAN EDIT THE DESCRIPTION. NO EXTRA "NOTES" SECTION.
+      let descriptionBlock = "";
+      if (item.canEditDesc) {
+        descriptionBlock = `
+          <div style="margin-top:10px;background:var(--surface3);border:1px solid var(--border);border-radius:9px;padding:10px 12px">
+            <label style="font-size:11px;text-transform:uppercase;color:var(--gold-light);font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:6px">
+              <i class="bi bi-card-text"></i> Description:
             </label>
-            <textarea id="dsm-note-${item.id}" class="field-input" style="font-size:12px;min-height:50px;padding:6px 8px;margin-top:4px;resize:vertical" placeholder="Enter notes or updates for this session...">${escHtml(item.notes || "")}</textarea>
-            <div style="display:flex;justify-content:flex-end;margin-top:6px">
-              <button class="btn btn-secondary btn-sm" type="button" onclick="saveEventInlineNote('${item.kind}', '${item.id}', '${dateStr}')" style="font-size:11px;padding:4px 10px">
-                <i class="bi bi-check2"></i> Save Notes
+            <textarea id="dsm-desc-${item.id}" class="field-input" style="font-size:12.5px;min-height:56px;padding:8px 10px;resize:vertical" placeholder="Enter schedule description...">${escHtml(item.description || "")}</textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px">
+              <button class="btn btn-primary btn-sm" type="button" onclick="saveEventInlineDescription('${item.kind}', '${item.id}', '${dateStr}')" style="font-size:11.5px;padding:4px 12px">
+                <i class="bi bi-check2"></i> Save Description
               </button>
             </div>
           </div>
         `;
-      } else if (item.notes) {
-        notesBlock = `
-          <div style="margin-top:8px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
-            <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:flex;align-items:center;gap:4px">
-              <i class="bi bi-lock-fill" style="color:var(--text-dim)"></i> Notes (Read Only):
-            </div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5;white-space:pre-wrap">${escHtml(item.notes)}</div>
+      } else if (item.description) {
+        descriptionBlock = `
+          <div style="margin-top:10px;background:var(--surface3);border:1px solid var(--border);border-radius:9px;padding:10px 12px">
+            <div style="font-size:10.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:4px">Description:</div>
+            <div style="font-size:12.5px;color:var(--text);line-height:1.5;white-space:pre-wrap">${escHtml(item.description)}</div>
           </div>
         `;
       }
@@ -868,13 +850,13 @@ window.openDateScheduleModal = function(dateStr) {
             ${avatarDiv(item.attorneyName, item.attorneyColor, 32, item.photoUrl)}
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--text)">${escHtml(item.title)}</div>
-              <div style="font-size:11.5px;color:var(--text-muted)"><strong>Counsel:</strong> ${escHtml(item.attorneyName)} · <strong>Stage:</strong> ${escHtml(item.stage)}</div>
+              <div style="font-size:11.5px;color:var(--text-muted)"><strong>Counsel:</strong> ${escHtml(item.attorneyName)}</div>
             </div>
           </div>
           
           ${item.venue ? `<div style="font-size:11.5px;color:var(--text-dim);margin-bottom:4px"><i class="bi bi-geo-alt-fill" style="color:var(--gold)"></i> ${escHtml(item.venue)}</div>` : ''}
 
-          ${notesBlock}
+          ${descriptionBlock}
           ${actionMarkup}
         </div>
       `;
@@ -889,69 +871,65 @@ window.closeDateScheduleModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// ── SAVE EVENT INLINE NOTES HANDLER (WITH PERMISSION ENFORCEMENT) ─────
-window.saveEventInlineNote = async function(kind, id, dateStr) {
-  const noteEl = document.getElementById(`dsm-note-${id}`);
-  if (!noteEl) return;
-  const newNote = noteEl.value.trim();
+// ── STRICT 1-PERSON OWNERSHIP: SAVE INLINE DESCRIPTION ────────
+window.saveEventInlineDescription = async function(kind, id, dateStr) {
+  const descEl = document.getElementById(`dsm-desc-${id}`);
+  if (!descEl) return;
+  const newDesc = descEl.value.trim();
 
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
-  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
-  const isFirmAdmin = myProf && myProf.role === "admin";
 
   try {
     if (kind === "case") {
       const c = cases.find(x => x.id === id);
       if (!c) throw new Error("Case file not found.");
 
-      // PERMISSION CHECK: You can only edit notes on your own cases
-      if (c.ownerUid !== currentUid && !isFirmAdmin) {
-        showToast("You can only edit notes on your own cases.", "error");
+      // STRICT 1-PERSON RULE: Only the case owner can edit their case description
+      if (c.ownerUid !== currentUid) {
+        showToast("You can only edit descriptions on your own cases.", "error");
         return;
       }
 
-      if (typeof showToast === "function") showToast("Saving note update...");
+      if (typeof showToast === "function") showToast("Saving description...");
 
       if (Array.isArray(c.hearings) && c.hearings.length > 0) {
         const hIdx = c.hearings.findIndex(h => h.date === dateStr);
         if (hIdx >= 0) {
-          c.hearings[hIdx].notes = newNote;
+          c.hearings[hIdx].notes = newDesc;
         } else {
           c.hearings.push({
             id: "h_" + Date.now(),
             date: dateStr,
             time: "08:30",
             purpose: "Court Appearance",
-            notes: newNote
+            notes: newDesc
           });
         }
-        await dbUpdateCase(c.id, { hearings: c.hearings });
+        await dbUpdateCase(c.id, { hearings: c.hearings, narrative: newDesc });
       } else {
-        await dbUpdateCase(c.id, { narrative: newNote });
+        await dbUpdateCase(c.id, { narrative: newDesc });
       }
     } else if (kind === "appt" || kind === "busy") {
       const a = appointments.find(x => x.id === id);
       if (!a) throw new Error("Appointment not found.");
 
-      // PERMISSION CHECK:
-      // Approved appointments: both requester and target can edit!
-      // Other appointments / busy blocks: only owner can edit.
-      const isParticipant = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
-      if (!isParticipant && !isFirmAdmin) {
-        showToast("You do not have permission to edit this schedule entry.", "error");
+      // STRICT 1-PERSON RULE: Only the owner who scheduled this can edit its description
+      const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid;
+      if (!isOwner) {
+        showToast("You can only edit descriptions on your own schedule.", "error");
         return;
       }
 
-      if (typeof showToast === "function") showToast("Saving schedule note...");
-      await dbUpdateAppointment(id, { description: newNote });
+      if (typeof showToast === "function") showToast("Saving schedule description...");
+      await dbUpdateAppointment(id, { description: newDesc });
     }
 
-    if (typeof showToast === "function") showToast("Schedule notes saved!");
+    if (typeof showToast === "function") showToast("Description saved!");
     if (typeof renderCalendarView === "function") renderCalendarView();
   } catch (err) {
-    console.error("saveEventInlineNote error:", err);
-    if (typeof showToast === "function") showToast("Failed to save note: " + err.message, "error");
+    console.error("saveEventInlineDescription error:", err);
+    if (typeof showToast === "function") showToast("Failed to save description: " + err.message, "error");
   }
 };
 
@@ -1293,13 +1271,11 @@ window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 //  NAVIGATION (WITH AUTO-CLOSE CHAT & NOTIFICATIONS)
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
-  // Minimize / close chat panel when switching view or category
   const chatPanel = document.getElementById("chat-panel");
   if (chatPanel && !chatPanel.classList.contains("hidden")) {
     chatPanel.classList.add("hidden");
   }
 
-  // Close notification dropdown
   const notifDropdown = document.getElementById("notif-dropdown");
   if (notifDropdown && !notifDropdown.classList.contains("hidden")) {
     notifDropdown.classList.add("hidden");
@@ -1337,7 +1313,6 @@ function navTo(view) {
 }
 
 function executeNavigation(view) {
-  // Auto-close chat drawer upon navigation
   const chatPanel = document.getElementById("chat-panel");
   if (chatPanel && !chatPanel.classList.contains("hidden")) {
     chatPanel.classList.add("hidden");
@@ -1478,8 +1453,6 @@ function renderProfiles() {
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
   const isFirmAdmin = myProf && myProf.role === "admin";
 
-  // DEVELOPER ROSTER ISOLATION:
-  // Hide developer accounts from the practicing attorney directory unless viewing own profile or firm admin
   const visibleProfiles = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u.uid);
 
   const countEl = document.getElementById("profiles-count");
@@ -1577,8 +1550,6 @@ window.openShareCaseModal = function() {
   const sharedUids = selCase.sharedWith || [];
   const currentUid = window._currentUser?.uid;
 
-  // DEVELOPER ROLE RESTRICTION:
-  // Exclude accounts with role === "developer" so attorneys cannot share cases with developer sandbox accounts
   const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
 
   if (associates.length === 0) {
@@ -1837,7 +1808,6 @@ function renderCaseDetail() {
   if (canDelete) actionButtons += `<button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
   if (isShared && !isOwner && !isGroupAdmin) actionButtons += `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);padding:6px 12px;font-size:11.5px"><i class="bi bi-shield-check"></i> Shared Associate (Editor)</span>`;
 
-  // Place action toolbar directly below title
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
   if (wrapEl) wrapEl.innerHTML = actionButtons;
 
@@ -2150,7 +2120,7 @@ function renderSidebarUser() {
   const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
   const isDev = myProf.role === "developer";
 
-  // Admins and Developers can access the console (Developers have read-only debug inspection)
+  // Admins and Developers can access the console
   if (adminSection) {
     adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
   }
