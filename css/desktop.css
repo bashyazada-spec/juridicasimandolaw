@@ -260,12 +260,12 @@ a { color: inherit; text-decoration: none; }
   max-width: 100%;
 }
 
-/* ── HAMBURGER TOGGLE BUTTON (ELEVATED Z-INDEX) ── */
+/* ── PERSISTENT FLOATING HAMBURGER TOGGLE BUTTON ── */
 .hamburger-toggle-btn {
   position: fixed !important; 
   top: 22px !important; 
   left: 212px !important; 
-  z-index: 1000 !important; /* Always sits cleanly above sidebar content */
+  z-index: 10001 !important; /* Guaranteed highest z-index so it never hides */
   background: var(--surface2) !important; 
   border: 1.5px solid var(--gold-border) !important;
   color: var(--gold-light) !important; 
@@ -277,14 +277,15 @@ a { color: inherit; text-decoration: none; }
   justify-content: center !important; 
   font-size: 18px !important; 
   cursor: pointer !important; 
-  box-shadow: var(--shadow-sm) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s, transform 0.2s !important;
+  pointer-events: auto !important;
 }
 
 .hamburger-toggle-btn:hover {
   background: var(--surface3) !important; 
   border-color: var(--gold) !important;
-  transform: scale(1.06) !important; 
+  transform: scale(1.08) !important; 
   box-shadow: var(--shadow-gold) !important;
 }
 
