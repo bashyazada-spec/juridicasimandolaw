@@ -51,18 +51,29 @@ async function dbLogAuditAction(action, details = {}) {
 }
 window.dbLogAuditAction = dbLogAuditAction;
 
-// ── STRICT ACCESSIBLE CASES FILTER (100% PRIVACY CONTROL) ──
+// ── STRICT ACCESSIBLE CASES FILTER (DEVELOPER & PRIVACY CONTROLS) ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase()));
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+  
+  // 1. DEVELOPER ROLE ISOLATION:
+  // Developers can ONLY see cases they created themselves for testing.
+  // They are strictly blocked from seeing other attorneys' cases, even if shared.
+  if (myProf && myProf.role === "developer") {
+    return cases.filter(c => c.ownerUid === u.uid);
+  }
 
+  // 2. FIRM ADMINISTRATOR ROLE:
+  // Full view for managing firm workflow
+  const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase()));
   if (isFirmAdmin) {
     return cases;
   }
 
+  // 3. ATTORNEY ROLE:
+  // Strict case-level privacy: Own cases, shared cases, or assigned profile cases
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
@@ -232,7 +243,7 @@ async function dbLoad() {
     const db = window._db;
     dbUnsubscribe();
 
-    // ── Real-Time Sync: Attorney Directory ───────────────────
+    // ── Real-Time Sync: Access Directory ─────────────────────
     const pColRef = window._fbCol(db, "profiles");
     profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
       profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -247,7 +258,8 @@ async function dbLoad() {
             myProf.ownerUid = currentUser.uid;
           }
           const isConfiguredAdmin = currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
-          if (isConfiguredAdmin && myProf.role !== "admin") {
+          // Only auto-upgrade to admin if not intentionally configured as a developer
+          if (isConfiguredAdmin && myProf.role !== "admin" && myProf.role !== "developer") {
             dbUpdateProfile(myProf.id, { role: "admin" });
             myProf.role = "admin";
           }
@@ -275,15 +287,23 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases (Rule-Aligned Query) ────────────
+    // ── Real-Time Sync: Cases (Developer Isolated) ───────────
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
       const isEmailAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+      
+      const myProf = profiles.find(p => p.ownerUid === activeUid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+      const isDeveloper = myProf && myProf.role === "developer";
 
-      // Admins query full collection; associates query allowedUids to prevent permission-denied errors
-      const caseQuery = isEmailAdmin 
-        ? window._fbCol(db, "cases")
-        : window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
+      let caseQuery;
+      if (isDeveloper) {
+        // Developer query is strictly bounded to cases created by their own UID
+        caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("ownerUid", "==", activeUid));
+      } else if (isEmailAdmin) {
+        caseQuery = window._fbCol(db, "cases");
+      } else {
+        caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
+      }
 
       casesUnsub = window._fbOnSnapshot(caseQuery, (snap) => {
         cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -296,7 +316,7 @@ async function dbLoad() {
       });
     }
 
-    // ── Real-Time Sync: Notifications (Rule-Aligned Query) ───
+    // ── Real-Time Sync: Notifications ─────────────────────────
     if (activeUid) {
       try {
         const notifQuery = window._fbQuery(
@@ -458,7 +478,6 @@ async function dbAddCase(data) {
   data.ownerUid = uId;
   data.createdAt = new Date().toISOString().slice(0,10);
   
-  // Guarantee creator is in allowedUids to satisfy security rules
   if (!data.allowedUids || !Array.isArray(data.allowedUids)) {
     data.allowedUids = [uId];
   } else if (uId && !data.allowedUids.includes(uId)) {
