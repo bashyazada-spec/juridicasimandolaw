@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Simando Law — Case Manager</title>
 
-<!-- Content Security Policy Header (Allowing Bootstrap Icons & Font Resources) -->
+<!-- Content Security Policy Header -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://apis.google.com https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://*.gstatic.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com;">
 
 <!-- 1. Instant 0ms Device Redirector (Executes before Firebase loads) -->
@@ -13,7 +13,7 @@
 
 <!-- 2. Firebase Initialization, QRCode CDN, Bootstrap Icons & Desktop Stylesheet -->
 <script type="module" src="js/firebase-init.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1Pg4DzHgHA10ewwjPBnx+xOo5a8WhZVC8GhnZHA9CoLKSGYlUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 <link rel="stylesheet" href="css/desktop.css"/>
@@ -38,6 +38,38 @@
   .badge-pass { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
   .badge-warn { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
   .badge-fail { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+
+  /* Integrated Sidebar Hamburger Button */
+  .sidebar-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .sidebar-toggle-inline {
+    background: var(--surface2);
+    border: 1px solid var(--gold-border);
+    color: var(--gold-light);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .sidebar-toggle-inline:hover {
+    background: var(--surface3);
+    border-color: var(--gold);
+    transform: scale(1.05);
+  }
+  body.sidebar-collapsed .sidebar-header-row {
+    justify-content: center;
+  }
 </style>
 </head>
 <body>
@@ -169,71 +201,8 @@
   </div>
 </div>
 
-<!-- Interactive Click-to-Toggle Set Availability / Schedule Modal -->
-<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()">
-  <div class="modal-box" style="max-width: 520px;">
-    <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px">
-      <i class="bi bi-calendar2-range-fill" style="color:var(--gold)"></i> Set Schedule &amp; Availability
-    </div>
-    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Click dates on the calendar below to toggle your availability.<br>
-      <span style="color:var(--red)"><i class="bi bi-dash-circle-fill"></i> Red</span> = Busy / Out of Office. Click again to clear.
-    </div>
-    
-    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:18px">
-      <div>
-        <label class="field-label">Reason / Schedule Label *</label>
-        <input type="text" class="field-input" id="busy-title" placeholder="e.g. In Court / Out of Office / Vacation" value="In Court / Out of Office" autocomplete="off"/>
-      </div>
-
-      <!-- Modal Interactive Calendar Picker -->
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:14px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
-          <div style="display:flex;gap:6px">
-            <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="prevModalCalMonth()"><i class="bi bi-chevron-left"></i></button>
-            <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="todayModalCalMonth()">Today</button>
-            <button class="btn btn-secondary btn-sm" type="button" style="padding:2px 8px;font-size:11px" onclick="nextModalCalMonth()"><i class="bi bi-chevron-right"></i></button>
-            <button class="btn btn-ghost btn-sm" type="button" style="padding:2px 8px;font-size:11px;color:var(--amber)" onclick="resetBusySelection()" title="Reset selected dates"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
-          </div>
-        </div>
-        
-        <div class="cal-grid" id="modal-calendar-grid" style="gap:4px"></div>
-        
-        <div style="font-size:11px;color:var(--text-dim);margin-top:10px;text-align:right;font-weight:600" id="modal-busy-count-label">
-          0 busy dates selected
-        </div>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:12px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer">
-          <input type="checkbox" id="busy-all-day" checked onchange="toggleBusyTimeInputs(this.checked)" style="accent-color:var(--gold)"/> All Day
-        </label>
-      </div>
-
-      <div class="grid2" id="busy-time-container" style="display:none">
-        <div>
-          <label class="field-label">Start Time</label>
-          <input type="time" class="field-input" id="busy-start-time" value="08:00"/>
-        </div>
-        <div>
-          <label class="field-label">End Time</label>
-          <input type="time" class="field-input" id="busy-end-time" value="17:00"/>
-        </div>
-      </div>
-
-      <div>
-        <label class="field-label">Brief Description / Notes (Optional)</label>
-        <input type="text" class="field-input" id="busy-notes" placeholder="e.g. RTC Branch 20 Hearing"/>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:12px;justify-content:flex-end">
-      <button class="btn btn-ghost" type="button" onclick="closeBusyModal()">Cancel</button>
-      <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="submitBusyDates()"><i class="bi bi-check-lg"></i> Save Schedule</button>
-    </div>
-  </div>
-</div>
+<!-- Set Availability Modal -->
+<div id="busy-modal" class="modal-overlay hidden" style="z-index: 10004;" onclick="if(event.target===this)closeBusyModal()"></div>
 
 <!-- Date Events & Schedule Details Popup Modal -->
 <div id="date-schedule-modal" class="modal-overlay hidden" style="z-index: 10006;">
@@ -387,22 +356,30 @@
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
     <div class="logo-wrap">
-      <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
-        <g transform="translate(20, 14)">
-          <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c" opacity="0.95"/>
-          <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
-          <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="2.5"/>
-          <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2"/>
-          <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3"/>
-          <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2"/>
-          <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="2.5"/>
-          <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
-          <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c" opacity="0.9"/>
-        </g>
-        <text x="100" y="40" font-family="'Cormorant Garamond', Georgia, serif" font-size="30" font-weight="700" letter-spacing="4" fill="#ffffff">SIMANDO</text>
-        <text x="102" y="63" font-family="'Cormorant Garamond', Georgia, serif" font-size="17" font-weight="600" letter-spacing="6" fill="#c9a55c">LAW FIRM</text>
-        <text x="102" y="82" font-family="'DM Sans', sans-serif" font-size="7.5" font-weight="500" letter-spacing="3" fill="#ffffff" opacity="0.85">EST. 2026 · LEGAL COUNSEL</text>
-      </svg>
+      <div class="sidebar-header-row">
+        <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
+          <g transform="translate(20, 14)">
+            <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c" opacity="0.95"/>
+            <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
+            <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="2.5"/>
+            <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2"/>
+            <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3"/>
+            <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2"/>
+            <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="2.5"/>
+            <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
+            <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c" opacity="0.9"/>
+          </g>
+          <text x="100" y="40" font-family="'Cormorant Garamond', Georgia, serif" font-size="30" font-weight="700" letter-spacing="4" fill="#ffffff">SIMANDO</text>
+          <text x="102" y="63" font-family="'Cormorant Garamond', Georgia, serif" font-size="17" font-weight="600" letter-spacing="6" fill="#c9a55c">LAW FIRM</text>
+          <text x="102" y="82" font-family="'DM Sans', sans-serif" font-size="7.5" font-weight="500" letter-spacing="3" fill="#ffffff" opacity="0.85">EST. 2026 · LEGAL COUNSEL</text>
+        </svg>
+
+        <!-- Anchored Toggle Button inside the Sidebar Header -->
+        <button id="floating-sidebar-btn" class="sidebar-toggle-inline" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">
+          <i class="bi bi-list"></i>
+        </button>
+      </div>
+
       <div class="logo-sub">Case Management System</div>
     </div>
 
@@ -464,8 +441,6 @@
 
   <!-- ══════ MAIN ══════ -->
   <div id="main">
-
-    <button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation"><i class="bi bi-list"></i></button>
 
     <!-- ── TOP-RIGHT DOCK: CAPSULE + ACTION BUTTONS DOCKED DIRECTLY UNDERNEATH ── -->
     <div id="top-hdr-actions">
@@ -621,7 +596,7 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES (CLEAN PAGE HEADER) ── -->
+    <!-- ── ALL CASES ── -->
     <div id="view-allcases" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">All Cases</div>
@@ -654,7 +629,7 @@
       <div id="all-cases-list"></div>
     </div>
 
-    <!-- ── GOOGLE DRIVE EXPLORER REPLICA (CLEAN PAGE HEADER) ── -->
+    <!-- ── GOOGLE DRIVE EXPLORER REPLICA ── -->
     <div id="view-mydrive" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">Firm Drive</div>
@@ -674,7 +649,7 @@
       </div>
     </div>
 
-    <!-- ── ALL PROFILES (CLEAN PAGE HEADER) ── -->
+    <!-- ── ALL PROFILES ── -->
     <div id="view-profiles" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">Attorney Profiles</div>
@@ -1190,7 +1165,6 @@
   window.showView = function(viewName) {
     if (typeof _origShowView === "function") _origShowView(viewName);
 
-    // Hide all top action slots
     const allcasesSlot = document.getElementById("slot-allcases-action");
     const profilesSlot = document.getElementById("slot-profiles-action");
     const mydriveSlot  = document.getElementById("slot-mydrive-action");
