@@ -682,7 +682,7 @@ function renderMonthlyCalendarGrid() {
 window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
 
 // ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL (CONFIDENTIALITY GATE & EDITABLE NOTES)
+//  DATE POPUP MODAL (CONFIDENTIALITY & STRICT EDIT PERMISSIONS)
 // ═══════════════════════════════════════════════════════════════
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
@@ -724,11 +724,14 @@ window.openDateScheduleModal = function(dateStr) {
     const p = profiles.find(x => x.id === c.profileId);
     const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
     
-    // Strict Case Permission Verification Gate: Owner, Allowed, Shared, or Admin
+    // Strict Case Permission Verification Gate
     const isOwner = c.ownerUid === currentUid;
     const isExplicitlyShared = Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid);
     const isAllowed = Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid);
     const hasAccess = isOwner || isExplicitlyShared || isAllowed || isFirmAdmin;
+
+    // USER RULE: You can only edit the description/notes of your OWN cases
+    const canEditNotes = isOwner || isFirmAdmin;
 
     allItems.push({
       id: c.id,
@@ -745,14 +748,27 @@ window.openDateScheduleModal = function(dateStr) {
       photoUrl: p?.photoUrl || null,
       notes: hasAccess ? (specificHearing?.notes || c.narrative || "") : "Confidential attorney-client notes redacted.",
       isOwner: isOwner,
-      canEdit: hasAccess
+      canEditNotes: canEditNotes
     });
   });
 
   dateAppts.forEach(a => {
     const isBusy = a.type === "busy";
-    const isMyBlock = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
+    const isRequester = a.requesterUid === currentUid;
+    const isTarget = a.targetUid === currentUid;
+    const isOwner = a.ownerUid === currentUid;
+    const isParticipant = isRequester || isTarget || isOwner;
     const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
+
+    // USER RULE:
+    // If it's an approved appointment (status === "accepted"), BOTH participants can edit!
+    // Otherwise, only the creator/owner can edit.
+    let canEditNotes = false;
+    if (a.status === "accepted" && !isBusy) {
+      canEditNotes = isParticipant || isFirmAdmin; // 2 people can edit approved appointments
+    } else {
+      canEditNotes = isOwner || isRequester || isFirmAdmin; // personal/unconfirmed
+    }
 
     allItems.push({
       id: a.id,
@@ -768,8 +784,8 @@ window.openDateScheduleModal = function(dateStr) {
       attorneyColor: targetProf?.avatarColor || "#ef4444",
       photoUrl: targetProf?.photoUrl || null,
       notes: a.description || "",
-      canDelete: isMyBlock || isFirmAdmin,
-      canEdit: isMyBlock || isFirmAdmin
+      canDelete: isParticipant || isFirmAdmin,
+      canEditNotes: canEditNotes
     });
   });
 
@@ -812,20 +828,32 @@ window.openDateScheduleModal = function(dateStr) {
         `;
       }
 
-      // Inline Editable Description / Notes
-      const notesBlock = item.canEdit ? `
-        <div style="margin-top:8px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
-          <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:flex;align-items:center;gap:4px">
-            <i class="bi bi-pencil-square" style="color:var(--gold)"></i> Notes &amp; Appearance Details:
-          </label>
-          <textarea id="dsm-note-${item.id}" class="field-input" style="font-size:12px;min-height:50px;padding:6px 8px;margin-top:4px;resize:vertical" placeholder="Enter notes or updates for this session...">${escHtml(item.notes || "")}</textarea>
-          <div style="display:flex;justify-content:flex-end;margin-top:6px">
-            <button class="btn btn-secondary btn-sm" type="button" onclick="saveEventInlineNote('${item.kind}', '${item.id}', '${dateStr}')" style="font-size:11px;padding:4px 10px">
-              <i class="bi bi-check2"></i> Save Notes
-            </button>
+      // Inline Notes: EDITABLE only if permitted; READ-ONLY if not
+      let notesBlock = "";
+      if (item.canEditNotes) {
+        notesBlock = `
+          <div style="margin-top:8px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+            <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:flex;align-items:center;gap:4px">
+              <i class="bi bi-pencil-square" style="color:var(--gold)"></i> Notes &amp; Appearance Details:
+            </label>
+            <textarea id="dsm-note-${item.id}" class="field-input" style="font-size:12px;min-height:50px;padding:6px 8px;margin-top:4px;resize:vertical" placeholder="Enter notes or updates for this session...">${escHtml(item.notes || "")}</textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px">
+              <button class="btn btn-secondary btn-sm" type="button" onclick="saveEventInlineNote('${item.kind}', '${item.id}', '${dateStr}')" style="font-size:11px;padding:4px 10px">
+                <i class="bi bi-check2"></i> Save Notes
+              </button>
+            </div>
           </div>
-        </div>
-      ` : (item.notes ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.5;font-style:italic">"${escHtml(item.notes)}"</div>` : "");
+        `;
+      } else if (item.notes) {
+        notesBlock = `
+          <div style="margin-top:8px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:flex;align-items:center;gap:4px">
+              <i class="bi bi-lock-fill" style="color:var(--text-dim)"></i> Notes (Read Only):
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5;white-space:pre-wrap">${escHtml(item.notes)}</div>
+          </div>
+        `;
+      }
 
       return `
         <div style="background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:12px;padding:14px 16px;margin-bottom:12px">
@@ -861,18 +889,29 @@ window.closeDateScheduleModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// ── SAVE EVENT INLINE NOTES HANDLER ────────────────────────────
+// ── SAVE EVENT INLINE NOTES HANDLER (WITH PERMISSION ENFORCEMENT) ─────
 window.saveEventInlineNote = async function(kind, id, dateStr) {
   const noteEl = document.getElementById(`dsm-note-${id}`);
   if (!noteEl) return;
   const newNote = noteEl.value.trim();
 
-  try {
-    if (typeof showToast === "function") showToast("Saving note update...");
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
+  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
+  const isFirmAdmin = myProf && myProf.role === "admin";
 
+  try {
     if (kind === "case") {
       const c = cases.find(x => x.id === id);
       if (!c) throw new Error("Case file not found.");
+
+      // PERMISSION CHECK: You can only edit notes on your own cases
+      if (c.ownerUid !== currentUid && !isFirmAdmin) {
+        showToast("You can only edit notes on your own cases.", "error");
+        return;
+      }
+
+      if (typeof showToast === "function") showToast("Saving note update...");
 
       if (Array.isArray(c.hearings) && c.hearings.length > 0) {
         const hIdx = c.hearings.findIndex(h => h.date === dateStr);
@@ -892,6 +931,19 @@ window.saveEventInlineNote = async function(kind, id, dateStr) {
         await dbUpdateCase(c.id, { narrative: newNote });
       }
     } else if (kind === "appt" || kind === "busy") {
+      const a = appointments.find(x => x.id === id);
+      if (!a) throw new Error("Appointment not found.");
+
+      // PERMISSION CHECK:
+      // Approved appointments: both requester and target can edit!
+      // Other appointments / busy blocks: only owner can edit.
+      const isParticipant = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
+      if (!isParticipant && !isFirmAdmin) {
+        showToast("You do not have permission to edit this schedule entry.", "error");
+        return;
+      }
+
+      if (typeof showToast === "function") showToast("Saving schedule note...");
       await dbUpdateAppointment(id, { description: newNote });
     }
 
