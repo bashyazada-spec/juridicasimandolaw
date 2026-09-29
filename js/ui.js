@@ -425,7 +425,7 @@ function renderCalendarView() {
       <span style="display:inline-flex;align-items:center;gap:4px;color:#c7d2fe"><i class="bi bi-file-earmark-text-fill" style="color:var(--violet)"></i> Pleading Deadline</span>
       <span style="display:inline-flex;align-items:center;gap:4px;color:#fca5a5"><i class="bi bi-slash-circle-fill" style="color:var(--red)"></i> Out of Office / In Court</span>
       <span style="display:inline-flex;align-items:center;gap:4px;color:#86efac"><i class="bi bi-people-fill" style="color:var(--green)"></i> Consultation</span>
-      <span style="font-size:10.5px;color:var(--text-dim);margin-left:auto"><i class="bi bi-person-circle"></i> Initial badge shows counsel</span>
+      <span style="font-size:10.5px;color:var(--text-dim);margin-left:auto"><i class="bi bi-person-circle"></i> Counsel Badge</span>
     `;
   }
 
@@ -656,7 +656,7 @@ function renderMonthlyCalendarGrid() {
 window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
 
 // ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL (CONFIDENTIALITY GATE)
+//  DATE POPUP MODAL (CONFIDENTIALITY GATE & EDITABLE NOTES)
 // ═══════════════════════════════════════════════════════════════
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
@@ -691,7 +691,7 @@ window.openDateScheduleModal = function(dateStr) {
     const p = profiles.find(x => x.id === c.profileId);
     const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
     
-    // Strict Case Permission Verification Gate
+    // Strict Case Permission Verification Gate: Owner, Allowed, Shared, or Admin
     const isOwner = c.ownerUid === currentUid;
     const isExplicitlyShared = Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid);
     const isAllowed = Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid);
@@ -711,7 +711,8 @@ window.openDateScheduleModal = function(dateStr) {
       attorneyColor: p?.avatarColor || "#c9a84c",
       photoUrl: p?.photoUrl || null,
       notes: hasAccess ? (specificHearing?.notes || c.narrative || "") : "Confidential attorney-client notes redacted.",
-      isOwner: isOwner
+      isOwner: isOwner,
+      canEdit: hasAccess
     });
   });
 
@@ -734,7 +735,8 @@ window.openDateScheduleModal = function(dateStr) {
       attorneyColor: targetProf?.avatarColor || "#ef4444",
       photoUrl: targetProf?.photoUrl || null,
       notes: a.description || "",
-      canDelete: isMyBlock || isFirmAdmin
+      canDelete: isMyBlock || isFirmAdmin,
+      canEdit: isMyBlock || isFirmAdmin
     });
   });
 
@@ -754,7 +756,7 @@ window.openDateScheduleModal = function(dateStr) {
       if (item.kind === "case") {
         if (item.hasAccess) {
           actionMarkup = `
-            <div style="display:flex;justify-content:flex-end;margin-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
               <button class="btn btn-secondary btn-sm" onclick="window.closeDateScheduleModal(); openCase('${item.id}')">
                 Open Case File <i class="bi bi-arrow-right"></i>
               </button>
@@ -763,7 +765,7 @@ window.openDateScheduleModal = function(dateStr) {
         } else {
           actionMarkup = `
             <div style="margin-top:8px;font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px">
-              <i class="bi bi-lock-fill" style="color:var(--amber)"></i> Case restricted. Only shared attorneys may view full case files.
+              <i class="bi bi-lock-fill" style="color:var(--amber)"></i> Case restricted. Only authorized attorneys may view full case files.
             </div>
           `;
         }
@@ -776,6 +778,21 @@ window.openDateScheduleModal = function(dateStr) {
           </div>
         `;
       }
+
+      // Inline Editable Description / Notes
+      const notesBlock = item.canEdit ? `
+        <div style="margin-top:8px;background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:8px 10px">
+          <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:flex;align-items:center;gap:4px">
+            <i class="bi bi-pencil-square" style="color:var(--gold)"></i> Notes &amp; Appearance Details:
+          </label>
+          <textarea id="dsm-note-${item.id}" class="field-input" style="font-size:12px;min-height:50px;padding:6px 8px;margin-top:4px;resize:vertical" placeholder="Enter notes or updates for this session...">${escHtml(item.notes || "")}</textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="saveEventInlineNote('${item.kind}', '${item.id}', '${dateStr}')" style="font-size:11px;padding:4px 10px">
+              <i class="bi bi-check2"></i> Save Notes
+            </button>
+          </div>
+        </div>
+      ` : (item.notes ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.5;font-style:italic">"${escHtml(item.notes)}"</div>` : "");
 
       return `
         <div style="background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:12px;padding:14px 16px;margin-bottom:12px">
@@ -796,6 +813,7 @@ window.openDateScheduleModal = function(dateStr) {
           
           ${item.venue ? `<div style="font-size:11.5px;color:var(--text-dim);margin-bottom:4px"><i class="bi bi-geo-alt-fill" style="color:var(--gold)"></i> ${escHtml(item.venue)}</div>` : ''}
 
+          ${notesBlock}
           ${actionMarkup}
         </div>
       `;
@@ -808,6 +826,48 @@ window.openDateScheduleModal = function(dateStr) {
 window.closeDateScheduleModal = function() {
   const modal = document.getElementById("date-schedule-modal");
   if (modal) modal.classList.add("hidden");
+};
+
+// ── SAVE EVENT INLINE NOTES HANDLER ────────────────────────────
+window.saveEventInlineNote = async function(kind, id, dateStr) {
+  const noteEl = document.getElementById(`dsm-note-${id}`);
+  if (!noteEl) return;
+  const newNote = noteEl.value.trim();
+
+  try {
+    if (typeof showToast === "function") showToast("Saving note update...");
+
+    if (kind === "case") {
+      const c = cases.find(x => x.id === id);
+      if (!c) throw new Error("Case file not found.");
+
+      if (Array.isArray(c.hearings) && c.hearings.length > 0) {
+        const hIdx = c.hearings.findIndex(h => h.date === dateStr);
+        if (hIdx >= 0) {
+          c.hearings[hIdx].notes = newNote;
+        } else {
+          c.hearings.push({
+            id: "h_" + Date.now(),
+            date: dateStr,
+            time: "08:30",
+            purpose: "Court Appearance",
+            notes: newNote
+          });
+        }
+        await dbUpdateCase(c.id, { hearings: c.hearings });
+      } else {
+        await dbUpdateCase(c.id, { narrative: newNote });
+      }
+    } else if (kind === "appt" || kind === "busy") {
+      await dbUpdateAppointment(id, { description: newNote });
+    }
+
+    if (typeof showToast === "function") showToast("Schedule notes saved!");
+    if (typeof renderCalendarView === "function") renderCalendarView();
+  } catch (err) {
+    console.error("saveEventInlineNote error:", err);
+    if (typeof showToast === "function") showToast("Failed to save note: " + err.message, "error");
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1092,57 +1152,6 @@ function isValidEmail(email) {
 window.isValidEmail = isValidEmail;
 
 // ═══════════════════════════════════════════════════════════════
-//  DEVICE DETECTION
-// ═══════════════════════════════════════════════════════════════
-function autoDetectDevice() {
-  const w = window.innerWidth;
-  const ua = navigator.userAgent;
-  const isTouch = navigator.maxTouchPoints > 0;
-  
-  document.body.classList.remove("device-mobile", "device-tablet", "device-desktop");
-
-  let deviceLabel = "Desktop";
-  let deviceIcon = "bi-laptop";
-
-  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua) || (w >= 600 && w <= 1024 && isTouch)) {
-    document.body.classList.add("device-tablet");
-    window.deviceType = "tablet";
-    deviceLabel = "Tablet";
-    deviceIcon = "bi-tablet";
-  } else if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile/i.test(ua) || w < 600) {
-    document.body.classList.add("device-mobile");
-    if (!document.body.classList.contains("sidebar-collapsed")) {
-      document.body.classList.add("sidebar-collapsed");
-    }
-    window.deviceType = "mobile";
-    deviceLabel = "Phone";
-    deviceIcon = "bi-phone";
-  } else {
-    document.body.classList.add("device-desktop");
-    window.deviceType = "desktop";
-    deviceLabel = "Desktop";
-    deviceIcon = "bi-laptop";
-  }
-
-  const chip = document.getElementById("settings-device-chip");
-  if (chip) {
-    chip.innerHTML = `<i class="bi ${deviceIcon}" style="color:var(--gold);margin-right:4px"></i> Connected as ${deviceLabel}`;
-  }
-
-  if (!window._deviceToastShown) {
-    window._deviceToastShown = true;
-    setTimeout(() => {
-      if (typeof showToast === "function") {
-        showToast(`Connected as ${deviceLabel}`, "success");
-      }
-    }, 1200);
-  }
-}
-
-window.addEventListener("DOMContentLoaded", autoDetectDevice);
-window.addEventListener("resize", autoDetectDevice);
-
-// ═══════════════════════════════════════════════════════════════
 //  PASSWORD STRENGTH CHECKER
 // ═══════════════════════════════════════════════════════════════
 function initPasswordStrengthChecker() {
@@ -1196,9 +1205,21 @@ function initPasswordStrengthChecker() {
 window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 
 // ═══════════════════════════════════════════════════════════════
-//  NAVIGATION
+//  NAVIGATION (WITH AUTO-CLOSE CHAT & NOTIFICATIONS)
 // ═══════════════════════════════════════════════════════════════
 function showView(name) {
+  // Minimize / close chat panel when switching view or category
+  const chatPanel = document.getElementById("chat-panel");
+  if (chatPanel && !chatPanel.classList.contains("hidden")) {
+    chatPanel.classList.add("hidden");
+  }
+
+  // Close notification dropdown
+  const notifDropdown = document.getElementById("notif-dropdown");
+  if (notifDropdown && !notifDropdown.classList.contains("hidden")) {
+    notifDropdown.classList.add("hidden");
+  }
+
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
   const el = document.getElementById("view-" + name);
   if (el) el.classList.remove("hidden");
@@ -1231,6 +1252,12 @@ function navTo(view) {
 }
 
 function executeNavigation(view) {
+  // Auto-close chat drawer upon navigation
+  const chatPanel = document.getElementById("chat-panel");
+  if (chatPanel && !chatPanel.classList.contains("hidden")) {
+    chatPanel.classList.add("hidden");
+  }
+
   const pd = document.getElementById("pd-search");
   const ac = document.getElementById("ac-search");
   if (pd) pd.value = "";
@@ -1256,7 +1283,7 @@ window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD
+//  DASHBOARD (ROSTER REMOVED FOR CLEAN EXPANDED WIDESCREEN)
 // ═══════════════════════════════════════════════════════════════
 let recentCasesExpanded = false;
 
@@ -1293,12 +1320,10 @@ function renderDashboard() {
   if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
   if (statCompletedEl) statCompletedEl.textContent = userCases.filter(c => c.status === "Completed").length;
 
-  renderDashProfiles();
-
   const dcEl = document.getElementById("dash-cases");
   if (!dcEl) return;
 
-  const displayCases = recentCasesExpanded ? userCases : userCases.slice(0, 5);
+  const displayCases = recentCasesExpanded ? userCases : userCases.slice(0, 6);
 
   dcEl.innerHTML = displayCases.length === 0
     ? '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div><div>No active cases yet.</div></div>'
@@ -1337,45 +1362,10 @@ function renderDashboard() {
   }
 }
 
-function renderDashProfiles() {
-  const q = (document.getElementById("dash-profile-search")?.value || "").toLowerCase().trim();
-  const dpEl = document.getElementById("dash-profiles");
-  if (!dpEl) return;
-
-  const userCases = getAccessibleCases();
-
-  const filtered = profiles.filter(p =>
-    !q || p.name.toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q)
-  );
-
-  if (profiles.length === 0) {
-    dpEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-bank"></i></div><div>No attorneys yet. Add your first attorney profile.</div></div>';
-    return;
-  }
-  if (filtered.length === 0) {
-    dpEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">No attorneys match your search.</div>';
-    return;
-  }
-
-  dpEl.innerHTML = filtered.slice(0, 8).map(p => {
-    const pc = userCases.filter(c => c.profileId === p.id);
-    return `<div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;margin-bottom:10px;cursor:pointer;transition:all 0.2s" onclick="openProfile('${p.id}')" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
-      <div style="display:flex;align-items:center;gap:12px">
-        ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:14px;color:var(--text)">${escHtml(p.name)}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${escHtml(p.role || "Attorney")} · ${pc.length} case${pc.length !== 1 ? "s" : ""}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join("");
-}
-
 window.renderDashboard = renderDashboard;
-window.renderDashProfiles = renderDashProfiles;
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES VIEW MODES
+//  PROFILES VIEW MODES & UPDATED FIRM ROLES
 // ═══════════════════════════════════════════════════════════════
 let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
 
@@ -1499,8 +1489,7 @@ function renderProfileDetail() {
           : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px"><i class="bi bi-cloud-slash"></i> Drive not connected</span>`);
 
     actionButtons = `
-      <button class="btn btn-secondary btn-sm" onclick="openEditProfile()"><i class="bi bi-pencil-square"></i> Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="confirmDeleteProfile()"><i class="bi bi-trash3"></i> Delete</button>
+      <button class="btn btn-secondary btn-sm" onclick="navTo('myprofile')"><i class="bi bi-pencil-square"></i> Edit Profile</button>
       <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-circle"></i> Add Case</button>
     `;
   } else {
@@ -1679,7 +1668,7 @@ function renderAllCases() {
 window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL
+//  CASE DETAIL (WITH PERMISSION GRANTED FOR SHARED ATTORNEYS)
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -1693,20 +1682,22 @@ function renderCaseDetail() {
   const currentUid = window._currentUser?.uid;
   const isOwner = c.ownerUid === currentUid;
   const isGroupAdmin = profiles.some(p => p.ownerUid === currentUid && p.role === "admin");
-  const userPerm = isOwner || isGroupAdmin 
-    ? "owner" 
-    : ((c.permissions && c.permissions[currentUid]) || (c.sharedWith?.includes(currentUid) ? "viewer" : "none"));
+  
+  // Shared users in sharedWith or allowedUids receive FULL EDITOR permissions!
+  const isShared = (Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid)) ||
+                   (Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid));
 
-  const canEdit = isOwner || isGroupAdmin || userPerm === "editor";
+  const canEdit = isOwner || isGroupAdmin || isShared;
   const canShare = isOwner || isGroupAdmin;
   const canDelete = isOwner || isGroupAdmin;
 
   let actionButtons = "";
-  if (canEdit) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit</button>`;
+  if (canEdit) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit Case</button>`;
   if (canShare) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share</button>`;
   if (canDelete) actionButtons += `<button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
-  if (userPerm === "viewer") actionButtons += `<span class="badge" style="background:rgba(129,140,248,0.15);color:#818cf8;padding:6px 12px;font-size:12px"><i class="bi bi-eye-fill"></i> Viewer Access</span>`;
+  if (isShared && !isOwner && !isGroupAdmin) actionButtons += `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);padding:6px 12px;font-size:11.5px"><i class="bi bi-shield-check"></i> Shared Associate (Editor)</span>`;
 
+  // Place action toolbar directly below title
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
   if (wrapEl) wrapEl.innerHTML = actionButtons;
 
@@ -1883,13 +1874,12 @@ function renderCaseDetail() {
       statusPanelEl.innerHTML = `
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">Current Status</div>
         ${badge(c.status, statusColor(c.status))}
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:8px">You have Viewer access for this case. Status modifications are restricted to Editors &amp; Owners.</div>
       `;
     }
   }
 }
 
-// 1. BRANDED CASE STATUS CONFIRMATION
+// CASE STATUS CONFIRMATION
 window.confirmUpdateCaseStatus = function(st) {
   if (!selCase || selCase.status === st) return;
 
@@ -1916,7 +1906,7 @@ async function updateCaseStatus(st) {
   }
 }
 
-// 2. BRANDED CASE DOCUMENT DELETION CONFIRMATION
+// CASE DOCUMENT DELETION CONFIRMATION
 async function removeDocFromCase(idx) {
   const docs = selCase.documents || [];
   const doc = docs[idx];
@@ -2118,7 +2108,7 @@ window.refreshFilterTypes = refreshFilterTypes;
 window.onFilterCategoryChange = onFilterCategoryChange;
 
 // ═══════════════════════════════════════════════════════════════
-//  PERSONAL SETTINGS
+//  PERSONAL SETTINGS (ZERO ACCOUNT DELETION)
 // ═══════════════════════════════════════════════════════════════
 let settingsPhotoDataUrl = null;
 
@@ -2425,78 +2415,6 @@ async function saveSecuritySettings() {
 
 window.saveUserSettings = saveUserSettings;
 window.saveSecuritySettings = saveSecuritySettings;
-
-function confirmDeleteUserAccount() {
-  const u = window._currentUser;
-  if (!u) return;
-  
-  const pending = { type: "account_delete", email: u.email };
-  _pendingDeleteTarget = pending;
-
-  const delTitle = document.getElementById("del-title");
-  const delBody = document.getElementById("del-body");
-  const label = document.getElementById("del-confirm-target-text");
-
-  if (delTitle) delTitle.textContent = "Delete Your Account?";
-  if (delBody) {
-    delBody.innerHTML = 
-      `You are about to permanently delete your account, attorney profile, and all cases.<br>This cannot be undone. To proceed, please type your email address exactly:<br><strong>${u.email}</strong>`;
-  }
-  if (label) {
-    label.textContent = u.email;
-    label.style.color = "var(--red)";
-  }
-
-  openDeleteModal();
-}
-
-async function executeDeleteAccountWipe() {
-  const u = window._currentUser;
-  if (!u) return;
-
-  try {
-    showToast("Purging your files & database records...");
-
-    const myProf = profiles.find(p => p.ownerUid === u.uid);
-    const myCases = cases.filter(c => c.ownerUid === u.uid);
-
-    for (const c of myCases) {
-      if (c.documents) {
-        for (const doc of c.documents) {
-          if (doc.driveFileId && hasValidToken()) {
-            await deleteDriveFile(doc.driveFileId).catch(() => {});
-          }
-        }
-      }
-      await dbDeleteCase(c.id).catch(() => {});
-    }
-
-    if (myProf) {
-      if (myProf.photoFileId && hasValidToken()) {
-        await deleteDriveFile(myProf.photoFileId).catch(() => {});
-      }
-      if (myProf.driveFolderId && hasValidToken()) {
-        await deleteDriveFile(myProf.driveFolderId).catch(() => {});
-      }
-      await dbDeleteProfile(myProf.id).catch(() => {});
-    }
-
-    if (typeof clearPersistedToken === "function") {
-      clearPersistedToken(u.uid);
-    }
-
-    showToast("Deleting security credential...");
-    await window._fbDeleteUser(u);
-    
-    showToast("Account deleted successfully.");
-    window.location.replace("login.html");
-  } catch (err) {
-    console.error("Account wipe failure:", err);
-  }
-}
-
-window.confirmDeleteUserAccount = confirmDeleteUserAccount;
-window.executeDeleteAccountWipe = executeDeleteAccountWipe;
 
 // ═══════════════════════════════════════════════════════════════
 //  SIGN OUT
