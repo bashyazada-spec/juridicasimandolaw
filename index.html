@@ -6,7 +6,7 @@
 <title>Simando Law — Case Manager</title>
 
 <!-- Content Security Policy Header -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://apis.google.com https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://*.gstatic.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://apis.google.com https://accounts.google.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://accounts.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://*.gstatic.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com;">
 
 <!-- 1. Instant 0ms Device Redirector (Executes before Firebase loads) -->
 <script src="js/redirect.js"></script>
@@ -38,41 +38,14 @@
   .badge-pass { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
   .badge-warn { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
   .badge-fail { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
-
-  /* Integrated Sidebar Hamburger Button */
-  .sidebar-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    margin-bottom: 8px;
-  }
-  .sidebar-toggle-inline {
-    background: var(--surface2);
-    border: 1px solid var(--gold-border);
-    color: var(--gold-light);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  .sidebar-toggle-inline:hover {
-    background: var(--surface3);
-    border-color: var(--gold);
-    transform: scale(1.05);
-  }
-  body.sidebar-collapsed .sidebar-header-row {
-    justify-content: center;
-  }
 </style>
 </head>
 <body>
+
+<!-- Persistent Floating Hamburger Toggle (Always Visible & Clickable) -->
+<button id="floating-sidebar-btn" class="hamburger-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">
+  <i class="bi bi-list"></i>
+</button>
 
 <!-- Toast Alert -->
 <div id="toast"></div>
@@ -142,7 +115,6 @@
     </div>
 
     <div id="diagnostic-items-list">
-      <!-- Network -->
       <div class="diagnostic-item">
         <div class="diagnostic-item-left">
           <div class="diag-icon" style="color:var(--gold)"><i class="bi bi-broadcast-pin"></i></div>
@@ -154,7 +126,6 @@
         <span class="badge badge-pass" id="diag-network-badge">Online</span>
       </div>
 
-      <!-- Database -->
       <div class="diagnostic-item">
         <div class="diagnostic-item-left">
           <div class="diag-icon" style="color:var(--gold)"><i class="bi bi-database-check"></i></div>
@@ -166,7 +137,6 @@
         <span class="badge badge-pass" id="diag-db-badge">Connected</span>
       </div>
 
-      <!-- Google Drive -->
       <div class="diagnostic-item">
         <div class="diagnostic-item-left">
           <div class="diag-icon" style="color:var(--gold)"><i class="bi bi-cloud-check-fill"></i></div>
@@ -356,30 +326,22 @@
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
     <div class="logo-wrap">
-      <div class="sidebar-header-row">
-        <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
-          <g transform="translate(20, 14)">
-            <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c" opacity="0.95"/>
-            <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
-            <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="2.5"/>
-            <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2"/>
-            <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3"/>
-            <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2"/>
-            <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="2.5"/>
-            <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
-            <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c" opacity="0.9"/>
-          </g>
-          <text x="100" y="40" font-family="'Cormorant Garamond', Georgia, serif" font-size="30" font-weight="700" letter-spacing="4" fill="#ffffff">SIMANDO</text>
-          <text x="102" y="63" font-family="'Cormorant Garamond', Georgia, serif" font-size="17" font-weight="600" letter-spacing="6" fill="#c9a55c">LAW FIRM</text>
-          <text x="102" y="82" font-family="'DM Sans', sans-serif" font-size="7.5" font-weight="500" letter-spacing="3" fill="#ffffff" opacity="0.85">EST. 2026 · LEGAL COUNSEL</text>
-        </svg>
-
-        <!-- Anchored Toggle Button inside the Sidebar Header -->
-        <button id="floating-sidebar-btn" class="sidebar-toggle-inline" onclick="toggleSidebar()" title="Toggle Sidebar Navigation">
-          <i class="bi bi-list"></i>
-        </button>
-      </div>
-
+      <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(20, 14)">
+          <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c" opacity="0.95"/>
+          <line x1="2" y1="18" x2="62" y2="18" stroke="#c9a55c" stroke-width="2"/>
+          <line x1="14" y1="22" x2="14" y2="54" stroke="#ffffff" stroke-width="2.5"/>
+          <line x1="23" y1="22" x2="23" y2="54" stroke="#c9a55c" stroke-width="2"/>
+          <line x1="32" y1="20" x2="32" y2="56" stroke="#c9a55c" stroke-width="3"/>
+          <line x1="41" y1="22" x2="41" y2="54" stroke="#c9a55c" stroke-width="2"/>
+          <line x1="50" y1="22" x2="50" y2="54" stroke="#ffffff" stroke-width="2.5"/>
+          <line x1="6" y1="58" x2="58" y2="58" stroke="#c9a55c" stroke-width="2"/>
+          <rect x="2" y="61" width="60" height="5" rx="1" fill="#c9a55c" opacity="0.9"/>
+        </g>
+        <text x="100" y="40" font-family="'Cormorant Garamond', Georgia, serif" font-size="30" font-weight="700" letter-spacing="4" fill="#ffffff">SIMANDO</text>
+        <text x="102" y="63" font-family="'Cormorant Garamond', Georgia, serif" font-size="17" font-weight="600" letter-spacing="6" fill="#c9a55c">LAW FIRM</text>
+        <text x="102" y="82" font-family="'DM Sans', sans-serif" font-size="7.5" font-weight="500" letter-spacing="3" fill="#ffffff" opacity="0.85">EST. 2026 · LEGAL COUNSEL</text>
+      </svg>
       <div class="logo-sub">Case Management System</div>
     </div>
 
