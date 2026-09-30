@@ -73,7 +73,7 @@ window.addEventListener("firebase-ready", () => {
 window.disconnectDriveAccount = function() {
   if (typeof window.openConfirmModal === "function") {
     window.openConfirmModal({
-      icon: "☁️",
+      icon: "bi-cloud-slash",
       title: "Disconnect Google Drive?",
       body: "Are you sure you want to unlink your Google Drive account from this profile?<br>You will need to re-authorize to store case documents.",
       confirmText: "Disconnect",
@@ -115,7 +115,7 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      // Least-privilege scope: drive.file only accesses files created by this CMS app
+      // Least-privilege scope: drive.file creates and manages files in Drive, plus Google Docs & Calendar
       scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
@@ -182,7 +182,7 @@ function promptDriveAuth(interactive = true) {
       const authParams = {};
 
       if (!interactive) {
-        authParams.prompt = "none"; // Silent background refresh
+        authParams.prompt = "none";
       } else {
         authParams.prompt = "select_account";
       }
@@ -287,7 +287,127 @@ async function setupProfileDriveFolder(profile) {
   }
 }
 
-// ── Robust Word (.docx / .doc) to PDF Conversion ──────────────
+// ═══════════════════════════════════════════════════════════════
+//  DUAL-DRIVE SYNC: SHARE FOLDER WITH ASSOCIATE ATTORNEY
+// ═══════════════════════════════════════════════════════════════
+async function shareDriveFolderWithAssociate(folderId, associateEmail) {
+  if (!folderId || !associateEmail || !hasValidToken()) return false;
+
+  try {
+    const permBody = {
+      role: "writer", // Full editor permissions so both can update
+      type: "user",
+      emailAddress: associateEmail
+    };
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}/permissions?sendNotificationEmail=false`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(permBody)
+    });
+
+    if (res.ok) {
+      console.log(`[DualDriveSync] Folder ${folderId} shared with ${associateEmail} as Writer`);
+      return true;
+    }
+  } catch (err) {
+    console.warn("[DualDriveSync] Share notice:", err);
+  }
+  return false;
+}
+window.shareDriveFolderWithAssociate = shareDriveFolderWithAssociate;
+
+// ═══════════════════════════════════════════════════════════════
+//  PDF & WORD TO EDITABLE GOOGLE DOC CONVERTER
+// ═══════════════════════════════════════════════════════════════
+async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderId) {
+  if (!hasValidToken()) throw new Error("Google Drive access token expired.");
+
+  showToast("Opening in Collaborative Editor...");
+
+  const folder = (targetFolderId && targetFolderId !== "root") ? targetFolderId : null;
+
+  // Case A: Converting existing file from Google Drive using its Drive ID
+  if (typeof fileOrDriveFileId === "string") {
+    const copyMeta = {
+      name: docTitle.replace(/\.[^/.]+$/, "") + " (Editable Master)",
+      mimeType: "application/vnd.google-apps.document"
+    };
+    if (folder) copyMeta.parents = [folder];
+
+    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileOrDriveFileId}/copy?fields=id,name,webViewLink`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(copyMeta)
+    });
+
+    if (copyRes.ok) {
+      return await copyRes.json();
+    }
+  }
+
+  // Case B: Create new blank or template Google Doc
+  const metadata = {
+    name: docTitle.replace(/\.[^/.]+$/, "") + " (Editable Master)",
+    mimeType: "application/vnd.google-apps.document"
+  };
+  if (folder) metadata.parents = [folder];
+
+  const res = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(metadata)
+  });
+
+  if (res.ok) {
+    return await res.json();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || "Failed to create editable document.");
+  }
+}
+window.convertFileToGoogleDoc = convertFileToGoogleDoc;
+
+// ═══════════════════════════════════════════════════════════════
+//  COMPILE & EXPORT GOOGLE DOC INTO LOCKED COURT PDF
+// ═══════════════════════════════════════════════════════════════
+async function exportGoogleDocToPdf(docId, pdfName, targetFolderId) {
+  if (!hasValidToken()) throw new Error("Google Drive access token expired.");
+
+  showToast("Compiling revisions to official PDF...");
+
+  const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  if (!exportRes.ok) {
+    throw new Error("Failed to export Google Doc to PDF layout.");
+  }
+
+  const pdfBlob = await exportRes.blob();
+  const pdfFile = new File([pdfBlob], pdfName, { type: "application/pdf" });
+  pdfFile._isConvertedPdf = true;
+
+  const uploadedMeta = await uploadSingleFileToDrive(pdfFile, targetFolderId);
+  return {
+    ...uploadedMeta,
+    name: pdfName,
+    size: (pdfBlob.size / 1024).toFixed(1) + " KB",
+    date: new Date().toLocaleDateString()
+  };
+}
+window.exportGoogleDocToPdf = exportGoogleDocToPdf;
+
+// ── Word (.docx / .doc) to PDF Upload ──────────────────────────
 async function convertWordToPdfAndUpload(file, folderId) {
   if (!hasValidToken()) throw new Error("Drive connection expired.");
 
@@ -380,13 +500,11 @@ async function convertWordToPdfAndUpload(file, folderId) {
   }
 
   const pdfBlob = await exportRes.blob();
-
   const pdfFileName = file.name.replace(/\.[^/.]+$/, "") + ".pdf";
   const pdfFile = new File([pdfBlob], pdfFileName, { type: "application/pdf" });
   pdfFile._isConvertedPdf = true;
 
   const finalPdfMeta = await uploadSingleFileToDrive(pdfFile, targetFolder);
-
   await deleteDriveFile(tempDocId).catch(() => {});
 
   showToast(`Converted & saved: ${pdfFileName} ✅`);
@@ -395,7 +513,6 @@ async function convertWordToPdfAndUpload(file, folderId) {
 
 async function uploadSingleFileToDrive(file, folderId) {
   if (!hasValidToken()) {
-    // Attempt silent refresh before failing
     try {
       await promptDriveAuth(false);
     } catch (silentErr) {
@@ -558,6 +675,8 @@ async function addDocToCase() {
         size: (f.size / 1024).toFixed(1) + " KB",
         date: new Date().toLocaleDateString(),
         fileType: fileType,
+        version: "v1.0",
+        history: [],
         ...(driveFileId && { driveFileId, driveLink })
       });
     }
@@ -663,6 +782,8 @@ async function handleLocalAttach(e) {
       size: (file.size / 1024).toFixed(1) + " KB",
       date: new Date().toLocaleDateString(),
       fileType: fileType,
+      version: "v1.0",
+      history: [],
       _localTempId: tempId,
     };
     pendingDocs.push(docEntry);
@@ -853,7 +974,6 @@ async function uploadProfilePhotoToDrive(dataUrl, folderId, profileName) {
   }
   const { id: fileId } = await res.json();
 
-  // EXPLICIT SECURITY SCOPE: Only profile avatar photos are granted public thumbnail reader permissions
   await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
     method: "POST",
     headers: {
