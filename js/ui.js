@@ -1121,7 +1121,7 @@ function renderCaseDetail() {
     hearingsEl.innerHTML = hHtml;
   }
 
-  // DOCUMENTS LIST WITH REVISION & GOOGLE DOCS COLLABORATION BUTTONS
+  // DOCUMENTS LIST WITH GOOGLE DOCS DRAFTING & REVISION CONTROLS
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
     <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files &amp; Pleadings</div>
@@ -1212,6 +1212,7 @@ window.createNewCaseGoogleDoc = async function() {
 
     const docMeta = await convertFileToGoogleDoc(null, docTitle, targetFolderId);
     
+    // Sync Drive folder with shared associate attorneys so both Drives update
     if (Array.isArray(selCase.sharedWith)) {
       for (const uid of selCase.sharedWith) {
         const associateProf = profiles.find(p => p.ownerUid === uid);
@@ -1296,6 +1297,7 @@ window.closeLiveDocumentEditor = function() {
   currentEditingDocIndex = null;
 };
 
+// ── COMPILE REVISION (v1.0 -> v2.0) & SYNC TO BOTH GOOGLE DRIVES ──
 window.compileDocRevision = async function() {
   if (currentEditingDocIndex === null || !selCase) return;
   const doc = selCase.documents[currentEditingDocIndex];
