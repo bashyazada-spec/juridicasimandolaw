@@ -133,7 +133,7 @@ function renderModalCalendarUI() {
             </div>
           </div>
 
-          <div class="cal-grid" id="modal-calendar-grid" style="gap:4px"></div>
+          <div class="cal-grid" id="modal-calendar-grid" style="display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px"></div>
 
           <!-- Removable Date Chips -->
           <div id="modal-busy-chips-wrap" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);min-height:28px;align-items:center"></div>
@@ -253,7 +253,8 @@ function renderModalCalendarGrid() {
   `;
 
   for (let i = firstDay - 1; i >= 0; i--) {
-    html += `<div class="cal-day-cell other-month" style="min-height:36px;opacity:0.3"><span class="cal-day-num">${prevMonthDays - i}</span></div>`;
+    const prevDayNum = prevMonthDays - i;
+    html += `<div class="cal-day-cell other-month" style="min-height:36px;opacity:0.35;min-width:0;overflow:hidden"><span class="cal-day-num" style="white-space:nowrap">${prevDayNum}</span></div>`;
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -279,9 +280,9 @@ function renderModalCalendarGrid() {
 
     html += `
       <div class="cal-day-cell ${isPast ? 'is-past' : ''}" 
-           style="min-height:36px;padding:4px;background:${cellBg};border-color:${borderColor};cursor:${isPast ? 'not-allowed' : 'pointer'}"
+           style="min-height:36px;padding:4px;background:${cellBg};border-color:${borderColor};cursor:${isPast ? 'not-allowed' : 'pointer'};min-width:0;overflow:hidden"
            onclick="${isPast ? '' : `window.toggleBusyDateSelection('${fullDate}')`}">
-        <span class="cal-day-num" style="color:${numColor};font-size:11px">${d}</span>
+        <span class="cal-day-num" style="color:${numColor};font-size:11px;white-space:nowrap">${d}</span>
         ${isSelected ? `<span style="font-size:8px;font-weight:700;color:var(--red);text-align:right">BUSY</span>` : ''}
       </div>
     `;
@@ -290,7 +291,7 @@ function renderModalCalendarGrid() {
   const totalCells = firstDay + daysInMonth;
   const rem = (7 - (totalCells % 7)) % 7;
   for (let i = 1; i <= rem; i++) {
-    html += `<div class="cal-day-cell other-month" style="min-height:36px;opacity:0.3"><span class="cal-day-num">${i}</span></div>`;
+    html += `<div class="cal-day-cell other-month" style="min-height:36px;opacity:0.35;min-width:0;overflow:hidden"><span class="cal-day-num" style="white-space:nowrap">${i}</span></div>`;
   }
 
   gridEl.innerHTML = html;
@@ -387,7 +388,7 @@ window.deleteBusySlot = async function(id) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CALENDAR MONTH VIEW (WITH DEVELOPER ISOLATION & LEGEND)
+//  CALENDAR MONTH VIEW (PROPORTIONATE 7-COLUMN FLUID GRID)
 // ═══════════════════════════════════════════════════════════════
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
@@ -523,12 +524,10 @@ function renderMonthlyCalendarGrid() {
       eventsByDate[c.dueDate].push({ 
         id: c.id, 
         type: "deadline",
-        badgeClass: "badge-deadline",
         initials: attorneyInitials,
         avatarColor: attorneyColor,
         hasAccess: hasAccess,
-        title: hasAccess ? c.title : "Pleading Due", 
-        subText: c.docType || "Deadline"
+        title: hasAccess ? c.title : "Pleading Due"
       });
     }
 
@@ -539,12 +538,10 @@ function renderMonthlyCalendarGrid() {
           eventsByDate[h.date].push({ 
             id: c.id, 
             type: "hearing",
-            badgeClass: "badge-hearing",
             initials: attorneyInitials,
             avatarColor: attorneyColor,
             hasAccess: hasAccess,
-            title: hasAccess ? c.title : "Court Appearance", 
-            subText: h.purpose || "Hearing"
+            title: hasAccess ? c.title : "Court Appearance"
           });
         }
       });
@@ -561,19 +558,18 @@ function renderMonthlyCalendarGrid() {
     eventsByDate[a.date].push({ 
       id: a.id, 
       type: isBusy ? "busy" : "appt",
-      badgeClass: isBusy ? "badge-busy" : "badge-appt",
       initials: attorneyInitials,
       avatarColor: attorneyColor,
       hasAccess: true,
-      title: a.title || (isBusy ? "Out of Office" : "Meeting"), 
-      subText: isBusy ? "Out of Office" : "Consultation"
+      title: a.title || (isBusy ? "Out of Office" : "Meeting")
     });
   });
 
   const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
   const startingDayOfWeek = firstDayObj.getDay();
   const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-  const prevMonthDays = new Date(currentCalYear, currentCalMonth + 0).getDate();
+  // PROPER 3-ARGUMENT CALL: Gets last day of previous month
+  const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
 
   const todayObj = new Date();
   const todayY = todayObj.getFullYear();
@@ -581,19 +577,26 @@ function renderMonthlyCalendarGrid() {
   const todayD = String(todayObj.getDate()).padStart(2, '0');
   const todayStr = `${todayY}-${todayM}-${todayD}`;
 
+  // STABLE EQUAL-WIDTH 7-COLUMN GRID
+  gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;margin-bottom:28px";
+
   let html = `
-    <div class="cal-day-header">Sun</div>
-    <div class="cal-day-header">Mon</div>
-    <div class="cal-day-header">Tue</div>
-    <div class="cal-day-header">Wed</div>
-    <div class="cal-day-header">Thu</div>
-    <div class="cal-day-header">Fri</div>
-    <div class="cal-day-header">Sat</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Sun</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Mon</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Tue</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Wed</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Thu</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Fri</div>
+    <div class="cal-day-header" style="text-align:center;font-size:11px;font-weight:700;color:var(--text-dim);padding:6px 0;text-transform:uppercase;letter-spacing:1px">Sat</div>
   `;
 
   for (let i = startingDayOfWeek - 1; i >= 0; i--) {
     const dayNum = prevMonthDays - i;
-    html += `<div class="cal-day-cell other-month" style="min-height:92px;opacity:0.35"><span class="cal-day-num">${dayNum}</span></div>`;
+    html += `
+      <div class="cal-day-cell other-month" style="min-height:90px;opacity:0.35;min-width:0;overflow:hidden;box-sizing:border-box;padding:6px;border:1px solid var(--border);border-radius:10px;background:transparent">
+        <span class="cal-day-num" style="font-size:12px;font-weight:700;color:var(--text-dim);white-space:nowrap">${dayNum}</span>
+      </div>
+    `;
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -605,40 +608,41 @@ function renderMonthlyCalendarGrid() {
     const isPast = fullDateStr < todayStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
+    // Compact Truncated Pills (Never push cell widths)
     let eventsMarkup = "";
     if (dayEvents.length > 0) {
       const topTwo = dayEvents.slice(0, 2);
       const remainingCount = dayEvents.length - 2;
 
-      eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden">`;
+      eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
       
       topTwo.forEach(ev => {
         let bgStyle = "background:rgba(201,165,92,0.18);color:var(--gold-light);border:1px solid var(--gold-border);";
-        let iconMarkup = `<i class="bi bi-bank" style="font-size:8px"></i>`;
+        let iconMarkup = `<i class="bi bi-bank" style="font-size:8.5px;flex-shrink:0"></i>`;
 
         if (ev.type === "deadline") {
           bgStyle = "background:rgba(129,140,248,0.18);color:#c7d2fe;border:1px solid rgba(129,140,248,0.3);";
-          iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8px"></i>`;
+          iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8.5px;flex-shrink:0"></i>`;
         } else if (ev.type === "busy") {
           bgStyle = "background:rgba(248,113,113,0.18);color:#fca5a5;border:1px solid rgba(248,113,113,0.3);";
-          iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8px"></i>`;
+          iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8.5px;flex-shrink:0"></i>`;
         } else if (ev.type === "appt") {
           bgStyle = "background:rgba(52,211,153,0.18);color:#86efac;border:1px solid rgba(52,211,153,0.3);";
-          iconMarkup = `<i class="bi bi-people-fill" style="font-size:8px"></i>`;
+          iconMarkup = `<i class="bi bi-people-fill" style="font-size:8.5px;flex-shrink:0"></i>`;
         }
 
         eventsMarkup += `
-          <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 4px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${bgStyle}" title="${escHtml(ev.title)}">
+          <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;box-sizing:border-box;${bgStyle}" title="${escHtml(ev.title)}">
             <span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span>
             ${iconMarkup}
-            <span style="overflow:hidden;text-overflow:ellipsis">${escHtml(ev.title)}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(ev.title)}</span>
           </div>
         `;
       });
 
       if (remainingCount > 0) {
         eventsMarkup += `
-          <div style="font-size:9px;font-weight:700;color:var(--gold-light);background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px">
+          <div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px;white-space:nowrap">
             +${remainingCount} more
           </div>
         `;
@@ -647,15 +651,15 @@ function renderMonthlyCalendarGrid() {
       eventsMarkup += `</div>`;
     }
 
-    const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold);color:#060c13;font-weight:800;padding:1px 5px;border-radius:3px;letter-spacing:0.5px">TODAY</span>` : "";
+    const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.5px;flex-shrink:0">TODAY</span>` : "";
 
     html += `
       <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''}" 
-           style="min-height:92px;padding:6px;display:flex;flex-direction:column;justify-content:flex-start"
+           style="min-height:90px;padding:6px;display:flex;flex-direction:column;justify-content:flex-start;min-width:0;overflow:hidden;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;background:var(--surface2);transition:all 0.2s"
            onclick="openDateScheduleModal('${fullDateStr}')" 
            title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span class="cal-day-num">${day}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;min-width:0">
+          <span class="cal-day-num" style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;word-break:normal;overflow-wrap:normal">${day}</span>
           ${todayTag}
         </div>
         ${eventsMarkup}
@@ -666,7 +670,11 @@ function renderMonthlyCalendarGrid() {
   const totalCells = startingDayOfWeek + daysInMonth;
   const remainingCells = (7 - (totalCells % 7)) % 7;
   for (let i = 1; i <= remainingCells; i++) {
-    html += `<div class="cal-day-cell other-month" style="min-height:92px;opacity:0.35"><span class="cal-day-num">${i}</span></div>`;
+    html += `
+      <div class="cal-day-cell other-month" style="min-height:90px;opacity:0.35;min-width:0;overflow:hidden;box-sizing:border-box;padding:6px;border:1px solid var(--border);border-radius:10px;background:transparent">
+        <span class="cal-day-num" style="font-size:12px;font-weight:700;color:var(--text-dim);white-space:nowrap">${i}</span>
+      </div>
+    `;
   }
 
   gridEl.innerHTML = html;
@@ -704,7 +712,6 @@ window.openDateScheduleModal = function(dateStr) {
   let dateCases = cases.filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
   let dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
 
-  // DEVELOPER ISOLATION: Never expose other attorneys' hearings/appointments to developer
   if (isDeveloper) {
     dateCases = dateCases.filter(c => c.ownerUid === currentUid);
     dateAppts = dateAppts.filter(a => a.targetUid === currentUid || a.requesterUid === currentUid);
@@ -722,10 +729,7 @@ window.openDateScheduleModal = function(dateStr) {
     const isFirmAdmin = myProf && myProf.role === "admin";
     const hasAccess = isOwner || isExplicitlyShared || isAllowed || isFirmAdmin;
 
-    // USER RULE: The only person who can edit descriptions of their schedule is themselves only
     const canEditDesc = isOwner;
-
-    // Use description cleanly (c.narrative or hearing purpose)
     const currentDescription = specificHearing?.notes || specificHearing?.purpose || c.narrative || "";
 
     allItems.push({
@@ -749,10 +753,8 @@ window.openDateScheduleModal = function(dateStr) {
   dateAppts.forEach(a => {
     const isBusy = a.type === "busy";
     const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid;
-    const isParticipant = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
     const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
 
-    // USER RULE: Only the person who created/scheduled this can edit its description
     const canEditDesc = isOwner;
 
     allItems.push({
@@ -763,7 +765,7 @@ window.openDateScheduleModal = function(dateStr) {
       badgeLabel: isBusy ? "Out of Office / Busy" : "Appointment",
       title: a.title,
       time: a.time || "All Day",
-      venue: a.description ? "" : "",
+      venue: "",
       attorneyName: a.targetName || "Attorney",
       attorneyColor: targetProf?.avatarColor || "#ef4444",
       photoUrl: targetProf?.photoUrl || null,
@@ -812,7 +814,6 @@ window.openDateScheduleModal = function(dateStr) {
         `;
       }
 
-      // ONLY THE OWNER CAN EDIT THE DESCRIPTION. NO EXTRA "NOTES" SECTION.
       let descriptionBlock = "";
       if (item.canEditDesc) {
         descriptionBlock = `
@@ -885,7 +886,6 @@ window.saveEventInlineDescription = async function(kind, id, dateStr) {
       const c = cases.find(x => x.id === id);
       if (!c) throw new Error("Case file not found.");
 
-      // STRICT 1-PERSON RULE: Only the case owner can edit their case description
       if (c.ownerUid !== currentUid) {
         showToast("You can only edit descriptions on your own cases.", "error");
         return;
@@ -914,7 +914,6 @@ window.saveEventInlineDescription = async function(kind, id, dateStr) {
       const a = appointments.find(x => x.id === id);
       if (!a) throw new Error("Appointment not found.");
 
-      // STRICT 1-PERSON RULE: Only the owner who scheduled this can edit its description
       const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid;
       if (!isOwner) {
         showToast("You can only edit descriptions on your own schedule.", "error");
@@ -969,7 +968,6 @@ async function updateWorkspaceStatus(manualRun = false) {
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
   const hasDriveFolder = !!(myProf && myProf.driveFolderId);
 
-  // 1. Network
   if (netBadge && netSub) {
     if (isNetworkOk) {
       netBadge.className = "badge badge-pass";
@@ -982,7 +980,6 @@ async function updateWorkspaceStatus(manualRun = false) {
     }
   }
 
-  // 2. Database Sync
   if (dbBadge && dbSub) {
     if (isDbOk) {
       dbBadge.className = "badge badge-pass";
@@ -999,7 +996,6 @@ async function updateWorkspaceStatus(manualRun = false) {
     }
   }
 
-  // 3. Google Drive
   if (driveBadge && driveSub) {
     if (isDriveOk && hasDriveFolder) {
       driveBadge.className = "badge badge-pass";
@@ -2120,7 +2116,6 @@ function renderSidebarUser() {
   const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
   const isDev = myProf.role === "developer";
 
-  // Admins and Developers can access the console
   if (adminSection) {
     adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
   }
