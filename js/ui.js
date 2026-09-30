@@ -1,4 +1,75 @@
 // ═══════════════════════════════════════════════════════════════
+//  GLOBAL NAVIGATION CONTROLLERS (DEFINED AT TOP TO PREVENT ERRORS)
+// ═══════════════════════════════════════════════════════════════
+window.showView = function(name) {
+  const chatPanel = document.getElementById("chat-panel");
+  if (chatPanel && !chatPanel.classList.contains("hidden")) {
+    chatPanel.classList.add("hidden");
+  }
+
+  const notifDropdown = document.getElementById("notif-dropdown");
+  if (notifDropdown && !notifDropdown.classList.contains("hidden")) {
+    notifDropdown.classList.add("hidden");
+  }
+
+  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+  const el = document.getElementById("view-" + name);
+  if (el) el.classList.remove("hidden");
+  currentView = name;
+  
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
+
+  let primaryNavKey = name;
+  if (name === "caseDetail" || name === "caseForm" || name === "allcases") {
+    primaryNavKey = "allcases";
+  } else if (name === "profileDetail" || name === "profileForm" || name === "profiles") {
+    primaryNavKey = "profiles";
+  } else if (name === "myprofile") {
+    primaryNavKey = "myprofile";
+  }
+
+  const btn = document.querySelector(`.nav-btn[data-nav="${primaryNavKey}"]`);
+  if (btn) btn.classList.add("active");
+  const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${primaryNavKey}"]`);
+  if (mBtn) mBtn.classList.add("active");
+};
+
+window.navTo = function(view) {
+  if (currentView === "caseForm" && view !== "caseForm" && typeof hasUnsavedCaseChanges === "function" && hasUnsavedCaseChanges()) {
+    window.promptDiscardCase(view);
+    return;
+  }
+  window.executeNavigation(view);
+};
+
+window.executeNavigation = function(view) {
+  const chatPanel = document.getElementById("chat-panel");
+  if (chatPanel && !chatPanel.classList.contains("hidden")) {
+    chatPanel.classList.add("hidden");
+  }
+
+  const pd = document.getElementById("pd-search");
+  const ac = document.getElementById("ac-search");
+  if (pd) pd.value = "";
+  if (ac) ac.value = "";
+  ["pd-status","pd-category","pd-type","ac-status","ac-category","ac-type"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "All";
+  });
+  ["pd-sort","ac-sort"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = "asc";
+  });
+  window.showView(view);
+  if (view === "dashboard" && typeof renderDashboard === "function") renderDashboard();
+  if (view === "profiles" && typeof renderProfiles === "function") renderProfiles();
+  if (view === "allcases" && typeof renderAllCases === "function") renderAllCases();
+  if (view === "myprofile" && typeof renderMyProfile === "function") renderMyProfile();
+  if (view === "calendar" && typeof renderCalendarView === "function") renderCalendarView();
+  if (view === "notifications" && typeof renderNotificationsView === "function") renderNotificationsView();
+  if (view === "mydrive" && typeof initDriveExplorer === "function") initDriveExplorer();
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
 function initTheme() {
@@ -107,7 +178,6 @@ function renderModalCalendarUI() {
         <span style="color:var(--red)"><i class="bi bi-circle-fill" style="font-size:8px"></i> Red</span> = Out of Office / In Court. Click again to clear.
       </div>
 
-      <!-- Quick Preset Buttons -->
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px">
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('⚖️ In Court / Hearing')"><i class="bi bi-bank"></i> In Court</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🚫 Out of Office / Leave')"><i class="bi bi-slash-circle"></i> Out of Office</button>
@@ -121,7 +191,6 @@ function renderModalCalendarUI() {
           <input class="field-input" id="busy-title" value="In Court / Out of Office" autocomplete="off"/>
         </div>
 
-        <!-- Interactive Calendar Container -->
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -135,11 +204,9 @@ function renderModalCalendarUI() {
 
           <div class="cal-grid" id="modal-calendar-grid" style="display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px"></div>
 
-          <!-- Removable Date Chips -->
           <div id="modal-busy-chips-wrap" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);min-height:28px;align-items:center"></div>
         </div>
 
-        <!-- Time Settings -->
         <div style="display:flex;align-items:center;gap:12px">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer">
             <input type="checkbox" id="busy-all-day" checked onchange="window.toggleBusyTimeInputs(this.checked)" style="accent-color:var(--gold)"/> All Day Block
@@ -1145,7 +1212,6 @@ window.createNewCaseGoogleDoc = async function() {
 
     const docMeta = await convertFileToGoogleDoc(null, docTitle, targetFolderId);
     
-    // Sync Drive folder with shared associate attorneys so both Drives update
     if (Array.isArray(selCase.sharedWith)) {
       for (const uid of selCase.sharedWith) {
         const associateProf = profiles.find(p => p.ownerUid === uid);
@@ -1194,7 +1260,6 @@ window.openLiveDocumentEditor = async function(docIdx) {
     showToast("Opening collaborative editor...");
     let liveDocId = doc.liveDocId;
 
-    // If PDF, convert to or find linked live Google Doc master
     if (!liveDocId) {
       const u = window._currentUser;
       const myProf = profiles.find(p => p.ownerUid === u?.uid);
@@ -1231,7 +1296,6 @@ window.closeLiveDocumentEditor = function() {
   currentEditingDocIndex = null;
 };
 
-// ── COMPILE REVISION (v1.0 -> v2.0) & SYNC TO BOTH GOOGLE DRIVES ──
 window.compileDocRevision = async function() {
   if (currentEditingDocIndex === null || !selCase) return;
   const doc = selCase.documents[currentEditingDocIndex];
@@ -1250,7 +1314,6 @@ window.compileDocRevision = async function() {
     const nextVersionNum = (curVersionNum + 1.0).toFixed(1);
     const nextVersionTag = `v${nextVersionNum}`;
 
-    // 1. Archive previous version in history for court compliance
     doc.history = doc.history || [];
     doc.history.unshift({
       version: doc.version || "v1.0",
@@ -1260,7 +1323,6 @@ window.compileDocRevision = async function() {
       date: doc.date || new Date().toLocaleDateString()
     });
 
-    // 2. Generate updated PDF name and export
     const u = window._currentUser;
     const myProf = profiles.find(p => p.ownerUid === u?.uid);
     const targetFolderId = myProf?.driveFolderId || "root";
@@ -1268,7 +1330,6 @@ window.compileDocRevision = async function() {
 
     const compiledMeta = await exportGoogleDocToPdf(doc.liveDocId, pdfName, targetFolderId);
 
-    // 3. Ensure folder is shared with associate attorneys so both Drives sync
     if (Array.isArray(selCase.sharedWith)) {
       for (const uid of selCase.sharedWith) {
         const associateProf = profiles.find(p => p.ownerUid === uid);
@@ -1278,7 +1339,6 @@ window.compileDocRevision = async function() {
       }
     }
 
-    // 4. Update Document Record
     doc.name = pdfName;
     doc.version = nextVersionTag;
     doc.driveFileId = compiledMeta.id;
@@ -1422,7 +1482,7 @@ function renderQuickAccess() {
 function openProfile(id) {
   selProfile = profiles.find(p => p.id === id);
   if (!selProfile) return;
-  showView("profileDetail");
+  window.showView("profileDetail");
   renderProfileDetail();
 }
 
@@ -1432,7 +1492,7 @@ function openCase(id) {
   if (!selCase) return;
   const p = profiles.find(x => x.id === selCase.profileId);
   if (p) selProfile = p;
-  showView("caseDetail");
+  window.showView("caseDetail");
   renderCaseDetail();
 }
 
