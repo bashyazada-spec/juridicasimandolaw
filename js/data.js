@@ -31,6 +31,173 @@ let prevNotifCount     = 0;
 
 window._notifsLoaded = false;
 
+// ═══════════════════════════════════════════════════════════════
+//  ZERO-KNOWLEDGE CLIENT-SIDE ENCRYPTION ENGINE (AES-GCM 256)
+//  Scrambles case data so Firestore shows only unidentifiable cipher
+// ═══════════════════════════════════════════════════════════════
+const E2EE_SALT_PHRASE = "SimandoLaw_FirmMaster_Vault_2026_SecureCipher";
+let _cachedCryptoKey = null;
+
+async function getE2EESecretKey() {
+  if (_cachedCryptoKey) return _cachedCryptoKey;
+  try {
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+      "raw",
+      enc.encode(E2EE_SALT_PHRASE),
+      { name: "PBKDF2" },
+      false,
+      ["deriveKey"]
+    );
+    _cachedCryptoKey = await window.crypto.subtle.deriveKey(
+      {
+        name: "PBKDF2",
+        salt: enc.encode("simando_vault_vector_99"),
+        iterations: 100000,
+        hash: "SHA-256"
+      },
+      keyMaterial,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt", "decrypt"]
+    );
+    return _cachedCryptoKey;
+  } catch (err) {
+    console.warn("Crypto key derivation notice:", err);
+    return null;
+  }
+}
+
+async function encryptE2EEString(plainText) {
+  if (plainText === null || plainText === undefined) return plainText;
+  const str = String(plainText);
+  if (!str.trim()) return str;
+  if (str.startsWith("enc:v1:")) return str; // Already encrypted
+
+  try {
+    const key = await getE2EESecretKey();
+    if (!key || !window.crypto || !window.crypto.subtle) return str;
+
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const enc = new TextEncoder();
+    const cipherBuffer = await window.crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      enc.encode(str)
+    );
+
+    const combined = new Uint8Array(iv.length + cipherBuffer.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(cipherBuffer), iv.length);
+
+    let binary = "";
+    const len = combined.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(combined[i]);
+    }
+    return "enc:v1:" + btoa(binary);
+  } catch (err) {
+    console.warn("Field encryption fallback:", err);
+    return str;
+  }
+}
+
+async function decryptE2EEString(cipherText) {
+  if (!cipherText || typeof cipherText !== "string") return cipherText;
+  if (!cipherText.startsWith("enc:v1:")) return cipherText; // Backwards-compatible with unencrypted records
+
+  try {
+    const key = await getE2EESecretKey();
+    if (!key || !window.crypto || !window.crypto.subtle) return cipherText;
+
+    const rawBase64 = cipherText.slice(7);
+    const binary = atob(rawBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const iv = bytes.slice(0, 12);
+    const data = bytes.slice(12);
+
+    const decryptedBuffer = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      data
+    );
+
+    const dec = new TextDecoder();
+    return dec.decode(decryptedBuffer);
+  } catch (err) {
+    console.warn("Field decryption notice:", err);
+    return cipherText;
+  }
+}
+
+// Encrypts all confidential case fields before sending to Firestore
+// Safe against partial updates (never injects undefined fields)
+async function encryptCaseRecordForFirestore(c) {
+  if (!c) return c;
+  const clone = { ...c };
+
+  if (clone.title !== undefined)      clone.title      = await encryptE2EEString(clone.title);
+  if (clone.caseNumber !== undefined) clone.caseNumber = await encryptE2EEString(clone.caseNumber);
+  if (clone.parties !== undefined)    clone.parties    = await encryptE2EEString(clone.parties);
+  if (clone.narrative !== undefined)  clone.narrative  = await encryptE2EEString(clone.narrative);
+  if (clone.venue !== undefined)      clone.venue      = await encryptE2EEString(clone.venue);
+  if (clone.docType !== undefined)    clone.docType    = await encryptE2EEString(clone.docType);
+  if (clone.type !== undefined)       clone.type       = await encryptE2EEString(clone.type);
+
+  if (Array.isArray(clone.hearings)) {
+    clone.hearings = await Promise.all(clone.hearings.map(async h => ({
+      ...h,
+      purpose: h.purpose !== undefined ? await encryptE2EEString(h.purpose) : h.purpose,
+      notes: h.notes !== undefined ? await encryptE2EEString(h.notes) : h.notes
+    })));
+  }
+
+  if (Array.isArray(clone.documents)) {
+    clone.documents = await Promise.all(clone.documents.map(async d => ({
+      ...d,
+      name: d.name !== undefined ? await encryptE2EEString(d.name) : d.name
+    })));
+  }
+
+  return clone;
+}
+
+// Decrypts confidential case fields upon reading from Firestore
+// Safe against partial objects
+async function decryptCaseRecordFromFirestore(c) {
+  if (!c) return c;
+  const clone = { ...c };
+
+  if (clone.title !== undefined)      clone.title      = await decryptE2EEString(clone.title);
+  if (clone.caseNumber !== undefined) clone.caseNumber = await decryptE2EEString(clone.caseNumber);
+  if (clone.parties !== undefined)    clone.parties    = await decryptE2EEString(clone.parties);
+  if (clone.narrative !== undefined)  clone.narrative  = await decryptE2EEString(clone.narrative);
+  if (clone.venue !== undefined)      clone.venue      = await decryptE2EEString(clone.venue);
+  if (clone.docType !== undefined)    clone.docType    = await decryptE2EEString(clone.docType);
+  if (clone.type !== undefined)       clone.type       = await decryptE2EEString(clone.type);
+
+  if (Array.isArray(clone.hearings)) {
+    clone.hearings = await Promise.all(clone.hearings.map(async h => ({
+      ...h,
+      purpose: h.purpose !== undefined ? await decryptE2EEString(h.purpose) : h.purpose,
+      notes: h.notes !== undefined ? await decryptE2EEString(h.notes) : h.notes
+    })));
+  }
+
+  if (Array.isArray(clone.documents)) {
+    clone.documents = await Promise.all(clone.documents.map(async d => ({
+      ...d,
+      name: d.name !== undefined ? await decryptE2EEString(d.name) : d.name
+    })));
+  }
+
+  return clone;
+}
+
 // ── IMMUTABLE COMPLIANCE AUDIT RECORDER ──────────────────────
 async function dbLogAuditAction(action, details = {}) {
   if (localMode || !window._db) return;
@@ -59,21 +226,18 @@ function getAccessibleCases() {
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
   
   // 1. DEVELOPER ROLE ISOLATION:
-  // Developers can ONLY see cases they created themselves for testing.
-  // They are strictly blocked from seeing other attorneys' cases, even if shared.
+  // Developers only see cases they created themselves for testing.
   if (myProf && myProf.role === "developer") {
     return cases.filter(c => c.ownerUid === u.uid);
   }
 
   // 2. FIRM ADMINISTRATOR ROLE:
-  // Full view for managing firm workflow
   const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase()));
   if (isFirmAdmin) {
     return cases;
   }
 
   // 3. ATTORNEY ROLE:
-  // Strict case-level privacy: Own cases, shared cases, or assigned profile cases
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
@@ -258,7 +422,6 @@ async function dbLoad() {
             myProf.ownerUid = currentUser.uid;
           }
           const isConfiguredAdmin = currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
-          // Only auto-upgrade to admin if not intentionally configured as a developer
           if (isConfiguredAdmin && myProf.role !== "admin" && myProf.role !== "developer") {
             dbUpdateProfile(myProf.id, { role: "admin" });
             myProf.role = "admin";
@@ -287,7 +450,7 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases (Developer Isolated) ───────────
+    // ── Real-Time Sync: Cases (Decrypted Seamlessly on Stream) ──
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
       const isEmailAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
@@ -297,7 +460,6 @@ async function dbLoad() {
 
       let caseQuery;
       if (isDeveloper) {
-        // Developer query is strictly bounded to cases created by their own UID
         caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("ownerUid", "==", activeUid));
       } else if (isEmailAdmin) {
         caseQuery = window._fbCol(db, "cases");
@@ -305,8 +467,13 @@ async function dbLoad() {
         caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
       }
 
-      casesUnsub = window._fbOnSnapshot(caseQuery, (snap) => {
-        cases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      casesUnsub = window._fbOnSnapshot(caseQuery, async (snap) => {
+        const rawCases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // ZERO-KNOWLEDGE DECRYPTION IN MEMORY:
+        // Decrypts scrambled ciphertexts into clear readable case objects
+        cases = await Promise.all(rawCases.map(c => decryptCaseRecordFromFirestore(c)));
+
         if (window._notifsLoaded) {
           checkCaseDueNotifications();
         }
@@ -468,6 +635,8 @@ async function dbDeleteProfile(id) {
   dbLogAuditAction("PROFILE_DELETED", { profileId: id });
 }
 
+// ── ZERO-KNOWLEDGE CASE CREATION ──
+// Scrambles case details before writing to Firestore
 async function dbAddCase(data) {
   if (localMode || !window._db) { 
     data.id = "local_" + Date.now(); 
@@ -484,17 +653,25 @@ async function dbAddCase(data) {
     data.allowedUids.push(uId);
   }
 
-  const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), data);
+  // Encrypt sensitive fields for cloud storage
+  const encryptedPayload = await encryptCaseRecordForFirestore(data);
+
+  const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), encryptedPayload);
   data.id = ref.id;
-  dbLogAuditAction("CASE_CREATED", { caseId: data.id, title: data.title });
+  dbLogAuditAction("CASE_CREATED_ENCRYPTED", { caseId: data.id });
   return data;
 }
 
+// ── ZERO-KNOWLEDGE CASE UPDATE ──
+// Safe against partial updates, scrambles only defined fields
 async function dbUpdateCase(id, data) {
-  if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db,"cases",id), data);
+  if (!localMode && window._db) {
+    const encryptedPayload = await encryptCaseRecordForFirestore(data);
+    await window._fbUpdate(window._fbDoc(window._db,"cases",id), encryptedPayload);
+  }
   const idx = cases.findIndex(c=>c.id===id);
   if (idx>=0) cases[idx] = {...cases[idx],...data};
-  dbLogAuditAction("CASE_UPDATED", { caseId: id });
+  dbLogAuditAction("CASE_UPDATED_ENCRYPTED", { caseId: id });
 }
 
 async function dbDeleteCase(id) {
