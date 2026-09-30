@@ -568,7 +568,6 @@ function renderMonthlyCalendarGrid() {
   const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
   const startingDayOfWeek = firstDayObj.getDay();
   const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-  // PROPER 3-ARGUMENT CALL: Gets last day of previous month
   const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
 
   const todayObj = new Date();
@@ -577,7 +576,6 @@ function renderMonthlyCalendarGrid() {
   const todayD = String(todayObj.getDate()).padStart(2, '0');
   const todayStr = `${todayY}-${todayM}-${todayD}`;
 
-  // STABLE EQUAL-WIDTH 7-COLUMN GRID
   gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;margin-bottom:28px";
 
   let html = `
@@ -608,7 +606,6 @@ function renderMonthlyCalendarGrid() {
     const isPast = fullDateStr < todayStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
-    // Compact Truncated Pills (Never push cell widths)
     let eventsMarkup = "";
     if (dayEvents.length > 0) {
       const topTwo = dayEvents.slice(0, 2);
@@ -933,850 +930,10 @@ window.saveEventInlineDescription = async function(kind, id, dateStr) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  SYSTEM HEALTH & DIAGNOSTIC ENGINE
+//  CASE DETAIL (WITH LIVE COLLABORATION & DUAL-DRIVE RE-EDITING)
 // ═══════════════════════════════════════════════════════════════
-let systemHealthStatus = "healthy";
+let currentEditingDocIndex = null;
 
-window.openDiagnosticModal = function() {
-  const modal = document.getElementById("diagnostic-modal");
-  if (!modal) return;
-  modal.classList.remove("hidden");
-  updateWorkspaceStatus(true);
-};
-
-window.closeDiagnosticModal = function() {
-  const modal = document.getElementById("diagnostic-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-async function updateWorkspaceStatus(manualRun = false) {
-  const netBadge   = document.getElementById("diag-network-badge");
-  const netSub     = document.getElementById("diag-network-sub");
-  const dbBadge    = document.getElementById("diag-db-badge");
-  const dbSub      = document.getElementById("diag-db-sub");
-  const driveBadge = document.getElementById("diag-drive-badge");
-  const driveSub   = document.getElementById("diag-drive-sub");
-
-  const dot = document.getElementById("status-indicator-dot");
-  const txt = document.getElementById("status-indicator-text");
-
-  let isNetworkOk = navigator.onLine;
-  let isDbOk = !localMode && !!window._db && dbReady;
-  let isDriveOk = typeof hasValidToken === "function" ? hasValidToken() : false;
-
-  const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
-  const hasDriveFolder = !!(myProf && myProf.driveFolderId);
-
-  if (netBadge && netSub) {
-    if (isNetworkOk) {
-      netBadge.className = "badge badge-pass";
-      netBadge.innerHTML = `<i class="bi bi-wifi" style="color:var(--green)"></i> Online`;
-      netSub.textContent = "Active internet connection detected";
-    } else {
-      netBadge.className = "badge badge-fail";
-      netBadge.innerHTML = `<i class="bi bi-wifi-off" style="color:var(--red)"></i> Offline`;
-      netSub.textContent = "No network connection. Offline changes won't sync.";
-    }
-  }
-
-  if (dbBadge && dbSub) {
-    if (isDbOk) {
-      dbBadge.className = "badge badge-pass";
-      dbBadge.innerHTML = `<i class="bi bi-database-check" style="color:var(--green)"></i> Connected`;
-      dbSub.textContent = "Firestore real-time listeners synchronized (Long Polling)";
-    } else if (localMode) {
-      dbBadge.className = "badge badge-warn";
-      dbBadge.innerHTML = `<i class="bi bi-hdd-network" style="color:var(--amber)"></i> Memory Mode`;
-      dbSub.textContent = "Running in memory. Data will not persist on refresh.";
-    } else {
-      dbBadge.className = "badge badge-fail";
-      dbBadge.innerHTML = `<i class="bi bi-arrow-repeat"></i> Connecting...`;
-      dbSub.textContent = "Waiting for cloud database handshake.";
-    }
-  }
-
-  if (driveBadge && driveSub) {
-    if (isDriveOk && hasDriveFolder) {
-      driveBadge.className = "badge badge-pass";
-      driveBadge.innerHTML = `<i class="bi bi-cloud-check-fill" style="color:var(--green)"></i> Linked`;
-      driveSub.textContent = "OAuth active · Dedicated firm storage folder verified";
-    } else if (isDriveOk && !hasDriveFolder) {
-      driveBadge.className = "badge badge-warn";
-      driveBadge.innerHTML = `<i class="bi bi-folder-x" style="color:var(--amber)"></i> No Folder`;
-      driveSub.textContent = "Drive connected but no root case folder created yet.";
-    } else {
-      driveBadge.className = "badge badge-warn";
-      driveBadge.innerHTML = `<i class="bi bi-cloud-slash" style="color:var(--amber)"></i> Not Connected`;
-      driveSub.textContent = "Connect Google Account under My Settings to enable filing & docs.";
-    }
-  }
-
-  if (!isNetworkOk || (!isDbOk && !localMode)) {
-    systemHealthStatus = "danger";
-    if (dot) dot.className = "status-dot danger";
-    if (txt) {
-      txt.textContent = "System Disconnected";
-      txt.style.color = "var(--red)";
-    }
-  } else if (!isDriveOk || localMode || !hasDriveFolder) {
-    systemHealthStatus = "warning";
-    if (dot) dot.className = "status-dot warning";
-    if (txt) {
-      txt.textContent = !isDriveOk ? "Connect Drive" : "Memory Mode";
-      txt.style.color = "var(--amber)";
-    }
-  } else {
-    systemHealthStatus = "healthy";
-    if (dot) dot.className = "status-dot healthy";
-    if (txt) {
-      txt.textContent = "Workspace Active";
-      txt.style.color = "var(--green)";
-    }
-  }
-
-  if (manualRun && typeof showToast === "function") {
-    showToast(`Health check complete: ${systemHealthStatus === "healthy" ? "All systems healthy" : "Issues detected"}`, systemHealthStatus === "healthy" ? "success" : "error");
-  }
-}
-
-window.updateWorkspaceStatus = updateWorkspaceStatus;
-
-if (!window._healthIntervalId) {
-  window._healthIntervalId = setInterval(() => {
-    if (document.visibilityState === "visible") {
-      updateWorkspaceStatus(false);
-    }
-  }, 25000);
-}
-window.addEventListener("online", () => updateWorkspaceStatus(false));
-window.addEventListener("offline", () => updateWorkspaceStatus(false));
-
-// ═══════════════════════════════════════════════════════════════
-//  UNIVERSAL ACTION CONFIRMATION MODAL CONTROLLER
-// ═══════════════════════════════════════════════════════════════
-let pendingActionConfirmCallback = null;
-
-window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", confirmStyle = "btn-primary", onConfirm = null }) {
-  const modal = document.getElementById("universal-confirm-modal");
-  const iconEl = document.getElementById("ucm-icon");
-  const titleEl = document.getElementById("ucm-title");
-  const bodyEl = document.getElementById("ucm-body");
-  const btn = document.getElementById("ucm-confirm-btn");
-
-  if (!modal) return;
-
-  if (iconEl) {
-    const iconClass = icon.startsWith("bi-") ? icon : "bi-shield-check";
-    iconEl.innerHTML = `<i class="bi ${iconClass}" style="color:var(--gold)"></i>`;
-  }
-  if (titleEl) titleEl.textContent = title;
-  if (bodyEl) bodyEl.innerHTML = body;
-
-  if (btn) {
-    btn.textContent = confirmText;
-    btn.className = `btn ${confirmStyle}`;
-  }
-
-  pendingActionConfirmCallback = onConfirm;
-  modal.classList.remove("hidden");
-};
-
-window.closeConfirmModal = function() {
-  const modal = document.getElementById("universal-confirm-modal");
-  if (modal) modal.classList.add("hidden");
-  pendingActionConfirmCallback = null;
-};
-
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("ucm-confirm-btn");
-  if (btn) {
-    btn.addEventListener("click", () => {
-      const cb = pendingActionConfirmCallback;
-      window.closeConfirmModal();
-      if (typeof cb === "function") {
-        cb();
-      }
-    });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL BACK NAVIGATION
-// ═══════════════════════════════════════════════════════════════
-let caseDetailOrigin = "allcases";
-
-window.handleCaseDetailBack = function() {
-  if (caseDetailOrigin === "profileDetail" && selProfile) {
-    showView("profileDetail");
-    renderProfileDetail();
-  } else if (caseDetailOrigin === "dashboard") {
-    navTo("dashboard");
-  } else {
-    navTo("allcases");
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  UNSAVED CASE FORM CHANGES INTERCEPTION & DISCARD GUARD
-// ═══════════════════════════════════════════════════════════════
-let pendingNavigationDestination = null;
-let _isSubmittingCase = false;
-
-function hasUnsavedCaseChanges() {
-  if (_isSubmittingCase) return false;
-  if (currentView !== "caseForm") return false;
-  const title = (document.getElementById("cf-case-title")?.value || "").trim();
-  const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
-  const caseNumber = (document.getElementById("cf-case-number")?.value || "").trim();
-  const docDue = (document.getElementById("cf-due")?.value || "").trim();
-  const docType = (document.getElementById("cf-doc-type")?.value || "").trim();
-  const hasDocs = Array.isArray(pendingDocs) && pendingDocs.length > 0;
-  const hasHearings = Array.isArray(window.cfHearings) && window.cfHearings.length > 0;
-  
-  return Boolean(title || narrative || caseNumber || docDue || docType || hasDocs || hasHearings);
-}
-
-window.hasUnsavedCaseChanges = hasUnsavedCaseChanges;
-
-window.promptDiscardCase = function(destination) {
-  pendingNavigationDestination = destination;
-  const modal = document.getElementById("discard-case-modal");
-  if (modal) modal.classList.remove("hidden");
-};
-
-window.cancelDiscardCase = function() {
-  pendingNavigationDestination = null;
-  const modal = document.getElementById("discard-case-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-window.confirmDiscardCase = function() {
-  const target = pendingNavigationDestination || caseFormOrigin || "allcases";
-  pendingNavigationDestination = null;
-  const modal = document.getElementById("discard-case-modal");
-  if (modal) modal.classList.add("hidden");
-
-  resetCaseFormFields();
-  executeNavigation(target);
-};
-
-window.handleCaseCancelOrExit = function() {
-  if (hasUnsavedCaseChanges()) {
-    window.promptDiscardCase(caseFormOrigin || "allcases");
-  } else {
-    resetCaseFormFields();
-    executeNavigation(caseFormOrigin || "allcases");
-  }
-};
-
-function resetCaseFormFields() {
-  setElVal("cf-case-title", "");
-  setElVal("cf-narrative", "");
-  setElVal("cf-filed", "");
-  setElVal("cf-due", "");
-  setElVal("cf-case-number", "");
-  setElVal("cf-doc-type", "");
-  setElVal("cf-type-input", "");
-  
-  if (typeof pendingDocs !== "undefined") pendingDocs = [];
-  if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
-  if (typeof window.cfPetitioners !== "undefined") window.cfPetitioners = [];
-  if (typeof window.cfRespondents !== "undefined") window.cfRespondents = [];
-
-  clearCaseErrors();
-}
-
-window.addEventListener("beforeunload", (e) => {
-  if (hasUnsavedCaseChanges()) {
-    e.preventDefault();
-    e.returnValue = "You have unsaved case changes. Are you sure you want to leave?";
-    return e.returnValue;
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════
-//  VALIDATION HELPERS
-// ═══════════════════════════════════════════════════════════════
-function isValidMobile(num) {
-  if (!num) return true;
-  const cleaned = String(num).replace(/\D/g, "");
-  return cleaned.length === 11;
-}
-window.isValidMobile = isValidMobile;
-
-function isValidEmail(email) {
-  return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
-}
-window.isValidEmail = isValidEmail;
-
-// ═══════════════════════════════════════════════════════════════
-//  PASSWORD STRENGTH CHECKER
-// ═══════════════════════════════════════════════════════════════
-function initPasswordStrengthChecker() {
-  const passInput = document.getElementById("setting-password");
-  const reqContainer = document.getElementById("password-requirements");
-
-  if (!passInput || !reqContainer) return;
-
-  const reqs = {
-    length: { el: document.getElementById("req-length"), test: (val) => val.length >= 6 },
-    upper: { el: document.getElementById("req-upper"), test: (val) => /[A-Z]/.test(val) },
-    number: { el: document.getElementById("req-number"), test: (val) => /\d/.test(val) },
-    special: { el: document.getElementById("req-special"), test: (val) => /[^A-Za-z0-9]/.test(val) }
-  };
-
-  passInput.addEventListener("focus", () => {
-    reqContainer.style.display = "block";
-  });
-
-  passInput.addEventListener("input", () => {
-    const val = passInput.value;
-    if (!val) {
-      reqContainer.style.display = "none";
-      return;
-    }
-    reqContainer.style.display = "block";
-
-    for (const key in reqs) {
-      const rule = reqs[key];
-      const passed = rule.test(val);
-      if (rule.el) {
-        const icon = rule.el.querySelector(".req-icon");
-        if (passed) {
-          rule.el.style.color = "var(--green, #22c55e)";
-          if (icon) icon.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>`;
-        } else {
-          rule.el.style.color = "var(--text-dim)";
-          if (icon) icon.innerHTML = `<i class="bi bi-x-circle" style="color:var(--red)"></i>`;
-        }
-      }
-    }
-  });
-
-  passInput.addEventListener("blur", () => {
-    if (!passInput.value) {
-      reqContainer.style.display = "none";
-    }
-  });
-}
-
-window.initPasswordStrengthChecker = initPasswordStrengthChecker;
-
-// ═══════════════════════════════════════════════════════════════
-//  NAVIGATION (WITH AUTO-CLOSE CHAT & NOTIFICATIONS)
-// ═══════════════════════════════════════════════════════════════
-function showView(name) {
-  const chatPanel = document.getElementById("chat-panel");
-  if (chatPanel && !chatPanel.classList.contains("hidden")) {
-    chatPanel.classList.add("hidden");
-  }
-
-  const notifDropdown = document.getElementById("notif-dropdown");
-  if (notifDropdown && !notifDropdown.classList.contains("hidden")) {
-    notifDropdown.classList.add("hidden");
-  }
-
-  document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
-  const el = document.getElementById("view-" + name);
-  if (el) el.classList.remove("hidden");
-  currentView = name;
-  
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
-
-  let primaryNavKey = name;
-  if (name === "caseDetail" || name === "caseForm" || name === "allcases") {
-    primaryNavKey = "allcases";
-  } else if (name === "profileDetail" || name === "profileForm" || name === "profiles") {
-    primaryNavKey = "profiles";
-  } else if (name === "myprofile") {
-    primaryNavKey = "myprofile";
-  }
-
-  const btn = document.querySelector(`.nav-btn[data-nav="${primaryNavKey}"]`);
-  if (btn) btn.classList.add("active");
-  const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${primaryNavKey}"]`);
-  if (mBtn) mBtn.classList.add("active");
-}
-
-function navTo(view) {
-  if (currentView === "caseForm" && view !== "caseForm" && hasUnsavedCaseChanges()) {
-    window.promptDiscardCase(view);
-    return;
-  }
-  executeNavigation(view);
-}
-
-function executeNavigation(view) {
-  const chatPanel = document.getElementById("chat-panel");
-  if (chatPanel && !chatPanel.classList.contains("hidden")) {
-    chatPanel.classList.add("hidden");
-  }
-
-  const pd = document.getElementById("pd-search");
-  const ac = document.getElementById("ac-search");
-  if (pd) pd.value = "";
-  if (ac) ac.value = "";
-  ["pd-status","pd-category","pd-type","ac-status","ac-category","ac-type"].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = "All";
-  });
-  ["pd-sort","ac-sort"].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = "asc";
-  });
-  showView(view);
-  if (view === "dashboard") renderDashboard();
-  if (view === "profiles")  renderProfiles();
-  if (view === "allcases")  renderAllCases();
-  if (view === "myprofile") renderMyProfile();
-  if (view === "calendar")  renderCalendarView();
-  if (view === "notifications") renderNotificationsView();
-  if (view === "mydrive") initDriveExplorer();
-}
-
-window.showView = showView;
-window.navTo = navTo;
-window.executeNavigation = executeNavigation;
-
-// ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (ROSTER REMOVED FOR CLEAN EXPANDED WIDESCREEN)
-// ═══════════════════════════════════════════════════════════════
-let recentCasesExpanded = false;
-
-window.toggleExpandRecentCases = function() {
-  recentCasesExpanded = !recentCasesExpanded;
-  const btn = document.getElementById("btn-toggle-expand-cases");
-  if (btn) {
-    btn.innerHTML = recentCasesExpanded ? `<i class="bi bi-arrows-collapse"></i> Collapse` : `<i class="bi bi-arrows-expand"></i> Expand View`;
-  }
-  renderDashboard();
-};
-
-function renderDashboard() {
-  const todayDateEl = document.getElementById("today-date");
-  if (todayDateEl) {
-    todayDateEl.textContent = new Date().toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
-  }
-
-  const userCases = getAccessibleCases();
-  const u = window._currentUser || window._auth?.currentUser;
-  const isAdmin = profiles.some(p => (p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase())) && p.role === "admin");
-
-  const statProfilesCard = document.getElementById("stat-card-profiles");
-  const statProfilesEl = document.getElementById("stat-profiles");
-  const statTotalEl = document.getElementById("stat-total");
-  const statOngoingEl = document.getElementById("stat-ongoing");
-  const statCompletedEl = document.getElementById("stat-completed");
-
-  if (statProfilesCard) {
-    statProfilesCard.style.display = isAdmin ? "block" : "none";
-  }
-  if (statProfilesEl) statProfilesEl.textContent = profiles.length;
-  if (statTotalEl) statTotalEl.textContent = userCases.length;
-  if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
-  if (statCompletedEl) statCompletedEl.textContent = userCases.filter(c => c.status === "Completed").length;
-
-  const dcEl = document.getElementById("dash-cases");
-  if (!dcEl) return;
-
-  const displayCases = recentCasesExpanded ? userCases : userCases.slice(0, 6);
-
-  dcEl.innerHTML = displayCases.length === 0
-    ? '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div><div>No active cases yet.</div></div>'
-    : displayCases.map(c => {
-      const p = profiles.find(x => x.id === c.profileId);
-      const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-      const urgency = daysLeft !== null
-        ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
-         : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
-         : daysLeft <= 7  ? {col:"var(--red)",   label:(daysLeft === 0 ? "Due today" : daysLeft + "d left")}
-         : daysLeft <= 30 ? {col:"var(--amber)", label:daysLeft + "d left"}
-         :                  {col:"var(--text-muted)", label:daysLeft + "d left"})
-        : null;
-
-      const categoryBadge = `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);white-space:nowrap;display:inline-block">${escHtml(c.category || "Case")}</span>`;
-
-      return `<div class="flex-center gap-10" style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="openCase('${c.id}')" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
-        ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            ${categoryBadge}
-            <span>${p?.name || ""} · ${c.type || "Litigation"}</span>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-          ${badge(c.status, statusColor(c.status))}
-          ${urgency ? '<span style="font-size:10px;font-weight:600;color:' + urgency.col + '">' + urgency.label + '</span>' : ""}
-        </div>
-      </div>`;
-    }).join("");
-
-  renderQuickAccess();
-  if (typeof fetchAndRenderGoogleCalendarEvents === "function") {
-    fetchAndRenderGoogleCalendarEvents();
-  }
-}
-
-window.renderDashboard = renderDashboard;
-
-// ═══════════════════════════════════════════════════════════════
-//  PROFILES VIEW MODES & ATTORNEY DIRECTORY (DEVELOPERS EXCLUDED)
-// ═══════════════════════════════════════════════════════════════
-let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
-
-window.setProfilesViewMode = function(mode) {
-  profilesViewMode = mode;
-  try {
-    localStorage.setItem("simando-profiles-view", mode);
-  } catch (e) { /* ignore */ }
-
-  const tileBtn = document.getElementById("btn-view-tile");
-  const listBtn = document.getElementById("btn-view-list");
-
-  if (tileBtn && listBtn) {
-    tileBtn.className = mode === "tile" ? "btn btn-sm btn-secondary active" : "btn btn-sm btn-ghost";
-    listBtn.className = mode === "list" ? "btn btn-sm btn-secondary active" : "btn btn-sm btn-ghost";
-  }
-
-  renderProfiles();
-};
-
-function renderProfiles() {
-  const u = window._currentUser;
-  if (!u) return;
-
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
-  const isFirmAdmin = myProf && myProf.role === "admin";
-
-  const visibleProfiles = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u.uid);
-
-  const countEl = document.getElementById("profiles-count");
-  if (countEl) countEl.textContent = `${visibleProfiles.length} profile${visibleProfiles.length !== 1 ? "s" : ""} total`;
-
-  const el = document.getElementById("profiles-grid");
-  if (!el) return;
-
-  const userCases = getAccessibleCases();
-
-  if (visibleProfiles.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-people"></i></div><div style="font-size:13px;color:var(--text-muted)">No attorney profiles found.</div></div>`;
-    return;
-  }
-
-  if (profilesViewMode === "list") {
-    el.style.display = "flex";
-    el.style.flexDirection = "column";
-    el.style.gap = "8px";
-
-    el.innerHTML = visibleProfiles.map(p => {
-      const pc = userCases.filter(c => c.profileId === p.id);
-      const ongoing = pc.filter(c => c.status === "On-going").length;
-      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
-      const isDev = p.role === "developer";
-
-      return `
-        <div class="profile-list-row" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
-          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
-            ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
-            <div style="min-width:0">
-              <div style="font-weight:700;font-size:14.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                ${escHtml(p.name)} 
-                ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">YOU</span>' : ""}
-                ${isDev ? '<span style="font-size:9.5px;color:var(--cyan);background:rgba(34,211,238,0.12);padding:1px 5px;border-radius:4px;margin-left:6px;font-weight:700">DEV</span>' : ""}
-              </div>
-              <div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-            <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
-            ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
-            <span style="font-size:14px;color:var(--gold)"><i class="bi bi-arrow-right"></i></span>
-          </div>
-        </div>
-      `;
-    }).join("");
-  } else {
-    el.style.display = "grid";
-    el.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
-    el.style.gap = "20px";
-
-    el.innerHTML = visibleProfiles.map(p => {
-      const pc = userCases.filter(c => c.profileId === p.id);
-      const ongoing = pc.filter(c => c.status === "On-going").length;
-      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
-      const isDev = p.role === "developer";
-      
-      return `
-        <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border); background:rgba(201,165,92,0.03)' : ''}">
-          <div class="flex-center gap-14 mb-16">
-            ${avatarDiv(p.name, p.avatarColor, 50, p.photoUrl)}
-            <div>
-              <div style="font-weight:700;font-size:16px;color:var(--text)">
-                ${escHtml(p.name)} 
-                ${isMe ? '<span style="font-size:10px;color:var(--gold);background:rgba(201,168,76,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">YOU</span>' : ""}
-                ${isDev ? '<span style="font-size:10px;color:var(--cyan);background:rgba(34,211,238,0.1);padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">DEV</span>' : ""}
-              </div>
-              <div style="font-size:13px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div>
-            </div>
-          </div>
-          <hr class="divider"/>
-          ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.email)}</div>` : ""}
-          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;color:var(--text-dim)">Cases Accessible (${pc.length})</span>
-            ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-}
-
-window.renderProfiles = renderProfiles;
-
-// ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM (DEVELOPERS OMITTED)
-// ═══════════════════════════════════════════════════════════════
-window.openShareCaseModal = function() {
-  if (!selCase) return;
-  const listEl = document.getElementById("share-modal-list");
-  if (!listEl) return;
-
-  const sharedUids = selCase.sharedWith || [];
-  const currentUid = window._currentUser?.uid;
-
-  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
-
-  if (associates.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
-  } else {
-    listEl.innerHTML = associates.map(p => {
-      const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
-      return `
-        <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
-          <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked} style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
-          ${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${p.email}</div>
-          </div>
-        </label>
-      `;
-    }).join("");
-  }
-
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.remove("hidden");
-};
-
-window.closeShareModal = function() {
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  PROFILE DETAIL
-// ═══════════════════════════════════════════════════════════════
-function renderProfileDetail() {
-  const p = selProfile;
-  if (!p) return;
-
-  const currentUid = window._currentUser?.uid;
-  const isOwner = p.ownerUid === currentUid;
-
-  let actionButtons = "";
-  let driveChip = "";
-
-  if (isOwner) {
-    driveChip = p.driveFolderId
-      ? `<a href="https://drive.google.com/drive/folders/${p.driveFolderId}" target="_blank" style="font-size:12px;color:var(--green);display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:500;padding:4px 10px;background:rgba(34,197,94,0.08);border-radius:6px;border:1px solid rgba(34,197,94,0.2)" title="Open Drive Folder"><i class="bi bi-google"></i> Drive Folder <i class="bi bi-arrow-right"></i></a>`
-      : (accessToken
-          ? `<button onclick="createProfileFolderManual()" style="background:transparent;border:1px solid var(--amber);color:var(--amber);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:500;padding:4px 10px;border-radius:6px;transition:all 0.2s"><i class="bi bi-folder-plus"></i> Create Drive Folder</button>`
-          : `<span style="font-size:12px;color:var(--text-dim);display:inline-flex;align-items:center;gap:6px"><i class="bi bi-cloud-slash"></i> Drive not connected</span>`);
-
-    actionButtons = `
-      <button class="btn btn-secondary btn-sm" onclick="navTo('myprofile')"><i class="bi bi-pencil-square"></i> Edit Profile</button>
-      <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-circle"></i> Add Case</button>
-    `;
-  } else {
-    driveChip = `<span style="font-size:12px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Files Protected</span>`;
-    actionButtons = `
-      <button class="btn btn-primary btn-sm" onclick="openAppointmentModal('${p.id}')"><i class="bi bi-calendar-plus"></i> Request Schedule</button>
-    `;
-  }
-
-  const headerCard = document.getElementById("profile-header-card");
-  if (headerCard) {
-    headerCard.innerHTML = `
-      ${avatarDiv(p.name, p.avatarColor, 64, p.photoUrl)}
-      <div style="flex:1">
-        <div style="font-size:24px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
-        <div style="font-size:14px;color:var(--text-muted);margin-top:3px">${escHtml(p.role || "Attorney")}</div>
-        <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;align-items:center">
-          ${p.email ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.email)}</span>` : ""}
-          ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.contact)}</span>` : ""}
-          <span style="font-size:12px;color:var(--text-dim)"><i class="bi bi-calendar-check" style="color:var(--gold);margin-right:4px"></i>Since ${p.createdAt || formatDate(new Date().toISOString())}</span>
-          ${driveChip}
-        </div>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        ${actionButtons}
-      </div>
-    `;
-  }
-
-  const noticeEl = document.getElementById("profile-restricted-notice");
-  const sectionEl = document.getElementById("profile-cases-section");
-  const statsEl = document.getElementById("profile-stats-row");
-
-  const pc = getAccessibleCases().filter(c => c.profileId === p.id);
-
-  if (isOwner || pc.length > 0) {
-    if (noticeEl) noticeEl.style.display = "none";
-    if (sectionEl) sectionEl.style.display = "block";
-    if (statsEl) {
-      statsEl.style.display = "grid";
-      const docs = pc.reduce((a, c) => a + (c.documents?.length || 0), 0);
-
-      statsEl.innerHTML = [
-        ["Accessible Cases", pc.length, "var(--violet)"],
-        ["Active", pc.filter(c => c.status === "On-going").length, "var(--amber)"],
-        ["Resolved", pc.filter(c => c.status === "Completed").length, "var(--green)"],
-        ["Documents", docs, "var(--gold)"]
-      ].map(([l, n, c]) => `
-        <div class="stat-card" style="--accent:${c};padding:16px 18px">
-          <div class="stat-number" style="color:${c};font-size:32px">${n}</div>
-          <div class="stat-label">${l}</div>
-        </div>`).join("");
-    }
-
-    updateAllFilterDropdowns(); 
-    renderProfileCases();
-  } else {
-    if (noticeEl) noticeEl.style.display = "block";
-    if (sectionEl) sectionEl.style.display = "none";
-    if (statsEl) statsEl.style.display = "none";
-  }
-}
-
-function renderProfileCases() {
-  const p = selProfile;
-  if (!p) return;
-  const q        = (document.getElementById("pd-search")?.value || "").toLowerCase();
-  const status   = document.getElementById("pd-status")?.value || "All";
-  const category = document.getElementById("pd-category")?.value || "All";
-  const type     = document.getElementById("pd-type")?.value || "All";
-  const sort     = document.getElementById("pd-sort")?.value || "asc";
-
-  const pc = getAccessibleCases().filter(c => c.profileId === p.id);
-
-  let filtered = pc.filter(c =>
-    (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (c.caseNumber || "").toLowerCase().includes(q)) &&
-    (status === "All" || c.status === status) &&
-    (category === "All" || c.category === category) &&
-    (type === "All" || c.type === type)
-  );
-  filtered = sortCasesByDue(filtered, sort);
-
-  const el = document.getElementById("profile-cases-list");
-  if (!el) return;
-
-  if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty-state">${pc.length === 0
-      ? '<div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-bank"></i></div><div>No accessible cases yet</div>'
-      : '<div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your filters.</div>'
-    }</div>`;
-    return;
-  }
-  el.innerHTML = filtered.map(c => `
-    <div class="case-row" onclick="openCase('${c.id}')">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">${escHtml(c.category || "Case")}</span>
-          <span>${c.type || "Litigation"} · ${c.venue || "No Venue"}</span>
-        </div>
-        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-        ${badge(c.status, statusColor(c.status))}
-        ${dueBadge(c.dueDate)}
-      </div>
-    </div>`).join("");
-}
-
-window.renderProfileDetail = renderProfileDetail;
-window.renderProfileCases = renderProfileCases;
-
-// ═══════════════════════════════════════════════════════════════
-//  ALL CASES VIEW
-// ═══════════════════════════════════════════════════════════════
-function renderAllCases() {
-  updateAllFilterDropdowns(); 
-  const q        = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
-  const status   = document.getElementById("ac-status")?.value || "All";
-  const category = document.getElementById("ac-category")?.value || "All";
-  const type     = document.getElementById("ac-type")?.value || "All";
-  const sort     = document.getElementById("ac-sort")?.value || "asc";
-
-  const accessible = getAccessibleCases();
-
-  let filtered = accessible.filter(c => {
-    const p = profiles.find(x => x.id === c.profileId);
-    const attorneyName = (p?.name || "").toLowerCase();
-    const caseTitle = (c.title || "").toLowerCase();
-    const parties = (c.parties || "").toLowerCase();
-    const caseNumber = (c.caseNumber || "").toLowerCase();
-
-    const matchesQuery = !q || 
-      caseTitle.includes(q) || 
-      attorneyName.includes(q) || 
-      parties.includes(q) || 
-      caseNumber.includes(q);
-
-    return matchesQuery &&
-      (status === "All" || c.status === status) &&
-      (category === "All" || c.category === category) &&
-      (type === "All" || c.type === type);
-  });
-  filtered = sortCasesByDue(filtered, sort);
-
-  const countEl = document.getElementById("allcases-count");
-  if (countEl) countEl.textContent = `${filtered.length} accessible case${filtered.length !== 1 ? "s" : ""} found`;
-
-  const el = document.getElementById("all-cases-list");
-  if (!el) return;
-
-  if (filtered.length === 0) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your access permissions or filters.</div></div>';
-    return;
-  }
-  el.innerHTML = filtered.map(c => {
-    const p = profiles.find(x => x.id === c.profileId);
-    return `<div class="case-row" onclick="openCase('${c.id}')">
-      ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
-        <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">${escHtml(c.category || "Case")}</span>
-          <span>${p?.name || ""} · ${c.type || "Litigation"} · ${c.venue || "No Venue"}</span>
-        </div>
-        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
-        ${badge(c.status, statusColor(c.status))}
-        ${dueBadge(c.dueDate)}
-      </div>
-    </div>`;
-  }).join("");
-}
-
-window.renderAllCases = renderAllCases;
-
-// ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (WITH FULL PERMISSION FOR SHARED USERS)
-// ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
   if (!c) return;
@@ -1790,7 +947,6 @@ function renderCaseDetail() {
   const isOwner = c.ownerUid === currentUid;
   const isGroupAdmin = profiles.some(p => p.ownerUid === currentUid && p.role === "admin");
   
-  // Shared users in sharedWith or allowedUids receive FULL EDITOR permissions!
   const isShared = (Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid)) ||
                    (Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid));
 
@@ -1898,70 +1054,58 @@ function renderCaseDetail() {
     hearingsEl.innerHTML = hHtml;
   }
 
+  // DOCUMENTS LIST WITH REVISION & GOOGLE DOCS COLLABORATION BUTTONS
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px">
-    <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files &amp; Pleadings</div>
     ${canEdit ? `
-      <div style="display:inline-flex;align-items:center;gap:10px">
-        <div style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 10px">
-          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-            <input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold);margin:0"/> <i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> In
-          </label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);cursor:pointer;margin:0">
-            <input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold);margin:0"/> <i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Out
-          </label>
-        </div>
+      <div style="display:inline-flex;align-items:center;gap:8px">
+        <button class="btn btn-doc btn-sm" onclick="createNewCaseGoogleDoc()"><i class="bi bi-file-earmark-word"></i> Draft with Google Docs</button>
         <button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload Document</button>
       </div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected File Repository</span>`
     }
   </div>`;
 
   if (docs.length === 0) {
-    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:26px;margin-bottom:4px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Click to attach a document' : 'No document records uploaded'}</div></div>`;
+    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:26px;margin-bottom:4px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Click to attach or draft a document' : 'No document records uploaded'}</div></div>`;
   } else {
-    const inboundDocs = docs.filter(d => d.fileType === "Inbound");
-    const outboundDocs = docs.filter(d => d.fileType === "Outbound");
-    const otherDocs = docs.filter(d => d.fileType !== "Inbound" && d.fileType !== "Outbound");
-
     const renderDocRow = (doc) => {
       const realIdx = docs.findIndex(x => x === doc || (x.driveFileId && x.driveFileId === doc.driveFileId && x.name === doc.name));
-      const fileIcon = doc.name.toLowerCase().endsWith(".pdf") 
+      const isPdf = doc.name.toLowerCase().endsWith(".pdf");
+      const verStr = doc.version || "v1.0";
+      const hasHistory = Array.isArray(doc.history) && doc.history.length > 0;
+
+      const fileIcon = isPdf 
         ? `<i class="bi bi-file-earmark-pdf-fill" style="color:var(--red);margin-right:6px"></i>`
-        : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);margin-right:6px"></i>`;
+        : `<i class="bi bi-file-earmark-word-fill" style="color:var(--blue-doc);margin-right:6px"></i>`;
 
       return `
         <div class="doc-item" style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
-            <div>
-              <div style="font-size:13px;color:var(--text);font-weight:600">
+          <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;color:var(--text);font-weight:600;display:flex;align-items:center;gap:6px">
                 <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
                   ${fileIcon}${escHtml(doc.name)}
                 </span>
+                <span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:10px">${verStr}</span>
               </div>
-              <div style="font-size:12px;color:var(--text-muted)">
-                ${doc.size} · ${doc.date}${doc.driveFileId ? ` · <span style="color:var(--green)"><i class="bi bi-check-circle-fill"></i> Drive</span>` : ""}
+              <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">
+                ${doc.size} · ${doc.date}${doc.driveFileId ? ` · <span style="color:var(--green)"><i class="bi bi-check-circle-fill"></i> Both Drives Synced</span>` : ""}
               </div>
             </div>
-            ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:15px;cursor:pointer;padding:2px 10px;flex-shrink:0" onclick="removeDocFromCase(${realIdx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
+
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="btn btn-secondary btn-sm" onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' title="View Document"><i class="bi bi-eye"></i> View</button>
+              ${canEdit ? `<button class="btn btn-doc btn-sm" onclick="openLiveDocumentEditor(${realIdx})" title="Re-open Live Master in Google Docs"><i class="bi bi-pencil-square"></i> Revise / Edit</button>` : ""}
+              ${hasHistory ? `<button class="btn btn-secondary btn-sm" onclick="openDocVersionHistory(${realIdx})" title="View Past Revisions"><i class="bi bi-clock-history"></i> History (${doc.history.length})</button>` : ""}
+              ${canEdit ? `<button style="background:transparent;border:none;color:var(--red);font-size:15px;cursor:pointer;padding:2px 8px" onclick="removeDocFromCase(${realIdx})" title="Delete File"><i class="bi bi-trash3"></i></button>` : ""}
+            </div>
           </div>
         </div>
       `;
     };
 
-    if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound Documents</div>`;
-      inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
-    }
-
-    if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound Documents</div>`;
-      outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
-    }
-
-    if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-files" style="color:var(--gold)"></i> Other Files</div>`;
-      otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
-    }
+    docs.forEach(d => { docsHtml += renderDocRow(d); });
   }
   
   const docsEl = document.getElementById("cd-docs");
@@ -1984,6 +1128,213 @@ function renderCaseDetail() {
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  IN-APP COLLABORATIVE GOOGLE DOCS EDITOR HANDLERS
+// ═══════════════════════════════════════════════════════════════
+window.createNewCaseGoogleDoc = async function() {
+  if (!selCase) return;
+  const docTitle = prompt("Enter draft pleading name:", `${selCase.title} - Draft Pleading`);
+  if (!docTitle) return;
+
+  try {
+    showToast("Initializing Google Doc in case folder...");
+    const u = window._currentUser;
+    const myProf = profiles.find(p => p.ownerUid === u?.uid);
+    const targetFolderId = myProf?.driveFolderId || "root";
+
+    const docMeta = await convertFileToGoogleDoc(null, docTitle, targetFolderId);
+    
+    // Sync Drive folder with shared associate attorneys so both Drives update
+    if (Array.isArray(selCase.sharedWith)) {
+      for (const uid of selCase.sharedWith) {
+        const associateProf = profiles.find(p => p.ownerUid === uid);
+        if (associateProf && associateProf.email) {
+          await shareDriveFolderWithAssociate(targetFolderId, associateProf.email);
+        }
+      }
+    }
+
+    const newDocEntry = {
+      name: docTitle + ".gdoc",
+      driveFileId: docMeta.id,
+      liveDocId: docMeta.id,
+      driveLink: docMeta.webViewLink,
+      size: "Google Doc",
+      date: new Date().toLocaleDateString(),
+      version: "v1.0",
+      history: []
+    };
+
+    selCase.documents = selCase.documents || [];
+    selCase.documents.unshift(newDocEntry);
+    await dbUpdateCase(selCase.id, { documents: selCase.documents });
+    renderCaseDetail();
+
+    openLiveDocumentEditor(0);
+  } catch (err) {
+    console.error("createNewCaseGoogleDoc error:", err);
+    showToast("Failed to create Google Doc: " + err.message, "error");
+  }
+};
+
+window.openLiveDocumentEditor = async function(docIdx) {
+  if (!selCase || !selCase.documents || !selCase.documents[docIdx]) return;
+  currentEditingDocIndex = docIdx;
+  const doc = selCase.documents[docIdx];
+
+  const modal = document.getElementById("live-doc-editor-modal");
+  const titleEl = document.getElementById("ldm-doc-title");
+  const frameContainer = document.getElementById("ldm-frame-container");
+  const newTabBtn = document.getElementById("ldm-open-tab-btn");
+
+  if (!modal || !frameContainer) return;
+
+  try {
+    showToast("Opening collaborative editor...");
+    let liveDocId = doc.liveDocId;
+
+    // If PDF, convert to or find linked live Google Doc master
+    if (!liveDocId) {
+      const u = window._currentUser;
+      const myProf = profiles.find(p => p.ownerUid === u?.uid);
+      const targetFolderId = myProf?.driveFolderId || "root";
+      
+      const docMeta = await convertFileToGoogleDoc(doc.driveFileId, doc.name, targetFolderId);
+      liveDocId = docMeta.id;
+      doc.liveDocId = liveDocId;
+      await dbUpdateCase(selCase.id, { documents: selCase.documents });
+    }
+
+    if (titleEl) titleEl.textContent = doc.name;
+    const editUrl = `https://docs.google.com/document/d/${liveDocId}/edit?embedded=true`;
+    const fullUrl = `https://docs.google.com/document/d/${liveDocId}/edit`;
+
+    if (newTabBtn) newTabBtn.onclick = () => window.open(fullUrl, "_blank");
+
+    frameContainer.innerHTML = `
+      <iframe src="${editUrl}" style="width:100%;height:68vh;border:none;background:#fff;border-radius:0 0 12px 12px" title="Google Docs Collaborative Editor"></iframe>
+    `;
+
+    modal.classList.remove("hidden");
+  } catch (err) {
+    console.error("openLiveDocumentEditor error:", err);
+    showToast("Failed to launch editor: " + err.message, "error");
+  }
+};
+
+window.closeLiveDocumentEditor = function() {
+  const modal = document.getElementById("live-doc-editor-modal");
+  const frameContainer = document.getElementById("ldm-frame-container");
+  if (modal) modal.classList.add("hidden");
+  if (frameContainer) frameContainer.innerHTML = "";
+  currentEditingDocIndex = null;
+};
+
+// ── COMPILE REVISION (v1.0 -> v2.0) & SYNC TO BOTH GOOGLE DRIVES ──
+window.compileDocRevision = async function() {
+  if (currentEditingDocIndex === null || !selCase) return;
+  const doc = selCase.documents[currentEditingDocIndex];
+  if (!doc || !doc.liveDocId) return;
+
+  const btn = document.getElementById("ldm-compile-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Compiling PDF...";
+  }
+
+  try {
+    showToast("Compiling revisions into locked court PDF...");
+
+    const curVersionNum = parseFloat((doc.version || "v1.0").replace("v", "")) || 1.0;
+    const nextVersionNum = (curVersionNum + 1.0).toFixed(1);
+    const nextVersionTag = `v${nextVersionNum}`;
+
+    // 1. Archive previous version in history for court compliance
+    doc.history = doc.history || [];
+    doc.history.unshift({
+      version: doc.version || "v1.0",
+      name: doc.name,
+      driveFileId: doc.driveFileId,
+      driveLink: doc.driveLink,
+      date: doc.date || new Date().toLocaleDateString()
+    });
+
+    // 2. Generate updated PDF name and export
+    const u = window._currentUser;
+    const myProf = profiles.find(p => p.ownerUid === u?.uid);
+    const targetFolderId = myProf?.driveFolderId || "root";
+    const pdfName = doc.name.replace(/\.[^/.]+$/, "").replace(/_v\d+\.\d+/, "") + `_${nextVersionTag}.pdf`;
+
+    const compiledMeta = await exportGoogleDocToPdf(doc.liveDocId, pdfName, targetFolderId);
+
+    // 3. Ensure folder is shared with associate attorneys so both Drives sync
+    if (Array.isArray(selCase.sharedWith)) {
+      for (const uid of selCase.sharedWith) {
+        const associateProf = profiles.find(p => p.ownerUid === uid);
+        if (associateProf && associateProf.email) {
+          await shareDriveFolderWithAssociate(targetFolderId, associateProf.email);
+        }
+      }
+    }
+
+    // 4. Update Document Record
+    doc.name = pdfName;
+    doc.version = nextVersionTag;
+    doc.driveFileId = compiledMeta.id;
+    doc.driveLink = compiledMeta.webViewLink;
+    doc.size = compiledMeta.size;
+    doc.date = new Date().toLocaleDateString();
+
+    await dbUpdateCase(selCase.id, { documents: selCase.documents });
+
+    showToast(`Compiled & synced to both Google Drives as ${nextVersionTag}! ✅`);
+    closeLiveDocumentEditor();
+    renderCaseDetail();
+  } catch (err) {
+    console.error("compileDocRevision error:", err);
+    showToast("Failed to compile revision: " + err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-file-earmark-lock2-fill"></i> Lock &amp; Compile Court PDF`;
+    }
+  }
+};
+
+window.openDocVersionHistory = function(docIdx) {
+  if (!selCase || !selCase.documents || !selCase.documents[docIdx]) return;
+  const doc = selCase.documents[docIdx];
+  const modal = document.getElementById("doc-version-modal");
+  const listEl = document.getElementById("dvm-history-list");
+  const titleEl = document.getElementById("dvm-doc-title");
+
+  if (!modal || !listEl) return;
+  if (titleEl) titleEl.textContent = `Revision History for: ${doc.name}`;
+
+  const history = doc.history || [];
+  if (history.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);padding:20px">No prior revisions recorded. Current version is ${doc.version || 'v1.0'}.</div>`;
+  } else {
+    listEl.innerHTML = history.map(h => `
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px">
+        <div>
+          <span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green)">${h.version}</span>
+          <strong style="margin-left:8px;font-size:13px">${escHtml(h.name)}</strong>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px">Archived filing record · ${h.date}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick='openFilePreview(${JSON.stringify(h).replace(/'/g, "&#39;")})'><i class="bi bi-eye"></i> View</button>
+      </div>
+    `).join("");
+  }
+
+  modal.classList.remove("hidden");
+};
+
+window.closeDocVersionModal = function() {
+  const modal = document.getElementById("doc-version-modal");
+  if (modal) modal.classList.add("hidden");
+};
 
 // CASE STATUS CONFIRMATION
 window.confirmUpdateCaseStatus = function(st) {
@@ -2029,6 +1380,9 @@ async function removeDocFromCase(idx) {
         showToast("Deleting file...");
         if (doc.driveFileId && typeof deleteDriveFile === "function") {
           await deleteDriveFile(doc.driveFileId);
+        }
+        if (doc.liveDocId && doc.liveDocId !== doc.driveFileId && typeof deleteDriveFile === "function") {
+          await deleteDriveFile(doc.liveDocId);
         }
         const updDocs = docs.filter((_, i) => i !== idx);
         await dbUpdateCase(selCase.id, { documents: updDocs });
