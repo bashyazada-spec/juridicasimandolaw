@@ -1365,7 +1365,6 @@ function renderDashboard() {
   if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
   if (statCompletedEl) statCompletedEl.textContent = userCases.filter(c => c.status === "Completed").length;
 
-  // Active cases for dashboard list
   const activeCasesList = userCases.filter(c => c.status === "On-going" || c.status === "Pending");
   const listToDisplay = activeCasesList.length > 0 ? activeCasesList : userCases;
 
@@ -2936,13 +2935,13 @@ function renderNotificationsView() {
     filtered = notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request");
   }
 
-  // Filter Tabs Header Bar inside dropdown
+  // Consistent system pill styling matching the rest of Simando Law
   let tabsHtml = `
-    <div style="display:flex;gap:4px;overflow-x:auto;padding:4px 0 8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">
-      <button onclick="event.stopPropagation(); filterNotifications('all')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='all'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='all'?'#060c13':'var(--text-muted)'}">All (${totalAll})</button>
-      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='deadline'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'#060c13':'var(--text-muted)'}">⚡ Deadlines (${totalDeadlines})</button>
-      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='hearing'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'#060c13':'var(--text-muted)'}">🏛️ Hearings (${totalHearings})</button>
-      ${totalAppts > 0 ? `<button onclick="event.stopPropagation(); filterNotifications('appt')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='appt'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'#060c13':'var(--text-muted)'}">📅 Proposals (${totalAppts})</button>` : ''}
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px 2px;margin-bottom:8px;border-bottom:1px solid var(--border);align-items:center">
+      <button onclick="event.stopPropagation(); filterNotifications('all')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='all'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='all'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-bell"></i> All (${totalAll})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='deadline'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='deadline'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-lightning-charge-fill"></i> Deadlines (${totalDeadlines})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='hearing'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='hearing'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-bank"></i> Hearings (${totalHearings})</button>
+      ${totalAppts > 0 ? `<button onclick="event.stopPropagation(); filterNotifications('appt')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='appt'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='appt'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-calendar-event"></i> Proposals (${totalAppts})</button>` : ''}
     </div>
   `;
 
@@ -2955,7 +2954,6 @@ function renderNotificationsView() {
     const isUnread = n.status === "unread";
     const dateStr = n.createdAt ? new Date(n.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "N/A";
     
-    // Multi-tier deadline & hearing badges
     let tierBadge = "";
     let borderAccent = isUnread ? "var(--gold)" : "var(--border)";
 
