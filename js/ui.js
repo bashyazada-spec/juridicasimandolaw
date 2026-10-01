@@ -568,7 +568,6 @@ function renderMonthlyCalendarGrid() {
   const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
   const startingDayOfWeek = firstDayObj.getDay();
   const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
-  // PROPER 3-ARGUMENT CALL: Gets last day of previous month
   const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
 
   const todayObj = new Date();
@@ -577,7 +576,6 @@ function renderMonthlyCalendarGrid() {
   const todayD = String(todayObj.getDate()).padStart(2, '0');
   const todayStr = `${todayY}-${todayM}-${todayD}`;
 
-  // STABLE EQUAL-WIDTH 7-COLUMN GRID
   gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;margin-bottom:28px";
 
   let html = `
@@ -608,7 +606,6 @@ function renderMonthlyCalendarGrid() {
     const isPast = fullDateStr < todayStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
-    // Compact Truncated Pills (Never push cell widths)
     let eventsMarkup = "";
     if (dayEvents.length > 0) {
       const topTwo = dayEvents.slice(0, 2);
@@ -1339,7 +1336,7 @@ window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (ROSTER REMOVED FOR CLEAN EXPANDED WIDESCREEN)
+//  DASHBOARD (3 BALANCED CASE METRICS ONLY: TOTAL, ACTIVE, RESOLVED)
 // ═══════════════════════════════════════════════════════════════
 let recentCasesExpanded = false;
 
@@ -1359,19 +1356,11 @@ function renderDashboard() {
   }
 
   const userCases = getAccessibleCases();
-  const u = window._currentUser || window._auth?.currentUser;
-  const isAdmin = profiles.some(p => (p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase())) && p.role === "admin");
 
-  const statProfilesCard = document.getElementById("stat-card-profiles");
-  const statProfilesEl = document.getElementById("stat-profiles");
   const statTotalEl = document.getElementById("stat-total");
   const statOngoingEl = document.getElementById("stat-ongoing");
   const statCompletedEl = document.getElementById("stat-completed");
 
-  if (statProfilesCard) {
-    statProfilesCard.style.display = isAdmin ? "block" : "none";
-  }
-  if (statProfilesEl) statProfilesEl.textContent = profiles.length;
   if (statTotalEl) statTotalEl.textContent = userCases.length;
   if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
   if (statCompletedEl) statCompletedEl.textContent = userCases.filter(c => c.status === "Completed").length;
@@ -1790,7 +1779,6 @@ function renderCaseDetail() {
   const isOwner = c.ownerUid === currentUid;
   const isGroupAdmin = profiles.some(p => p.ownerUid === currentUid && p.role === "admin");
   
-  // Shared users in sharedWith or allowedUids receive FULL EDITOR permissions!
   const isShared = (Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid)) ||
                    (Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid));
 
