@@ -430,7 +430,7 @@
 <div id="app">
   <div id="main">
 
-    <!-- ── DASHBOARD ── -->
+    <!-- ── DASHBOARD (BALANCED 3-METRIC CASE SUMMARY) ── -->
     <div id="view-dashboard" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -440,21 +440,17 @@
         <button class="btn btn-primary mt-8" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> Quick Add Case</button>
       </div>
 
-      <!-- Stat Cards -->
-      <div class="grid4" id="mobile-stats-grid" style="grid-template-columns:1fr 1fr !important; gap:10px !important; margin-bottom:18px">
-        <div class="stat-card" id="stat-card-profiles" style="padding:14px;display:none">
-          <div id="stat-profiles" class="stat-number" style="color:var(--gold)">0</div>
-          <div class="stat-label">Attorneys (Admin)</div>
-        </div>
-        <div class="stat-card" style="padding:14px">
+      <!-- Balanced 3-Metric Case Metrics Row (Active Members Completely Removed) -->
+      <div class="grid3" id="mobile-stats-grid" style="display:grid !important; grid-template-columns:repeat(3, minmax(0, 1fr)) !important; gap:12px !important; margin-bottom:20px">
+        <div class="stat-card" style="padding:16px 12px;text-align:center">
           <div id="stat-total" class="stat-number" style="color:var(--violet)">0</div>
           <div class="stat-label">Total Cases</div>
         </div>
-        <div class="stat-card" style="padding:14px">
+        <div class="stat-card" style="padding:16px 12px;text-align:center">
           <div id="stat-ongoing" class="stat-number" style="color:var(--amber)">0</div>
           <div class="stat-label">Active Cases</div>
         </div>
-        <div class="stat-card" style="padding:14px">
+        <div class="stat-card" style="padding:16px 12px;text-align:center">
           <div id="stat-completed" class="stat-number" style="color:var(--green)">0</div>
           <div class="stat-label">Resolved</div>
         </div>
