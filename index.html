@@ -443,7 +443,7 @@
 
     </div>
 
-    <!-- ── DASHBOARD (BALANCED 3-METRIC CASE SUMMARY) ── -->
+    <!-- ── DASHBOARD (3-METRIC SUMMARY + 3-COLUMN WORKSPACE) ── -->
     <div id="view-dashboard" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -468,21 +468,47 @@
         </div>
       </div>
 
-      <!-- Full-Width 2-Column Responsive Split -->
-      <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:24px" id="dash-main-grid">
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <!-- 3-Column Responsive Grid: Recent Cases (5/page) + Agenda + Attorney Roster -->
+      <div class="dash-3col-grid" id="dash-main-grid">
+        
+        <!-- COLUMN 1: RECENT ACTIVE CASES (STRICTLY 5 PER PAGE) -->
+        <div class="card" style="display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
               <i class="bi bi-folder-fill" style="color:var(--gold);font-size:18px"></i> Recent Active Cases
             </div>
-            <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11.5px;padding:4px 10px;border:1px solid var(--border)">
-              <i class="bi bi-arrows-expand"></i> Expand View
-            </button>
+            <span style="font-size:11px;color:var(--gold);font-weight:700">5 cases / page</span>
           </div>
-          <div id="dash-cases"></div>
+
+          <!-- 5-Case List Container -->
+          <div id="dash-cases" style="flex:1"></div>
+
+          <!-- Dashboard Pagination Bar -->
+          <div class="pagination-bar" id="dash-pagination-bar" style="display:flex;align-items:center;justify-content:space-between;padding-top:14px;margin-top:auto;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-dim)">
+            <span id="dash-page-info">Showing 0 cases</span>
+            <div class="pagination-controls" style="display:flex;align-items:center;gap:6px">
+              <button class="page-btn" id="dash-btn-prev" onclick="changeDashPage(-1)"><i class="bi bi-chevron-left"></i></button>
+              <span id="dash-page-num" style="padding:0 8px;font-weight:700;color:var(--text)">Page 1 of 1</span>
+              <button class="page-btn" id="dash-btn-next" onclick="changeDashPage(1)"><i class="bi bi-chevron-right"></i></button>
+            </div>
+          </div>
         </div>
 
-        <div class="card" id="dash-calendar-card"></div>
+        <!-- COLUMN 2: GOOGLE CALENDAR AGENDA -->
+        <div class="card" id="dash-calendar-card" style="display:flex;flex-direction:column"></div>
+
+        <!-- COLUMN 3: ATTORNEY ROSTER CARD -->
+        <div class="card" id="dash-roster-card" style="display:flex;flex-direction:column">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+              <i class="bi bi-people-fill" style="color:var(--gold)"></i> Attorney Roster
+            </div>
+            <span class="badge" id="dash-roster-count-badge" style="background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border)">0 Counsel</span>
+          </div>
+          <input class="field-input" id="dash-profile-search" placeholder="Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px;margin-bottom:12px"/>
+          <div id="dash-profiles" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+
       </div>
     </div>
 
@@ -535,7 +561,7 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES ── -->
+    <!-- ── ALL CASES (STRICTLY 10 PER PAGE) ── -->
     <div id="view-allcases" class="view hidden">
       <div class="page-hdr">
         <div class="page-title">All Cases</div>
@@ -565,7 +591,18 @@
         </div>
       </div>
 
+      <!-- 10 Cases List Container -->
       <div id="all-cases-list"></div>
+
+      <!-- All Cases 10-Item Pagination Bar -->
+      <div class="pagination-bar" id="allcases-pagination-bar" style="display:flex;align-items:center;justify-content:space-between;padding-top:16px;margin-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim)">
+        <span id="allcases-page-info">Showing 0 cases</span>
+        <div class="pagination-controls" style="display:flex;align-items:center;gap:6px">
+          <button class="page-btn" id="allcases-btn-prev" onclick="changeAllCasesPage(-1)"><i class="bi bi-chevron-left"></i></button>
+          <div id="allcases-page-buttons" style="display:flex;gap:4px"></div>
+          <button class="page-btn" id="allcases-btn-next" onclick="changeAllCasesPage(1)"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      </div>
     </div>
 
     <!-- ── GOOGLE DRIVE EXPLORER REPLICA ── -->
