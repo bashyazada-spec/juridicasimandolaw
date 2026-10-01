@@ -265,7 +265,7 @@ a { color: inherit; text-decoration: none; }
   position: fixed !important; 
   top: 22px !important; 
   left: 212px !important; 
-  z-index: 10001 !important; /* Guaranteed highest z-index so it never hides */
+  z-index: 10001 !important;
   background: var(--surface2) !important; 
   border: 1.5px solid var(--gold-border) !important;
   color: var(--gold-light) !important; 
@@ -289,10 +289,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow-gold) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   SIDEBAR MINIMIZATION / COLLAPSE RULES
-   (Applied smoothly when user clicks hamburger or screen is narrow)
-   ═══════════════════════════════════════════════════════════════ */
+/* ── SIDEBAR MINIMIZATION / COLLAPSE RULES ── */
 body.sidebar-collapsed #sidebar {
   width: 72px !important;
   padding-top: 76px !important;
@@ -374,7 +371,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
     align-items: center !important;
   }
 
-  .grid4 {
+  .grid4, .grid3 {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
   }
@@ -394,7 +391,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 }
 
 @media (max-width: 850px) {
-  .grid4 {
+  .grid4, .grid3 {
     grid-template-columns: 1fr !important;
   }
 
@@ -537,6 +534,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent, var(--gold)), transparent); }
 
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
