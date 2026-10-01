@@ -2935,13 +2935,13 @@ function renderNotificationsView() {
     filtered = notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request");
   }
 
-  // Consistent system pill styling matching the rest of Simando Law
+  // FIXED: No icons, single-line text with white-space: nowrap so words never wrap awkwardly
   let tabsHtml = `
     <div style="display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px 2px;margin-bottom:8px;border-bottom:1px solid var(--border);align-items:center">
-      <button onclick="event.stopPropagation(); filterNotifications('all')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='all'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='all'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-bell"></i> All (${totalAll})</button>
-      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='deadline'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='deadline'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-lightning-charge-fill"></i> Deadlines (${totalDeadlines})</button>
-      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='hearing'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='hearing'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-bank"></i> Hearings (${totalHearings})</button>
-      ${totalAppts > 0 ? `<button onclick="event.stopPropagation(); filterNotifications('appt')" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='appt'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='appt'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-calendar-event"></i> Proposals (${totalAppts})</button>` : ''}
+      <button onclick="event.stopPropagation(); filterNotifications('all')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='all'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='all'?'var(--gold-light)':'var(--text-muted)'}">All (${totalAll})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='deadline'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='deadline'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'var(--gold-light)':'var(--text-muted)'}">Deadlines (${totalDeadlines})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='hearing'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='hearing'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'var(--gold-light)':'var(--text-muted)'}">Hearings (${totalHearings})</button>
+      ${totalAppts > 0 ? `<button onclick="event.stopPropagation(); filterNotifications('appt')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='appt'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='appt'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'var(--gold-light)':'var(--text-muted)'}">Proposals (${totalAppts})</button>` : ''}
     </div>
   `;
 
@@ -3268,7 +3268,7 @@ window.loadExplorerFiles = async function() {
     listEl.innerHTML = files.map(f => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
       const icon = isFolder 
-        ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>` 
+        ? `<i class="bi bi-folder-fill" style="color:var(--gold;font-size:32px"></i>` 
         : (f.name.toLowerCase().endsWith(".pdf") 
           ? `<i class="bi bi-file-earmark-pdf-fill" style="color:var(--red);font-size:32px"></i>`
           : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`);
