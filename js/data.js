@@ -72,7 +72,7 @@ async function encryptE2EEString(plainText) {
   if (plainText === null || plainText === undefined) return plainText;
   const str = String(plainText);
   if (!str.trim()) return str;
-  if (str.startsWith("enc:v1:")) return str; // Already encrypted
+  if (str.startsWith("enc:v1:")) return str;
 
   try {
     const key = await getE2EESecretKey();
@@ -104,7 +104,7 @@ async function encryptE2EEString(plainText) {
 
 async function decryptE2EEString(cipherText) {
   if (!cipherText || typeof cipherText !== "string") return cipherText;
-  if (!cipherText.startsWith("enc:v1:")) return cipherText; // Backwards-compatible with unencrypted records
+  if (!cipherText.startsWith("enc:v1:")) return cipherText;
 
   try {
     const key = await getE2EESecretKey();
@@ -134,8 +134,6 @@ async function decryptE2EEString(cipherText) {
   }
 }
 
-// Encrypts all confidential case fields before sending to Firestore
-// Safe against partial updates (never injects undefined fields)
 async function encryptCaseRecordForFirestore(c) {
   if (!c) return c;
   const clone = { ...c };
@@ -166,8 +164,6 @@ async function encryptCaseRecordForFirestore(c) {
   return clone;
 }
 
-// Decrypts confidential case fields upon reading from Firestore
-// Safe against partial objects
 async function decryptCaseRecordFromFirestore(c) {
   if (!c) return c;
   const clone = { ...c };
@@ -218,26 +214,22 @@ async function dbLogAuditAction(action, details = {}) {
 }
 window.dbLogAuditAction = dbLogAuditAction;
 
-// ── STRICT ACCESSIBLE CASES FILTER (DEVELOPER & PRIVACY CONTROLS) ──
+// ── STRICT ACCESSIBLE CASES FILTER ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
   
-  // 1. DEVELOPER ROLE ISOLATION:
-  // Developers only see cases they created themselves for testing.
   if (myProf && myProf.role === "developer") {
     return cases.filter(c => c.ownerUid === u.uid);
   }
 
-  // 2. FIRM ADMINISTRATOR ROLE:
   const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase()));
   if (isFirmAdmin) {
     return cases;
   }
 
-  // 3. ATTORNEY ROLE:
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
@@ -250,7 +242,7 @@ function getAccessibleCases() {
 
 window.getAccessibleCases = getAccessibleCases;
 
-// ── WEB AUDIO SYNTHESIZER FOR NOTIFICATIONS & CHAT ──────────────
+// ── WEB AUDIO SYNTHESIZER ──────────────────────────────────
 let sharedAudioCtx = null;
 
 function getAudioContext() {
@@ -469,9 +461,6 @@ async function dbLoad() {
 
       casesUnsub = window._fbOnSnapshot(caseQuery, async (snap) => {
         const rawCases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // ZERO-KNOWLEDGE DECRYPTION IN MEMORY:
-        // Decrypts scrambled ciphertexts into clear readable case objects
         cases = await Promise.all(rawCases.map(c => decryptCaseRecordFromFirestore(c)));
 
         if (window._notifsLoaded) {
@@ -479,7 +468,7 @@ async function dbLoad() {
         }
         refreshCurrentView();
       }, (error) => {
-        console.warn("Cases real-time connection notice (Query aligned):", error.message);
+        console.warn("Cases real-time connection notice:", error.message);
       });
     }
 
@@ -540,7 +529,11 @@ async function dbLoad() {
   }
 }
 
-// ── DEDUPLICATED AUTOMATIC CASE DUE DATE NOTIFICATION GENERATOR ──
+// ═══════════════════════════════════════════════════════════════
+//  ENHANCED MULTI-TIER PROACTIVE CASE & HEARING NOTIFICATIONS
+//  Structured reminders: 30-Day, 15-Day, 7-Day, 3-Day, Due Today, Overdue
+//  Covers both Pleading Deadlines AND Court Hearing Appearances
+// ═══════════════════════════════════════════════════════════════
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
   if (!activeUid || !window._notifsLoaded) return;
@@ -550,35 +543,124 @@ function checkCaseDueNotifications() {
   today.setHours(0,0,0,0);
 
   userCases.forEach(c => {
-    if (!c.dueDate) return;
-    const dueObj = new Date(c.dueDate + "T00:00:00");
-    const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
+    // ── 1. MONITOR CASE PLEADING DEADLINES (dueDate / docDueDate) ──
+    const targetDue = c.docDueDate || c.dueDate;
+    if (targetDue) {
+      const dueObj = new Date(targetDue + "T00:00:00");
+      const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
 
-    if (diffDays <= 15) {
-      const notifKey = `case_due_${c.id}_${c.dueDate}`;
+      // Determine Multi-Tier Alert Level
+      let tier = null;
+      let title = "";
+      let msgStr = "";
+      let severity = "info";
 
-      const alreadyNotified = notifications.some(n => 
-        (n.type === "case_due" && n.relatedId === c.id && n.notifKey === notifKey) ||
-        (n.notifKey === notifKey)
-      );
-
-      if (!alreadyNotified) {
-        let msgStr = `Case "${c.title}" is due on ${formatDate(c.dueDate)}. Click to view case details.`;
-        if (diffDays < 0) msgStr = `⚠️ OVERDUE: Case "${c.title}" was due on ${formatDate(c.dueDate)}. Click to view details.`;
-        else if (diffDays === 0) msgStr = `⚡ DUE TODAY: Case "${c.title}" has a deadline today! Click to view details.`;
-
-        dbAddNotification({
-          toUid: activeUid,
-          fromUid: "system",
-          fromName: "Simando Law Calendar",
-          title: diffDays <= 0 ? "⚡ Urgent Case Deadline" : "📅 Upcoming Case Due Date",
-          message: msgStr,
-          type: "case_due",
-          relatedId: c.id,
-          notifKey: notifKey,
-          status: "unread"
-        });
+      if (diffDays < 0) {
+        tier = "overdue";
+        severity = "critical";
+        title = `⚠️ OVERDUE PLEADING: ${c.title}`;
+        msgStr = `The pleading deadline (${formatDate(targetDue)}) has elapsed for Case "${c.title}". Please file an urgent motion or extension.`;
+      } else if (diffDays === 0) {
+        tier = "today";
+        severity = "critical";
+        title = `⚡ DEADLINE TODAY: ${c.title}`;
+        msgStr = `Pleading is due for submission TODAY (${formatDate(targetDue)}) for Case "${c.title}".`;
+      } else if (diffDays <= 3) {
+        tier = "3d";
+        severity = "critical";
+        title = `🚨 CRITICAL: 3 DAYS LEFT — ${c.title}`;
+        msgStr = `Pleading due in ${diffDays} day${diffDays !== 1 ? 's' : ''} on ${formatDate(targetDue)} (${c.docType || 'Formal Pleading'}).`;
+      } else if (diffDays <= 7) {
+        tier = "7d";
+        severity = "warning";
+        title = `⚠️ 7-DAY DEADLINE NOTICE: ${c.title}`;
+        msgStr = `Pleading deadline approaching in 1 week (${formatDate(targetDue)}) for Case "${c.title}".`;
+      } else if (diffDays <= 15) {
+        tier = "15d";
+        severity = "notice";
+        title = `📅 15-Day Advance Notice: ${c.title}`;
+        msgStr = `Pleading due on ${formatDate(targetDue)} (${diffDays} days remaining).`;
+      } else if (diffDays <= 30) {
+        tier = "30d";
+        severity = "info";
+        title = `📋 30-Day Reminder: ${c.title}`;
+        msgStr = `Pleading deadline scheduled for ${formatDate(targetDue)}. Review requirements early.`;
       }
+
+      if (tier) {
+        const notifKey = `case_due_${tier}_${c.id}_${targetDue}`;
+        const alreadyNotified = notifications.some(n => n.notifKey === notifKey);
+
+        if (!alreadyNotified) {
+          dbAddNotification({
+            toUid: activeUid,
+            fromUid: "system",
+            fromName: "Simando Law Docket",
+            title: title,
+            message: msgStr,
+            type: "case_due",
+            category: "deadline",
+            severity: severity,
+            diffDays: diffDays,
+            relatedId: c.id,
+            notifKey: notifKey,
+            status: "unread"
+          });
+        }
+      }
+    }
+
+    // ── 2. MONITOR INDIVIDUAL COURT HEARINGS (c.hearings array) ──
+    if (Array.isArray(c.hearings) && c.hearings.length > 0) {
+      c.hearings.forEach(h => {
+        if (!h.date) return;
+        const hearingObj = new Date(h.date + "T00:00:00");
+        const hDiff = Math.ceil((hearingObj - today) / (1000 * 60 * 60 * 24));
+
+        let hTier = null;
+        let hSeverity = "info";
+        let hTitle = "";
+        let hMsg = "";
+
+        if (hDiff === 0) {
+          hTier = "today";
+          hSeverity = "critical";
+          hTitle = `🏛️ COURT HEARING TODAY: ${h.purpose || 'Court Appearance'}`;
+          hMsg = `Hearing scheduled for TODAY at ${h.time || '08:30 AM'} (${c.venue || 'Courtroom'}). Case: "${c.title}".`;
+        } else if (hDiff <= 3 && hDiff > 0) {
+          hTier = "3d";
+          hSeverity = "critical";
+          hTitle = `🚨 HEARING IN ${hDiff} DAYS: ${h.purpose || 'Court Appearance'}`;
+          hMsg = `Court appearance in ${hDiff} day(s) on ${formatDate(h.date)} at ${h.time || '08:30 AM'} at ${c.venue || 'Courtroom'}. Case: "${c.title}".`;
+        } else if (hDiff <= 7 && hDiff > 3) {
+          hTier = "7d";
+          hSeverity = "warning";
+          hTitle = `📅 Hearing Next Week: ${h.purpose || 'Court Appearance'}`;
+          hMsg = `Scheduled court hearing on ${formatDate(h.date)} at ${c.venue || 'Courtroom'}. Case: "${c.title}". Prepare witness affidavits.`;
+        }
+
+        if (hTier) {
+          const hKey = `hearing_${hTier}_${c.id}_${h.id || h.date}`;
+          const alreadyNotified = notifications.some(n => n.notifKey === hKey);
+
+          if (!alreadyNotified) {
+            dbAddNotification({
+              toUid: activeUid,
+              fromUid: "system",
+              fromName: "Courtroom Calendar",
+              title: hTitle,
+              message: hMsg,
+              type: "case_due",
+              category: "hearing",
+              severity: hSeverity,
+              diffDays: hDiff,
+              relatedId: c.id,
+              notifKey: hKey,
+              status: "unread"
+            });
+          }
+        }
+      });
     }
   });
 }
@@ -635,8 +717,6 @@ async function dbDeleteProfile(id) {
   dbLogAuditAction("PROFILE_DELETED", { profileId: id });
 }
 
-// ── ZERO-KNOWLEDGE CASE CREATION ──
-// Scrambles case details before writing to Firestore
 async function dbAddCase(data) {
   if (localMode || !window._db) { 
     data.id = "local_" + Date.now(); 
@@ -653,7 +733,6 @@ async function dbAddCase(data) {
     data.allowedUids.push(uId);
   }
 
-  // Encrypt sensitive fields for cloud storage
   const encryptedPayload = await encryptCaseRecordForFirestore(data);
 
   const ref = await window._fbAddDoc(window._fbCol(window._db,"cases"), encryptedPayload);
@@ -662,8 +741,6 @@ async function dbAddCase(data) {
   return data;
 }
 
-// ── ZERO-KNOWLEDGE CASE UPDATE ──
-// Safe against partial updates, scrambles only defined fields
 async function dbUpdateCase(id, data) {
   if (!localMode && window._db) {
     const encryptedPayload = await encryptCaseRecordForFirestore(data);
