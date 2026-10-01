@@ -1324,7 +1324,10 @@ function executeNavigation(view) {
   showView(view);
   if (view === "dashboard") renderDashboard();
   if (view === "profiles")  renderProfiles();
-  if (view === "allcases")  renderAllCases();
+  if (view === "allcases") {
+    currentAllCasesPage = 1;
+    renderAllCases();
+  }
   if (view === "myprofile") renderMyProfile();
   if (view === "calendar")  renderCalendarView();
   if (view === "notifications") renderNotificationsView();
@@ -1336,16 +1339,13 @@ window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (3 BALANCED CASE METRICS ONLY: TOTAL, ACTIVE, RESOLVED)
+//  DASHBOARD (STRICTLY 5 PER PAGE + ATTORNEY ROSTER CARD)
 // ═══════════════════════════════════════════════════════════════
-let recentCasesExpanded = false;
+let currentDashPage = 1;
+const dashPageSize = 5;
 
-window.toggleExpandRecentCases = function() {
-  recentCasesExpanded = !recentCasesExpanded;
-  const btn = document.getElementById("btn-toggle-expand-cases");
-  if (btn) {
-    btn.innerHTML = recentCasesExpanded ? `<i class="bi bi-arrows-collapse"></i> Collapse` : `<i class="bi bi-arrows-expand"></i> Expand View`;
-  }
+window.changeDashPage = function(delta) {
+  currentDashPage += delta;
   renderDashboard();
 };
 
@@ -1365,42 +1365,68 @@ function renderDashboard() {
   if (statOngoingEl) statOngoingEl.textContent = userCases.filter(c => c.status === "On-going").length;
   if (statCompletedEl) statCompletedEl.textContent = userCases.filter(c => c.status === "Completed").length;
 
+  // Active cases for dashboard list
+  const activeCasesList = userCases.filter(c => c.status === "On-going" || c.status === "Pending");
+  const listToDisplay = activeCasesList.length > 0 ? activeCasesList : userCases;
+
+  const total = listToDisplay.length;
+  const totalPages = Math.max(1, Math.ceil(total / dashPageSize));
+
+  if (currentDashPage > totalPages) currentDashPage = totalPages;
+  if (currentDashPage < 1) currentDashPage = 1;
+
+  const startIdx = (currentDashPage - 1) * dashPageSize;
+  const pagedCases = listToDisplay.slice(startIdx, startIdx + dashPageSize);
+
   const dcEl = document.getElementById("dash-cases");
-  if (!dcEl) return;
+  const pageInfoEl = document.getElementById("dash-page-info");
+  const pageNumEl = document.getElementById("dash-page-num");
+  const prevBtn = document.getElementById("dash-btn-prev");
+  const nextBtn = document.getElementById("dash-btn-next");
 
-  const displayCases = recentCasesExpanded ? userCases : userCases.slice(0, 6);
+  if (dcEl) {
+    dcEl.innerHTML = pagedCases.length === 0
+      ? '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div><div>No active cases yet.</div></div>'
+      : pagedCases.map(c => {
+        const p = profiles.find(x => x.id === c.profileId);
+        const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+        const urgency = daysLeft !== null
+          ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
+           : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
+           : daysLeft <= 7  ? {col:"var(--red)",   label:(daysLeft === 0 ? "Due today" : daysLeft + "d left")}
+           : daysLeft <= 30 ? {col:"var(--amber)", label:daysLeft + "d left"}
+           :                  {col:"var(--text-muted)", label:daysLeft + "d left"})
+          : null;
 
-  dcEl.innerHTML = displayCases.length === 0
-    ? '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div><div>No active cases yet.</div></div>'
-    : displayCases.map(c => {
-      const p = profiles.find(x => x.id === c.profileId);
-      const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-      const urgency = daysLeft !== null
-        ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
-         : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
-         : daysLeft <= 7  ? {col:"var(--red)",   label:(daysLeft === 0 ? "Due today" : daysLeft + "d left")}
-         : daysLeft <= 30 ? {col:"var(--amber)", label:daysLeft + "d left"}
-         :                  {col:"var(--text-muted)", label:daysLeft + "d left"})
-        : null;
+        const categoryBadge = `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);white-space:nowrap;display:inline-block">${escHtml(c.category || "Case")}</span>`;
 
-      const categoryBadge = `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);white-space:nowrap;display:inline-block">${escHtml(c.category || "Case")}</span>`;
-
-      return `<div class="flex-center gap-10" style="padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="openCase('${c.id}')" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
-        ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            ${categoryBadge}
-            <span>${p?.name || ""} · ${c.type || "Litigation"}</span>
+        return `<div class="flex-center gap-10" style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:8px;cursor:pointer;transition:all 0.2s" onclick="openCase('${c.id}')" onmouseenter="this.style.borderColor='var(--gold)'" onmouseleave="this.style.borderColor='var(--border)'">
+          ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${categoryBadge}
+              <span>${p?.name || ""} · ${c.type || "Litigation"}</span>
+            </div>
           </div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-          ${badge(c.status, statusColor(c.status))}
-          ${urgency ? '<span style="font-size:10px;font-weight:600;color:' + urgency.col + '">' + urgency.label + '</span>' : ""}
-        </div>
-      </div>`;
-    }).join("");
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+            ${badge(c.status, statusColor(c.status))}
+            ${urgency ? '<span style="font-size:10px;font-weight:700;color:' + urgency.col + '">' + urgency.label + '</span>' : ""}
+          </div>
+        </div>`;
+      }).join("");
+  }
 
+  if (pageInfoEl) {
+    pageInfoEl.textContent = total === 0 ? "Showing 0 cases" : `Showing ${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total} cases`;
+  }
+  if (pageNumEl) {
+    pageNumEl.textContent = `Page ${currentDashPage} of ${totalPages}`;
+  }
+  if (prevBtn) prevBtn.disabled = currentDashPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentDashPage >= totalPages;
+
+  renderDashProfiles();
   renderQuickAccess();
   if (typeof fetchAndRenderGoogleCalendarEvents === "function") {
     fetchAndRenderGoogleCalendarEvents();
@@ -1408,6 +1434,58 @@ function renderDashboard() {
 }
 
 window.renderDashboard = renderDashboard;
+
+// ═══════════════════════════════════════════════════════════════
+//  ATTORNEY ROSTER ON DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function renderDashProfiles() {
+  const el = document.getElementById("dash-profiles");
+  const countBadge = document.getElementById("dash-roster-count-badge");
+  const searchInp = document.getElementById("dash-profile-search");
+  if (!el) return;
+
+  const q = (searchInp?.value || "").toLowerCase().trim();
+  const u = window._currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  const isFirmAdmin = myProf && myProf.role === "admin";
+
+  let visible = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u?.uid);
+
+  if (q) {
+    visible = visible.filter(p => (p.name || "").toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q));
+  }
+
+  if (countBadge) {
+    countBadge.textContent = `${visible.length} Counsel`;
+  }
+
+  if (visible.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:24px 10px;color:var(--text-muted);font-size:12px">No attorneys found.</div>`;
+    return;
+  }
+
+  const userCases = getAccessibleCases();
+
+  el.innerHTML = visible.map(p => {
+    const caseCount = userCases.filter(c => c.profileId === p.id).length;
+    const isMe = p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase());
+
+    return `
+      <div class="dash-roster-item" onclick="openProfile('${p.id}')">
+        ${avatarDiv(p.name, p.avatarColor, 32, p.photoUrl)}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${escHtml(p.name)} ${isMe ? '<span style="font-size:9px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 4px;border-radius:3px">YOU</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.role || 'Attorney')}</div>
+        </div>
+        <span class="badge" style="background:var(--surface3);color:var(--text-dim);font-size:10px">${caseCount} case${caseCount !== 1 ? 's' : ''}</span>
+      </div>
+    `;
+  }).join("");
+}
+
+window.renderDashProfiles = renderDashProfiles;
 
 // ═══════════════════════════════════════════════════════════════
 //  PROFILES VIEW MODES & ATTORNEY DIRECTORY (DEVELOPERS EXCLUDED)
@@ -1699,8 +1777,21 @@ window.renderProfileDetail = renderProfileDetail;
 window.renderProfileCases = renderProfileCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  ALL CASES VIEW
+//  ALL CASES VIEW (STRICTLY 10 PER PAGE PAGINATION)
 // ═══════════════════════════════════════════════════════════════
+let currentAllCasesPage = 1;
+const allCasesPageSize = 10;
+
+window.changeAllCasesPage = function(delta) {
+  currentAllCasesPage += delta;
+  renderAllCases();
+};
+
+window.goToAllCasesPage = function(pageNum) {
+  currentAllCasesPage = pageNum;
+  renderAllCases();
+};
+
 function renderAllCases() {
   updateAllFilterDropdowns(); 
   const q        = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
@@ -1734,14 +1825,33 @@ function renderAllCases() {
   const countEl = document.getElementById("allcases-count");
   if (countEl) countEl.textContent = `${filtered.length} accessible case${filtered.length !== 1 ? "s" : ""} found`;
 
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / allCasesPageSize));
+
+  if (currentAllCasesPage > totalPages) currentAllCasesPage = totalPages;
+  if (currentAllCasesPage < 1) currentAllCasesPage = 1;
+
+  const startIdx = (currentAllCasesPage - 1) * allCasesPageSize;
+  const pagedCases = filtered.slice(startIdx, startIdx + allCasesPageSize);
+
   const el = document.getElementById("all-cases-list");
+  const pageInfoEl = document.getElementById("allcases-page-info");
+  const buttonsWrap = document.getElementById("allcases-page-buttons");
+  const prevBtn = document.getElementById("allcases-btn-prev");
+  const nextBtn = document.getElementById("allcases-btn-next");
+  const paginationBar = document.getElementById("allcases-pagination-bar");
+
   if (!el) return;
 
   if (filtered.length === 0) {
     el.innerHTML = '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your access permissions or filters.</div></div>';
+    if (paginationBar) paginationBar.style.display = "none";
     return;
   }
-  el.innerHTML = filtered.map(c => {
+
+  if (paginationBar) paginationBar.style.display = "flex";
+
+  el.innerHTML = pagedCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
     return `<div class="case-row" onclick="openCase('${c.id}')">
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
@@ -1759,6 +1869,20 @@ function renderAllCases() {
       </div>
     </div>`;
   }).join("");
+
+  if (pageInfoEl) {
+    pageInfoEl.textContent = `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`;
+  }
+  if (prevBtn) prevBtn.disabled = currentAllCasesPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentAllCasesPage >= totalPages;
+
+  if (buttonsWrap) {
+    let btnsHtml = "";
+    for (let p = 1; p <= totalPages; p++) {
+      btnsHtml += `<button class="page-btn ${p === currentAllCasesPage ? 'active' : ''}" onclick="goToAllCasesPage(${p})">${p}</button>`;
+    }
+    buttonsWrap.innerHTML = btnsHtml;
+  }
 }
 
 window.renderAllCases = renderAllCases;
@@ -2195,7 +2319,10 @@ function refreshFilterTypes(prefix) {
 function onFilterCategoryChange(prefix) {
   refreshFilterTypes(prefix);
   if (prefix === "pd") renderProfileCases();
-  if (prefix === "ac") renderAllCases();
+  if (prefix === "ac") {
+    currentAllCasesPage = 1;
+    renderAllCases();
+  }
 }
 
 window.updateAllFilterDropdowns = updateAllFilterDropdowns;
