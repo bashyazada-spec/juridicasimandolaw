@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <title>Simando Law — Tablet Case Manager</title>
 
 <!-- Match Desktop Google Fonts Configuration -->
@@ -17,6 +17,57 @@
 <script type="module" src="js/firebase-init.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1Pg4DzHgHA10ewwjPBnx+xOo5a8WhZVC8GhnZHA9CoLKSGYlUw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
+  /* ── VIEWPORT HEIGHT LOCK FOR TABLETS (PREVENTS BAR DISAPPEARING) ── */
+  html, body {
+    height: 100% !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    margin: 0 !important;
+    padding-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+  }
+
+  #app {
+    flex: 1 0 auto !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    position: relative !important;
+  }
+
+  #main {
+    flex: 1 0 auto !important;
+    padding-bottom: 90px !important; /* Reserves space so bottom nav never overlaps content */
+    width: 100% !important;
+  }
+
+  /* ── PERMANENT STATIC/FIXED BOTTOM NAV BAR (NEVER DISAPPEARS) ── */
+  .mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 64px !important;
+    background: #0c1826 !important;
+    border-top: 1.5px solid var(--border-soft, #1c2d3f) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    z-index: 99999 !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.65) !important;
+    backdrop-filter: blur(16px) !important;
+    width: 100% !important;
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
   /* ── TABLET SYSTEM HEALTH PILL & MODAL STYLES ── */
   @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
   @keyframes pulseAmber { 0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); } 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); } }
