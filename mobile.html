@@ -106,19 +106,65 @@
     flex-shrink: 0;
   }
 
-  /* Sticky Modal Action Footer */
-  .modal-sticky-footer {
-    position: sticky;
-    bottom: -10px;
-    background: var(--surface);
-    padding-top: 10px;
-    padding-bottom: 4px;
-    border-top: 1px solid var(--border);
+  /* ── ROSTER ITEMS & TOUCH PAGINATION ── */
+  .dash-roster-item {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 14px;
-    z-index: 10;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+  .dash-roster-item:active {
+    border-color: var(--gold-border);
+    background: var(--surface3);
+  }
+
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .page-btn {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .page-btn.active {
+    background: var(--gold);
+    color: #060c13 !important;
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+  .page-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 </style>
 </head>
@@ -493,7 +539,7 @@
 <div id="app">
   <div id="main">
 
-    <!-- ── DASHBOARD (BALANCED 3-METRIC CASE SUMMARY) ── -->
+    <!-- ── DASHBOARD (3-METRIC SUMMARY + 5-CASE PAGINATION + ATTORNEY ROSTER) ── -->
     <div id="view-dashboard" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -503,7 +549,7 @@
         <button class="btn btn-primary mt-8" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> Quick Add Case</button>
       </div>
 
-      <!-- Balanced 3-Metric Case Metrics Row (Active Members Completely Removed) -->
+      <!-- Balanced 3-Metric Case Metrics Row -->
       <div class="grid3" id="mobile-stats-grid" style="display:grid !important; grid-template-columns:repeat(3, minmax(0, 1fr)) !important; gap:8px !important; margin-bottom:18px">
         <div class="stat-card" style="padding:12px 8px;text-align:center">
           <div id="stat-total" class="stat-number" style="color:var(--violet);font-size:24px">0</div>
@@ -519,19 +565,42 @@
         </div>
       </div>
 
-      <!-- Widescreen Mobile Layout: Cases & Agenda -->
+      <!-- Mobile Dashboard Layout: 5 Cases/Page + Agenda + Attorney Roster -->
       <div>
-        <div class="card" style="padding:14px">
+        
+        <!-- CARD 1: RECENT ACTIVE CASES (5 PER PAGE) -->
+        <div class="card" style="padding:14px;display:flex;flex-direction:column">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-folder-fill" style="color:var(--gold)"></i> Recent Active Cases</div>
-            <button id="btn-toggle-expand-cases" class="btn btn-ghost btn-sm" onclick="toggleExpandRecentCases()" style="font-size:11px;padding:3px 8px;width:auto !important;border:1px solid var(--border)">
-              <i class="bi bi-arrows-expand"></i> Expand
-            </button>
+            <span style="font-size:10.5px;color:var(--gold);font-weight:700">5 cases / page</span>
           </div>
+
           <div id="dash-cases"></div>
+
+          <!-- Mobile Dashboard Pagination Bar -->
+          <div class="pagination-bar" id="dash-pagination-bar" style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;margin-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim)">
+            <span id="dash-page-info">Showing 0 cases</span>
+            <div class="pagination-controls" style="display:flex;align-items:center;gap:4px">
+              <button class="page-btn" id="dash-btn-prev" onclick="changeDashPage(-1)"><i class="bi bi-chevron-left"></i></button>
+              <span id="dash-page-num" style="padding:0 4px;font-weight:700;color:var(--text)">Page 1 of 1</span>
+              <button class="page-btn" id="dash-btn-next" onclick="changeDashPage(1)"><i class="bi bi-chevron-right"></i></button>
+            </div>
+          </div>
         </div>
 
+        <!-- CARD 2: GOOGLE CALENDAR AGENDA -->
         <div class="card mt-16" id="dash-calendar-card" style="padding:14px"></div>
+
+        <!-- CARD 3: ATTORNEY ROSTER ON MOBILE DASHBOARD -->
+        <div class="card mt-16" id="dash-roster-card" style="padding:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:14px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-people-fill" style="color:var(--gold)"></i> Attorney Roster</div>
+            <span class="badge" id="dash-roster-count-badge" style="background:rgba(201,165,92,0.12);color:var(--gold-light);border:1px solid var(--gold-border);font-size:9.5px">0 Counsel</span>
+          </div>
+          <input class="field-input mb-12" id="dash-profile-search" placeholder="Search attorney name or role…" oninput="renderDashProfiles()" style="font-size:12px;padding:8px 12px;margin-bottom:10px"/>
+          <div id="dash-profiles" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+
       </div>
     </div>
 
@@ -584,7 +653,7 @@
       </div>
     </div>
 
-    <!-- ── ALL CASES ── -->
+    <!-- ── ALL CASES (STRICTLY 10 PER PAGE) ── -->
     <div id="view-allcases" class="view hidden">
       <div class="page-hdr">
         <div>
@@ -615,6 +684,16 @@
       </div>
 
       <div id="all-cases-list"></div>
+
+      <!-- Mobile All Cases 10-Item Pagination Bar -->
+      <div class="pagination-bar" id="allcases-pagination-bar" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;margin-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-dim);flex-wrap:wrap;gap:8px">
+        <span id="allcases-page-info">Showing 0 cases</span>
+        <div class="pagination-controls" style="display:flex;align-items:center;gap:4px">
+          <button class="page-btn" id="allcases-btn-prev" onclick="changeAllCasesPage(-1)"><i class="bi bi-chevron-left"></i></button>
+          <div id="allcases-page-buttons" style="display:flex;gap:3px"></div>
+          <button class="page-btn" id="allcases-btn-next" onclick="changeAllCasesPage(1)"><i class="bi bi-chevron-right"></i></button>
+        </div>
+      </div>
     </div>
 
     <!-- ── FIRM DRIVE ── -->
@@ -1008,7 +1087,7 @@
           <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
             <i class="bi bi-chat-square-quote-fill" style="color:var(--gold)"></i> Suggest / Report Issue <i class="bi bi-box-arrow-up-right"></i>
           </a>
-          <div style="display:gap:8px;display:flex">
+          <div style="display:flex;gap:8px">
             <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center"><i class="bi bi-file-earmark-lock"></i> Privacy Policy</a>
             <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center"><i class="bi bi-file-earmark-text"></i> Terms</a>
           </div>
