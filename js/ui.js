@@ -2849,8 +2849,15 @@ async function fetchAndRenderGoogleCalendarEvents() {
 window.fetchAndRenderGoogleCalendarEvents = fetchAndRenderGoogleCalendarEvents;
 
 // ═══════════════════════════════════════════════════════════════
-//  NOTIFICATIONS & CHAT DROPDOWNS
+//  ENHANCED NOTIFICATIONS CENTER & FILTERED VIEWS
 // ═══════════════════════════════════════════════════════════════
+let currentNotifFilter = "all";
+
+window.filterNotifications = function(cat) {
+  currentNotifFilter = cat;
+  renderNotificationsView();
+};
+
 window.toggleNotifDropdown = function() {
   const dropdown = document.getElementById("notif-dropdown");
   if (!dropdown) return;
@@ -2915,15 +2922,55 @@ function renderNotificationsView() {
   const listEl = document.getElementById("notifications-list");
   if (!listEl) return;
 
-  if (notifications.length === 0) {
-    listEl.innerHTML = `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px;color:var(--gold)"><i class="bi bi-bell-slash"></i></div><div style="font-size:12px;color:var(--text-muted)">No notifications found.</div></div>`;
+  const totalAll = notifications.length;
+  const totalDeadlines = notifications.filter(n => n.category === "deadline").length;
+  const totalHearings = notifications.filter(n => n.category === "hearing").length;
+  const totalAppts = notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request").length;
+
+  let filtered = notifications;
+  if (currentNotifFilter === "deadline") {
+    filtered = notifications.filter(n => n.category === "deadline");
+  } else if (currentNotifFilter === "hearing") {
+    filtered = notifications.filter(n => n.category === "hearing");
+  } else if (currentNotifFilter === "appt") {
+    filtered = notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request");
+  }
+
+  // Filter Tabs Header Bar inside dropdown
+  let tabsHtml = `
+    <div style="display:flex;gap:4px;overflow-x:auto;padding:4px 0 8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">
+      <button onclick="event.stopPropagation(); filterNotifications('all')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='all'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='all'?'#060c13':'var(--text-muted)'}">All (${totalAll})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='deadline'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'#060c13':'var(--text-muted)'}">⚡ Deadlines (${totalDeadlines})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='hearing'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'#060c13':'var(--text-muted)'}">🏛️ Hearings (${totalHearings})</button>
+      ${totalAppts > 0 ? `<button onclick="event.stopPropagation(); filterNotifications('appt')" style="padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;background:${currentNotifFilter==='appt'?'var(--gold)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'#060c13':'var(--text-muted)'}">📅 Proposals (${totalAppts})</button>` : ''}
+    </div>
+  `;
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = tabsHtml + `<div class="empty-state" style="padding:24px 10px"><div class="empty-state-icon" style="font-size:28px;margin-bottom:6px;color:var(--gold)"><i class="bi bi-bell-slash"></i></div><div style="font-size:12px;color:var(--text-muted)">No ${currentNotifFilter !== 'all' ? currentNotifFilter : ''} notifications found.</div></div>`;
     return;
   }
 
-  listEl.innerHTML = notifications.map(n => {
+  let itemsHtml = filtered.map(n => {
     const isUnread = n.status === "unread";
     const dateStr = n.createdAt ? new Date(n.createdAt).toLocaleDateString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "N/A";
     
+    // Multi-tier deadline & hearing badges
+    let tierBadge = "";
+    let borderAccent = isUnread ? "var(--gold)" : "var(--border)";
+
+    if (n.severity === "critical") {
+      tierBadge = `<span class="badge" style="background:rgba(248,113,113,0.18);color:var(--red);font-size:9.5px"><i class="bi bi-exclamation-octagon-fill"></i> CRITICAL URGENT</span>`;
+      borderAccent = "var(--red)";
+    } else if (n.severity === "warning") {
+      tierBadge = `<span class="badge" style="background:rgba(251,191,36,0.18);color:var(--amber);font-size:9.5px"><i class="bi bi-clock-fill"></i> DEADLINE WARNING</span>`;
+      borderAccent = "var(--amber)";
+    } else if (n.severity === "notice") {
+      tierBadge = `<span class="badge" style="background:rgba(52,211,153,0.18);color:var(--green);font-size:9.5px"><i class="bi bi-calendar2-week"></i> ADVANCE NOTICE</span>`;
+    } else if (n.category === "hearing") {
+      tierBadge = `<span class="badge" style="background:rgba(99,102,241,0.18);color:var(--violet);font-size:9.5px"><i class="bi bi-bank"></i> COURT APPEARANCE</span>`;
+    }
+
     let actions = "";
     if (n.type === "appointment_request" && n.appointmentStatus === "pending") {
       actions = `
@@ -2937,6 +2984,12 @@ function renderNotificationsView() {
       const statusText = (n.appointmentStatus || "").toUpperCase();
       const colorVal = n.appointmentStatus === "accepted" ? "var(--green)" : "var(--red)";
       actions = `<div style="font-size:10px;font-weight:700;color:${colorVal};margin-top:6px"><i class="bi bi-circle-fill" style="font-size:7px;margin-right:3px"></i>PROPOSAL ${statusText}</div>`;
+    } else if (n.type === "case_due" && n.relatedId) {
+      actions = `
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="btn btn-primary btn-sm" style="padding:3px 8px;font-size:10.5px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '', '')"><i class="bi bi-folder-symlink-fill"></i> Open Case File</button>
+        </div>
+      `;
     } else if (n.type === "availability_request" || n.type === "availability_confirmed") {
       actions = `
         <div style="margin-top:8px">
@@ -2946,12 +2999,15 @@ function renderNotificationsView() {
     }
 
     return `
-      <div class="doc-item" onclick="handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')" style="border-left: 3px solid ${isUnread ? 'var(--gold)' : 'var(--border)'}; background: ${isUnread ? 'var(--surface2)' : 'transparent'}; margin-bottom: 8px; padding: 10px 12px; font-size: 12px; cursor: pointer;">
+      <div class="doc-item" onclick="handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')" style="border-left: 3.5px solid ${borderAccent}; background: ${isUnread ? 'var(--surface2)' : 'transparent'}; margin-bottom: 8px; padding: 10px 12px; font-size: 12px; cursor: pointer;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
           <div style="flex:1;min-width:0;padding-right:6px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+              ${tierBadge}
+              <span style="font-size:10px;color:var(--text-dim)">${dateStr}</span>
+            </div>
             <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:2px">${escHtml(n.title)}</div>
             <div style="font-size:11.5px;color:var(--text-muted);line-height:1.4">${escHtml(n.message)}</div>
-            <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${dateStr}</div>
             ${actions}
           </div>
           ${isUnread ? '<button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;flex-shrink:0" onclick="event.stopPropagation(); markNotificationRead(\'' + n.id + '\')">Mark read</button>' : ""}
@@ -2959,6 +3015,8 @@ function renderNotificationsView() {
       </div>
     `;
   }).join("");
+
+  listEl.innerHTML = tabsHtml + itemsHtml;
 }
 
 window.renderNotificationsView = renderNotificationsView;
