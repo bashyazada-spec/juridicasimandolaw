@@ -2935,13 +2935,13 @@ function renderNotificationsView() {
     filtered = notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request");
   }
 
-  // FIXED: No icons, single-line text with white-space: nowrap so words never wrap awkwardly
+  // FIXED: 2x2 grid layout (grid-template-columns: 1fr 1fr), zero icons, white-space: nowrap so words never wrap or split
   let tabsHtml = `
-    <div style="display:flex;gap:6px;overflow-x:auto;padding:6px 2px 10px 2px;margin-bottom:8px;border-bottom:1px solid var(--border);align-items:center">
-      <button onclick="event.stopPropagation(); filterNotifications('all')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='all'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='all'?'var(--gold-light)':'var(--text-muted)'}">All (${totalAll})</button>
-      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='deadline'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='deadline'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'var(--gold-light)':'var(--text-muted)'}">Deadlines (${totalDeadlines})</button>
-      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='hearing'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='hearing'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'var(--gold-light)':'var(--text-muted)'}">Hearings (${totalHearings})</button>
-      ${totalAppts > 0 ? `<button onclick="event.stopPropagation(); filterNotifications('appt')" style="white-space:nowrap;padding:5px 12px;border-radius:8px;font-size:11.5px;font-weight:600;border:1px solid ${currentNotifFilter==='appt'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='appt'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'var(--gold-light)':'var(--text-muted)'}">Proposals (${totalAppts})</button>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 2px 10px 2px;margin-bottom:8px;border-bottom:1px solid var(--border)">
+      <button onclick="event.stopPropagation(); filterNotifications('all')" style="white-space:nowrap;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${currentNotifFilter==='all'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='all'?'var(--gold-light)':'var(--text-muted)'};text-align:center">All (${totalAll})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('deadline')" style="white-space:nowrap;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${currentNotifFilter==='deadline'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='deadline'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='deadline'?'var(--gold-light)':'var(--text-muted)'};text-align:center">Deadlines (${totalDeadlines})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('hearing')" style="white-space:nowrap;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${currentNotifFilter==='hearing'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='hearing'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='hearing'?'var(--gold-light)':'var(--text-muted)'};text-align:center">Hearings (${totalHearings})</button>
+      <button onclick="event.stopPropagation(); filterNotifications('appt')" style="white-space:nowrap;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${currentNotifFilter==='appt'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='appt'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='appt'?'var(--gold-light)':'var(--text-muted)'};text-align:center">Proposals (${totalAppts})</button>
     </div>
   `;
 
@@ -3268,7 +3268,7 @@ window.loadExplorerFiles = async function() {
     listEl.innerHTML = files.map(f => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
       const icon = isFolder 
-        ? `<i class="bi bi-folder-fill" style="color:var(--gold;font-size:32px"></i>` 
+        ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>` 
         : (f.name.toLowerCase().endsWith(".pdf") 
           ? `<i class="bi bi-file-earmark-pdf-fill" style="color:var(--red);font-size:32px"></i>`
           : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`);
