@@ -798,21 +798,11 @@
           <div id="cf-parties-err" class="field-err hidden">At least one party on both sides is required</div>
         </div>
 
-        <!-- 1. PLEADING / DOCUMENT DUE DATE -->
-        <div class="grid2 mb-16">
-          <div>
-            <label class="field-label">Document / Pleading Due Date (Optional)</label>
-            <input type="date" class="field-input" id="cf-due"/>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:3px">Deadline for filing answers, formal offers, or motions</div>
-          </div>
-          <div>
-            <label class="field-label">Document Subtype (Optional)</label>
-            <input class="field-input" id="cf-doc-type" placeholder="e.g. Formal Offer of Evidence"/>
-            <div style="font-size:11px;color:var(--text-dim);margin-top:3px">Pleading or document title</div>
-          </div>
-        </div>
+        <!-- Hidden legacy inputs for compatibility -->
+        <input type="hidden" id="cf-due"/>
+        <input type="hidden" id="cf-doc-type"/>
 
-        <!-- 2. MANDATORY HEARINGS & HISTORY TRACKER -->
+        <!-- 1. MANDATORY HEARINGS & HISTORY TRACKER -->
         <div class="card mb-16" style="background:var(--surface2);padding:18px;border:1.5px solid var(--gold-border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
@@ -862,6 +852,53 @@
             </div>
             <div style="display:flex;justify-content:flex-end">
               <button type="button" class="btn btn-primary btn-sm" onclick="addCaseHearing()"><i class="bi bi-plus-lg"></i> Log Hearing Date</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. DOCUMENT & PLEADING DEADLINES TRACKER (SUB-FORM LOGGER) -->
+        <div class="card mb-16" style="background:var(--surface2);padding:18px;border:1.5px solid var(--gold-border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+              <span><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines</span>
+              <span id="cf-deadline-status-badge" class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:10px">0 LOGGED</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-dim)">
+              Log filing deadlines for Answers, Formal Offers, Motions, and Pleadings.
+            </div>
+          </div>
+
+          <div id="cf-deadlines-list" style="margin-top:10px"></div>
+
+          <!-- Sub-form to Add Document / Pleading Deadline -->
+          <div style="background:var(--surface3);border:1px dashed var(--gold-border);border-radius:10px;padding:14px;margin-top:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:10px"><i class="bi bi-plus-circle"></i> Add Document / Pleading Deadline</div>
+            <div class="grid2 mb-12">
+              <div>
+                <label class="field-label">Filing Deadline Date *</label>
+                <input type="date" class="field-input" id="cf-new-deadline-date"/>
+              </div>
+              <div>
+                <label class="field-label">Document Flow Direction</label>
+                <select class="field-input" id="cf-new-deadline-flow">
+                  <option value="Outbound Motion" selected>Outbound (Firm Filing / Submission)</option>
+                  <option value="Inbound Pleading">Inbound (Opposing Counsel Submission)</option>
+                  <option value="Court Compliance">Court Compliance / Manifestation</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid2 mb-12">
+              <div>
+                <label class="field-label">Document / Pleading Subtype *</label>
+                <input type="text" class="field-input" id="cf-new-deadline-subtype" placeholder="e.g. Formal Offer of Evidence, Answer with Counterclaim"/>
+              </div>
+              <div>
+                <label class="field-label">Remarks / Description</label>
+                <input type="text" class="field-input" id="cf-new-deadline-notes" placeholder="e.g. 15-day inextendible period, attach annexes"/>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button type="button" class="btn btn-primary btn-sm" onclick="addCaseDeadline()"><i class="bi bi-plus-lg"></i> Log Document Deadline</button>
             </div>
           </div>
         </div>
