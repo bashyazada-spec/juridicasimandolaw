@@ -154,6 +154,14 @@ async function encryptCaseRecordForFirestore(c) {
     })));
   }
 
+  if (Array.isArray(clone.deadlines)) {
+    clone.deadlines = await Promise.all(clone.deadlines.map(async d => ({
+      ...d,
+      subtype: d.subtype !== undefined ? await encryptE2EEString(d.subtype) : (d.title ? await encryptE2EEString(d.title) : d.subtype),
+      notes: d.notes !== undefined ? await encryptE2EEString(d.notes) : d.notes
+    })));
+  }
+
   if (Array.isArray(clone.documents)) {
     clone.documents = await Promise.all(clone.documents.map(async d => ({
       ...d,
@@ -181,6 +189,14 @@ async function decryptCaseRecordFromFirestore(c) {
       ...h,
       purpose: h.purpose !== undefined ? await decryptE2EEString(h.purpose) : h.purpose,
       notes: h.notes !== undefined ? await decryptE2EEString(h.notes) : h.notes
+    })));
+  }
+
+  if (Array.isArray(clone.deadlines)) {
+    clone.deadlines = await Promise.all(clone.deadlines.map(async d => ({
+      ...d,
+      subtype: d.subtype !== undefined ? await decryptE2EEString(d.subtype) : (d.title ? await decryptE2EEString(d.title) : d.subtype),
+      notes: d.notes !== undefined ? await decryptE2EEString(d.notes) : d.notes
     })));
   }
 
@@ -543,13 +559,22 @@ function checkCaseDueNotifications() {
   today.setHours(0,0,0,0);
 
   userCases.forEach(c => {
-    // ── 1. MONITOR CASE PLEADING DEADLINES (dueDate / docDueDate) ──
-    const targetDue = c.docDueDate || c.dueDate;
-    if (targetDue) {
-      const dueObj = new Date(targetDue + "T00:00:00");
-      const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
+    // ── 1. MONITOR CASE PLEADING DEADLINES (c.deadlines & c.docDueDate) ──
+    const deadlinesList = Array.isArray(c.deadlines) ? [...c.deadlines] : [];
+    if (c.docDueDate && !deadlinesList.some(d => d.date === c.docDueDate)) {
+      deadlinesList.push({
+        id: "legacy_due",
+        date: c.docDueDate,
+        subtype: c.docType || "Formal Pleading"
+      });
+    }
 
-      // Determine Multi-Tier Alert Level
+    deadlinesList.forEach(d => {
+      if (!d.date) return;
+      const dueObj = new Date(d.date + "T00:00:00");
+      const diffDays = Math.ceil((dueObj - today) / (1000 * 60 * 60 * 24));
+      const pleadingTitle = d.subtype || d.title || c.docType || "Formal Pleading";
+
       let tier = null;
       let title = "";
       let msgStr = "";
@@ -558,37 +583,37 @@ function checkCaseDueNotifications() {
       if (diffDays < 0) {
         tier = "overdue";
         severity = "critical";
-        title = `⚠️ OVERDUE PLEADING: ${c.title}`;
-        msgStr = `The pleading deadline (${formatDate(targetDue)}) has elapsed for Case "${c.title}". Please file an urgent motion or extension.`;
+        title = `⚠️ OVERDUE: ${pleadingTitle}`;
+        msgStr = `The filing deadline (${formatDate(d.date)}) has elapsed for "${c.title}". Please file an urgent motion or extension.`;
       } else if (diffDays === 0) {
         tier = "today";
         severity = "critical";
-        title = `⚡ DEADLINE TODAY: ${c.title}`;
-        msgStr = `Pleading is due for submission TODAY (${formatDate(targetDue)}) for Case "${c.title}".`;
+        title = `⚡ DEADLINE TODAY: ${pleadingTitle}`;
+        msgStr = `Document is due for filing TODAY (${formatDate(d.date)}) for Case "${c.title}".`;
       } else if (diffDays <= 3) {
         tier = "3d";
         severity = "critical";
-        title = `🚨 CRITICAL: 3 DAYS LEFT — ${c.title}`;
-        msgStr = `Pleading due in ${diffDays} day${diffDays !== 1 ? 's' : ''} on ${formatDate(targetDue)} (${c.docType || 'Formal Pleading'}).`;
+        title = `🚨 CRITICAL: 3 DAYS LEFT — ${pleadingTitle}`;
+        msgStr = `Filing due in ${diffDays} day${diffDays !== 1 ? 's' : ''} on ${formatDate(d.date)} for Case "${c.title}".`;
       } else if (diffDays <= 7) {
         tier = "7d";
         severity = "warning";
-        title = `⚠️ 7-DAY DEADLINE NOTICE: ${c.title}`;
-        msgStr = `Pleading deadline approaching in 1 week (${formatDate(targetDue)}) for Case "${c.title}".`;
+        title = `⚠️ 7-DAY DEADLINE: ${pleadingTitle}`;
+        msgStr = `Pleading deadline approaching in 1 week (${formatDate(d.date)}) for Case "${c.title}".`;
       } else if (diffDays <= 15) {
         tier = "15d";
         severity = "notice";
-        title = `📅 15-Day Advance Notice: ${c.title}`;
-        msgStr = `Pleading due on ${formatDate(targetDue)} (${diffDays} days remaining).`;
+        title = `📅 15-Day Notice: ${pleadingTitle}`;
+        msgStr = `Filing deadline on ${formatDate(d.date)} (${diffDays} days remaining) for "${c.title}".`;
       } else if (diffDays <= 30) {
         tier = "30d";
         severity = "info";
-        title = `📋 30-Day Reminder: ${c.title}`;
-        msgStr = `Pleading deadline scheduled for ${formatDate(targetDue)}. Review requirements early.`;
+        title = `📋 30-Day Reminder: ${pleadingTitle}`;
+        msgStr = `Deadline scheduled for ${formatDate(d.date)} on "${c.title}". Review documents early.`;
       }
 
       if (tier) {
-        const notifKey = `case_due_${tier}_${c.id}_${targetDue}`;
+        const notifKey = `case_deadline_${tier}_${c.id}_${d.id || d.date}`;
         const alreadyNotified = notifications.some(n => n.notifKey === notifKey);
 
         if (!alreadyNotified) {
@@ -608,7 +633,7 @@ function checkCaseDueNotifications() {
           });
         }
       }
-    }
+    });
 
     // ── 2. MONITOR INDIVIDUAL COURT HEARINGS (c.hearings array) ──
     if (Array.isArray(c.hearings) && c.hearings.length > 0) {
