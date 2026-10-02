@@ -868,17 +868,17 @@
         <input type="hidden" id="cf-due"/>
         <input type="hidden" id="cf-doc-type"/>
 
-        <!-- 1. MANDATORY HEARINGS & HISTORY TRACKER -->
+        <!-- 1. HEARINGS & HISTORY TRACKER (OPTIONAL) -->
         <div class="card mb-12" style="background:var(--surface2);padding:14px;border:1.5px solid var(--gold-border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Hearings &amp; History *</div>
-            <span id="cf-hearing-status-badge" class="badge" style="background:rgba(248,113,113,0.15);color:var(--red);font-size:9.5px">REQUIRED: 0</span>
+            <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Hearings &amp; History</div>
+            <span id="cf-hearing-status-badge" class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px">0 LOGGED</span>
           </div>
-          <div style="font-size:10.5px;color:var(--text-dim);margin-bottom:8px">At least 1 hearing is required. All past appearances stay logged.</div>
+          <div style="font-size:10.5px;color:var(--text-dim);margin-bottom:8px">Court appearances and hearings stay permanently logged.</div>
 
           <!-- Dynamic List of Hearings -->
           <div id="cf-hearings-list" style="margin-bottom:8px"></div>
-          <div id="cf-hearings-err" class="field-err hidden" style="margin-bottom:8px">At least 1 court hearing date is required.</div>
+          <div id="cf-hearings-err" class="field-err hidden" style="margin-bottom:8px"></div>
 
           <!-- Sub-form to Add Hearing -->
           <div style="background:var(--surface3);border:1px dashed var(--gold-border);border-radius:9px;padding:10px">
@@ -912,7 +912,7 @@
           </div>
         </div>
 
-        <!-- 2. DOCUMENT & PLEADING DEADLINES TRACKER (SUB-FORM LOGGER) -->
+        <!-- 2. DOCUMENT & PLEADING DEADLINES TRACKER (OPTIONAL) -->
         <div class="card mb-12" style="background:var(--surface2);padding:14px;border:1.5px solid var(--gold-border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines</div>
