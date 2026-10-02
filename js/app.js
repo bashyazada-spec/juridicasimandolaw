@@ -79,6 +79,7 @@ window.closeDriveWarningModal = function() {
 //  MANDATORY COURT HEARINGS & TIMELINE TRACKER
 // ═══════════════════════════════════════════════════════════════
 let cfHearings = [];
+window.cfHearings = cfHearings;
 
 function renderCaseHearings() {
   const container = document.getElementById("cf-hearings-list");
@@ -156,6 +157,7 @@ function addCaseHearing() {
     purpose: purposeInp?.value || "Court Hearing",
     notes: (notesInp?.value || "").trim()
   });
+  window.cfHearings = cfHearings;
 
   if (dateInp) dateInp.value = "";
   if (notesInp) notesInp.value = "";
@@ -166,12 +168,119 @@ function addCaseHearing() {
 
 function removeCaseHearing(idx) {
   cfHearings.splice(idx, 1);
+  window.cfHearings = cfHearings;
   renderCaseHearings();
 }
 
 window.renderCaseHearings = renderCaseHearings;
 window.addCaseHearing = addCaseHearing;
 window.removeCaseHearing = removeCaseHearing;
+
+// ═══════════════════════════════════════════════════════════════
+//  DOCUMENT & PLEADING DEADLINES TRACKER (SUB-FORM LOGGER)
+// ═══════════════════════════════════════════════════════════════
+let cfDeadlines = [];
+window.cfDeadlines = cfDeadlines;
+
+function renderCaseDeadlines() {
+  const container = document.getElementById("cf-deadlines-list");
+  const badge = document.getElementById("cf-deadline-status-badge");
+
+  if (!container) return;
+
+  const count = cfDeadlines.length;
+  if (badge) {
+    badge.textContent = `${count} LOGGED`;
+    if (count > 0) {
+      badge.style.background = "rgba(201,165,92,0.2)";
+      badge.style.color = "var(--gold-light)";
+    } else {
+      badge.style.background = "rgba(255,255,255,0.06)";
+      badge.style.color = "var(--text-dim)";
+    }
+  }
+
+  if (count === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:12px">
+        No document deadlines logged for this case. Use the form below to add pleading due dates.
+      </div>
+    `;
+    return;
+  }
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const sorted = [...cfDeadlines].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  container.innerHTML = sorted.map((d, i) => {
+    const isPast = d.date < todayStr;
+    const borderCol = isPast ? "var(--text-dim)" : "var(--gold)";
+
+    return `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-left:4px solid ${borderCol};border-radius:8px;margin-bottom:6px">
+        <div style="flex:1;min-width:0;padding-right:8px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+            <span class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:9.5px">
+              <i class="bi bi-file-earmark-text"></i> Deadline
+            </span>
+            <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(d.date)}</span>
+            <span class="badge" style="background:rgba(129,140,248,0.12);color:var(--violet);font-size:9.5px">${escHtml(d.flow || 'Outbound Motion')}</span>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--gold-light)">${escHtml(d.subtype || d.title || 'Formal Pleading')}</div>
+          ${d.notes ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(d.notes)}"</div>` : ''}
+        </div>
+        <button type="button" onclick="removeCaseDeadline(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px" title="Remove deadline"><i class="bi bi-x-lg"></i></button>
+      </div>
+    `;
+  }).join("");
+}
+
+function addCaseDeadline() {
+  const dateInp = document.getElementById("cf-new-deadline-date");
+  const flowInp = document.getElementById("cf-new-deadline-flow");
+  const subtypeInp = document.getElementById("cf-new-deadline-subtype");
+  const notesInp = document.getElementById("cf-new-deadline-notes");
+
+  const date = (dateInp?.value || "").trim();
+  const subtype = (subtypeInp?.value || "").trim();
+
+  if (!date) {
+    showToast("Please pick a filing deadline date.", "error");
+    if (dateInp) dateInp.focus();
+    return;
+  }
+  if (!subtype) {
+    showToast("Please enter a document or pleading subtype.", "error");
+    if (subtypeInp) subtypeInp.focus();
+    return;
+  }
+
+  cfDeadlines.push({
+    id: "d_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    date: date,
+    flow: flowInp?.value || "Outbound Motion",
+    subtype: subtype,
+    notes: (notesInp?.value || "").trim()
+  });
+  window.cfDeadlines = cfDeadlines;
+
+  if (dateInp) dateInp.value = "";
+  if (subtypeInp) subtypeInp.value = "";
+  if (notesInp) notesInp.value = "";
+
+  renderCaseDeadlines();
+  showToast("Document deadline logged!");
+}
+
+function removeCaseDeadline(idx) {
+  cfDeadlines.splice(idx, 1);
+  window.cfDeadlines = cfDeadlines;
+  renderCaseDeadlines();
+}
+
+window.renderCaseDeadlines = renderCaseDeadlines;
+window.addCaseDeadline = addCaseDeadline;
+window.removeCaseDeadline = removeCaseDeadline;
 
 // ═══════════════════════════════════════════════════════════════
 //  TWO-FACTOR AUTHENTICATION (TOTP ENGINE)
@@ -672,6 +781,9 @@ async function openAddCase() {
   cfPetitioners = selProfile.name ? [selProfile.name] : [];
   cfRespondents = [];
   cfHearings = [];
+  cfDeadlines = [];
+  window.cfHearings = cfHearings;
+  window.cfDeadlines = cfDeadlines;
   
   if (typeof populateCaseSelects === "function") populateCaseSelects(false);
 
@@ -684,6 +796,9 @@ async function openAddCase() {
   setElVal("cf-case-number", "");
   setElVal("cf-doc-type", "");
   setElVal("cf-type-input", "");
+  setElVal("cf-new-deadline-date", "");
+  setElVal("cf-new-deadline-subtype", "");
+  setElVal("cf-new-deadline-notes", "");
   setElVal("cf-status", "On-going");
   if (typeof setVenueValue === "function" && typeof VENUES !== "undefined") setVenueValue(VENUES[0]);
   setElText("drive-status", "");
@@ -702,6 +817,7 @@ async function openAddCase() {
   serializeParties();
   renderPendingDocs();
   renderCaseHearings();
+  renderCaseDeadlines();
   clearCaseErrors();
   updateCfChip();
   if (typeof updateDriveFolderChip === "function") updateDriveFolderChip();
@@ -731,6 +847,19 @@ async function openEditCase() {
       notes: "Migrated schedule date"
     });
   }
+  window.cfHearings = cfHearings;
+
+  cfDeadlines = Array.isArray(c.deadlines) ? [...c.deadlines] : [];
+  if (cfDeadlines.length === 0 && c.docDueDate) {
+    cfDeadlines.push({
+      id: "d_legacy",
+      date: c.docDueDate,
+      flow: "Outbound Motion",
+      subtype: c.docType || "Formal Pleading",
+      notes: "Migrated filing deadline"
+    });
+  }
+  window.cfDeadlines = cfDeadlines;
   
   if (typeof populateCaseSelects === "function") populateCaseSelects(true);
 
@@ -742,6 +871,9 @@ async function openEditCase() {
   setElVal("cf-due", c.docDueDate || c.dueDate || "");
   setElVal("cf-case-number", c.caseNumber || "");
   setElVal("cf-doc-type", c.docType || "");
+  setElVal("cf-new-deadline-date", "");
+  setElVal("cf-new-deadline-subtype", "");
+  setElVal("cf-new-deadline-notes", "");
   if (typeof setVenueValue === "function") setVenueValue(c.venue);
   
   const cat = c.category || CASE_CATEGORIES[0];
@@ -761,6 +893,7 @@ async function openEditCase() {
   serializeParties();
   renderPendingDocs();
   renderCaseHearings();
+  renderCaseDeadlines();
   clearCaseErrors();
   updateCfChip();
   if (typeof updateDriveFolderChip === "function") updateDriveFolderChip();
@@ -1135,7 +1268,6 @@ async function saveCase() {
 
   const title = (document.getElementById("cf-case-title")?.value || "").trim();
   const filed = document.getElementById("cf-filed")?.value || "";
-  const docDue = document.getElementById("cf-due")?.value || "";
   const parties = (document.getElementById("cf-parties")?.value || "").trim();
   const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
   
@@ -1193,21 +1325,25 @@ async function saveCase() {
   const myProf = profiles.find(p => p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase())) || selProfile;
 
   const sortedHearings = [...cfHearings].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sortedDeadlines = [...cfDeadlines].sort((a, b) => new Date(a.date) - new Date(b.date));
+
   const todayStr = new Date().toISOString().split("T")[0];
   const nextHearing = sortedHearings.find(h => h.date >= todayStr) || sortedHearings[sortedHearings.length - 1];
+  const nextDeadline = sortedDeadlines.find(d => d.date >= todayStr) || sortedDeadlines[sortedDeadlines.length - 1];
 
   const data = {
     title,
     filedDate: filed,
     dueDate: nextHearing ? nextHearing.date : null,
-    docDueDate: docDue || null,
+    docDueDate: nextDeadline ? nextDeadline.date : null,
     hearings: sortedHearings,
+    deadlines: sortedDeadlines,
     parties,
     narrative,
     category,
     type: caseType,
     caseNumber: (document.getElementById("cf-case-number")?.value || "").trim(),
-    docType: (document.getElementById("cf-doc-type")?.value || "").trim(),
+    docType: nextDeadline ? (nextDeadline.subtype || nextDeadline.title) : "",
     status: document.getElementById("cf-status")?.value || STATUS_OPTIONS[0],
     venue: getVenueValue(),
     documents: typeof pendingDocs !== "undefined" ? pendingDocs : [],
@@ -1266,7 +1402,7 @@ async function saveCase() {
         savedCaseId = data.id;
       }
 
-      showToast("Case created with hearing timeline logged!");
+      showToast("Case created with hearing & deadline timeline logged!");
     } else {
       if (selCase) {
         data.ownerUid = selCase.ownerUid || u?.uid;
@@ -1282,7 +1418,7 @@ async function saveCase() {
       selCase = { ...selCase, ...data };
       savedCaseId = selCase.id;
 
-      showToast("Case and hearing schedule updated!");
+      showToast("Case, hearings, and pleading deadlines updated!");
     }
 
     // Clear form inputs and temp state completely before navigating
@@ -1293,10 +1429,16 @@ async function saveCase() {
     setElVal("cf-case-number", "");
     setElVal("cf-doc-type", "");
     setElVal("cf-type-input", "");
+    setElVal("cf-new-deadline-date", "");
+    setElVal("cf-new-deadline-subtype", "");
+    setElVal("cf-new-deadline-notes", "");
     pendingDocs = [];
     cfHearings = [];
+    cfDeadlines = [];
     cfPetitioners = [];
     cfRespondents = [];
+    window.cfHearings = cfHearings;
+    window.cfDeadlines = cfDeadlines;
 
     // Turn off submission flag so future forms work normally
     window._isSubmittingCase = false;
