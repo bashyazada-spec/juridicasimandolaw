@@ -46,7 +46,7 @@ function setElVal(id, val) {
 window.setElVal = setElVal;
 
 function clearCaseErrors() {
-  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err", "cf-hearings-err"].forEach(id => {
+  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
@@ -1130,8 +1130,9 @@ function hasUnsavedCaseChanges() {
   const docType = (document.getElementById("cf-doc-type")?.value || "").trim();
   const hasDocs = Array.isArray(pendingDocs) && pendingDocs.length > 0;
   const hasHearings = Array.isArray(window.cfHearings) && window.cfHearings.length > 0;
+  const hasDeadlines = Array.isArray(window.cfDeadlines) && window.cfDeadlines.length > 0;
   
-  return Boolean(title || narrative || caseNumber || docDue || docType || hasDocs || hasHearings);
+  return Boolean(title || narrative || caseNumber || docDue || docType || hasDocs || hasHearings || hasDeadlines);
 }
 
 window.hasUnsavedCaseChanges = hasUnsavedCaseChanges;
@@ -1178,6 +1179,7 @@ function resetCaseFormFields() {
   
   if (typeof pendingDocs !== "undefined") pendingDocs = [];
   if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
+  if (typeof window.cfDeadlines !== "undefined") window.cfDeadlines = [];
   if (typeof window.cfPetitioners !== "undefined") window.cfPetitioners = [];
   if (typeof window.cfRespondents !== "undefined") window.cfRespondents = [];
 
@@ -1512,7 +1514,7 @@ function renderProfiles() {
   const u = window._currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   const isFirmAdmin = myProf && myProf.role === "admin";
 
   const visibleProfiles = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u.uid);
@@ -1960,20 +1962,24 @@ function renderCaseDetail() {
   const hearingsEl = document.getElementById("cd-hearings");
   if (hearingsEl) {
     const hearingsList = Array.isArray(c.hearings) ? c.hearings : [];
+    const deadlinesList = Array.isArray(c.deadlines) ? c.deadlines : [];
     const todayStr = new Date().toISOString().split("T")[0];
-    const sorted = [...hearingsList].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedHearings = [...hearingsList].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedDeadlines = [...deadlinesList].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     let hHtml = `
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
-        <span style="display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearings &amp; History (${sorted.length})</span>
+        <span style="display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Schedule &amp; Timelines</span>
       </div>
     `;
 
-    if (sorted.length === 0) {
-      hHtml += `<div style="font-size:12px;color:var(--text-muted);padding:10px 0">No court appearances on record.</div>`;
+    // Hearings Section
+    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-bank" style="color:var(--green)"></i> Court Hearings (${sortedHearings.length})</div>`;
+    if (sortedHearings.length === 0) {
+      hHtml += `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No court appearances on record.</div>`;
     } else {
-      hHtml += `<div style="display:flex;flex-direction:column;gap:8px">`;
-      sorted.forEach(h => {
+      hHtml += `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">`;
+      sortedHearings.forEach(h => {
         const isPast = h.date < todayStr;
         const badgeMarkup = isPast
           ? `<span class="badge" style="background:rgba(255,255,200,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
@@ -1994,16 +2000,35 @@ function renderCaseDetail() {
       hHtml += `</div>`;
     }
 
-    if (c.docDueDate) {
-      hHtml += `
-        <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div style="font-size:10.5px;color:var(--text-dim);text-transform:uppercase;font-weight:700">Pleading Due Date</div>
-            <div style="font-size:12.5px;color:var(--gold-light);font-weight:600">${formatDate(c.docDueDate)} ${c.docType ? `(${escHtml(c.docType)})` : ''}</div>
+    // Document Deadlines Section
+    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines (${sortedDeadlines.length})</div>`;
+    if (sortedDeadlines.length === 0 && !c.docDueDate) {
+      hHtml += `<div style="font-size:12px;color:var(--text-muted)">No filing deadlines logged.</div>`;
+    } else {
+      hHtml += `<div style="display:flex;flex-direction:column;gap:8px">`;
+      if (c.docDueDate) {
+        hHtml += `
+          <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:9.5px"><i class="bi bi-file-earmark-text-fill"></i> Pleading Due</span>
+              <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(c.docDueDate)}</span>
+            </div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--gold-light)">${escHtml(c.docType || 'Formal Pleading')}</div>
           </div>
-          ${dueBadge(c.docDueDate)}
-        </div>
-      `;
+        `;
+      }
+      sortedDeadlines.forEach(d => {
+        hHtml += `
+          <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:9.5px"><i class="bi bi-file-earmark-text-fill"></i> Filing Deadline</span>
+              <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(d.date)}</span>
+            </div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--gold-light)">${escHtml(d.subtype || d.title || 'Pleading')}</div>
+          </div>
+        `;
+      });
+      hHtml += `</div>`;
     }
 
     hearingsEl.innerHTML = hHtml;
