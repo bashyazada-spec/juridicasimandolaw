@@ -46,7 +46,7 @@ function setElVal(id, val) {
 window.setElVal = setElVal;
 
 function clearCaseErrors() {
-  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err"].forEach(id => {
+  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err", "cf-hearings-err"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
@@ -490,7 +490,7 @@ function renderMonthlyCalendarGrid() {
 
   const filter = isDeveloper ? currentUid : (document.getElementById("calendar-filter-select")?.value || "Everyone");
 
-  let activeCases = cases.filter(c => c.dueDate || (Array.isArray(c.hearings) && c.hearings.length > 0));
+  let activeCases = cases.filter(c => c.dueDate || c.docDueDate || (Array.isArray(c.hearings) && c.hearings.length > 0) || (Array.isArray(c.deadlines) && c.deadlines.length > 0));
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
   if (isDeveloper) {
@@ -519,7 +519,18 @@ function renderMonthlyCalendarGrid() {
     const attorneyInitials = p ? initials(p.name) : "AT";
     const attorneyColor = p?.avatarColor || "#c9a84c";
 
-    if (c.dueDate) {
+    // Legacy dueDate or docDueDate
+    if (c.docDueDate) {
+      if (!eventsByDate[c.docDueDate]) eventsByDate[c.docDueDate] = [];
+      eventsByDate[c.docDueDate].push({ 
+        id: c.id, 
+        type: "deadline",
+        initials: attorneyInitials,
+        avatarColor: attorneyColor,
+        hasAccess: hasAccess,
+        title: hasAccess ? (c.docType || c.title) : "Pleading Due"
+      });
+    } else if (c.dueDate && (!Array.isArray(c.hearings) || !c.hearings.some(h => h.date === c.dueDate))) {
       if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
       eventsByDate[c.dueDate].push({ 
         id: c.id, 
@@ -531,9 +542,27 @@ function renderMonthlyCalendarGrid() {
       });
     }
 
+    // Multiple deadlines array
+    if (Array.isArray(c.deadlines)) {
+      c.deadlines.forEach(d => {
+        if (d.date && d.date !== c.docDueDate) {
+          if (!eventsByDate[d.date]) eventsByDate[d.date] = [];
+          eventsByDate[d.date].push({
+            id: c.id,
+            type: "deadline",
+            initials: attorneyInitials,
+            avatarColor: attorneyColor,
+            hasAccess: hasAccess,
+            title: hasAccess ? (d.subtype || d.title || c.title) : "Pleading Due"
+          });
+        }
+      });
+    }
+
+    // Hearings array
     if (Array.isArray(c.hearings)) {
       c.hearings.forEach(h => {
-        if (h.date && h.date !== c.dueDate) {
+        if (h.date) {
           if (!eventsByDate[h.date]) eventsByDate[h.date] = [];
           eventsByDate[h.date].push({ 
             id: c.id, 
@@ -541,7 +570,7 @@ function renderMonthlyCalendarGrid() {
             initials: attorneyInitials,
             avatarColor: attorneyColor,
             hasAccess: hasAccess,
-            title: hasAccess ? c.title : "Court Appearance"
+            title: hasAccess ? (h.purpose || c.title) : "Court Appearance"
           });
         }
       });
@@ -706,7 +735,12 @@ window.openDateScheduleModal = function(dateStr) {
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
   const isDeveloper = myProf && myProf.role === "developer";
 
-  let dateCases = cases.filter(c => c.dueDate === dateStr || (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)));
+  let dateCases = cases.filter(c => 
+    c.dueDate === dateStr || 
+    c.docDueDate === dateStr || 
+    (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)) ||
+    (Array.isArray(c.deadlines) && c.deadlines.some(d => d.date === dateStr))
+  );
   let dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
 
   if (isDeveloper) {
@@ -719,6 +753,7 @@ window.openDateScheduleModal = function(dateStr) {
   dateCases.forEach(c => {
     const p = profiles.find(x => x.id === c.profileId);
     const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
+    const specificDeadline = Array.isArray(c.deadlines) ? c.deadlines.find(d => d.date === dateStr) : null;
     
     const isOwner = c.ownerUid === currentUid;
     const isExplicitlyShared = Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid);
@@ -727,24 +762,49 @@ window.openDateScheduleModal = function(dateStr) {
     const hasAccess = isOwner || isExplicitlyShared || isAllowed || isFirmAdmin;
 
     const canEditDesc = isOwner;
-    const currentDescription = specificHearing?.notes || specificHearing?.purpose || c.narrative || "";
 
-    allItems.push({
-      id: c.id,
-      kind: "case",
-      hasAccess: hasAccess,
-      badgeColor: "var(--gold)",
-      badgeLabel: specificHearing ? "Court Hearing" : "Pleading Deadline",
-      title: hasAccess ? c.title : `Court Appearance (${p?.name || 'Associate Attorney'})`,
-      time: specificHearing?.time || "8:30 AM",
-      venue: c.venue || "Courtroom / Venue N/A",
-      attorneyName: p?.name || "Attorney",
-      attorneyColor: p?.avatarColor || "#c9a84c",
-      photoUrl: p?.photoUrl || null,
-      description: hasAccess ? currentDescription : "Confidential attorney-client information.",
-      isOwner: isOwner,
-      canEditDesc: canEditDesc
-    });
+    if (specificHearing) {
+      allItems.push({
+        id: c.id,
+        subId: specificHearing.id || "h_default",
+        kind: "hearing",
+        hasAccess: hasAccess,
+        badgeColor: "var(--gold)",
+        badgeLabel: "Court Hearing",
+        title: hasAccess ? (specificHearing.purpose || c.title) : `Court Appearance (${p?.name || 'Associate Attorney'})`,
+        time: specificHearing.time || "8:30 AM",
+        venue: c.venue || "Courtroom / Venue N/A",
+        attorneyName: p?.name || "Attorney",
+        attorneyColor: p?.avatarColor || "#c9a84c",
+        photoUrl: p?.photoUrl || null,
+        description: hasAccess ? (specificHearing.notes || specificHearing.purpose || c.narrative || "") : "Confidential attorney-client information.",
+        isOwner: isOwner,
+        canEditDesc: canEditDesc
+      });
+    }
+
+    if (specificDeadline || c.docDueDate === dateStr) {
+      const dSubtype = specificDeadline ? (specificDeadline.subtype || specificDeadline.title) : (c.docType || "Formal Pleading");
+      const dNotes = specificDeadline ? (specificDeadline.notes || "") : "";
+
+      allItems.push({
+        id: c.id,
+        subId: specificDeadline?.id || "d_default",
+        kind: "deadline",
+        hasAccess: hasAccess,
+        badgeColor: "var(--violet)",
+        badgeLabel: "Pleading Deadline",
+        title: hasAccess ? `${c.title} — ${dSubtype}` : `Filing Deadline (${p?.name || 'Associate Attorney'})`,
+        time: "Filing Deadline",
+        venue: c.venue || "Courtroom / Venue N/A",
+        attorneyName: p?.name || "Attorney",
+        attorneyColor: p?.avatarColor || "#818cf8",
+        photoUrl: p?.photoUrl || null,
+        description: hasAccess ? dNotes : "Confidential attorney-client filing deadline.",
+        isOwner: isOwner,
+        canEditDesc: canEditDesc
+      });
+    }
   });
 
   dateAppts.forEach(a => {
@@ -758,7 +818,7 @@ window.openDateScheduleModal = function(dateStr) {
       id: a.id,
       kind: isBusy ? "busy" : "appt",
       hasAccess: true,
-      badgeColor: isBusy ? "var(--red)" : "var(--violet)",
+      badgeColor: isBusy ? "var(--red)" : "var(--green)",
       badgeLabel: isBusy ? "Out of Office / Busy" : "Appointment",
       title: a.title,
       time: a.time || "All Day",
@@ -785,7 +845,7 @@ window.openDateScheduleModal = function(dateStr) {
     listEl.innerHTML = allItems.map(item => {
       let actionMarkup = "";
 
-      if (item.kind === "case") {
+      if (item.kind === "hearing" || item.kind === "deadline") {
         if (item.hasAccess) {
           actionMarkup = `
             <div style="display:flex;justify-content:flex-end;margin-top:10px">
@@ -818,9 +878,9 @@ window.openDateScheduleModal = function(dateStr) {
             <label style="font-size:11px;text-transform:uppercase;color:var(--gold-light);font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:6px">
               <i class="bi bi-card-text"></i> Description:
             </label>
-            <textarea id="dsm-desc-${item.id}" class="field-input" style="font-size:12.5px;min-height:56px;padding:8px 10px;resize:vertical" placeholder="Enter schedule description...">${escHtml(item.description || "")}</textarea>
+            <textarea id="dsm-desc-${item.id}-${item.subId || ''}" class="field-input" style="font-size:12.5px;min-height:56px;padding:8px 10px;resize:vertical" placeholder="Enter schedule description...">${escHtml(item.description || "")}</textarea>
             <div style="display:flex;justify-content:flex-end;margin-top:8px">
-              <button class="btn btn-primary btn-sm" type="button" onclick="saveEventInlineDescription('${item.kind}', '${item.id}', '${dateStr}')" style="font-size:11.5px;padding:4px 12px">
+              <button class="btn btn-primary btn-sm" type="button" onclick="saveEventInlineDescription('${item.kind}', '${item.id}', '${dateStr}', '${item.subId || ''}')" style="font-size:11.5px;padding:4px 12px">
                 <i class="bi bi-check2"></i> Save Description
               </button>
             </div>
@@ -870,8 +930,8 @@ window.closeDateScheduleModal = function() {
 };
 
 // ── STRICT 1-PERSON OWNERSHIP: SAVE INLINE DESCRIPTION ────────
-window.saveEventInlineDescription = async function(kind, id, dateStr) {
-  const descEl = document.getElementById(`dsm-desc-${id}`);
+window.saveEventInlineDescription = async function(kind, id, dateStr, subId) {
+  const descEl = document.getElementById(`dsm-desc-${id}-${subId || ''}`) || document.getElementById(`dsm-desc-${id}`);
   if (!descEl) return;
   const newDesc = descEl.value.trim();
 
@@ -879,7 +939,7 @@ window.saveEventInlineDescription = async function(kind, id, dateStr) {
   const currentUid = u?.uid || "";
 
   try {
-    if (kind === "case") {
+    if (kind === "hearing" || kind === "case") {
       const c = cases.find(x => x.id === id);
       if (!c) throw new Error("Case file not found.");
 
@@ -891,7 +951,7 @@ window.saveEventInlineDescription = async function(kind, id, dateStr) {
       if (typeof showToast === "function") showToast("Saving description...");
 
       if (Array.isArray(c.hearings) && c.hearings.length > 0) {
-        const hIdx = c.hearings.findIndex(h => h.date === dateStr);
+        const hIdx = c.hearings.findIndex(h => h.id === subId || h.date === dateStr);
         if (hIdx >= 0) {
           c.hearings[hIdx].notes = newDesc;
         } else {
@@ -903,9 +963,27 @@ window.saveEventInlineDescription = async function(kind, id, dateStr) {
             notes: newDesc
           });
         }
-        await dbUpdateCase(c.id, { hearings: c.hearings, narrative: newDesc });
+        await dbUpdateCase(c.id, { hearings: c.hearings });
       } else {
         await dbUpdateCase(c.id, { narrative: newDesc });
+      }
+    } else if (kind === "deadline") {
+      const c = cases.find(x => x.id === id);
+      if (!c) throw new Error("Case file not found.");
+
+      if (c.ownerUid !== currentUid) {
+        showToast("You can only edit descriptions on your own cases.", "error");
+        return;
+      }
+
+      if (typeof showToast === "function") showToast("Saving deadline description...");
+
+      if (Array.isArray(c.deadlines) && c.deadlines.length > 0) {
+        const dIdx = c.deadlines.findIndex(d => d.id === subId || d.date === dateStr);
+        if (dIdx >= 0) {
+          c.deadlines[dIdx].notes = newDesc;
+        }
+        await dbUpdateCase(c.id, { deadlines: c.deadlines });
       }
     } else if (kind === "appt" || kind === "busy") {
       const a = appointments.find(x => x.id === id);
@@ -1126,13 +1204,13 @@ function hasUnsavedCaseChanges() {
   const title = (document.getElementById("cf-case-title")?.value || "").trim();
   const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
   const caseNumber = (document.getElementById("cf-case-number")?.value || "").trim();
-  const docDue = (document.getElementById("cf-due")?.value || "").trim();
-  const docType = (document.getElementById("cf-doc-type")?.value || "").trim();
+  const newDeadlineDate = (document.getElementById("cf-new-deadline-date")?.value || "").trim();
+  const newDeadlineSubtype = (document.getElementById("cf-new-deadline-subtype")?.value || "").trim();
   const hasDocs = Array.isArray(pendingDocs) && pendingDocs.length > 0;
   const hasHearings = Array.isArray(window.cfHearings) && window.cfHearings.length > 0;
   const hasDeadlines = Array.isArray(window.cfDeadlines) && window.cfDeadlines.length > 0;
   
-  return Boolean(title || narrative || caseNumber || docDue || docType || hasDocs || hasHearings || hasDeadlines);
+  return Boolean(title || narrative || caseNumber || newDeadlineDate || newDeadlineSubtype || hasDocs || hasHearings || hasDeadlines);
 }
 
 window.hasUnsavedCaseChanges = hasUnsavedCaseChanges;
@@ -1176,6 +1254,9 @@ function resetCaseFormFields() {
   setElVal("cf-case-number", "");
   setElVal("cf-doc-type", "");
   setElVal("cf-type-input", "");
+  setElVal("cf-new-deadline-date", "");
+  setElVal("cf-new-deadline-subtype", "");
+  setElVal("cf-new-deadline-notes", "");
   
   if (typeof pendingDocs !== "undefined") pendingDocs = [];
   if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
@@ -1390,7 +1471,8 @@ function renderDashboard() {
       ? '<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-folder2-open"></i></div><div>No active cases yet.</div></div>'
       : pagedCases.map(c => {
         const p = profiles.find(x => x.id === c.profileId);
-        const daysLeft = c.dueDate ? Math.ceil((new Date(c.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+        const targetDue = c.dueDate || c.docDueDate;
+        const daysLeft = targetDue ? Math.ceil((new Date(targetDue) - new Date()) / (1000 * 60 * 60 * 24)) : null;
         const urgency = daysLeft !== null
           ? (daysLeft < 0   ? {col:"var(--red)",   label:"Overdue"}
            : daysLeft === 0  ? {col:"var(--red)",   label:"Due today"}
@@ -1769,7 +1851,7 @@ function renderProfileCases() {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${badge(c.status, statusColor(c.status))}
-        ${dueBadge(c.dueDate)}
+        ${dueBadge(c.dueDate || c.docDueDate)}
       </div>
     </div>`).join("");
 }
@@ -1866,7 +1948,7 @@ function renderAllCases() {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
         ${badge(c.status, statusColor(c.status))}
-        ${dueBadge(c.dueDate)}
+        ${dueBadge(c.dueDate || c.docDueDate)}
       </div>
     </div>`;
   }).join("");
@@ -1969,11 +2051,11 @@ function renderCaseDetail() {
 
     let hHtml = `
       <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
-        <span style="display:flex;align-items:center;gap:6px"><i class="bi bi-bank" style="color:var(--gold)"></i> Schedule &amp; Timelines</span>
+        <span style="display:flex;align-items:center;gap:6px"><i class="bi bi-calendar-event" style="color:var(--gold)"></i> Schedule &amp; Timelines</span>
       </div>
     `;
 
-    // Hearings Section
+    // 1. Separate Section: Court Hearings
     hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-bank" style="color:var(--green)"></i> Court Hearings (${sortedHearings.length})</div>`;
     if (sortedHearings.length === 0) {
       hHtml += `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No court appearances on record.</div>`;
@@ -2000,13 +2082,17 @@ function renderCaseDetail() {
       hHtml += `</div>`;
     }
 
-    // Document Deadlines Section
-    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines (${sortedDeadlines.length})</div>`;
-    if (sortedDeadlines.length === 0 && !c.docDueDate) {
+    // 2. Separate Section: Document & Pleading Deadlines (No combined timeline)
+    const hasLegacyDue = Boolean(c.docDueDate);
+    const totalDeadlinesCount = sortedDeadlines.length + (hasLegacyDue && !sortedDeadlines.some(d => d.date === c.docDueDate) ? 1 : 0);
+
+    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines (${totalDeadlinesCount})</div>`;
+    
+    if (totalDeadlinesCount === 0) {
       hHtml += `<div style="font-size:12px;color:var(--text-muted)">No filing deadlines logged.</div>`;
     } else {
       hHtml += `<div style="display:flex;flex-direction:column;gap:8px">`;
-      if (c.docDueDate) {
+      if (c.docDueDate && !sortedDeadlines.some(d => d.date === c.docDueDate)) {
         hHtml += `
           <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
@@ -2023,8 +2109,10 @@ function renderCaseDetail() {
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
               <span class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:9.5px"><i class="bi bi-file-earmark-text-fill"></i> Filing Deadline</span>
               <span style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(d.date)}</span>
+              ${d.flow ? `<span class="badge" style="background:rgba(129,140,248,0.12);color:var(--violet);font-size:9px">${escHtml(d.flow)}</span>` : ''}
             </div>
             <div style="font-size:12.5px;font-weight:600;color:var(--gold-light)">${escHtml(d.subtype || d.title || 'Pleading')}</div>
+            ${d.notes ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(d.notes)}"</div>` : ''}
           </div>
         `;
       });
@@ -2267,8 +2355,8 @@ window.openCurrentProfile = openCurrentProfile;
 function sortCasesByDue(arr, dir) {
   if (dir === "none") return arr;
   return [...arr].sort((a, b) => {
-    const da = a.dueDate ? new Date(a.dueDate) : null;
-    const db = b.dueDate ? new Date(b.dueDate) : null;
+    const da = (a.dueDate || a.docDueDate) ? new Date(a.dueDate || a.docDueDate) : null;
+    const db = (b.dueDate || b.docDueDate) ? new Date(b.dueDate || b.docDueDate) : null;
     if (!da && !db) return 0;
     if (!da) return 1;
     if (!db) return -1;
@@ -2960,7 +3048,6 @@ function renderNotificationsView() {
     filtered = notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request");
   }
 
-  // FIXED: 2x2 grid layout (grid-template-columns: 1fr 1fr), zero icons, white-space: nowrap so words never wrap or split
   let tabsHtml = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 2px 10px 2px;margin-bottom:8px;border-bottom:1px solid var(--border)">
       <button onclick="event.stopPropagation(); filterNotifications('all')" style="white-space:nowrap;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid ${currentNotifFilter==='all'?'var(--gold)':'var(--border)'};cursor:pointer;background:${currentNotifFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${currentNotifFilter==='all'?'var(--gold-light)':'var(--text-muted)'};text-align:center">All (${totalAll})</button>
