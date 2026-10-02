@@ -802,12 +802,12 @@
         <input type="hidden" id="cf-due"/>
         <input type="hidden" id="cf-doc-type"/>
 
-        <!-- 1. MANDATORY HEARINGS & HISTORY TRACKER -->
+        <!-- 1. HEARINGS & HISTORY TRACKER (OPTIONAL) -->
         <div class="card mb-16" style="background:var(--surface2);padding:18px;border:1.5px solid var(--gold-border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
               <span><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearing Dates &amp; History</span>
-              <span id="cf-hearing-status-badge" class="badge" style="background:rgba(248,113,113,0.15);color:var(--red);font-size:10px">REQUIRED: AT LEAST 1</span>
+              <span id="cf-hearing-status-badge" class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:10px">0 LOGGED</span>
             </div>
             <div style="font-size:11.5px;color:var(--text-dim)">
               All hearings remain permanently logged as a chronological case history.
@@ -815,7 +815,7 @@
           </div>
 
           <div id="cf-hearings-list" style="margin-top:10px"></div>
-          <div id="cf-hearings-err" class="field-err hidden" style="margin:8px 0">At least one court hearing date is required before saving.</div>
+          <div id="cf-hearings-err" class="field-err hidden" style="margin:8px 0"></div>
 
           <!-- Sub-form to Add Hearing -->
           <div style="background:var(--surface3);border:1px dashed var(--gold-border);border-radius:10px;padding:14px;margin-top:12px">
@@ -856,7 +856,7 @@
           </div>
         </div>
 
-        <!-- 2. DOCUMENT & PLEADING DEADLINES TRACKER (SUB-FORM LOGGER) -->
+        <!-- 2. DOCUMENT & PLEADING DEADLINES TRACKER (OPTIONAL) -->
         <div class="card mb-16" style="background:var(--surface2);padding:18px;border:1.5px solid var(--gold-border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
