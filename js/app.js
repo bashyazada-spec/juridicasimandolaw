@@ -76,7 +76,7 @@ window.closeDriveWarningModal = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  MANDATORY COURT HEARINGS & TIMELINE TRACKER
+//  COURT HEARINGS & TIMELINE TRACKER (OPTIONAL)
 // ═══════════════════════════════════════════════════════════════
 let cfHearings = [];
 window.cfHearings = cfHearings;
@@ -90,22 +90,22 @@ function renderCaseHearings() {
 
   const count = cfHearings.length;
   if (badge) {
+    badge.textContent = `${count} LOGGED`;
     if (count > 0) {
-      badge.textContent = `✓ ${count} HEARING${count !== 1 ? 'S' : ''} RECORDED`;
-      badge.style.background = "rgba(52,211,153,0.15)";
+      badge.style.background = "rgba(52,211,153,0.18)";
       badge.style.color = "var(--green)";
-      if (errEl) errEl.classList.add("hidden");
     } else {
-      badge.textContent = "REQUIRED: 0 ADDED";
-      badge.style.background = "rgba(248,113,113,0.15)";
-      badge.style.color = "var(--red)";
+      badge.style.background = "rgba(255,255,255,0.06)";
+      badge.style.color = "var(--text-dim)";
     }
   }
+
+  if (errEl) errEl.classList.add("hidden");
 
   if (count === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:12px">
-        <i class="bi bi-exclamation-circle-fill" style="color:var(--amber);margin-right:4px"></i> No hearing dates logged. Please add at least <strong>1 hearing date</strong> below.
+        No court hearing dates logged. You can add scheduled or past court appearances below.
       </div>
     `;
     return;
@@ -177,7 +177,7 @@ window.addCaseHearing = addCaseHearing;
 window.removeCaseHearing = removeCaseHearing;
 
 // ═══════════════════════════════════════════════════════════════
-//  DOCUMENT & PLEADING DEADLINES TRACKER (SUB-FORM LOGGER)
+//  DOCUMENT & PLEADING DEADLINES TRACKER (OPTIONAL)
 // ═══════════════════════════════════════════════════════════════
 let cfDeadlines = [];
 window.cfDeadlines = cfDeadlines;
@@ -203,7 +203,7 @@ function renderCaseDeadlines() {
   if (count === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:14px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--text-muted);font-size:12px">
-        No document deadlines logged for this case. Use the form below to add pleading due dates.
+        No document deadlines logged for this case. You can add pleading due dates below.
       </div>
     `;
     return;
@@ -1291,13 +1291,6 @@ async function saveCase() {
     if (err) err.classList.remove("hidden");
     valid = false;
   }
-  // MANDATORY: At least 1 hearing date required
-  if (cfHearings.length === 0) {
-    const hErr = document.getElementById("cf-hearings-err");
-    if (hErr) hErr.classList.remove("hidden");
-    showToast("At least one court hearing date is required before saving.", "error");
-    valid = false;
-  }
   if (!narrative) {
     const err = document.getElementById("cf-narrative-err");
     const inp = document.getElementById("cf-narrative");
@@ -1402,7 +1395,7 @@ async function saveCase() {
         savedCaseId = data.id;
       }
 
-      showToast("Case created with hearing & deadline timeline logged!");
+      showToast("Case created successfully!");
     } else {
       if (selCase) {
         data.ownerUid = selCase.ownerUid || u?.uid;
@@ -1418,7 +1411,7 @@ async function saveCase() {
       selCase = { ...selCase, ...data };
       savedCaseId = selCase.id;
 
-      showToast("Case, hearings, and pleading deadlines updated!");
+      showToast("Case details updated!");
     }
 
     // Clear form inputs and temp state completely before navigating
