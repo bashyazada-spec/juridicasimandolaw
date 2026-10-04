@@ -93,7 +93,7 @@
     </div>
     <div style="flex:1">
       <div class="nav-section">Controls</div>
-      <button class="nav-btn active"><i class="bi bi-people-fill" style="color:var(--gold);margin-right:8px"></i> Attorney Directory</button>
+      <button class="nav-btn active"><i class="bi bi-people-fill" style="color:var(--gold);margin-right:8px"></i> Directory</button>
     </div>
     <div class="sidebar-footer">
       <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:12px;color:var(--gold-light)"><i class="bi bi-arrow-return-left"></i> Return to CMS</a>
@@ -109,18 +109,18 @@
       <div style="display:flex;align-items:center;gap:10px">
         <i class="bi bi-shield-lock-fill" style="color:var(--cyan);font-size:18px"></i>
         <div>
-          <span style="font-weight:700;color:var(--cyan)">Developer Diagnostic Mode (Read-Only)</span>
-          <div style="font-size:11.5px;color:var(--text-muted)">You can inspect the roster layout and components for testing. Creating, editing, and deleting profiles is disabled.</div>
+          <span style="font-weight:700;color:var(--cyan)">Developer Diagnostic Sandbox (Isolated Mode)</span>
+          <div style="font-size:11.5px;color:var(--text-muted)">You can inspect sandbox layouts and components. Real attorney profiles are hidden to preserve firm confidentiality.</div>
         </div>
       </div>
-      <span class="badge" style="background:rgba(34,211,238,0.15);color:var(--cyan);border:1px solid rgba(34,211,238,0.3)">DEBUG ACCESS</span>
+      <span class="badge" style="background:rgba(34,211,238,0.15);color:var(--cyan);border:1px solid rgba(34,211,238,0.3)">SANDBOX ONLY</span>
     </div>
 
     <!-- ATTORNEY DATABASE PANEL -->
     <div id="tab-attorneys" class="admin-tab">
       <div class="page-hdr">
         <div>
-          <div class="page-title">Attorney Directory</div>
+          <div class="page-title" id="admin-directory-title">Attorney Directory</div>
           <div class="page-sub" id="admin-directory-sub">Managing firm access profiles &amp; administrative credentials</div>
         </div>
         <button class="btn btn-primary" id="btn-open-create-account" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
@@ -130,7 +130,7 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Attorney</th>
+                <th>Profile Name</th>
                 <th>Email Address</th>
                 <th>Role / Privileges</th>
                 <th>Google Drive Storage</th>
@@ -346,7 +346,7 @@
           if (loader) loader.style.display = "none";
 
           if (isDeveloperSession) {
-            showToast("Developer Mode: Read-Only Access", "info");
+            showToast("Developer Sandbox Mode (Isolated)", "info");
             applyDeveloperRestrictions();
           } else {
             showToast("Admin Session Verified");
@@ -367,9 +367,12 @@
     const banner = document.getElementById("dev-readonly-banner");
     const createBtn = document.getElementById("btn-open-create-account");
     const subTag = document.getElementById("admin-sub-tag");
+    const dirTitle = document.getElementById("admin-directory-title");
 
     if (banner) banner.style.display = "flex";
     if (subTag) subTag.innerHTML = `Developer Testing Sandbox 🛠️`;
+    if (dirTitle) dirTitle.textContent = "Developer Sandbox Directory";
+
     if (createBtn) {
       createBtn.disabled = true;
       createBtn.style.opacity = "0.4";
@@ -393,10 +396,22 @@
   async function loadDirectoryProfiles() {
     try {
       const pSnap = await getDocs(collection(db, "profiles"));
-      adminProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const allProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // DEVELOPER ISOLATION: Developers can only see other developers in the directory; cannot see real attorneys
+      if (isDeveloperSession) {
+        adminProfiles = allProfiles.filter(p => p.role === "developer");
+      } else {
+        adminProfiles = allProfiles;
+      }
+
       const subEl = document.getElementById("admin-directory-sub");
       if (subEl) {
-        subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
+        if (isDeveloperSession) {
+          subEl.textContent = `${adminProfiles.length} developer sandbox account${adminProfiles.length !== 1 ? 's' : ''} (Attorney profiles hidden)`;
+        } else {
+          subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
+        }
       }
     } catch (err) {
       console.error("Error loading directory:", err);
@@ -409,7 +424,7 @@
     if (!tbody) return;
 
     if (adminProfiles.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No active profiles found.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">${isDeveloperSession ? 'No other developer sandbox accounts found.' : 'No active profiles found.'}</td></tr>`;
       return;
     }
 
@@ -436,7 +451,7 @@
       if (isDeveloperSession) {
         actionControlsMarkup = `
           <div class="action-btn-group">
-            <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid var(--border)">
+            <span class="badge" style="background:rgba(34,211,238,0.08);color:var(--cyan);border:1px solid rgba(34,211,238,0.25)">
               <i class="bi bi-lock-fill"></i> Read Only
             </span>
           </div>
@@ -476,7 +491,7 @@
 
   window.openAdminEditModal = function(profileId) {
     if (isDeveloperSession) {
-      showToast("Developers cannot edit attorney profiles.", "error");
+      showToast("Developers cannot edit profiles.", "error");
       return;
     }
 
