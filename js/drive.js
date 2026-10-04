@@ -206,6 +206,57 @@ function hasValidToken() {
   return !!(accessToken && Date.now() < tokenExpiresAt - 60000);
 }
 
+// ── DIRECT ONE-CLICK MODAL CONNECTION (FAST & SEAMLESS) ──────
+window.connectDriveDirectly = async function() {
+  const btn = document.getElementById("drive-modal-connect-btn");
+  const origHtml = btn ? btn.innerHTML : `<i class="bi bi-google"></i> Connect Google Account`;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Connecting...`;
+  }
+
+  try {
+    showToast("Opening Google Sign-In...");
+    await promptDriveAuth(true);
+
+    if (typeof closeDriveWarningModal === "function") {
+      closeDriveWarningModal();
+    }
+
+    showToast("Google Account connected successfully! ✅");
+
+    const u = window._currentUser;
+    const myProf = u && window.profiles ? window.profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+    if (myProf && !myProf.driveFolderId) {
+      try {
+        const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
+        if (folderId && typeof dbUpdateProfile === "function") {
+          await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
+          myProf.driveFolderId = folderId;
+        }
+      } catch (fErr) {
+        console.warn("Folder auto-creation notice:", fErr);
+      }
+    }
+
+    if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
+    if (typeof renderMyProfile === "function") renderMyProfile();
+
+    if (typeof fetchAndRenderGoogleCalendarEvents === "function" && currentView === "dashboard") {
+      fetchAndRenderGoogleCalendarEvents();
+    }
+  } catch (err) {
+    console.error("connectDriveDirectly error:", err);
+    showToast("Google connection failed: " + err.message, "error");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+};
+
 // ── Resilient Folder Creation with Stale Parent ID Recovery ──
 async function createDriveFolder(name, parentId = null) {
   const metadata = {
