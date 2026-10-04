@@ -212,7 +212,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  RECENT CONVERSATIONS LIST
+  //  RECENT CONVERSATIONS LIST (DEVELOPER ISOLATION ENFORCED)
   // ═══════════════════════════════════════════════════════════
   async function loadPeerList() {
     if (!window._db || !myUid) return;
@@ -220,9 +220,23 @@
     try {
       const db   = window._db;
       const snap = await window._fbGetDocs(window._fbCol(db, "chat_peers"));
-      peersList = snap.docs
+      let allPeers = snap.docs
         .map(d => d.data())
         .filter(p => p.uid && p.uid !== myUid && p.name);
+
+      const allProfiles = window.profiles || [];
+      const myProf = allProfiles.find(p => p.ownerUid === myUid);
+      const isDeveloper = myProf && myProf.role === "developer";
+
+      if (isDeveloper) {
+        // Developers can ONLY see other developers
+        const devUids = allProfiles.filter(p => p.role === "developer").map(p => p.ownerUid);
+        peersList = allPeers.filter(p => devUids.includes(p.uid));
+      } else {
+        // Attorneys and admins cannot see developer test accounts
+        const devUids = allProfiles.filter(p => p.role === "developer").map(p => p.ownerUid);
+        peersList = allPeers.filter(p => !devUids.includes(p.uid));
+      }
 
       renderConversationsList();
     } catch (e) {
@@ -233,6 +247,10 @@
   function renderConversationsList() {
     const listEl = document.getElementById("chat-recent-conversations");
     if (!listEl) return;
+
+    const allProfiles = window.profiles || [];
+    const myProf = allProfiles.find(p => p.ownerUid === myUid);
+    const isDeveloper = myProf && myProf.role === "developer";
 
     const latestGroupMsg = groupMessages[groupMessages.length - 1];
     const groupTimeMs = latestGroupMsg?.ts?.toDate ? latestGroupMsg.ts.toDate().getTime() : 0;
@@ -250,11 +268,14 @@
       }
     }
 
+    const groupTitle = isDeveloper ? "Developer Sandbox Chat" : "Firm Group Chat";
+    const groupIcon = isDeveloper ? `<i class="bi bi-code-slash" style="color:var(--cyan)"></i>` : `<i class="bi bi-megaphone-fill" style="color:var(--gold)"></i>`;
+
     const conversations = [
       {
         id: "group",
-        name: "Firm Group Chat",
-        avatar: `<i class="bi bi-megaphone-fill" style="color:var(--gold)"></i>`,
+        name: groupTitle,
+        avatar: groupIcon,
         isGroup: true,
         timeMs: groupTimeMs,
         preview: groupPreview,
@@ -489,7 +510,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  AVAILABILITY CARDS & NOTIFICATIONS
+  //  AVAILABILITY CARDS & NOTIFICATIONS (DEVELOPER ISOLATED)
   // ═══════════════════════════════════════════════════════════
   function toggleAvailPicker() {
     const el = document.getElementById("chat-avail-picker");
@@ -517,6 +538,10 @@
       return;
     }
 
+    const allProfiles = window.profiles || [];
+    const myProf = allProfiles.find(p => p.ownerUid === myUid);
+    const isDeveloper = myProf && myProf.role === "developer";
+
     const payload = {
       text: `Availability Request: "${title}" on ${date} at ${time}`,
       cardType: "availability_request",
@@ -534,7 +559,11 @@
         await window._fbAddDoc(window._fbCol(window._db, COLLECTION_GROUP), payload);
 
         if (typeof window.profiles !== "undefined" && typeof window.dbAddNotification === "function") {
-          const others = window.profiles.filter(p => p.ownerUid && p.ownerUid !== myUid);
+          // If developer, only notify other developers. If attorney, only notify other attorneys.
+          const others = isDeveloper
+            ? allProfiles.filter(p => p.ownerUid && p.ownerUid !== myUid && p.role === "developer")
+            : allProfiles.filter(p => p.ownerUid && p.ownerUid !== myUid && p.role !== "developer");
+
           for (const p of others) {
             await window.dbAddNotification({
               toUid: p.ownerUid,
@@ -626,7 +655,7 @@
             });
           }
         }
-        if (window.showToast) window.showToast("Confirmed & added to Firm Calendar! 📅");
+        if (window.showToast) window.showToast("Confirmed & added to Calendar! 📅");
       } else {
         if (window.showToast) window.showToast("Marked as Unavailable.");
       }
@@ -690,7 +719,7 @@
         return `
           <div class="chat-msg-wrap ${isMine ? "mine" : "theirs"}">
             ${showName ? `<div class="chat-msg-sender">${escHtml(m.name || "Unknown")}</div>` : ""}
-            <div class="chat-bubble-msg ${isMine ? "mine" : "theirs"}" style="border:1px solid var(--gold-border, rgba(201,165,92,0.3))">
+            <div class="chat-bubble-msg ${isMine ? "mine" : "theirs"}">
               <div style="font-size:11px;font-weight:700;color:var(--gold,#c9a84c);margin-bottom:2px"><i class="bi bi-paperclip"></i> File Attachment</div>
               <div style="font-size:13px">${linkMarkup}</div>
               <div style="font-size:10px;opacity:.85;margin-top:2px">${m.fileSize || ''}</div>
