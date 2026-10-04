@@ -401,9 +401,14 @@ function renderCalendarView() {
 
   if (select) {
     if (isDeveloper) {
-      select.innerHTML = `<option value="${u.uid}">My Test Schedule (Sandbox Mode)</option>`;
-      select.value = u.uid;
-      select.disabled = true;
+      // Developers can only see each other
+      const devProfiles = profiles.filter(p => p.role === "developer");
+      let devOptionsHtml = `<option value="Everyone">All Developers (Sandbox Overview)</option>`;
+      devProfiles.forEach(p => {
+        devOptionsHtml += `<option value="${p.ownerUid}">${p.name} (Developer Sandbox)</option>`;
+      });
+      select.innerHTML = devOptionsHtml;
+      select.disabled = false;
     } else {
       select.disabled = false;
       const curVal = select.value;
@@ -488,14 +493,20 @@ function renderMonthlyCalendarGrid() {
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase()));
   const isDeveloper = myProf && myProf.role === "developer";
 
-  const filter = isDeveloper ? currentUid : (document.getElementById("calendar-filter-select")?.value || "Everyone");
+  const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
 
   let activeCases = cases.filter(c => c.dueDate || c.docDueDate || (Array.isArray(c.hearings) && c.hearings.length > 0) || (Array.isArray(c.deadlines) && c.deadlines.length > 0));
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
   if (isDeveloper) {
-    activeCases = activeCases.filter(c => c.ownerUid === currentUid);
-    activeAppts = activeAppts.filter(a => a.targetUid === currentUid || a.requesterUid === currentUid);
+    if (filter === "Everyone") {
+      const devUids = profiles.filter(p => p.role === "developer").map(p => p.ownerUid);
+      activeCases = activeCases.filter(c => devUids.includes(c.ownerUid));
+      activeAppts = activeAppts.filter(a => devUids.includes(a.targetUid) || devUids.includes(a.requesterUid));
+    } else {
+      activeCases = activeCases.filter(c => c.ownerUid === filter);
+      activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
+    }
   } else if (filter !== "Everyone") {
     const matchedProf = profiles.find(p => p.ownerUid === filter);
     activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
@@ -744,8 +755,9 @@ window.openDateScheduleModal = function(dateStr) {
   let dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
 
   if (isDeveloper) {
-    dateCases = dateCases.filter(c => c.ownerUid === currentUid);
-    dateAppts = dateAppts.filter(a => a.targetUid === currentUid || a.requesterUid === currentUid);
+    const devUids = profiles.filter(p => p.role === "developer").map(p => p.ownerUid);
+    dateCases = dateCases.filter(c => devUids.includes(c.ownerUid));
+    dateAppts = dateAppts.filter(a => devUids.includes(a.targetUid) || devUids.includes(a.requesterUid));
   }
 
   const allItems = [];
@@ -1519,7 +1531,7 @@ function renderDashboard() {
 window.renderDashboard = renderDashboard;
 
 // ═══════════════════════════════════════════════════════════════
-//  ATTORNEY ROSTER ON DASHBOARD
+//  ATTORNEY ROSTER ON DASHBOARD (DEVELOPER ISOLATION RULE)
 // ═══════════════════════════════════════════════════════════════
 function renderDashProfiles() {
   const el = document.getElementById("dash-profiles");
@@ -1531,19 +1543,27 @@ function renderDashProfiles() {
   const u = window._currentUser;
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const isFirmAdmin = myProf && myProf.role === "admin";
+  const isDeveloper = myProf && myProf.role === "developer";
 
-  let visible = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u?.uid);
+  // DEVELOPER ISOLATION: Developers can only see other developers; cannot see real attorneys
+  let visible = [];
+  if (isDeveloper) {
+    visible = profiles.filter(p => p.role === "developer");
+  } else {
+    // Non-developers see all attorneys and admins, but never developers
+    visible = profiles.filter(p => p.role !== "developer");
+  }
 
   if (q) {
     visible = visible.filter(p => (p.name || "").toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q));
   }
 
   if (countBadge) {
-    countBadge.textContent = `${visible.length} Counsel`;
+    countBadge.textContent = isDeveloper ? `${visible.length} Sandbox Dev` : `${visible.length} Counsel`;
   }
 
   if (visible.length === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:24px 10px;color:var(--text-muted);font-size:12px">No attorneys found.</div>`;
+    el.innerHTML = `<div style="text-align:center;padding:24px 10px;color:var(--text-muted);font-size:12px">${isDeveloper ? 'No other developer test accounts registered.' : 'No attorneys found.'}</div>`;
     return;
   }
 
@@ -1552,13 +1572,16 @@ function renderDashProfiles() {
   el.innerHTML = visible.map(p => {
     const caseCount = userCases.filter(c => c.profileId === p.id).length;
     const isMe = p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase());
+    const isDev = p.role === "developer";
 
     return `
       <div class="dash-roster-item" onclick="openProfile('${p.id}')">
         ${avatarDiv(p.name, p.avatarColor, 32, p.photoUrl)}
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            ${escHtml(p.name)} ${isMe ? '<span style="font-size:9px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 4px;border-radius:3px">YOU</span>' : ''}
+            ${escHtml(p.name)} 
+            ${isMe ? '<span style="font-size:9px;color:var(--gold);background:rgba(201,168,76,0.12);padding:1px 4px;border-radius:3px">YOU</span>' : ''}
+            ${isDev ? '<span style="font-size:9px;color:var(--cyan);background:rgba(34,211,238,0.12);padding:1px 4px;border-radius:3px">DEV</span>' : ''}
           </div>
           <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.role || 'Attorney')}</div>
         </div>
@@ -1571,7 +1594,7 @@ function renderDashProfiles() {
 window.renderDashProfiles = renderDashProfiles;
 
 // ═══════════════════════════════════════════════════════════════
-//  PROFILES VIEW MODES & ATTORNEY DIRECTORY (DEVELOPERS EXCLUDED)
+//  PROFILES VIEW MODES & DIRECTORY (DEVELOPER ISOLATION RULE)
 // ═══════════════════════════════════════════════════════════════
 let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
 
@@ -1598,11 +1621,19 @@ function renderProfiles() {
 
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
   const isFirmAdmin = myProf && myProf.role === "admin";
+  const isDeveloper = myProf && myProf.role === "developer";
 
-  const visibleProfiles = profiles.filter(p => p.role !== "developer" || isFirmAdmin || p.ownerUid === u.uid);
+  // DEVELOPER ISOLATION: Developers can only see other developers; cannot see real attorneys
+  let visibleProfiles = [];
+  if (isDeveloper) {
+    visibleProfiles = profiles.filter(p => p.role === "developer");
+  } else {
+    // Non-developers see all attorneys and admins, but never developers
+    visibleProfiles = profiles.filter(p => p.role !== "developer");
+  }
 
   const countEl = document.getElementById("profiles-count");
-  if (countEl) countEl.textContent = `${visibleProfiles.length} profile${visibleProfiles.length !== 1 ? "s" : ""} total`;
+  if (countEl) countEl.textContent = isDeveloper ? `${visibleProfiles.length} developer profile(s) (Sandbox)` : `${visibleProfiles.length} profile${visibleProfiles.length !== 1 ? "s" : ""} total`;
 
   const el = document.getElementById("profiles-grid");
   if (!el) return;
@@ -1610,7 +1641,7 @@ function renderProfiles() {
   const userCases = getAccessibleCases();
 
   if (visibleProfiles.length === 0) {
-    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-people"></i></div><div style="font-size:13px;color:var(--text-muted)">No attorney profiles found.</div></div>`;
+    el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-people"></i></div><div style="font-size:13px;color:var(--text-muted)">No profiles found.</div></div>`;
     return;
   }
 
@@ -1671,9 +1702,9 @@ function renderProfiles() {
             </div>
           </div>
           <hr class="divider"/>
-          ${p.email ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:5px"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.email)}</div>` : ""}
-          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
-          <div style="display:flex;justify-content:space-between;align-items:center">
+          ${p.email ? `<div style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.email)}</div>` : ""}
+          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;margin-bottom:12px"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
             <span style="font-size:13px;color:var(--text-dim)">Cases Accessible (${pc.length})</span>
             ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
           </div>
@@ -1686,7 +1717,7 @@ function renderProfiles() {
 window.renderProfiles = renderProfiles;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM (DEVELOPERS OMITTED)
+//  CASE SHARING SYSTEM (DEVELOPER ISOLATION RULE)
 // ═══════════════════════════════════════════════════════════════
 window.openShareCaseModal = function() {
   if (!selCase) return;
@@ -1695,11 +1726,16 @@ window.openShareCaseModal = function() {
 
   const sharedUids = selCase.sharedWith || [];
   const currentUid = window._currentUser?.uid;
+  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === window._currentUser?.email?.toLowerCase()));
+  const isDeveloper = myProf && myProf.role === "developer";
 
-  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
+  // Developers can only share cases with other developers; attorneys share with attorneys
+  const associates = isDeveloper
+    ? profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role === "developer")
+    : profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
 
   if (associates.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
+    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">${isDeveloper ? 'No other developer test accounts available for sharing.' : 'No other associate attorneys are currently registered in the system.'}</div>`;
   } else {
     listEl.innerHTML = associates.map(p => {
       const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
@@ -2270,16 +2306,25 @@ async function removeDocFromCase(idx) {
 window.renderCaseDetail = renderCaseDetail;
 
 // ═══════════════════════════════════════════════════════════════
-//  QUICK ACCESS SIDEBAR
+//  QUICK ACCESS SIDEBAR (DEVELOPER ISOLATION RULE)
 // ═══════════════════════════════════════════════════════════════
 function renderQuickAccess() {
   const qa = document.getElementById("quick-access");
   const ql = document.getElementById("quick-list");
   if (!qa || !ql) return;
+
+  const u = window._currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  const isDeveloper = myProf && myProf.role === "developer";
+
+  // Developers only see developers; attorneys only see attorneys
+  const visible = isDeveloper
+    ? profiles.filter(p => p.role === "developer")
+    : profiles.filter(p => p.role !== "developer");
   
-  if (profiles.length === 0) { qa.style.display = "none"; return; }
+  if (visible.length === 0) { qa.style.display = "none"; return; }
   qa.style.display = "block";
-  ql.innerHTML = profiles.slice(0, 7).map(p => `
+  ql.innerHTML = visible.slice(0, 7).map(p => `
     <button class="nav-btn ${selProfile?.id === p.id ? 'active' : ''}" style="gap:10px;padding:10px 24px" onclick="openProfile('${p.id}')">
       ${p.photoUrl
         ? `<img src="${p.photoUrl}" alt="${initials(p.name)}" class="quick-avatar" style="object-fit:cover;border:2px solid ${p.avatarColor || '#c9a84c'}">`
