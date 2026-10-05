@@ -351,17 +351,22 @@ window.submitBusyDates = async function() {
         targetName: myProf?.name || u.displayName || u.email,
         requesterUid: u.uid,
         requesterName: myProf?.name || u.displayName || u.email,
+        ownerUid: u.uid,
         status: "accepted"
       };
 
       if (typeof dbAddAppointment === "function") {
         await dbAddAppointment(busyData);
+      } else {
+        busyData.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+        appointments.push(busyData);
       }
     }
 
     if (typeof showToast === "function") showToast(`Logged ${selectedBusyDates.size} date(s) to your personal schedule!`);
     window.closeBusyModal();
     if (typeof renderCalendarView === "function") renderCalendarView();
+    if (typeof renderDashboard === "function") renderDashboard();
   } catch (err) {
     console.error("submitBusyDates error:", err);
     if (typeof showToast === "function") showToast("Failed to save schedule: " + err.message, "error");
@@ -373,18 +378,34 @@ window.submitBusyDates = async function() {
   }
 };
 
-window.deleteBusySlot = async function(id) {
-  if (!confirm("Remove this schedule entry?")) return;
-  try {
-    if (typeof dbDeleteAppointment === "function") {
-      await dbDeleteAppointment(id);
+window.deleteBusySlot = function(id) {
+  const a = appointments.find(x => x.id === id);
+  const title = a ? a.title : "this schedule entry";
+
+  // Replaced native browser confirm() with custom in-app modal
+  window.openConfirmModal({
+    icon: "bi-calendar-x-fill",
+    title: "Remove Schedule Entry?",
+    body: `Are you sure you want to remove <strong>"${escHtml(title)}"</strong> from your schedule? This action cannot be undone.`,
+    confirmText: "Remove Entry",
+    confirmStyle: "btn-danger",
+    onConfirm: async () => {
+      try {
+        if (typeof dbDeleteAppointment === "function") {
+          await dbDeleteAppointment(id);
+        } else {
+          appointments = appointments.filter(x => x.id !== id);
+        }
+        if (typeof showToast === "function") showToast("Schedule entry removed!");
+        if (typeof closeDateScheduleModal === "function") closeDateScheduleModal();
+        if (typeof renderCalendarView === "function") renderCalendarView();
+        if (typeof renderDashboard === "function") renderDashboard();
+      } catch (err) {
+        console.error("deleteBusySlot error:", err);
+        if (typeof showToast === "function") showToast("Failed to remove entry: " + err.message, "error");
+      }
     }
-    if (typeof showToast === "function") showToast("Schedule entry removed!");
-    if (typeof closeDateScheduleModal === "function") closeDateScheduleModal();
-    if (typeof renderCalendarView === "function") renderCalendarView();
-  } catch (err) {
-    console.error("deleteBusySlot error:", err);
-  }
+  });
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -401,7 +422,7 @@ function renderCalendarView() {
 
   if (select) {
     if (isDeveloper) {
-      // Developers can only see each other
+      // Developers can only see other developers in Sandbox mode
       const devProfiles = profiles.filter(p => p.role === "developer");
       let devOptionsHtml = `<option value="Everyone">All Developers (Sandbox Overview)</option>`;
       devProfiles.forEach(p => {
@@ -499,13 +520,23 @@ function renderMonthlyCalendarGrid() {
   let activeAppts = appointments.filter(a => a.status === "accepted");
 
   if (isDeveloper) {
+    const devUids = profiles.filter(p => p.role === "developer" && p.ownerUid).map(p => p.ownerUid);
+    if (currentUid && !devUids.includes(currentUid)) devUids.push(currentUid);
+
+    // Keep all developer's own appointments and filter out real attorneys
+    activeAppts = activeAppts.filter(a => {
+      const isMyAppointment = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
+      if (isMyAppointment) return true;
+      const targetProf = profiles.find(p => p.ownerUid === a.targetUid);
+      const reqProf = profiles.find(p => p.ownerUid === a.requesterUid);
+      return (targetProf?.role === "developer" || reqProf?.role === "developer");
+    });
+
     if (filter === "Everyone") {
-      const devUids = profiles.filter(p => p.role === "developer").map(p => p.ownerUid);
       activeCases = activeCases.filter(c => devUids.includes(c.ownerUid));
-      activeAppts = activeAppts.filter(a => devUids.includes(a.targetUid) || devUids.includes(a.requesterUid));
     } else {
       activeCases = activeCases.filter(c => c.ownerUid === filter);
-      activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
+      activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter || a.ownerUid === filter);
     }
   } else if (filter !== "Everyone") {
     const matchedProf = profiles.find(p => p.ownerUid === filter);
@@ -513,7 +544,7 @@ function renderMonthlyCalendarGrid() {
     activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
   } else {
     activeAppts = activeAppts.filter(a => {
-      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
+      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
       return creatorProf?.role !== "developer";
     });
   }
@@ -591,9 +622,9 @@ function renderMonthlyCalendarGrid() {
   activeAppts.forEach(a => {
     if (!eventsByDate[a.date]) eventsByDate[a.date] = [];
     const isBusy = a.type === "busy";
-    const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
-    const attorneyInitials = targetProf ? initials(targetProf.name) : "AT";
-    const attorneyColor = targetProf?.avatarColor || "#ef4444";
+    const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
+    const attorneyInitials = targetProf ? initials(targetProf.name) : (isDeveloper ? "DV" : "AT");
+    const attorneyColor = targetProf?.avatarColor || (isDeveloper ? "var(--cyan)" : "#ef4444");
 
     eventsByDate[a.date].push({ 
       id: a.id, 
@@ -755,9 +786,25 @@ window.openDateScheduleModal = function(dateStr) {
   let dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
 
   if (isDeveloper) {
-    const devUids = profiles.filter(p => p.role === "developer").map(p => p.ownerUid);
+    const devUids = profiles.filter(p => p.role === "developer" && p.ownerUid).map(p => p.ownerUid);
+    if (currentUid && !devUids.includes(currentUid)) devUids.push(currentUid);
+
     dateCases = dateCases.filter(c => devUids.includes(c.ownerUid));
-    dateAppts = dateAppts.filter(a => devUids.includes(a.targetUid) || devUids.includes(a.requesterUid));
+
+    // Developer isolation: only show developer's own appointments and developer colleagues, never real attorneys like Bash
+    dateAppts = dateAppts.filter(a => {
+      const isMyAppointment = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
+      if (isMyAppointment) return true;
+      const targetProf = profiles.find(p => p.ownerUid === a.targetUid);
+      const reqProf = profiles.find(p => p.ownerUid === a.requesterUid);
+      return (targetProf?.role === "developer" || reqProf?.role === "developer");
+    });
+  } else {
+    // Non-developer attorney: do not show developer sandbox entries
+    dateAppts = dateAppts.filter(a => {
+      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
+      return creatorProf?.role !== "developer";
+    });
   }
 
   const allItems = [];
@@ -821,8 +868,8 @@ window.openDateScheduleModal = function(dateStr) {
 
   dateAppts.forEach(a => {
     const isBusy = a.type === "busy";
-    const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid;
-    const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid));
+    const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid || a.targetUid === currentUid;
+    const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
 
     const canEditDesc = isOwner;
 
@@ -835,8 +882,8 @@ window.openDateScheduleModal = function(dateStr) {
       title: a.title,
       time: a.time || "All Day",
       venue: "",
-      attorneyName: a.targetName || "Attorney",
-      attorneyColor: targetProf?.avatarColor || "#ef4444",
+      attorneyName: a.targetName || (isDeveloper ? "Developer" : "Attorney"),
+      attorneyColor: targetProf?.avatarColor || (isDeveloper ? "var(--cyan)" : "#ef4444"),
       photoUrl: targetProf?.photoUrl || null,
       description: a.description || "",
       canDelete: isOwner,
@@ -920,7 +967,7 @@ window.openDateScheduleModal = function(dateStr) {
             ${avatarDiv(item.attorneyName, item.attorneyColor, 32, item.photoUrl)}
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--text)">${escHtml(item.title)}</div>
-              <div style="font-size:11.5px;color:var(--text-muted)"><strong>Counsel:</strong> ${escHtml(item.attorneyName)}</div>
+              <div style="font-size:11.5px;color:var(--text-muted)"><strong>${isDeveloper ? 'Developer' : 'Counsel'}:</strong> ${escHtml(item.attorneyName)}</div>
             </div>
           </div>
           
@@ -1001,7 +1048,7 @@ window.saveEventInlineDescription = async function(kind, id, dateStr, subId) {
       const a = appointments.find(x => x.id === id);
       if (!a) throw new Error("Appointment not found.");
 
-      const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid;
+      const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid || a.targetUid === currentUid;
       if (!isOwner) {
         showToast("You can only edit descriptions on your own schedule.", "error");
         return;
@@ -2209,17 +2256,17 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-label:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-label:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-files" style="color:var(--gold)"></i> Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-label:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-files" style="color:var(--gold)"></i> Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
   }
@@ -2606,7 +2653,7 @@ async function connectDriveFromSettings() {
       showToast("Initializing attorney Drive storage folder...");
       try {
         const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
-        if (folderId) {
+        if (folderId && typeof dbUpdateProfile === "function") {
           await dbUpdateProfile(myProf.id, { driveFolderId: folderId }).catch(e => console.warn("Profile update note:", e));
           myProf.driveFolderId = folderId;
           showToast("Storage folder created!");
@@ -3277,6 +3324,7 @@ window.submitAppointmentRequest = async function() {
       requesterName: myProf.name,
       targetUid: targetApptProfile.ownerUid,
       targetName: targetApptProfile.name,
+      ownerUid: u.uid,
       status: "pending"
     };
     const apptId = await dbAddAppointment(apptData);
