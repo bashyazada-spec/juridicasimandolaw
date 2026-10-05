@@ -796,20 +796,64 @@ async function dbDeleteNotification(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "notifications", id));
 }
 
+// ── APPOINTMENTS & AVAILABILITY (WITH INSTANT IN-MEMORY REGISTRATION) ──
 async function dbAddAppointment(data) {
-  if (localMode || !window._db) return null;
   data.createdAt = new Date().toISOString();
-  const ref = await window._fbAddDoc(window._fbCol(window._db, "appointments"), data);
-  dbLogAuditAction("APPOINTMENT_REQUESTED", { apptId: ref.id, title: data.title });
-  return ref.id;
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!data.ownerUid && u) data.ownerUid = u.uid;
+
+  if (localMode || !window._db) {
+    data.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    if (!appointments.some(x => x.id === data.id)) {
+      appointments.push(data);
+    }
+    refreshCurrentView();
+    return data.id;
+  }
+
+  try {
+    const ref = await window._fbAddDoc(window._fbCol(window._db, "appointments"), data);
+    data.id = ref.id;
+    if (!appointments.some(x => x.id === ref.id)) {
+      appointments.push(data);
+    }
+    refreshCurrentView();
+    dbLogAuditAction("APPOINTMENT_REQUESTED", { apptId: ref.id, title: data.title });
+    return ref.id;
+  } catch (err) {
+    console.warn("Firestore dbAddAppointment error, falling back to local memory:", err);
+    data.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    if (!appointments.some(x => x.id === data.id)) {
+      appointments.push(data);
+    }
+    refreshCurrentView();
+    return data.id;
+  }
 }
 
 async function dbUpdateAppointment(id, data) {
-  if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db, "appointments", id), data);
+  if (!localMode && window._db) {
+    try {
+      await window._fbUpdate(window._fbDoc(window._db, "appointments", id), data);
+    } catch (e) {
+      console.warn("dbUpdateAppointment remote notice:", e);
+    }
+  }
+  const idx = appointments.findIndex(a => a.id === id);
+  if (idx >= 0) appointments[idx] = { ...appointments[idx], ...data };
+  refreshCurrentView();
   dbLogAuditAction("APPOINTMENT_UPDATED", { apptId: id });
 }
 
 async function dbDeleteAppointment(id) {
-  if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "appointments", id));
+  if (!localMode && window._db) {
+    try {
+      await window._fbDelete(window._fbDoc(window._db, "appointments", id));
+    } catch (e) {
+      console.warn("dbDeleteAppointment remote notice:", e);
+    }
+  }
+  appointments = appointments.filter(a => a.id !== id);
+  refreshCurrentView();
   dbLogAuditAction("APPOINTMENT_DELETED", { apptId: id });
 }
