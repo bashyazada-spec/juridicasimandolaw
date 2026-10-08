@@ -63,20 +63,35 @@ window.clearCaseErrors = clearCaseErrors;
 let onboardingGeneratedSecret = null;
 let onboardingGeneratedBackupCodes = [];
 let onboardingModalDismissedThisSession = false;
+let _obCheckRetryCount = 0;
 
 window.checkOnboardingSecurityStatus = function() {
   if (onboardingModalDismissedThisSession) return;
 
   const u = window._currentUser || window._auth?.currentUser;
-  if (!u) return;
+  if (!u) {
+    // Retry when Firebase auth completes
+    if (_obCheckRetryCount < 15) {
+      _obCheckRetryCount++;
+      setTimeout(window.checkOnboardingSecurityStatus, 400);
+    }
+    return;
+  }
 
+  // Wait for profiles collection to load from Firestore
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
-  if (!myProf) return;
+  if (!myProf) {
+    if (_obCheckRetryCount < 15) {
+      _obCheckRetryCount++;
+      setTimeout(window.checkOnboardingSecurityStatus, 400);
+    }
+    return;
+  }
 
   const is2FaEnabled = !!myProf.twoFactorEnabled;
   const isDriveConnected = typeof hasValidToken === "function" ? hasValidToken() : false;
 
-  // Both completed -> nothing to show
+  // If both 2FA and Drive are connected, nothing to show
   if (is2FaEnabled && isDriveConnected) {
     dismissOnboardingModal();
     return;
@@ -103,6 +118,7 @@ window.checkOnboardingSecurityStatus = function() {
 
     updateOnboardingDriveStatus(false);
     modal.classList.remove("hidden");
+    modal.style.display = "flex";
     return;
   }
 
@@ -118,6 +134,7 @@ window.checkOnboardingSecurityStatus = function() {
     initOnboarding2FAQrCodes(myProf, u);
     updateOnboardingDriveStatus(isDriveConnected);
     modal.classList.remove("hidden");
+    modal.style.display = "flex";
   }
 };
 
@@ -187,7 +204,10 @@ window.switchOnboardingQrType = function(type) {
 
 window.dismissOnboardingModal = function() {
   const modal = document.getElementById("onboarding-modal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.display = "none";
+  }
   onboardingModalDismissedThisSession = true;
 };
 
@@ -1868,6 +1888,11 @@ function renderDashboard() {
   if (typeof fetchAndRenderGoogleCalendarEvents === "function") {
     fetchAndRenderGoogleCalendarEvents();
   }
+
+  // Trigger security onboarding check automatically as soon as dashboard loads
+  if (typeof checkOnboardingSecurityStatus === "function") {
+    checkOnboardingSecurityStatus();
+  }
 }
 
 window.renderDashboard = renderDashboard;
@@ -2068,6 +2093,7 @@ window.openShareCaseModal = function() {
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === window._currentUser?.email?.toLowerCase()));
   const isDeveloper = myProf && myProf.role === "developer";
 
+  // Developers can only share cases with other developers; attorneys share with attorneys
   const associates = isDeveloper
     ? profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role === "developer")
     : profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
@@ -2655,6 +2681,7 @@ function renderQuickAccess() {
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const isDeveloper = myProf && myProf.role === "developer";
 
+  // Developers only see developers; attorneys only see attorneys
   const visible = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : profiles.filter(p => p.role !== "developer");
@@ -3885,11 +3912,11 @@ window.closeFilePreview = function() {
   if (modal) modal.style.display = "none";
 };
 
-// Auto-check security onboarding status on page initialization
+// Automatic execution & profile watcher
 window.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
     if (typeof checkOnboardingSecurityStatus === "function") {
       checkOnboardingSecurityStatus();
     }
-  }, 1000);
+  }, 600);
 });
