@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
+/ ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
 function initTheme() {
@@ -58,6 +58,101 @@ function clearCaseErrors() {
 window.clearCaseErrors = clearCaseErrors;
 
 // ═══════════════════════════════════════════════════════════════
+//  STANDALONE WEB CRYPTO TOTP ENGINE FOR 2FA VERIFICATION
+// ═══════════════════════════════════════════════════════════════
+function generateRandomBase32(length = 16) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += alphabet[bytes[i] % 32];
+  }
+  return result;
+}
+window.generateRandomBase32 = generateRandomBase32;
+
+function generateBackupRecoveryCodes(count = 5) {
+  const codes = [];
+  for (let i = 0; i < count; i++) {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+    codes.push(`${hex.slice(0, 4)}-${hex.slice(4, 8)}`);
+  }
+  return codes;
+}
+window.generateBackupRecoveryCodes = generateBackupRecoveryCodes;
+
+function base32Decode(base32) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let cleaned = (base32 || "").toUpperCase().replace(/=+$/, "").replace(/\s+/g, "");
+  let bits = 0;
+  let value = 0;
+  let output = [];
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const idx = alphabet.indexOf(cleaned.charAt(i));
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(output);
+}
+window.base32Decode = base32Decode;
+
+async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
+  const keyBytes = base32Decode(secretBase32);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"]
+  );
+
+  const epoch = Math.floor(Date.now() / 1000);
+  const timeStep = Math.floor(epoch / 30) + timeStepOffset;
+
+  const buffer = new ArrayBuffer(8);
+  const view = new DataView(buffer);
+  view.setUint32(4, timeStep, false);
+
+  const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
+  const hmacBytes = new Uint8Array(hmacResult);
+
+  const offset = hmacBytes[hmacBytes.length - 1] & 0xf;
+  const binary =
+    ((hmacBytes[offset] & 0x7f) << 24) |
+    ((hmacBytes[offset + 1] & 0xff) << 16) |
+    ((hmacBytes[offset + 2] & 0xff) << 8) |
+    (hmacBytes[offset + 3] & 0xff);
+
+  const code = binary % 1000000;
+  return String(code).padStart(6, "0");
+}
+window.generateTOTPCode = generateTOTPCode;
+
+async function verifyClientTOTP(token, secretBase32) {
+  if (!token || !secretBase32) return false;
+  const cleanedToken = String(token).trim();
+  for (const offset of [0, -1, 1, -2, 2]) {
+    try {
+      const valid = await generateTOTPCode(secretBase32, offset);
+      if (cleanedToken === valid) return true;
+    } catch (e) {
+      console.warn("TOTP calculation notice:", e);
+    }
+  }
+  return false;
+}
+window.verifyClientTOTP = verifyClientTOTP;
+
+// ═══════════════════════════════════════════════════════════════
 //  ONBOARDING SETUP & 2FA / DRIVE MODAL CONTROLLER
 // ═══════════════════════════════════════════════════════════════
 let onboardingGeneratedSecret = null;
@@ -70,7 +165,6 @@ window.checkOnboardingSecurityStatus = function() {
 
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) {
-    // Retry when Firebase auth completes
     if (_obCheckRetryCount < 15) {
       _obCheckRetryCount++;
       setTimeout(window.checkOnboardingSecurityStatus, 400);
@@ -78,7 +172,6 @@ window.checkOnboardingSecurityStatus = function() {
     return;
   }
 
-  // Wait for profiles collection to load from Firestore
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
   if (!myProf) {
     if (_obCheckRetryCount < 15) {
@@ -91,7 +184,7 @@ window.checkOnboardingSecurityStatus = function() {
   const is2FaEnabled = !!myProf.twoFactorEnabled;
   const isDriveConnected = typeof hasValidToken === "function" ? hasValidToken() : false;
 
-  // If both 2FA and Drive are connected, nothing to show
+  // If both are completed, nothing to show
   if (is2FaEnabled && isDriveConnected) {
     dismissOnboardingModal();
     return;
@@ -139,36 +232,38 @@ window.checkOnboardingSecurityStatus = function() {
 };
 
 function initOnboarding2FAQrCodes(myProf, u) {
-  if (!onboardingGeneratedSecret && typeof generateRandomBase32 === "function") {
+  if (!onboardingGeneratedSecret) {
     onboardingGeneratedSecret = generateRandomBase32(16);
-    onboardingGeneratedBackupCodes = typeof generateBackupRecoveryCodes === "function" ? generateBackupRecoveryCodes(5) : [];
-  } else if (!onboardingGeneratedSecret) {
-    onboardingGeneratedSecret = "JBSWY3DPEHPK3PXP";
+    onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5);
   }
 
   const keyDisplay = document.getElementById("ob-pairing-secret-key");
-  if (keyDisplay) keyDisplay.textContent = `KEY: ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret}`;
+  if (keyDisplay) {
+    keyDisplay.textContent = `KEY: ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret}`;
+  }
 
-  // 1. Account Pairing TOTP QR (Scan inside Authenticator)
+  // 1. Account Pairing TOTP QR (Scan inside Microsoft Authenticator) - Sized to 160x160px for effortless scanning
   const pairingContainer = document.getElementById("ob-qr-pairing-container");
   if (pairingContainer) {
     pairingContainer.innerHTML = "";
-    const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf?.email || u?.email || "attorney@simandolaw.com")}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
+    const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
+    const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(userEmail)}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
+    
     if (typeof QRCode !== "undefined") {
       new QRCode(pairingContainer, {
         text: otpAuthUrl,
-        width: 76,
-        height: 76,
+        width: 160,
+        height: 160,
         colorDark: "#060c13",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
     } else {
-      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=76x76&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px"/>`;
+      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:8px"/>`;
     }
   }
 
-  // 2. Microsoft Authenticator App Link QR (Scan with Phone Camera)
+  // 2. Microsoft Authenticator App Link QR (Scan with Phone Camera) - Sized to 160x160px
   const appLinkContainer = document.getElementById("ob-qr-applink-container");
   if (appLinkContainer) {
     appLinkContainer.innerHTML = "";
@@ -176,17 +271,26 @@ function initOnboarding2FAQrCodes(myProf, u) {
     if (typeof QRCode !== "undefined") {
       new QRCode(appLinkContainer, {
         text: appStoreUrl,
-        width: 76,
-        height: 76,
+        width: 160,
+        height: 160,
         colorDark: "#060c13",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
     } else {
-      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=76x76&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px"/>`;
+      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:8px"/>`;
     }
   }
 }
+
+window.copyOnboardingSecretKey = function() {
+  if (!onboardingGeneratedSecret) return;
+  navigator.clipboard.writeText(onboardingGeneratedSecret).then(() => {
+    showToast("Secret key copied to clipboard! Paste into Authenticator.");
+  }).catch(() => {
+    showToast("Key: " + onboardingGeneratedSecret);
+  });
+};
 
 window.switchOnboardingQrType = function(type) {
   const isPairing = type === "pairing";
@@ -280,24 +384,24 @@ window.onboardingConnectDrive = async function() {
 
 window.onboardingActivate2FA = async function() {
   const codeInp = document.getElementById("ob-otp-input");
-  const code = (codeInp?.value || "").trim();
+  const code = (codeInp?.value || "").trim().replace(/\D/g, "");
   const btn = document.getElementById("btn-ob-activate-2fa");
 
   if (code.length !== 6) {
-    showToast("Please enter the 6-digit code from Microsoft Authenticator.", "error");
+    showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
     if (codeInp) codeInp.focus();
     return;
   }
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying...`;
+    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying Code...`;
   }
 
   try {
     const isValid = await verifyClientTOTP(code, onboardingGeneratedSecret);
     if (!isValid) {
-      showToast("Invalid 6-digit code. Check your app and try again.", "error");
+      showToast("Invalid code. Check your Authenticator app and try again.", "error");
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
@@ -306,11 +410,12 @@ window.onboardingActivate2FA = async function() {
     }
 
     const u = window._currentUser || window._auth?.currentUser;
-    if (!u) return;
-    const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-    if (!myProf) return;
+    if (!u) throw new Error("User session expired. Please sign in again.");
 
-    showToast("Activating Two-Factor Authentication...");
+    const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+    if (!myProf) throw new Error("Profile record not found.");
+
+    showToast("Activating Two-Factor Security...");
 
     const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
     const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
@@ -339,19 +444,19 @@ window.onboardingActivate2FA = async function() {
     }
     if (content) {
       content.innerHTML = `
-        <div style="font-size:12px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:6px;padding:8px 0">
-          <i class="bi bi-shield-fill-check"></i> Authenticator Active: Protected by Microsoft Authenticator.
+        <div style="font-size:12.5px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:8px;padding:12px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.3);border-radius:10px">
+          <i class="bi bi-shield-fill-check" style="font-size:18px"></i> 2FA Active: Protected by Microsoft Authenticator.
         </div>
       `;
     }
 
-    showToast("2FA successfully activated! 🛡️");
+    showToast("Two-Factor Authentication is now active! 🛡️");
     if (typeof renderMyProfile === "function") renderMyProfile();
 
     checkOnboardingBothComplete();
   } catch (err) {
     console.error("onboardingActivate2FA error:", err);
-    showToast("Failed to activate 2FA: " + err.message, "error");
+    showToast("Activation failed: " + err.message, "error");
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
@@ -1889,7 +1994,6 @@ function renderDashboard() {
     fetchAndRenderGoogleCalendarEvents();
   }
 
-  // Trigger security onboarding check automatically as soon as dashboard loads
   if (typeof checkOnboardingSecurityStatus === "function") {
     checkOnboardingSecurityStatus();
   }
@@ -1912,7 +2016,6 @@ function renderDashProfiles() {
   const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // DEVELOPER ISOLATION: Developers can only see other developers; cannot see real attorneys
   let visible = [];
   if (isDeveloper) {
     visible = profiles.filter(p => p.role === "developer");
@@ -2093,7 +2196,6 @@ window.openShareCaseModal = function() {
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === window._currentUser?.email?.toLowerCase()));
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // Developers can only share cases with other developers; attorneys share with attorneys
   const associates = isDeveloper
     ? profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role === "developer")
     : profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
@@ -2971,7 +3073,7 @@ async function connectDriveFromSettings() {
       try {
         const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
         if (folderId && typeof dbUpdateProfile === "function") {
-          await dbUpdateProfile(myProf.id, { driveFolderId: folderId }).catch(e => console.warn("Profile update note:", e));
+          await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
           myProf.driveFolderId = folderId;
           showToast("Storage folder created!");
           updateWorkspaceStatus(false);
@@ -3912,7 +4014,7 @@ window.closeFilePreview = function() {
   if (modal) modal.style.display = "none";
 };
 
-// Automatic execution & profile watcher
+// Automatic execution & profile watcher on startup
 window.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
     if (typeof checkOnboardingSecurityStatus === "function") {
