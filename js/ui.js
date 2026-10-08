@@ -58,6 +58,309 @@ function clearCaseErrors() {
 window.clearCaseErrors = clearCaseErrors;
 
 // ═══════════════════════════════════════════════════════════════
+//  ONBOARDING SETUP & 2FA / DRIVE MODAL CONTROLLER
+// ═══════════════════════════════════════════════════════════════
+let onboardingGeneratedSecret = null;
+let onboardingGeneratedBackupCodes = [];
+let onboardingModalDismissedThisSession = false;
+
+window.checkOnboardingSecurityStatus = function() {
+  if (onboardingModalDismissedThisSession) return;
+
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+  if (!myProf) return;
+
+  const is2FaEnabled = !!myProf.twoFactorEnabled;
+  const isDriveConnected = typeof hasValidToken === "function" ? hasValidToken() : false;
+
+  // Both completed -> nothing to show
+  if (is2FaEnabled && isDriveConnected) {
+    dismissOnboardingModal();
+    return;
+  }
+
+  const modal = document.getElementById("onboarding-modal");
+  if (!modal) return;
+
+  const card2Fa = document.getElementById("ob-card-2fa");
+  const cardDrive = document.getElementById("ob-card-drive");
+  const titleEl = document.getElementById("ob-modal-title");
+  const subEl = document.getElementById("ob-modal-sub");
+  const iconEl = document.getElementById("ob-modal-icon");
+  const driveTitle = document.getElementById("ob-drive-title-text");
+
+  // Condition 1: 2FA is active, but Google Drive is unlinked -> Show only Drive connect
+  if (is2FaEnabled && !isDriveConnected) {
+    if (card2Fa) card2Fa.style.display = "none";
+    if (cardDrive) cardDrive.style.display = "block";
+    if (driveTitle) driveTitle.textContent = "Google Account & Drive Storage Required";
+    if (titleEl) titleEl.textContent = "Google Account Required";
+    if (subEl) subEl.textContent = "Your Two-Factor Authentication is active, but a connected Google Account is required to manage cases, store client court documents, and synchronize deadlines.";
+    if (iconEl) iconEl.innerHTML = `<i class="bi bi-cloud-arrow-up-fill" style="color:var(--gold)"></i>`;
+
+    updateOnboardingDriveStatus(false);
+    modal.classList.remove("hidden");
+    return;
+  }
+
+  // Condition 2: 2FA is not active -> Show 2FA section (+ Google Drive section)
+  if (!is2FaEnabled) {
+    if (card2Fa) card2Fa.style.display = "block";
+    if (cardDrive) cardDrive.style.display = "block";
+    if (driveTitle) driveTitle.textContent = "2. Google Account & Drive Storage";
+    if (titleEl) titleEl.textContent = "Account Security & Setup";
+    if (subEl) subEl.textContent = "To maintain strict attorney-client privilege and document storage, please complete the required security setup below.";
+    if (iconEl) iconEl.innerHTML = `<i class="bi bi-shield-lock-fill" style="color:var(--gold)"></i>`;
+
+    initOnboarding2FAQrCodes(myProf, u);
+    updateOnboardingDriveStatus(isDriveConnected);
+    modal.classList.remove("hidden");
+  }
+};
+
+function initOnboarding2FAQrCodes(myProf, u) {
+  if (!onboardingGeneratedSecret && typeof generateRandomBase32 === "function") {
+    onboardingGeneratedSecret = generateRandomBase32(16);
+    onboardingGeneratedBackupCodes = typeof generateBackupRecoveryCodes === "function" ? generateBackupRecoveryCodes(5) : [];
+  } else if (!onboardingGeneratedSecret) {
+    onboardingGeneratedSecret = "JBSWY3DPEHPK3PXP";
+  }
+
+  const keyDisplay = document.getElementById("ob-pairing-secret-key");
+  if (keyDisplay) keyDisplay.textContent = `KEY: ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret}`;
+
+  // 1. Account Pairing TOTP QR (Scan inside Authenticator)
+  const pairingContainer = document.getElementById("ob-qr-pairing-container");
+  if (pairingContainer) {
+    pairingContainer.innerHTML = "";
+    const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(myProf?.email || u?.email || "attorney@simandolaw.com")}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
+    if (typeof QRCode !== "undefined") {
+      new QRCode(pairingContainer, {
+        text: otpAuthUrl,
+        width: 76,
+        height: 76,
+        colorDark: "#060c13",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=76x76&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px"/>`;
+    }
+  }
+
+  // 2. Microsoft Authenticator App Link QR (Scan with Phone Camera)
+  const appLinkContainer = document.getElementById("ob-qr-applink-container");
+  if (appLinkContainer) {
+    appLinkContainer.innerHTML = "";
+    const appStoreUrl = "https://aka.ms/authapp";
+    if (typeof QRCode !== "undefined") {
+      new QRCode(appLinkContainer, {
+        text: appStoreUrl,
+        width: 76,
+        height: 76,
+        colorDark: "#060c13",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=76x76&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px"/>`;
+    }
+  }
+}
+
+window.switchOnboardingQrType = function(type) {
+  const isPairing = type === "pairing";
+  const tabPairing = document.getElementById("tab-ob-pairing-qr");
+  const tabApp = document.getElementById("tab-ob-app-qr");
+  const viewPairing = document.getElementById("ob-view-pairing-qr");
+  const viewApp = document.getElementById("ob-view-app-qr");
+
+  if (tabPairing) tabPairing.className = isPairing ? "ob-qr-tab-btn active" : "ob-qr-tab-btn";
+  if (tabApp) tabApp.className = !isPairing ? "ob-qr-tab-btn active" : "ob-qr-tab-btn";
+
+  if (viewPairing) viewPairing.style.display = isPairing ? "block" : "none";
+  if (viewApp) viewApp.style.display = !isPairing ? "block" : "none";
+};
+
+window.dismissOnboardingModal = function() {
+  const modal = document.getElementById("onboarding-modal");
+  if (modal) modal.classList.add("hidden");
+  onboardingModalDismissedThisSession = true;
+};
+
+function updateOnboardingDriveStatus(isConnected) {
+  const tag = document.getElementById("ob-tag-drive");
+  const btn = document.getElementById("btn-ob-connect-drive");
+  const card = document.getElementById("ob-card-drive");
+
+  if (isConnected) {
+    if (tag) {
+      tag.className = "onboarding-status-tag active";
+      tag.innerHTML = `<i class="bi bi-check-circle-fill"></i> Connected`;
+    }
+    if (card) card.classList.add("completed");
+    if (btn) {
+      btn.className = "btn btn-success";
+      btn.innerHTML = `<i class="bi bi-check2"></i> Google Account Linked`;
+      btn.disabled = true;
+    }
+  } else {
+    if (tag) {
+      tag.className = "onboarding-status-tag pending";
+      tag.innerHTML = `<i class="bi bi-clock"></i> Action Needed`;
+    }
+    if (card) card.classList.remove("completed");
+    if (btn) {
+      btn.className = "btn btn-primary";
+      btn.innerHTML = `<i class="bi bi-google"></i> Connect Google Account`;
+      btn.disabled = false;
+    }
+  }
+}
+
+window.onboardingConnectDrive = async function() {
+  const btn = document.getElementById("btn-ob-connect-drive");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Connecting Google OAuth...`;
+  }
+
+  try {
+    showToast("Opening Google Sign-In...");
+    await promptDriveAuth(true);
+
+    showToast("Google Account connected successfully! ✅");
+    updateOnboardingDriveStatus(true);
+
+    const u = window._currentUser;
+    const myProf = u && profiles ? profiles.find(p => p.ownerUid === u.uid) : null;
+    if (myProf && !myProf.driveFolderId && typeof createDriveFolder === "function") {
+      try {
+        const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
+        if (folderId && typeof dbUpdateProfile === "function") {
+          await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
+          myProf.driveFolderId = folderId;
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
+    if (typeof renderMyProfile === "function") renderMyProfile();
+
+    checkOnboardingBothComplete();
+  } catch (err) {
+    console.error("onboardingConnectDrive error:", err);
+    showToast("Google connection failed: " + err.message, "error");
+    updateOnboardingDriveStatus(false);
+  }
+};
+
+window.onboardingActivate2FA = async function() {
+  const codeInp = document.getElementById("ob-otp-input");
+  const code = (codeInp?.value || "").trim();
+  const btn = document.getElementById("btn-ob-activate-2fa");
+
+  if (code.length !== 6) {
+    showToast("Please enter the 6-digit code from Microsoft Authenticator.", "error");
+    if (codeInp) codeInp.focus();
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying...`;
+  }
+
+  try {
+    const isValid = await verifyClientTOTP(code, onboardingGeneratedSecret);
+    if (!isValid) {
+      showToast("Invalid 6-digit code. Check your app and try again.", "error");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
+      }
+      return;
+    }
+
+    const u = window._currentUser || window._auth?.currentUser;
+    if (!u) return;
+    const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+    if (!myProf) return;
+
+    showToast("Activating Two-Factor Authentication...");
+
+    const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
+    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    
+    await setDoc(secRef, {
+      twoFactorEnabled: true,
+      twoFactorSecret: onboardingGeneratedSecret,
+      twoFactorBackupCodes: onboardingGeneratedBackupCodes
+    }, { merge: true });
+
+    await dbUpdateProfile(myProf.id, { twoFactorEnabled: true });
+
+    myProf.twoFactorEnabled = true;
+    myProf.twoFactorSecret = onboardingGeneratedSecret;
+    myProf.twoFactorBackupCodes = onboardingGeneratedBackupCodes;
+    sessionStorage.setItem("simando_2fa_verified", "true");
+
+    const card = document.getElementById("ob-card-2fa");
+    const tag = document.getElementById("ob-tag-2fa");
+    const content = document.getElementById("ob-content-2fa-body");
+
+    if (card) card.classList.add("completed");
+    if (tag) {
+      tag.className = "onboarding-status-tag active";
+      tag.innerHTML = `<i class="bi bi-check-circle-fill"></i> Activated`;
+    }
+    if (content) {
+      content.innerHTML = `
+        <div style="font-size:12px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:6px;padding:8px 0">
+          <i class="bi bi-shield-fill-check"></i> Authenticator Active: Protected by Microsoft Authenticator.
+        </div>
+      `;
+    }
+
+    showToast("2FA successfully activated! 🛡️");
+    if (typeof renderMyProfile === "function") renderMyProfile();
+
+    checkOnboardingBothComplete();
+  } catch (err) {
+    console.error("onboardingActivate2FA error:", err);
+    showToast("Failed to activate 2FA: " + err.message, "error");
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
+    }
+  }
+};
+
+function checkOnboardingBothComplete() {
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid) : null;
+  const is2Fa = !!myProf?.twoFactorEnabled;
+  const isDrive = typeof hasValidToken === "function" ? hasValidToken() : false;
+
+  if (is2Fa && isDrive) {
+    const titleEl = document.getElementById("ob-modal-title");
+    const subEl = document.getElementById("ob-modal-sub");
+    const iconEl = document.getElementById("ob-modal-icon");
+
+    if (titleEl) titleEl.textContent = "Setup Complete!";
+    if (subEl) subEl.textContent = "Security credentials and Google Drive are verified. Launching dashboard...";
+    if (iconEl) iconEl.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>`;
+
+    setTimeout(() => {
+      dismissOnboardingModal();
+    }, 1200);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  INTERACTIVE MULTI-DATE AVAILABILITY PICKER (STRICTLY PERSONAL)
 // ═══════════════════════════════════════════════════════════════
 let selectedBusyDates = new Set();
@@ -382,7 +685,6 @@ window.deleteBusySlot = function(id) {
   const a = appointments.find(x => x.id === id);
   const title = a ? a.title : "this schedule entry";
 
-  // Replaced native browser confirm() with custom in-app modal
   window.openConfirmModal({
     icon: "bi-calendar-x-fill",
     title: "Remove Schedule Entry?",
@@ -422,7 +724,6 @@ function renderCalendarView() {
 
   if (select) {
     if (isDeveloper) {
-      // Developers can only see other developers in Sandbox mode
       const devProfiles = profiles.filter(p => p.role === "developer");
       let devOptionsHtml = `<option value="Everyone">All Developers (Sandbox Overview)</option>`;
       devProfiles.forEach(p => {
@@ -523,7 +824,6 @@ function renderMonthlyCalendarGrid() {
     const devUids = profiles.filter(p => p.role === "developer" && p.ownerUid).map(p => p.ownerUid);
     if (currentUid && !devUids.includes(currentUid)) devUids.push(currentUid);
 
-    // Keep all developer's own appointments and filter out real attorneys
     activeAppts = activeAppts.filter(a => {
       const isMyAppointment = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
       if (isMyAppointment) return true;
@@ -561,7 +861,6 @@ function renderMonthlyCalendarGrid() {
     const attorneyInitials = p ? initials(p.name) : "AT";
     const attorneyColor = p?.avatarColor || "#c9a84c";
 
-    // Legacy dueDate or docDueDate
     if (c.docDueDate) {
       if (!eventsByDate[c.docDueDate]) eventsByDate[c.docDueDate] = [];
       eventsByDate[c.docDueDate].push({ 
@@ -584,7 +883,6 @@ function renderMonthlyCalendarGrid() {
       });
     }
 
-    // Multiple deadlines array
     if (Array.isArray(c.deadlines)) {
       c.deadlines.forEach(d => {
         if (d.date && d.date !== c.docDueDate) {
@@ -601,7 +899,6 @@ function renderMonthlyCalendarGrid() {
       });
     }
 
-    // Hearings array
     if (Array.isArray(c.hearings)) {
       c.hearings.forEach(h => {
         if (h.date) {
@@ -791,7 +1088,6 @@ window.openDateScheduleModal = function(dateStr) {
 
     dateCases = dateCases.filter(c => devUids.includes(c.ownerUid));
 
-    // Developer isolation: only show developer's own appointments and developer colleagues, never real attorneys like Bash
     dateAppts = dateAppts.filter(a => {
       const isMyAppointment = a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid;
       if (isMyAppointment) return true;
@@ -800,7 +1096,6 @@ window.openDateScheduleModal = function(dateStr) {
       return (targetProf?.role === "developer" || reqProf?.role === "developer");
     });
   } else {
-    // Non-developer attorney: do not show developer sandbox entries
     dateAppts = dateAppts.filter(a => {
       const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
       return creatorProf?.role !== "developer";
@@ -1597,7 +1892,6 @@ function renderDashProfiles() {
   if (isDeveloper) {
     visible = profiles.filter(p => p.role === "developer");
   } else {
-    // Non-developers see all attorneys and admins, but never developers
     visible = profiles.filter(p => p.role !== "developer");
   }
 
@@ -1670,12 +1964,10 @@ function renderProfiles() {
   const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // DEVELOPER ISOLATION: Developers can only see other developers; cannot see real attorneys
   let visibleProfiles = [];
   if (isDeveloper) {
     visibleProfiles = profiles.filter(p => p.role === "developer");
   } else {
-    // Non-developers see all attorneys and admins, but never developers
     visibleProfiles = profiles.filter(p => p.role !== "developer");
   }
 
@@ -1776,7 +2068,6 @@ window.openShareCaseModal = function() {
   const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === window._currentUser?.email?.toLowerCase()));
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // Developers can only share cases with other developers; attorneys share with attorneys
   const associates = isDeveloper
     ? profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role === "developer")
     : profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid && p.role !== "developer");
@@ -2256,17 +2547,17 @@ function renderCaseDetail() {
     };
 
     if (inboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-label:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound Documents</div>`;
       inboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (outboundDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-label:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound Documents</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound Documents</div>`;
       outboundDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
 
     if (otherDocs.length > 0) {
-      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-label:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-files" style="color:var(--gold)"></i> Other Files</div>`;
+      docsHtml += `<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px"><i class="bi bi-files" style="color:var(--gold)"></i> Other Files</div>`;
       otherDocs.forEach(d => { docsHtml += renderDocRow(d); });
     }
   }
@@ -2364,7 +2655,6 @@ function renderQuickAccess() {
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // Developers only see developers; attorneys only see attorneys
   const visible = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : profiles.filter(p => p.role !== "developer");
@@ -3594,3 +3884,12 @@ window.closeFilePreview = function() {
   const modal = document.getElementById("file-preview-modal");
   if (modal) modal.style.display = "none";
 };
+
+// Auto-check security onboarding status on page initialization
+window.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    if (typeof checkOnboardingSecurityStatus === "function") {
+      checkOnboardingSecurityStatus();
+    }
+  }, 1000);
+});
