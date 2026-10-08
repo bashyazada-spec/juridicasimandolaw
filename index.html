@@ -60,6 +60,116 @@
 
   .btn-doc { background: #4285f4; color: #fff; font-weight: 600; }
   .btn-doc:hover { background: #3367d6; }
+
+  /* ── ONBOARDING SETUP MODAL STYLES ── */
+  .onboarding-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+    transition: all 0.25s ease;
+  }
+  .onboarding-card.completed {
+    border-color: rgba(52,211,153,0.35);
+    background: rgba(52,211,153,0.03);
+  }
+  .onboarding-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .onboarding-card-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .onboarding-status-tag {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .onboarding-status-tag.pending {
+    background: rgba(251,191,36,0.15);
+    color: var(--amber);
+  }
+  .onboarding-status-tag.active {
+    background: rgba(52,211,153,0.15);
+    color: var(--green);
+  }
+  .ob-qr-tabs {
+    display: flex;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+    margin-bottom: 10px;
+    gap: 2px;
+  }
+  .ob-qr-tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ob-qr-tab-btn.active {
+    background: var(--surface);
+    color: var(--gold-light);
+    font-weight: 700;
+    border: 1px solid var(--gold-border);
+  }
+  .ob-qr-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface3);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .ob-qr-img {
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ob-otp-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-align: center;
+    color: var(--gold-light);
+    outline: none;
+    margin-top: 8px;
+    box-sizing: border-box;
+  }
+  .ob-otp-input:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-dim);
+  }
 </style>
 </head>
 <body>
@@ -75,6 +185,114 @@
 <!-- Config warning banner -->
 <div id="config-banner">
   <i class="bi bi-exclamation-triangle-fill" style="color:var(--amber);margin-right:6px"></i> <strong>Firebase not connected.</strong> Data is stored in memory only and will be lost on refresh.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECURITY & GOOGLE DRIVE ONBOARDING POPUP MODAL
+     Appears on sign in if 2FA or Google Drive is not connected
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="onboarding-modal" class="modal-overlay hidden" style="z-index: 10015;">
+  <div class="modal-box" style="max-width: 500px; padding: 26px 22px; position: relative;">
+    
+    <!-- Close / Dismiss Button -->
+    <button onclick="dismissOnboardingModal()" style="position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;line-height:1;padding:4px;" title="Remind me later"><i class="bi bi-x-lg"></i></button>
+
+    <div style="text-align: center; margin-bottom: 18px;">
+      <div style="font-size:36px;color:var(--gold);line-height:1;margin-bottom:6px" id="ob-modal-icon"><i class="bi bi-shield-lock-fill"></i></div>
+      <div style="font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--gold-pale)" id="ob-modal-title">Account Security &amp; Setup</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px" id="ob-modal-sub">
+        To maintain strict attorney-client privilege and document storage, please complete the required security setup below.
+      </div>
+    </div>
+
+    <!-- Section 1: Two-Factor Authentication (Microsoft Authenticator) -->
+    <div class="onboarding-card" id="ob-card-2fa">
+      <div class="onboarding-card-header">
+        <div class="onboarding-card-title">
+          <i class="bi bi-phone" style="color:var(--gold)"></i> 1. Two-Factor Authentication (2FA)
+        </div>
+        <span class="onboarding-status-tag pending" id="ob-tag-2fa"><i class="bi bi-clock"></i> Action Needed</span>
+      </div>
+
+      <div id="ob-content-2fa-body">
+        <!-- QR Toggle Tabs -->
+        <div class="ob-qr-tabs">
+          <button class="ob-qr-tab-btn active" id="tab-ob-pairing-qr" type="button" onclick="switchOnboardingQrType('pairing')">
+            <i class="bi bi-key-fill"></i> Pair Account (Scan in App)
+          </button>
+          <button class="ob-qr-tab-btn" id="tab-ob-app-qr" type="button" onclick="switchOnboardingQrType('app_link')">
+            <i class="bi bi-download"></i> Get Microsoft Authenticator
+          </button>
+        </div>
+
+        <!-- View A: Pairing QR Code (Scan inside Authenticator) -->
+        <div id="ob-view-pairing-qr">
+          <div class="ob-qr-box">
+            <div class="ob-qr-img" id="ob-qr-pairing-container"></div>
+            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45">
+              <strong style="color:var(--text)">Scan inside Microsoft Authenticator:</strong><br/>
+              Open the app &gt; tap <strong>(+) Add</strong> &gt; <strong>Work or personal</strong> &gt; scan this code to link account.
+              <div id="ob-pairing-secret-key" style="font-family:monospace;font-size:10px;color:var(--gold-light);margin-top:4px;word-break:break-all"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <input type="text" class="ob-otp-input" id="ob-otp-input" placeholder="Enter 6-digit code" maxlength="6" inputmode="numeric"/>
+          </div>
+
+          <button class="btn btn-primary" id="btn-ob-activate-2fa" type="button" onclick="onboardingActivate2FA()" style="width:100%;margin-top:8px">
+            <i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA
+          </button>
+        </div>
+
+        <!-- View B: App Download Link QR (Scan with Phone Camera) -->
+        <div id="ob-view-app-qr" style="display:none">
+          <div class="ob-qr-box">
+            <div class="ob-qr-img" id="ob-qr-applink-container"></div>
+            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45">
+              <strong style="color:var(--text)">Scan with Phone Camera:</strong><br/>
+              Direct link to download <strong>Microsoft Authenticator</strong> on iOS or Android.
+              <div style="margin-top:6px">
+                <a href="https://aka.ms/authapp" target="_blank" rel="noopener noreferrer" style="color:var(--gold);text-decoration:underline;font-weight:600;font-size:11px">
+                  Or click here to open download page <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="switchOnboardingQrType('pairing')" style="width:100%;margin-top:8px;font-size:12px;border:1px solid var(--border)">
+            ← Done installing? Go to Pair Account
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section 2: Google Account & Drive Storage -->
+    <div class="onboarding-card" id="ob-card-drive">
+      <div class="onboarding-card-header">
+        <div class="onboarding-card-title">
+          <i class="bi bi-google" style="color:var(--gold)"></i> <span id="ob-drive-title-text">2. Google Account &amp; Drive Storage</span>
+        </div>
+        <span class="onboarding-status-tag pending" id="ob-tag-drive"><i class="bi bi-clock"></i> Action Needed</span>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.45;margin-bottom:10px">
+        Required for uploading court filings, client documents, and syncing trial calendar deadlines directly to your Drive.
+      </div>
+
+      <button class="btn btn-primary" id="btn-ob-connect-drive" type="button" onclick="onboardingConnectDrive()" style="width:100%">
+        <i class="bi bi-google"></i> Connect Google Account
+      </button>
+    </div>
+
+    <!-- Dismiss / Remind Later Option -->
+    <div style="display:flex;justify-content:center;margin-top:6px">
+      <button class="btn btn-ghost" type="button" onclick="dismissOnboardingModal()" style="font-size:11.5px;padding:6px;width:auto">
+        Remind Me Later / Continue to Dashboard
+      </button>
+    </div>
+
+  </div>
 </div>
 
 <!-- Universal Action Confirmation Modal -->
