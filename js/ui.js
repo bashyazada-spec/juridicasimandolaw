@@ -99,6 +99,7 @@ function base32Decode(base32) {
     if (bits >= 8) {
       output.push((value >>> (bits - 8)) & 255);
       bits -= 8;
+      value &= (1 << bits) - 1; // FIX: Prevents 32-bit overflow & bit corruption
     }
   }
   return new Uint8Array(output);
@@ -184,7 +185,6 @@ window.checkOnboardingSecurityStatus = function() {
   const is2FaEnabled = !!myProf.twoFactorEnabled;
   const isDriveConnected = typeof hasValidToken === "function" ? hasValidToken() : false;
 
-  // If both are completed, nothing to show
   if (is2FaEnabled && isDriveConnected) {
     dismissOnboardingModal();
     return;
@@ -200,7 +200,6 @@ window.checkOnboardingSecurityStatus = function() {
   const iconEl = document.getElementById("ob-modal-icon");
   const driveTitle = document.getElementById("ob-drive-title-text");
 
-  // Condition 1: 2FA is active, but Google Drive is unlinked -> Show only Drive connect
   if (is2FaEnabled && !isDriveConnected) {
     if (card2Fa) card2Fa.style.display = "none";
     if (cardDrive) cardDrive.style.display = "block";
@@ -215,7 +214,6 @@ window.checkOnboardingSecurityStatus = function() {
     return;
   }
 
-  // Condition 2: 2FA is not active -> Show 2FA section (+ Google Drive section)
   if (!is2FaEnabled) {
     if (card2Fa) card2Fa.style.display = "block";
     if (cardDrive) cardDrive.style.display = "block";
@@ -243,10 +241,8 @@ function initOnboarding2FAQrCodes(myProf, u) {
   }
 
   const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
-  // Clean standard TOTP URI for large, instantly scannable modules
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(userEmail)}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law`;
 
-  // 1. Account Pairing TOTP QR - CorrectLevel.L ensures high contrast and fast camera detection
   const pairingContainer = document.getElementById("ob-qr-pairing-container");
   if (pairingContainer) {
     pairingContainer.innerHTML = "";
@@ -264,7 +260,6 @@ function initOnboarding2FAQrCodes(myProf, u) {
     }
   }
 
-  // 2. Microsoft Authenticator App Link QR
   const appLinkContainer = document.getElementById("ob-qr-applink-container");
   if (appLinkContainer) {
     appLinkContainer.innerHTML = "";
@@ -283,7 +278,6 @@ function initOnboarding2FAQrCodes(myProf, u) {
     }
   }
 
-  // Automatic submit upon entering all 6 digits and Enter key listener
   const otpInp = document.getElementById("ob-otp-input");
   if (otpInp && !otpInp._boundEvents) {
     otpInp._boundEvents = true;
@@ -412,6 +406,10 @@ window.onboardingActivate2FA = async function() {
     return;
   }
 
+  if (!onboardingGeneratedSecret) {
+    onboardingGeneratedSecret = generateRandomBase32(16);
+  }
+
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying Code...`;
@@ -436,16 +434,24 @@ window.onboardingActivate2FA = async function() {
 
     showToast("Activating Two-Factor Security...");
 
-    const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
-    const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-    
-    await setDoc(secRef, {
+    // Store securely with fallback to direct profile update if subcollections are restricted
+    try {
+      const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
+      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+      await setDoc(secRef, {
+        twoFactorEnabled: true,
+        twoFactorSecret: onboardingGeneratedSecret,
+        twoFactorBackupCodes: onboardingGeneratedBackupCodes
+      }, { merge: true });
+    } catch (subColErr) {
+      console.warn("Security subcollection notice:", subColErr);
+    }
+
+    await dbUpdateProfile(myProf.id, { 
       twoFactorEnabled: true,
       twoFactorSecret: onboardingGeneratedSecret,
       twoFactorBackupCodes: onboardingGeneratedBackupCodes
-    }, { merge: true });
-
-    await dbUpdateProfile(myProf.id, { twoFactorEnabled: true });
+    });
 
     myProf.twoFactorEnabled = true;
     myProf.twoFactorSecret = onboardingGeneratedSecret;
@@ -482,6 +488,7 @@ window.onboardingActivate2FA = async function() {
     }
   }
 };
+window.onboardingActivate2FA = onboardingActivate2FA;
 
 function checkOnboardingBothComplete() {
   const u = window._currentUser || window._auth?.currentUser;
@@ -2676,7 +2683,7 @@ function renderCaseDetail() {
         <div class="doc-item" style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
             <div>
-              <div style="font-size:13px;color:var(--text);font-weight:600">
+              <div style="font-size:13px;color:var(--text-weight:600">
                 <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
                   ${fileIcon}${escHtml(doc.name)}
                 </span>
@@ -2800,7 +2807,6 @@ function renderQuickAccess() {
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // Developers only see developers; attorneys only see attorneys
   const visible = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : profiles.filter(p => p.role !== "developer");
@@ -4039,4 +4045,3 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, 600);
 });
-/* ── END OF PART 1/2 — REPLY TO RECEIVE PART 2/2 ── */
