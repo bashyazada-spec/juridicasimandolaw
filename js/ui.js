@@ -1,4 +1,4 @@
-/ ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
 function initTheme() {
@@ -239,31 +239,32 @@ function initOnboarding2FAQrCodes(myProf, u) {
 
   const keyDisplay = document.getElementById("ob-pairing-secret-key");
   if (keyDisplay) {
-    keyDisplay.textContent = `KEY: ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret}`;
+    keyDisplay.innerHTML = `<span style="font-weight:700;color:var(--text)">KEY:</span> ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret} <button type="button" onclick="copyOnboardingSecretKey()" style="background:none;border:none;color:var(--gold);cursor:pointer;margin-left:6px;font-size:11px;font-weight:600;text-decoration:underline" title="Copy Key"><i class="bi bi-clipboard"></i> Copy</button>`;
   }
 
-  // 1. Account Pairing TOTP QR (Scan inside Microsoft Authenticator) - Sized to 160x160px for effortless scanning
+  const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
+  // Clean standard TOTP URI for large, instantly scannable modules
+  const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(userEmail)}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law`;
+
+  // 1. Account Pairing TOTP QR - CorrectLevel.L ensures high contrast and fast camera detection
   const pairingContainer = document.getElementById("ob-qr-pairing-container");
   if (pairingContainer) {
     pairingContainer.innerHTML = "";
-    const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
-    const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(userEmail)}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law&algorithm=SHA1&digits=6&period=30`;
-    
     if (typeof QRCode !== "undefined") {
       new QRCode(pairingContainer, {
         text: otpAuthUrl,
-        width: 160,
-        height: 160,
-        colorDark: "#060c13",
+        width: 175,
+        height: 175,
+        colorDark: "#000000",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
+        correctLevel: QRCode.CorrectLevel.L
       });
     } else {
-      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:8px"/>`;
+      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=175x175&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px;width:175px;height:175px;display:block"/>`;
     }
   }
 
-  // 2. Microsoft Authenticator App Link QR (Scan with Phone Camera) - Sized to 160x160px
+  // 2. Microsoft Authenticator App Link QR
   const appLinkContainer = document.getElementById("ob-qr-applink-container");
   if (appLinkContainer) {
     appLinkContainer.innerHTML = "";
@@ -271,15 +272,33 @@ function initOnboarding2FAQrCodes(myProf, u) {
     if (typeof QRCode !== "undefined") {
       new QRCode(appLinkContainer, {
         text: appStoreUrl,
-        width: 160,
-        height: 160,
-        colorDark: "#060c13",
+        width: 175,
+        height: 175,
+        colorDark: "#000000",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
+        correctLevel: QRCode.CorrectLevel.L
       });
     } else {
-      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:8px"/>`;
+      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=175x175&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px;width:175px;height:175px;display:block"/>`;
     }
+  }
+
+  // Automatic submit upon entering all 6 digits and Enter key listener
+  const otpInp = document.getElementById("ob-otp-input");
+  if (otpInp && !otpInp._boundEvents) {
+    otpInp._boundEvents = true;
+    otpInp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        window.onboardingActivate2FA();
+      }
+    });
+    otpInp.addEventListener("input", (e) => {
+      const cleaned = e.target.value.replace(/\D/g, "");
+      if (cleaned.length === 6) {
+        window.onboardingActivate2FA();
+      }
+    });
   }
 }
 
@@ -2225,9 +2244,7 @@ window.openShareCaseModal = function() {
 window.closeShareModal = function() {
   const modal = document.getElementById("share-modal");
   if (modal) modal.classList.add("hidden");
-};
-
-// ═══════════════════════════════════════════════════════════════
+};// ═══════════════════════════════════════════════════════════════
 //  PROFILE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderProfileDetail() {
@@ -4022,3 +4039,4 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, 600);
 });
+/* ── END OF PART 1/2 — REPLY TO RECEIVE PART 2/2 ── */
