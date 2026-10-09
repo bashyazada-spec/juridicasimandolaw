@@ -99,7 +99,7 @@ function base32Decode(base32) {
     if (bits >= 8) {
       output.push((value >>> (bits - 8)) & 255);
       bits -= 8;
-      value &= (1 << bits) - 1; // FIX: Prevents 32-bit overflow & bit corruption
+      value &= (1 << bits) - 1; // Bit-mask prevents 32-bit overflow & key corruption
     }
   }
   return new Uint8Array(output);
@@ -121,6 +121,7 @@ async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
 
   const buffer = new ArrayBuffer(8);
   const view = new DataView(buffer);
+  view.setUint32(0, 0, false);
   view.setUint32(4, timeStep, false);
 
   const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
@@ -140,8 +141,11 @@ window.generateTOTPCode = generateTOTPCode;
 
 async function verifyClientTOTP(token, secretBase32) {
   if (!token || !secretBase32) return false;
-  const cleanedToken = String(token).trim();
-  for (const offset of [0, -1, 1, -2, 2]) {
+  const cleanedToken = String(token).trim().replace(/\D/g, "");
+  if (cleanedToken.length !== 6) return false;
+
+  // Tolerates up to +/- 90 seconds of clock skew between phone & PC
+  for (const offset of [0, -1, 1, -2, 2, -3, 3]) {
     try {
       const valid = await generateTOTPCode(secretBase32, offset);
       if (cleanedToken === valid) return true;
@@ -230,9 +234,22 @@ window.checkOnboardingSecurityStatus = function() {
 };
 
 function initOnboarding2FAQrCodes(myProf, u) {
+  // Persist secret in sessionStorage so reloads never desynchronize Authenticator
   if (!onboardingGeneratedSecret) {
-    onboardingGeneratedSecret = generateRandomBase32(16);
-    onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5);
+    const saved = sessionStorage.getItem("simando_temp_2fa_secret");
+    if (saved) {
+      onboardingGeneratedSecret = saved;
+      try {
+        onboardingGeneratedBackupCodes = JSON.parse(sessionStorage.getItem("simando_temp_2fa_backups") || "[]");
+      } catch (e) {
+        onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5);
+      }
+    } else {
+      onboardingGeneratedSecret = generateRandomBase32(16);
+      onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5);
+      sessionStorage.setItem("simando_temp_2fa_secret", onboardingGeneratedSecret);
+      sessionStorage.setItem("simando_temp_2fa_backups", JSON.stringify(onboardingGeneratedBackupCodes));
+    }
   }
 
   const keyDisplay = document.getElementById("ob-pairing-secret-key");
@@ -278,18 +295,32 @@ function initOnboarding2FAQrCodes(myProf, u) {
     }
   }
 
+  // AUTOMATIC 6-DIGIT VERIFICATION LISTENER
   const otpInp = document.getElementById("ob-otp-input");
-  if (otpInp && !otpInp._boundEvents) {
-    otpInp._boundEvents = true;
-    otpInp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        window.onboardingActivate2FA();
+  if (otpInp) {
+    otpInp.value = "";
+    const cleanInp = otpInp.cloneNode(true);
+    otpInp.parentNode.replaceChild(cleanInp, otpInp);
+
+    cleanInp.addEventListener("input", async (e) => {
+      const cleaned = e.target.value.replace(/\D/g, "");
+      e.target.value = cleaned;
+      const statusMsg = document.getElementById("ob-otp-status-msg");
+
+      if (cleaned.length === 6) {
+        if (statusMsg) {
+          statusMsg.innerHTML = `<span style="color:var(--gold);font-size:12px;font-weight:600"><span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></span> Verifying code...</span>`;
+          statusMsg.style.display = "block";
+        }
+        await window.onboardingActivate2FA(cleaned);
+      } else if (statusMsg) {
+        statusMsg.style.display = "none";
       }
     });
-    otpInp.addEventListener("input", (e) => {
-      const cleaned = e.target.value.replace(/\D/g, "");
-      if (cleaned.length === 6) {
+
+    cleanInp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
         window.onboardingActivate2FA();
       }
     });
@@ -395,35 +426,63 @@ window.onboardingConnectDrive = async function() {
   }
 };
 
-window.onboardingActivate2FA = async function() {
+window.onboardingActivate2FA = async function(manualCode) {
   const codeInp = document.getElementById("ob-otp-input");
-  const code = (codeInp?.value || "").trim().replace(/\D/g, "");
+  const code = (manualCode || codeInp?.value || "").trim().replace(/\D/g, "");
   const btn = document.getElementById("btn-ob-activate-2fa");
+  let statusMsg = document.getElementById("ob-otp-status-msg");
+
+  if (!statusMsg && codeInp) {
+    statusMsg = document.createElement("div");
+    statusMsg.id = "ob-otp-status-msg";
+    statusMsg.style.cssText = "text-align:center;margin-top:6px;min-height:18px;";
+    codeInp.parentNode.appendChild(statusMsg);
+  }
 
   if (code.length !== 6) {
-    showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
+    if (statusMsg) {
+      statusMsg.innerHTML = `<span style="color:var(--amber);font-size:11.5px">Please enter all 6 digits.</span>`;
+      statusMsg.style.display = "block";
+    } else {
+      showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
+    }
     if (codeInp) codeInp.focus();
     return;
   }
 
   if (!onboardingGeneratedSecret) {
-    onboardingGeneratedSecret = generateRandomBase32(16);
+    onboardingGeneratedSecret = sessionStorage.getItem("simando_temp_2fa_secret") || generateRandomBase32(16);
+  }
+
+  if (statusMsg) {
+    statusMsg.innerHTML = `<span style="color:var(--gold);font-size:12px;font-weight:600"><span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></span> Verifying code...</span>`;
+    statusMsg.style.display = "block";
   }
 
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying Code...`;
+    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying...`;
   }
 
   try {
     const isValid = await verifyClientTOTP(code, onboardingGeneratedSecret);
     if (!isValid) {
-      showToast("Invalid code. Check your Authenticator app and try again.", "error");
+      if (statusMsg) {
+        statusMsg.innerHTML = `<span style="color:var(--red);font-size:12px;font-weight:600"><i class="bi bi-x-circle"></i> Incorrect code. Please check Authenticator.</span>`;
+        statusMsg.style.display = "block";
+      }
+      showToast("Incorrect code. Check Authenticator and try again.", "error");
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
       }
       return;
+    }
+
+    // Code is valid! Display confirmed state immediately
+    if (statusMsg) {
+      statusMsg.innerHTML = `<span style="color:var(--green);font-size:12.5px;font-weight:700"><i class="bi bi-check-circle-fill"></i> Code confirmed! Activating 2FA...</span>`;
+      statusMsg.style.display = "block";
     }
 
     const u = window._currentUser || window._auth?.currentUser;
@@ -432,9 +491,8 @@ window.onboardingActivate2FA = async function() {
     const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
     if (!myProf) throw new Error("Profile record not found.");
 
-    showToast("Activating Two-Factor Security...");
+    showToast("Code confirmed! Activating 2FA...");
 
-    // Store securely with fallback to direct profile update if subcollections are restricted
     try {
       const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
       const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
@@ -481,6 +539,10 @@ window.onboardingActivate2FA = async function() {
     checkOnboardingBothComplete();
   } catch (err) {
     console.error("onboardingActivate2FA error:", err);
+    if (statusMsg) {
+      statusMsg.innerHTML = `<span style="color:var(--red);font-size:11.5px">${err.message}</span>`;
+      statusMsg.style.display = "block";
+    }
     showToast("Activation failed: " + err.message, "error");
     if (btn) {
       btn.disabled = false;
@@ -2683,7 +2745,7 @@ function renderCaseDetail() {
         <div class="doc-item" style="margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%">
             <div>
-              <div style="font-size:13px;color:var(--text-weight:600">
+              <div style="font-size:13px;color:var(--text);font-weight:600">
                 <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;text-underline-offset:3px">
                   ${fileIcon}${escHtml(doc.name)}
                 </span>
@@ -2807,6 +2869,7 @@ function renderQuickAccess() {
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const isDeveloper = myProf && myProf.role === "developer";
 
+  // Developers only see developers; attorneys only see attorneys
   const visible = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : profiles.filter(p => p.role !== "developer");
