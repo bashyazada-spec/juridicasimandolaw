@@ -118,7 +118,7 @@
           <!-- Case File Picker -->
           <div style="margin-bottom:8px">
             <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:block;margin-bottom:3px">Attach Docket Case File *</label>
-            <select class="chat-input" id="chat-case-select" onchange="window._chat.onCaseChange(this.value)" style="padding:6px 8px;font-size:11.5px;height:auto">
+            <select class="chat-input" id="chat-case-select" onchange="window._chat.onCaseChange(this.value)" style="padding:6px 8px;font-size:11.5px;height:auto;width:100% !important;flex:none !important">
               <option value="">— Select Docket File —</option>
             </select>
           </div>
@@ -126,7 +126,7 @@
           <!-- Hearing Stage Sync (If Presenting Case) -->
           <div id="chat-hearing-stage-wrap" style="background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;display:none">
             <label style="font-size:9.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:block;margin-bottom:2px"><i class="bi bi-flag"></i> Hearing to Present</label>
-            <select class="chat-input" id="chat-target-hearing-select" onchange="window._chat.onHearingSync(this.value)" style="padding:5px 6px;font-size:11px;height:auto">
+            <select class="chat-input" id="chat-target-hearing-select" onchange="window._chat.onHearingSync(this.value)" style="padding:5px 6px;font-size:11px;height:auto;width:100% !important;flex:none !important">
               <option value="">— Select scheduled hearing date —</option>
             </select>
           </div>
@@ -135,13 +135,13 @@
           <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:6px;margin-bottom:8px">
             <div>
               <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:block;margin-bottom:3px">Date *</label>
-              <input id="avail-date-input" type="date" class="chat-input" style="padding:5px 8px;font-size:11.5px"/>
+              <input id="avail-date-input" type="date" class="chat-input" style="padding:5px 8px;font-size:11.5px;width:100% !important;flex:none !important"/>
             </div>
             <div>
               <label style="font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:block;margin-bottom:3px">Time (AM/PM) *</label>
               <div class="custom-time-wrap" style="display:flex;align-items:center;gap:4px">
-                <input id="chat-custom-time" type="text" class="time-input-box" value="08:30" maxlength="5" autocomplete="off" placeholder="00:00" style="padding:5px 6px;font-size:11.5px;text-align:center"/>
-                <div class="ampm-toggle" style="display:inline-flex;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:2px;gap:2px">
+                <input id="chat-custom-time" type="text" class="time-input-box" value="08:30" maxlength="5" autocomplete="off" placeholder="00:00" style="padding:5px 6px;font-size:11.5px;text-align:center;width:100% !important;flex:1 !important"/>
+                <div class="ampm-toggle" style="display:inline-flex;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:2px;gap:2px;flex-shrink:0">
                   <button type="button" class="ampm-btn active" id="chat-btn-am" onclick="window._chat.setAmPm('AM')" style="padding:3px 6px;font-size:10px">AM</button>
                   <button type="button" class="ampm-btn" id="chat-btn-pm" onclick="window._chat.setAmPm('PM')" style="padding:3px 6px;font-size:10px">PM</button>
                 </div>
@@ -151,8 +151,8 @@
 
           <!-- Venue & Objective -->
           <div style="margin-bottom:8px">
-            <input id="avail-venue-input" class="chat-input" placeholder="Courtroom / Venue (e.g. RTC Branch 20)" style="margin-bottom:6px;padding:6px 8px;font-size:11.5px"/>
-            <textarea id="avail-notes-input" class="chat-input" rows="2" placeholder="Specific hearing goals or strategy notes..." style="padding:6px 8px;font-size:11.5px;resize:vertical"></textarea>
+            <input id="avail-venue-input" class="chat-input" placeholder="Courtroom / Venue (e.g. RTC Branch 20)" style="margin-bottom:6px;padding:6px 8px;font-size:11.5px;width:100% !important;flex:none !important"/>
+            <textarea id="avail-notes-input" class="chat-input" rows="2" placeholder="Specific hearing goals or strategy notes..." style="padding:6px 8px;font-size:11.5px;resize:vertical;width:100% !important;flex:none !important"></textarea>
           </div>
 
           <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -164,7 +164,7 @@
         <!-- Hidden File Input for Chat Attachments -->
         <input type="file" id="chat-file-input" style="display:none" onchange="window._chat.handleFileAttachment(event)"/>
 
-        <!-- Input Row -->
+        <!-- Input Row (Fully Responsive with Zero Cut-Off) -->
         <div class="chat-input-row">
           <button class="chat-avail-btn" type="button" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()"><i class="bi bi-paperclip"></i></button>
           <button class="chat-avail-btn" type="button" title="Request Schedule / Hearing Appearance" onclick="window._chat.toggleAvailPicker()"><i class="bi bi-calendar-plus"></i></button>
@@ -629,7 +629,6 @@
       const dateInp = document.getElementById("avail-date-input");
       if (dateInp) dateInp.value = tomorrow.toISOString().split("T")[0];
 
-      // Populate Case Files
       const caseSel = document.getElementById("chat-case-select");
       if (caseSel) {
         const userCases = typeof window.getAccessibleCases === "function" 
@@ -1003,7 +1002,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STYLES (WITH HIGH-VISIBILITY CRISP BUTTONS)
+  //  STYLES (ZERO CUTOFF & RESPONSIVE FLEXBOX CONSTRAINTS)
   // ═══════════════════════════════════════════════════════════
   function injectStyles() {
     const s = document.createElement("style");
@@ -1022,7 +1021,8 @@
         position: fixed !important;
         bottom: 24px !important;
         right: 24px !important;
-        width: 360px !important;
+        width: 375px !important;
+        max-width: calc(100vw - 20px) !important;
         height: 520px !important;
         background: var(--surface, #0c1826) !important;
         border: 1px solid var(--gold-border, rgba(201,165,92,0.3)) !important;
@@ -1032,6 +1032,7 @@
         z-index: 99998 !important;
         box-shadow: 0 12px 48px rgba(0,0,0,0.7) !important;
         overflow: hidden !important;
+        box-sizing: border-box !important;
         animation: chatDockExpand .22s cubic-bezier(0.4, 0, 0.2, 1) !important;
       }
       .chat-panel.hidden { display: none !important; }
@@ -1059,7 +1060,7 @@
       }
       .chat-icon-btn:hover { background: var(--border, #162033); color: var(--text); }
 
-      .chat-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+      .chat-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; width: 100% !important; box-sizing: border-box !important; }
       .chat-view.hidden { display: none; }
 
       .chat-conversations-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -1129,47 +1130,83 @@
       .chat-card-btn.decline { background: transparent; border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
       .chat-card-btn:hover { opacity: .85; }
 
-      .chat-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border, #162033); flex-shrink: 0; align-items: center; }
-      .chat-input {
-        flex: 1; background: var(--bg, #060c13); border: 1px solid var(--border, #162033);
-        border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text); outline: none;
-      }
-      .chat-input:focus { border-color: var(--gold, #c9a84c); }
-
-      /* ── CRISP HIGH-VISIBILITY BUTTONS IN DARK MODE ── */
-      .chat-avail-btn {
+      /* ── ZERO-OVERFLOW RESPONSIVE INPUT ROW ── */
+      .chat-input-row {
+        display: flex !important;
+        gap: 6px !important;
+        padding: 8px 10px !important;
+        border-top: 1px solid var(--border, #162033) !important;
+        flex-shrink: 0 !important;
+        align-items: center !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
         background: var(--surface2, #091422) !important;
+        overflow: hidden !important;
+      }
+
+      .chat-input {
+        width: 0 !important;
+        flex: 1 1 0px !important;
+        min-width: 0 !important;
+        background: var(--bg, #060c13) !important;
+        border: 1px solid var(--border, #162033) !important;
+        border-radius: 8px !important;
+        padding: 8px 10px !important;
+        font-size: 12.5px !important;
+        color: var(--text) !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+      }
+      .chat-input:focus { border-color: var(--gold, #c9a84c) !important; }
+
+      .chat-avail-btn {
+        width: 32px !important;
+        height: 32px !important;
+        background: var(--surface3, #10202e) !important;
         border: 1px solid var(--border-soft, #1c2d3f) !important;
         color: var(--gold-light, #e0c080) !important;
-        font-size: 16px !important;
-        border-radius: 8px !important;
-        padding: 6px 10px !important;
+        font-size: 15px !important;
+        border-radius: 7px !important;
+        padding: 0 !important;
         cursor: pointer !important;
         transition: all .15s ease !important;
-        display: flex !important;
+        display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         flex-shrink: 0 !important;
+        box-sizing: border-box !important;
       }
       .chat-avail-btn i {
         color: var(--gold-light, #e0c080) !important;
-        font-size: 16px !important;
+        font-size: 15px !important;
       }
       .chat-avail-btn:hover {
-        background: var(--surface3, #10202e) !important;
+        background: var(--surface2, #091422) !important;
         border-color: var(--gold-border, rgba(201,165,92,0.3)) !important;
-        transform: translateY(-1px);
       }
-      .chat-avail-btn:hover i {
-        color: #ffffff !important;
-      }
+      .chat-avail-btn:hover i { color: #ffffff !important; }
 
       .chat-send-btn {
-        background: var(--gold, #c9a84c); color: #111; border: none;
-        border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 700;
-        cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
+        background: var(--gold, #c9a84c) !important;
+        color: #060c13 !important;
+        border: none !important;
+        border-radius: 7px !important;
+        padding: 0 12px !important;
+        height: 32px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 4px !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
       }
-      .chat-send-btn:hover { opacity: .85; }
+      .chat-send-btn:hover { opacity: .9 !important; background: var(--gold-light, #e0c080) !important; }
 
       .dm-conv-header { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border, #162033); }
       .dm-back-btn { background: transparent; border: none; color: var(--gold, #c9a84c); font-size: 12px; cursor: pointer; padding: 4px 8px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
