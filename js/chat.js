@@ -802,7 +802,6 @@
         }
 
         if (msgData) {
-          // 1. If linked to a case, unlock permissions & files for recipient immediately
           if (msgData.caseId && typeof window.dbUpdateCase === "function") {
             const targetCase = (window.cases || []).find(c => c.id === msgData.caseId);
             if (targetCase) {
@@ -821,7 +820,6 @@
             }
           }
 
-          // 2. Schedule Appointment
           const apptData = {
             title: msgData.reqTitle || "Chat Appearance & Meeting",
             date: msgData.reqDate,
@@ -1005,7 +1003,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  STYLES
+  //  STYLES (WITH HIGH-VISIBILITY CRISP BUTTONS)
   // ═══════════════════════════════════════════════════════════
   function injectStyles() {
     const s = document.createElement("style");
@@ -1137,6 +1135,34 @@
         border-radius: 8px; padding: 8px 10px; font-size: 13px; color: var(--text); outline: none;
       }
       .chat-input:focus { border-color: var(--gold, #c9a84c); }
+
+      /* ── CRISP HIGH-VISIBILITY BUTTONS IN DARK MODE ── */
+      .chat-avail-btn {
+        background: var(--surface2, #091422) !important;
+        border: 1px solid var(--border-soft, #1c2d3f) !important;
+        color: var(--gold-light, #e0c080) !important;
+        font-size: 16px !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        cursor: pointer !important;
+        transition: all .15s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        flex-shrink: 0 !important;
+      }
+      .chat-avail-btn i {
+        color: var(--gold-light, #e0c080) !important;
+        font-size: 16px !important;
+      }
+      .chat-avail-btn:hover {
+        background: var(--surface3, #10202e) !important;
+        border-color: var(--gold-border, rgba(201,165,92,0.3)) !important;
+        transform: translateY(-1px);
+      }
+      .chat-avail-btn:hover i {
+        color: #ffffff !important;
+      }
 
       .chat-send-btn {
         background: var(--gold, #c9a84c); color: #111; border: none;
