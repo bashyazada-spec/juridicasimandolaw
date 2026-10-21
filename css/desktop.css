@@ -799,8 +799,39 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 .upload-area:hover { border-color: var(--gold-border); color: var(--gold); background: var(--gold-dim); }
 
 .field-label { display: block; font-size: 10.5px; color: var(--text-dim); margin-bottom: 7px; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; transition: color 0.2s; }
-.field-input, select.field-input, textarea.field-input, input[type="date"].field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px 14px; font-size: clamp(13px, 0.95vw, 14px); outline: none; transition: all 0.2s; box-sizing: border-box; }
+.field-input, select.field-input, textarea.field-input, input[type="date"].field-input, input[type="time"].field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); padding: 10px 14px; font-size: clamp(13px, 0.95vw, 14px); outline: none; transition: all 0.2s; box-sizing: border-box; }
 .field-input:focus, select.field-input:focus, textarea.field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); background: var(--surface3); }
+
+/* ── CRITICAL FIX: DATE & TIME PICKER INDICATOR VISIBILITY IN DARK MODE ── */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+[data-theme="light"] input[type="date"],
+[data-theme="light"] input[type="time"] {
+  color-scheme: light;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.85) sepia(40%) saturate(350%) hue-rotate(5deg);
+  opacity: 0.85;
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: invert(1);
+}
+
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.65;
+}
 
 input[id*="contact"], input[id*="phone"], input[id*="mobile"] {
   -moz-appearance: textfield;
@@ -886,7 +917,6 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 600; }
 
-/* ── CLEAN PAGE HEADER WITH FLUID TITLE ── */
 .page-hdr { 
   display: flex; 
   flex-direction: column;
