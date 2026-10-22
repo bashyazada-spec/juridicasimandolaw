@@ -777,13 +777,25 @@
           targetUid: activeChannel !== "group" ? activeChannel : null,
           targetName: activePeerName || "Counsel",
           ownerUid: myUid,
-          status: "pending"
+          status: "pending",
+          // Store complete snapshot inside the appointment as well
+          caseCategory: selC ? (selC.category || "Case") : null,
+          caseNumber: selC ? (selC.caseNumber || "Docket N/A") : null,
+          caseParties: selC ? (selC.parties || "N/A") : null,
+          caseVenue: selC ? (selC.venue || venue) : venue,
+          caseFiledDate: selC ? (selC.filedDate || "") : "",
+          caseStatus: selC ? (selC.status || "On-going") : "On-going",
+          caseNarrative: selC ? (selC.narrative || "") : "",
+          hearings: selC?.hearings || [],
+          deadlines: selC?.deadlines || [],
+          documents: selC?.documents || []
         });
       } catch (e) {
         console.warn("dbAddAppointment chat sync warning:", e);
       }
     }
 
+    // Full case snapshot attached directly to the message payload
     const payload = {
       text: `${purposeLabel}: ${selC ? selC.title : 'Consultation'} on ${date} at ${time} ${chatAmPm}`,
       cardType: "availability_request",
@@ -800,7 +812,12 @@
       caseCategory: selC ? (selC.category || "Case") : null,
       caseParties: selC ? (selC.parties || "N/A") : null,
       caseVenue: selC ? (selC.venue || venue) : venue,
+      caseFiledDate: selC ? (selC.filedDate || "") : "",
+      caseStatus: selC ? (selC.status || "On-going") : "On-going",
       caseNarrative: selC ? (selC.narrative || "") : "",
+      hearings: selC?.hearings || [],
+      deadlines: selC?.deadlines || [],
+      documents: selC?.documents || [],
       documentsCount: selC?.documents?.length || 0,
       reqStatus: "pending",
       uid: myUid,
@@ -868,11 +885,13 @@
       if (status === "accepted" && msgData) {
         // 1. ADD ATTORNEY TO CASE PERMISSIONS & SHARED LIST
         if (msgData.caseId && typeof window.dbUpdateCase === "function") {
-          const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
-          let targetCase = allCases.find(c => c.id === msgData.caseId);
+          let targetCase = (window.cases || []).find(c => c.id === msgData.caseId);
 
-          if (!targetCase && window.cases) {
-            targetCase = window.cases.find(c => c.id === msgData.caseId);
+          if (!targetCase && typeof window._fbGetDoc === "function") {
+            const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", msgData.caseId));
+            if (snap && snap.exists()) {
+              targetCase = { id: snap.id, ...snap.data() };
+            }
           }
 
           if (targetCase) {
@@ -888,6 +907,10 @@
             });
             targetCase.allowedUids = currentAllowed;
             targetCase.sharedWith = currentShared;
+
+            if (!window.cases.some(c => c.id === targetCase.id)) {
+              window.cases.unshift(targetCase);
+            }
 
             if (typeof window.renderAllCases === "function") window.renderAllCases();
             if (typeof window.renderDashboard === "function") window.renderDashboard();
@@ -950,8 +973,7 @@
 
       // 1. Remove user from case allowedUids & sharedWith
       if (caseId && typeof window.dbUpdateCase === "function") {
-        const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
-        const targetCase = allCases.find(c => c.id === caseId) || (window.cases || []).find(c => c.id === caseId);
+        const targetCase = (window.cases || []).find(c => c.id === caseId);
 
         if (targetCase && targetCase.ownerUid !== myUid) {
           const currentAllowed = (targetCase.allowedUids || []).filter(u => u !== myUid);
@@ -963,6 +985,9 @@
           });
           targetCase.allowedUids = currentAllowed;
           targetCase.sharedWith = currentShared;
+
+          // Evict from active array
+          window.cases = (window.cases || []).filter(c => c.id !== caseId);
         }
       }
 
@@ -997,7 +1022,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  MESSAGE CARD RENDERING (CLEAN, POLISHED SYSTEM BUTTONS)
+  //  MESSAGE CARD RENDERING
   // ═══════════════════════════════════════════════════════════
   function renderMessages(containerId, msgs, isDm, isGroup, channelId) {
     const el = document.getElementById(containerId);
