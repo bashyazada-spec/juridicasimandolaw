@@ -778,7 +778,6 @@
           targetName: activePeerName || "Counsel",
           ownerUid: myUid,
           status: "pending",
-          // Store complete snapshot inside the appointment as well
           caseCategory: selC ? (selC.category || "Case") : null,
           caseNumber: selC ? (selC.caseNumber || "Docket N/A") : null,
           caseParties: selC ? (selC.parties || "N/A") : null,
@@ -795,7 +794,6 @@
       }
     }
 
-    // Full case snapshot attached directly to the message payload
     const payload = {
       text: `${purposeLabel}: ${selC ? selC.title : 'Consultation'} on ${date} at ${time} ${chatAmPm}`,
       cardType: "availability_request",
