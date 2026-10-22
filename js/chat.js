@@ -616,7 +616,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  FIXED SCHEDULER: POPULATES UPCOMING HEARINGS INSTANTLY
+  //  SCHEDULE REQUEST DRAWER
   // ═══════════════════════════════════════════════════════════
   function toggleAvailPicker() {
     const el = document.getElementById("chat-avail-picker");
@@ -682,7 +682,6 @@
       return;
     }
 
-    // GATHER ALL HEARINGS from selC.hearings AND fallback selC.dueDate
     const hearingsList = Array.isArray(selC.hearings) ? [...selC.hearings] : [];
     if (selC.dueDate && !hearingsList.some(h => h.date === selC.dueDate)) {
       hearingsList.push({
@@ -699,11 +698,8 @@
         opts += `<option value="${h.id || h.date}">${formatDate(h.date)} (${h.time || '08:30'}) — ${escHtml(h.purpose || 'Hearing Appearance')}</option>`;
       });
       hSel.innerHTML = opts;
-
-      // Always display stage selector if hearings are logged
       if (wrap) wrap.style.display = "block";
 
-      // Pre-select the nearest upcoming hearing
       const todayStr = new Date().toISOString().split("T")[0];
       const upcomingH = hearingsList.find(h => h.date >= todayStr) || hearingsList[0];
       if (upcomingH) {
@@ -764,9 +760,34 @@
     if (chatPurposeType === "present_hearing") purposeLabel = "Present Case in Court Hearing";
     else if (chatPurposeType === "pleading_review") purposeLabel = "Urgent Pleading Review";
 
+    let apptId = null;
+    if (typeof window.dbAddAppointment === "function") {
+      try {
+        apptId = await window.dbAddAppointment({
+          title: purposeLabel,
+          date: date,
+          time: `${time} ${chatAmPm}`,
+          venue: venue || (selC?.venue || "Firm Conference"),
+          description: notes || "",
+          purposeType: chatPurposeType,
+          caseId: selC ? selC.id : null,
+          caseTitle: selC ? selC.title : null,
+          requesterUid: myUid,
+          requesterName: myName,
+          targetUid: activeChannel !== "group" ? activeChannel : null,
+          targetName: activePeerName || "Counsel",
+          ownerUid: myUid,
+          status: "pending"
+        });
+      } catch (e) {
+        console.warn("dbAddAppointment chat sync warning:", e);
+      }
+    }
+
     const payload = {
       text: `${purposeLabel}: ${selC ? selC.title : 'Consultation'} on ${date} at ${time} ${chatAmPm}`,
       cardType: "availability_request",
+      apptId: apptId,
       reqTitle: purposeLabel,
       reqDate: date,
       reqTime: `${time} ${chatAmPm}`,
@@ -805,7 +826,8 @@
             message: `${myName} requested you to ${purposeLabel.toLowerCase()} for "${selC ? selC.title : 'Court Consultation'}" on ${formatDate(date)} at ${time} ${chatAmPm}.`,
             type: "appointment_request",
             category: chatPurposeType === "present_hearing" ? "hearing" : "consultation",
-            relatedId: selC ? selC.id : null,
+            relatedId: apptId || (selC ? selC.id : null),
+            caseId: selC ? selC.id : null,
             status: "unread",
             appointmentStatus: "pending"
           });
@@ -821,7 +843,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  RESPOND & UNLOCK VAULT FROM CHAT
+  //  ACCEPT / DECLINE & SYNC TO CASE LIST
   // ═══════════════════════════════════════════════════════════
   async function respondAvailCard(msgId, isGroup, channelId, status) {
     if (!window._db || !msgId) return;
@@ -837,62 +859,61 @@
         respondedByName: myName
       });
 
-      if (status === "accepted") {
-        let msgData = null;
-        if (typeof window._fbGetDoc === "function") {
-          const docSnap = await window._fbGetDoc(msgRef);
-          if (docSnap && docSnap.exists()) msgData = docSnap.data();
-        }
+      let msgData = null;
+      if (typeof window._fbGetDoc === "function") {
+        const docSnap = await window._fbGetDoc(msgRef);
+        if (docSnap && docSnap.exists()) msgData = docSnap.data();
+      }
 
-        if (msgData) {
-          if (msgData.caseId && typeof window.dbUpdateCase === "function") {
-            const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
-            const targetCase = allCases.find(c => c.id === msgData.caseId);
-            if (targetCase) {
-              const currentAllowed = Array.isArray(targetCase.allowedUids) ? targetCase.allowedUids : [targetCase.ownerUid];
-              const currentShared = Array.isArray(targetCase.sharedWith) ? targetCase.sharedWith : [];
-              
-              if (!currentAllowed.includes(myUid)) currentAllowed.push(myUid);
-              if (!currentShared.includes(myUid)) currentShared.push(myUid);
+      if (status === "accepted" && msgData) {
+        // 1. ADD ATTORNEY TO CASE PERMISSIONS & SHARED LIST
+        if (msgData.caseId && typeof window.dbUpdateCase === "function") {
+          const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+          let targetCase = allCases.find(c => c.id === msgData.caseId);
 
-              await window.dbUpdateCase(targetCase.id, {
-                allowedUids: currentAllowed,
-                sharedWith: currentShared
-              });
-              targetCase.allowedUids = currentAllowed;
-              targetCase.sharedWith = currentShared;
-            }
+          if (!targetCase && window.cases) {
+            targetCase = window.cases.find(c => c.id === msgData.caseId);
           }
 
-          const apptData = {
-            title: msgData.reqTitle || "Chat Appearance & Meeting",
-            date: msgData.reqDate,
-            time: msgData.reqTime || "All Day",
-            description: `Confirmed via Chat by ${myName}. ${msgData.reqNotes || ''}`,
-            requesterUid: msgData.uid,
-            requesterName: msgData.name,
-            targetUid: myUid,
-            targetName: myName,
-            caseId: msgData.caseId || null,
-            status: "accepted"
-          };
-          if (typeof window.dbAddAppointment === "function") {
-            await window.dbAddAppointment(apptData);
-          }
+          if (targetCase) {
+            const currentAllowed = Array.isArray(targetCase.allowedUids) ? [...targetCase.allowedUids] : [targetCase.ownerUid];
+            const currentShared  = Array.isArray(targetCase.sharedWith)  ? [...targetCase.sharedWith]  : [];
 
-          if (typeof window.dbAddNotification === "function") {
-            await window.dbAddNotification({
-              toUid: msgData.uid,
-              fromUid: myUid,
-              fromName: myName,
-              title: "Appearance Confirmed & Files Unlocked",
-              message: `${myName} accepted the appearance request for "${msgData.caseTitle || msgData.reqTitle}". Case files are unlocked.`,
-              type: "availability_confirmed",
-              status: "unread"
+            if (!currentAllowed.includes(myUid)) currentAllowed.push(myUid);
+            if (!currentShared.includes(myUid)) currentShared.push(myUid);
+
+            await window.dbUpdateCase(targetCase.id, {
+              allowedUids: currentAllowed,
+              sharedWith: currentShared
             });
+            targetCase.allowedUids = currentAllowed;
+            targetCase.sharedWith = currentShared;
+
+            if (typeof window.renderAllCases === "function") window.renderAllCases();
+            if (typeof window.renderDashboard === "function") window.renderDashboard();
           }
         }
-        if (window.showToast) window.showToast("Appearance Accepted! Case files unlocked & scheduled. 🏛️");
+
+        // 2. UPDATE APPOINTMENT
+        if (msgData.apptId && typeof window.dbUpdateAppointment === "function") {
+          await window.dbUpdateAppointment(msgData.apptId, { status: "accepted" });
+        }
+
+        // 3. SEND CONFIRMATION NOTIFICATION
+        if (typeof window.dbAddNotification === "function") {
+          await window.dbAddNotification({
+            toUid: msgData.uid,
+            fromUid: myUid,
+            fromName: myName,
+            title: "Appearance Confirmed & Case Added",
+            message: `${myName} accepted the appearance request for "${msgData.caseTitle || msgData.reqTitle}". The case has been added to their case list.`,
+            type: "availability_confirmed",
+            relatedId: msgData.caseId || null,
+            status: "unread"
+          });
+        }
+
+        if (window.showToast) window.showToast("Appearance Accepted! Case added to your active case list. 🏛️");
       } else {
         if (window.showToast) window.showToast("Proposal declined.");
       }
@@ -903,7 +924,80 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  MESSAGE CARD RENDERING
+  //  CANCEL / RELINQUISH APPEARANCE WITH CONFIRMATION
+  // ═══════════════════════════════════════════════════════════
+  function promptCancelAppearance(caseId, apptId, msgId, isGroup, channelId) {
+    if (typeof window.openConfirmModal === "function") {
+      window.openConfirmModal({
+        icon: "bi-exclamation-octagon-fill",
+        title: "Cancel Appearance Delegation?",
+        body: "Are you sure you want to cancel your appearance for this case?<br><br>This will remove the case from your active roster and notify counsel so they can reassign it.",
+        confirmText: "Confirm",
+        cancelText: "Keep",
+        confirmStyle: "btn-danger",
+        onConfirm: () => executeCancelAppearance(caseId, apptId, msgId, isGroup, channelId)
+      });
+    } else {
+      if (confirm("Are you sure you want to cancel this appearance? This will remove the case from your active roster.")) {
+        executeCancelAppearance(caseId, apptId, msgId, isGroup, channelId);
+      }
+    }
+  }
+
+  async function executeCancelAppearance(caseId, apptId, msgId, isGroup, channelId) {
+    try {
+      if (window.showToast) window.showToast("Cancelling appearance...");
+
+      // 1. Remove user from case allowedUids & sharedWith
+      if (caseId && typeof window.dbUpdateCase === "function") {
+        const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+        const targetCase = allCases.find(c => c.id === caseId) || (window.cases || []).find(c => c.id === caseId);
+
+        if (targetCase && targetCase.ownerUid !== myUid) {
+          const currentAllowed = (targetCase.allowedUids || []).filter(u => u !== myUid);
+          const currentShared  = (targetCase.sharedWith || []).filter(u => u !== myUid);
+
+          await window.dbUpdateCase(targetCase.id, {
+            allowedUids: currentAllowed,
+            sharedWith: currentShared
+          });
+          targetCase.allowedUids = currentAllowed;
+          targetCase.sharedWith = currentShared;
+        }
+      }
+
+      // 2. Reset appointment status
+      if (apptId && typeof window.dbUpdateAppointment === "function") {
+        await window.dbUpdateAppointment(apptId, { status: "cancelled" });
+      }
+
+      // 3. Update Chat Card
+      if (msgId && window._db) {
+        const db = window._db;
+        const colName = isGroup ? COLLECTION_GROUP : (COLLECTION_DM + "_" + channelId);
+        const msgRef = window._fbDoc(db, colName, msgId);
+
+        await window._fbUpdate(msgRef, {
+          reqStatus: "cancelled",
+          cancelledByUid: myUid,
+          cancelledByName: myName
+        });
+      }
+
+      // 4. Refresh UI Views
+      if (typeof window.renderAllCases === "function") window.renderAllCases();
+      if (typeof window.renderDashboard === "function") window.renderDashboard();
+      if (typeof window.renderCalendarView === "function") window.renderCalendarView();
+
+      if (window.showToast) window.showToast("Appearance cancelled and removed from your case list.");
+    } catch (err) {
+      console.error("executeCancelAppearance error:", err);
+      if (window.showToast) window.showToast("Failed to cancel appearance: " + err.message, "error");
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  MESSAGE CARD RENDERING (CLEAN, POLISHED SYSTEM BUTTONS)
   // ═══════════════════════════════════════════════════════════
   function renderMessages(containerId, msgs, isDm, isGroup, channelId) {
     const el = document.getElementById(containerId);
@@ -922,16 +1016,41 @@
       if (m.cardType === "availability_request") {
         const reqStatus = m.reqStatus || "pending";
         let statusBadge = `<span class="avail-badge pending"><i class="bi bi-clock"></i> Pending Acceptance</span>`;
-        if (reqStatus === "accepted") statusBadge = `<span class="avail-badge accepted" style="color:var(--green)"><i class="bi bi-check-circle-fill"></i> Confirmed &amp; Files Unlocked (${escHtml(m.respondedByName || 'Accepted')})</span>`;
+        if (reqStatus === "accepted") statusBadge = `<span class="avail-badge accepted" style="color:var(--green)"><i class="bi bi-check-circle-fill"></i> Appearance Accepted &amp; Added to Cases (${escHtml(m.respondedByName || 'Accepted')})</span>`;
         if (reqStatus === "declined") statusBadge = `<span class="avail-badge declined" style="color:var(--red)"><i class="bi bi-slash-circle-fill"></i> Declined</span>`;
+        if (reqStatus === "cancelled") statusBadge = `<span class="avail-badge declined" style="color:var(--red)"><i class="bi bi-x-octagon-fill"></i> Appearance Cancelled</span>`;
 
         let actionBtns = "";
+
+        // PENDING STATE: Show "Check Information" button + Accept + Decline
         if (!isMine && reqStatus === "pending") {
           actionBtns = `
-            <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-              ${m.caseId ? `<button class="btn btn-secondary btn-sm" type="button" style="padding:4px 8px;font-size:10.5px" onclick="window.openCase('${m.caseId}')"><i class="bi bi-folder2-open"></i> Inspect Case</button>` : ''}
-              <button class="chat-card-btn confirm" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'accepted')"><i class="bi bi-check2"></i> Accept &amp; Unlock Files</button>
-              <button class="chat-card-btn decline" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'declined')"><i class="bi bi-x"></i> Decline</button>
+            <div style="display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" type="button" style="font-size:11px;padding:5px 10px;border-color:var(--gold-border);color:var(--gold-light)" onclick="window.openProposalReviewModal('${m.caseId || ''}', '${m.apptId || m.id}', '${m.id}', ${isGroup}, '${channelId}')">
+                <i class="bi bi-info-circle-fill"></i> Check Information
+              </button>
+              <button class="chat-card-btn confirm" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'accepted')">
+                <i class="bi bi-check2"></i> Accept
+              </button>
+              <button class="chat-card-btn decline" type="button" onclick="window._chat.respondAvailCard('${m.id}', ${isGroup}, '${channelId}', 'declined')">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          `;
+        } 
+        // ACCEPTED STATE: Allow recipient to inspect case or cancel appearance
+        else if (reqStatus === "accepted") {
+          const isAssignee = m.respondedByUid === myUid || (!isMine && m.reqStatus === "accepted");
+          actionBtns = `
+            <div style="display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" type="button" style="font-size:11px;padding:5px 10px" onclick="window.openProposalReviewModal('${m.caseId || ''}', '${m.apptId || m.id}', '${m.id}', ${isGroup}, '${channelId}')">
+                <i class="bi bi-folder2-open"></i> Check Information
+              </button>
+              ${isAssignee ? `
+                <button class="btn btn-danger btn-sm" type="button" style="font-size:11px;padding:5px 10px;border-color:rgba(248,113,113,0.4)" onclick="window._chat.promptCancelAppearance('${m.caseId || ''}', '${m.apptId || m.id}', '${m.id}', ${isGroup}, '${channelId}')">
+                  <i class="bi bi-x-circle"></i> Cancel Appearance
+                </button>
+              ` : ''}
             </div>
           `;
         }
@@ -939,7 +1058,7 @@
         const caseBadgeMarkup = m.caseTitle ? `
           <div style="background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin:6px 0;font-size:11px">
             <div style="font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">⚖️ ${escHtml(m.caseTitle)}</div>
-            <div style="color:var(--text-muted);font-size:10.5px;margin-top:1px">${escHtml(m.caseNumber || 'Docket N/A')} · ${m.documentsCount || 0} file(s) in vault</div>
+            <div style="color:var(--text-muted);font-size:10.5px;margin-top:1px">${escHtml(m.caseNumber || 'Docket N/A')} · ${m.documentsCount || 0} file(s) attached</div>
           </div>
         ` : '';
 
@@ -1070,7 +1189,7 @@
         position: fixed !important;
         bottom: 24px !important;
         right: 24px !important;
-        width: 375px !important;
+        width: 380px !important;
         max-width: calc(100vw - 20px) !important;
         height: 520px !important;
         background: var(--surface, #0c1826) !important;
@@ -1288,6 +1407,8 @@
     onHearingSync,
     sendAvailRequest, 
     respondAvailCard,
+    promptCancelAppearance,
+    executeCancelAppearance,
     handleFileAttachment
   };
 
