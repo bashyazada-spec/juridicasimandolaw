@@ -21,10 +21,10 @@ window.toggleSidebar = function() {
 })();
 
 // ═══════════════════════════════════════════════════════════════
-//  VALIDATION HELPERS (GMAIL & OUTLOOK DOMAINS)
+//  VALIDATION HELPERS (GMAIL, OUTLOOK & YAHOO DOMAINS)
 // ═══════════════════════════════════════════════════════════════
 function isValidEmail(email) {
-  return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
+  return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim());
 }
 window.isValidEmail = isValidEmail;
 
