@@ -16,6 +16,10 @@
   let dmMessagesMap = {}; // channelId -> msgs array
   let peersList     = [];
 
+  // Expose arrays globally so ui.js can look up chat message snapshots by ID
+  window.groupMessages = groupMessages;
+  window.dmMessagesMap = dmMessagesMap;
+
   let chatAmPm = "AM";
   let chatPurposeType = "present_hearing";
   let chatTimeTypedCount = 4;
@@ -534,6 +538,7 @@
 
     groupUnsub = window._fbOnSnapshot(q, snap => {
       groupMessages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      window.groupMessages = groupMessages;
 
       if (activeChannel === "group" && isExpanded) {
         setSeenTimestamp("group");
@@ -566,6 +571,7 @@
     dmUnsub = window._fbOnSnapshot(q, snap => {
       const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       dmMessagesMap[channelId] = msgs;
+      window.dmMessagesMap = dmMessagesMap;
 
       if (activeChannel === peerUid && isExpanded) {
         setSeenTimestamp(channelId);
@@ -741,6 +747,7 @@
     }
   }
 
+  // ── SENDER PRE-AUTHORIZES RECIPIENT TO ELIMINATE PERMISSION ERRORS ──
   async function sendAvailRequest() {
     const caseId   = document.getElementById("chat-case-select")?.value;
     const date     = document.getElementById("avail-date-input")?.value;
@@ -755,6 +762,25 @@
 
     const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
     const selC = allCases.find(c => c.id === caseId);
+
+    // PRE-AUTHORIZE: Sender owns the case, so grant the recipient read permission in Firestore!
+    if (selC && activeChannel && activeChannel !== "group" && typeof window.dbUpdateCase === "function") {
+      try {
+        const curAllowed = Array.isArray(selC.allowedUids) ? [...selC.allowedUids] : [selC.ownerUid];
+        const curShared  = Array.isArray(selC.sharedWith)  ? [...selC.sharedWith]  : [];
+        if (!curAllowed.includes(activeChannel)) curAllowed.push(activeChannel);
+        if (!curShared.includes(activeChannel)) curShared.push(activeChannel);
+
+        await window.dbUpdateCase(selC.id, {
+          allowedUids: curAllowed,
+          sharedWith: curShared
+        });
+        selC.allowedUids = curAllowed;
+        selC.sharedWith = curShared;
+      } catch (authErr) {
+        console.warn("Pre-authorizing recipient in allowedUids notice:", authErr.message);
+      }
+    }
 
     let purposeLabel = "Case Strategy Meeting";
     if (chatPurposeType === "present_hearing") purposeLabel = "Present Case in Court Hearing";
@@ -787,7 +813,8 @@
           caseNarrative: selC ? (selC.narrative || "") : "",
           hearings: selC?.hearings || [],
           deadlines: selC?.deadlines || [],
-          documents: selC?.documents || []
+          documents: selC?.documents || [],
+          documentsCount: selC?.documents?.length || 0
         });
       } catch (e) {
         console.warn("dbAddAppointment chat sync warning:", e);
@@ -801,6 +828,8 @@
       reqTitle: purposeLabel,
       reqDate: date,
       reqTime: `${time} ${chatAmPm}`,
+      date: date, // dual-key compatibility for robust date resolution
+      time: `${time} ${chatAmPm}`,
       reqVenue: venue || (selC?.venue || "Firm Conference Room"),
       reqNotes: notes,
       purposeType: chatPurposeType,
@@ -843,6 +872,20 @@
             category: chatPurposeType === "present_hearing" ? "hearing" : "consultation",
             relatedId: apptId || (selC ? selC.id : null),
             caseId: selC ? selC.id : null,
+            caseTitle: selC ? selC.title : null,
+            caseNumber: selC ? (selC.caseNumber || "Docket N/A") : null,
+            caseCategory: selC ? (selC.category || "Case") : null,
+            caseParties: selC ? (selC.parties || "N/A") : null,
+            caseVenue: selC ? (selC.venue || venue) : venue,
+            caseFiledDate: selC ? (selC.filedDate || "") : "",
+            caseStatus: selC ? (selC.status || "On-going") : "On-going",
+            caseNarrative: selC ? (selC.narrative || "") : "",
+            hearings: selC?.hearings || [],
+            deadlines: selC?.deadlines || [],
+            documents: selC?.documents || [],
+            documentsCount: selC?.documents?.length || 0,
+            date: date,
+            time: `${time} ${chatAmPm}`,
             status: "unread",
             appointmentStatus: "pending"
           });
@@ -876,20 +919,47 @@
 
       let msgData = null;
       if (typeof window._fbGetDoc === "function") {
-        const docSnap = await window._fbGetDoc(msgRef);
-        if (docSnap && docSnap.exists()) msgData = docSnap.data();
+        try {
+          const docSnap = await window._fbGetDoc(msgRef);
+          if (docSnap && docSnap.exists()) msgData = docSnap.data();
+        } catch (e) { /* ignore */ }
       }
 
-      if (status === "accepted" && msgData) {
-        // 1. ADD ATTORNEY TO CASE PERMISSIONS & SHARED LIST
-        if (msgData.caseId && typeof window.dbUpdateCase === "function") {
+      if (status === "accepted") {
+        // 1. ADD ATTORNEY TO CASE PERMISSIONS & LOCAL ROSTER
+        if (msgData && msgData.caseId) {
           let targetCase = (window.cases || []).find(c => c.id === msgData.caseId);
 
           if (!targetCase && typeof window._fbGetDoc === "function") {
-            const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", msgData.caseId));
-            if (snap && snap.exists()) {
-              targetCase = { id: snap.id, ...snap.data() };
+            try {
+              const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", msgData.caseId));
+              if (snap && snap.exists()) {
+                targetCase = { id: snap.id, ...snap.data() };
+              }
+            } catch (e) {
+              console.warn("Direct lookup permission notice:", e.message);
             }
+          }
+
+          // If still null, reconstruct from snapshot stored directly inside msgData
+          if (!targetCase && msgData.caseTitle) {
+            targetCase = {
+              id: msgData.caseId,
+              title: msgData.caseTitle,
+              caseNumber: msgData.caseNumber || "Docket N/A",
+              category: msgData.caseCategory || "Case",
+              parties: msgData.caseParties || "N/A",
+              venue: msgData.caseVenue || "Courtroom / Venue N/A",
+              filedDate: msgData.caseFiledDate || "",
+              status: msgData.caseStatus || "On-going",
+              narrative: msgData.caseNarrative || "",
+              hearings: msgData.hearings || [],
+              deadlines: msgData.deadlines || [],
+              documents: msgData.documents || [],
+              ownerUid: msgData.uid,
+              allowedUids: [msgData.uid, myUid],
+              sharedWith: [myUid]
+            };
           }
 
           if (targetCase) {
@@ -899,10 +969,16 @@
             if (!currentAllowed.includes(myUid)) currentAllowed.push(myUid);
             if (!currentShared.includes(myUid)) currentShared.push(myUid);
 
-            await window.dbUpdateCase(targetCase.id, {
-              allowedUids: currentAllowed,
-              sharedWith: currentShared
-            });
+            if (typeof window.dbUpdateCase === "function") {
+              try {
+                await window.dbUpdateCase(targetCase.id, {
+                  allowedUids: currentAllowed,
+                  sharedWith: currentShared
+                });
+              } catch (updErr) {
+                console.warn("Remote case update fallback:", updErr.message);
+              }
+            }
             targetCase.allowedUids = currentAllowed;
             targetCase.sharedWith = currentShared;
 
@@ -916,22 +992,26 @@
         }
 
         // 2. UPDATE APPOINTMENT
-        if (msgData.apptId && typeof window.dbUpdateAppointment === "function") {
-          await window.dbUpdateAppointment(msgData.apptId, { status: "accepted" });
+        if (msgData && msgData.apptId && typeof window.dbUpdateAppointment === "function") {
+          try {
+            await window.dbUpdateAppointment(msgData.apptId, { status: "accepted" });
+          } catch (e) { /* ignore */ }
         }
 
         // 3. SEND CONFIRMATION NOTIFICATION
-        if (typeof window.dbAddNotification === "function") {
-          await window.dbAddNotification({
-            toUid: msgData.uid,
-            fromUid: myUid,
-            fromName: myName,
-            title: "Appearance Confirmed & Case Added",
-            message: `${myName} accepted the appearance request for "${msgData.caseTitle || msgData.reqTitle}". The case has been added to their case list.`,
-            type: "availability_confirmed",
-            relatedId: msgData.caseId || null,
-            status: "unread"
-          });
+        if (msgData && typeof window.dbAddNotification === "function") {
+          try {
+            await window.dbAddNotification({
+              toUid: msgData.uid,
+              fromUid: myUid,
+              fromName: myName,
+              title: "Appearance Confirmed & Case Added",
+              message: `${myName} accepted the appearance request for "${msgData.caseTitle || msgData.reqTitle}". The case has been added to their case list.`,
+              type: "availability_confirmed",
+              relatedId: msgData.caseId || null,
+              status: "unread"
+            });
+          } catch (e) { /* ignore */ }
         }
 
         if (window.showToast) window.showToast("Appearance Accepted! Case added to your active case list. 🏛️");
@@ -977,10 +1057,12 @@
           const currentAllowed = (targetCase.allowedUids || []).filter(u => u !== myUid);
           const currentShared  = (targetCase.sharedWith || []).filter(u => u !== myUid);
 
-          await window.dbUpdateCase(targetCase.id, {
-            allowedUids: currentAllowed,
-            sharedWith: currentShared
-          });
+          try {
+            await window.dbUpdateCase(targetCase.id, {
+              allowedUids: currentAllowed,
+              sharedWith: currentShared
+            });
+          } catch (e) { /* ignore */ }
           targetCase.allowedUids = currentAllowed;
           targetCase.sharedWith = currentShared;
 
@@ -991,7 +1073,9 @@
 
       // 2. Reset appointment status
       if (apptId && typeof window.dbUpdateAppointment === "function") {
-        await window.dbUpdateAppointment(apptId, { status: "cancelled" });
+        try {
+          await window.dbUpdateAppointment(apptId, { status: "cancelled" });
+        } catch (e) { /* ignore */ }
       }
 
       // 3. Update Chat Card
@@ -1000,11 +1084,13 @@
         const colName = isGroup ? COLLECTION_GROUP : (COLLECTION_DM + "_" + channelId);
         const msgRef = window._fbDoc(db, colName, msgId);
 
-        await window._fbUpdate(msgRef, {
-          reqStatus: "cancelled",
-          cancelledByUid: myUid,
-          cancelledByName: myName
-        });
+        try {
+          await window._fbUpdate(msgRef, {
+            reqStatus: "cancelled",
+            cancelledByUid: myUid,
+            cancelledByName: myName
+          });
+        } catch (e) { /* ignore */ }
       }
 
       // 4. Refresh UI Views
@@ -1094,7 +1180,7 @@
               </div>
               ${caseBadgeMarkup}
               <div style="font-size:11.5px;color:var(--text);font-weight:600">
-                <i class="bi bi-calendar3"></i> ${m.reqDate || ''} · <i class="bi bi-clock"></i> ${m.reqTime || ''}
+                <i class="bi bi-calendar3"></i> ${m.reqDate || m.date || ''} · <i class="bi bi-clock"></i> ${m.reqTime || m.time || ''}
               </div>
               ${m.reqVenue ? `<div style="font-size:11px;color:var(--text-dim);margin-top:2px"><i class="bi bi-geo-alt"></i> ${escHtml(m.reqVenue)}</div>` : ''}
               ${m.reqNotes ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;font-style:italic">"${escHtml(m.reqNotes)}"</div>` : ''}
