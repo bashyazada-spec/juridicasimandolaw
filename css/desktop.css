@@ -626,6 +626,140 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 .dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
+/* ── ONBOARDING MODAL & SECURITY COMPONENT STYLES ── */
+.onboarding-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 14px;
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+  text-align: left;
+}
+
+.onboarding-card.completed {
+  border-color: rgba(52,211,153,0.35);
+  background: rgba(52,211,153,0.04);
+}
+
+.onboarding-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.onboarding-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-status-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.onboarding-status-tag.pending {
+  background: rgba(251,191,36,0.12);
+  color: var(--amber);
+  border: 1px solid rgba(251,191,36,0.3);
+}
+
+.onboarding-status-tag.active {
+  background: rgba(52,211,153,0.12);
+  color: var(--green);
+  border: 1px solid rgba(52,211,153,0.3);
+}
+
+.ob-qr-tabs {
+  display: flex;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.ob-qr-tab-btn {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ob-qr-tab-btn.active {
+  background: var(--surface2);
+  color: var(--gold-light);
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.ob-qr-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.ob-qr-img {
+  flex-shrink: 0;
+  width: 175px;
+  height: 175px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ob-otp-input {
+  width: 100% !important;
+  max-width: 260px !important;
+  margin: 0 auto !important;
+  display: block !important;
+  background: var(--surface3) !important;
+  border: 1.5px solid var(--gold-border) !important;
+  border-radius: 10px !important;
+  color: var(--gold-light) !important;
+  padding: 10px 14px !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 6px !important;
+  text-align: center !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.ob-otp-input:focus {
+  border-color: var(--gold) !important;
+  background: var(--surface2) !important;
+  box-shadow: 0 0 0 3px rgba(201,165,92,0.2) !important;
+}
+
 /* ── SCHEDULE FILTER BAR ── */
 .schedule-filter-bar {
   display: flex;
