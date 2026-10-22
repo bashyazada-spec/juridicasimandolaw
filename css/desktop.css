@@ -626,12 +626,12 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 .dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-/* ── ONBOARDING MODAL & SECURITY COMPONENT STYLES (RESTORED DARK LUXURY) ── */
+/* ── ONBOARDING MODAL & SECURITY COMPONENT STYLES (CENTERED DARK LUXURY) ── */
 .onboarding-card {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 16px 14px;
+  padding: 18px 16px;
   margin-bottom: 14px;
   transition: all 0.2s ease;
   position: relative;
@@ -688,7 +688,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   border-radius: 8px;
   padding: 3px;
   gap: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .ob-qr-tab-btn {
@@ -715,38 +715,48 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
-/* Outer box stays dark to blend seamlessly */
+/* ── CENTERED QR CODE BOX IN DARK MODE (ZERO TEXT OVERFLOW) ── */
 .ob-qr-box {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
   background: var(--surface3) !important;
   border: 1px solid var(--border-soft) !important;
-  padding: 14px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  padding: 16px 14px !important;
+  border-radius: 12px !important;
+  margin-bottom: 12px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Dedicated white badge strictly for the QR code canvas */
 .ob-qr-img {
   flex-shrink: 0;
   background: #ffffff !important;
-  padding: 8px !important;
-  border-radius: 10px !important;
-  width: 145px !important;
-  height: 145px !important;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  width: 175px !important;
+  height: 175px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
+  margin: 0 auto 12px auto !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
-.ob-qr-img img,
-.ob-qr-img canvas {
-  width: 100% !important;
-  height: 100% !important;
+.ob-qr-img canvas,
+.ob-qr-img img {
+  width: 155px !important;
+  height: 155px !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   display: block !important;
+  margin: 0 auto !important;
 }
 
 .ob-otp-input {
@@ -766,6 +776,14 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   outline: none !important;
   box-sizing: border-box !important;
   transition: all 0.2s ease !important;
+}
+
+/* Placeholder reset prevents "Enter 6-digit c" truncation */
+.ob-otp-input::placeholder {
+  letter-spacing: normal !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  color: var(--text-dim) !important;
 }
 
 .ob-otp-input:focus {
