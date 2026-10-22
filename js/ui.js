@@ -1,10 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
-//  SIMANDO LAW — CORE UI ENGINE
+//  SIMANDO LAW — CORE UI ENGINE (PART 1 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════════════
-//  THEME INITIALIZATION & TOGGLE
-// ═══════════════════════════════════════════════════════════════
+// ── THEME INITIALIZATION & TOGGLE ────────────────────────────
 function initTheme() {
   const saved = localStorage.getItem('simando-theme');
   if (saved) {
@@ -34,9 +32,7 @@ window.initTheme = initTheme;
 window.toggleTheme = toggleTheme;
 window.updateThemeIcon = updateThemeIcon;
 
-// ═══════════════════════════════════════════════════════════════
-//  DOM HELPERS & ERROR CLEARING
-// ═══════════════════════════════════════════════════════════════
+// ── DOM HELPERS & ERROR CLEARING ─────────────────────────────
 function setElText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -61,9 +57,7 @@ function clearCaseErrors() {
 }
 window.clearCaseErrors = clearCaseErrors;
 
-// ═══════════════════════════════════════════════════════════════
-//  STANDALONE WEB CRYPTO TOTP ENGINE FOR 2FA VERIFICATION
-// ═══════════════════════════════════════════════════════════════
+// ── STANDALONE WEB CRYPTO TOTP ENGINE FOR 2FA ────────────────
 function generateRandomBase32(length = 16) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   const bytes = new Uint8Array(length);
@@ -160,9 +154,7 @@ async function verifyClientTOTP(token, secretBase32) {
 }
 window.verifyClientTOTP = verifyClientTOTP;
 
-// ═══════════════════════════════════════════════════════════════
-//  ONBOARDING SETUP & 2FA / DRIVE MODAL CONTROLLER
-// ═══════════════════════════════════════════════════════════════
+// ── ONBOARDING SETUP & 2FA / DRIVE MODAL CONTROLLER ───────────
 let onboardingGeneratedSecret = null;
 let onboardingGeneratedBackupCodes = [];
 let onboardingModalDismissedThisSession = false;
@@ -263,7 +255,6 @@ function initOnboarding2FAQrCodes(myProf, u) {
   const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(userEmail)}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law`;
 
-  // 135px width/height ensures clean padding and zero corner clipping inside the white badge
   const pairingContainer = document.getElementById("ob-qr-pairing-container");
   if (pairingContainer) {
     pairingContainer.innerHTML = "";
@@ -578,9 +569,7 @@ function checkOnboardingBothComplete() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  INTERACTIVE MULTI-DATE AVAILABILITY PICKER (STRICTLY PERSONAL)
-// ═══════════════════════════════════════════════════════════════
+// ── MULTI-DATE AVAILABILITY PICKER (STRICTLY PERSONAL) ────────
 let selectedBusyDates = new Set();
 let modalCalYear = new Date().getFullYear();
 let modalCalMonth = new Date().getMonth();
@@ -628,7 +617,6 @@ function renderModalCalendarUI() {
         <span style="color:var(--red)"><i class="bi bi-circle-fill" style="font-size:8px"></i> Red</span> = Out of Office / In Court. Click again to clear.
       </div>
 
-      <!-- Quick Preset Buttons -->
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px">
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('⚖️ In Court / Hearing')"><i class="bi bi-bank"></i> In Court</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🚫 Out of Office / Leave')"><i class="bi bi-slash-circle"></i> Out of Office</button>
@@ -642,7 +630,6 @@ function renderModalCalendarUI() {
           <input class="field-input" id="busy-title" value="In Court / Out of Office" autocomplete="off"/>
         </div>
 
-        <!-- Interactive Calendar Container -->
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -656,11 +643,9 @@ function renderModalCalendarUI() {
 
           <div class="cal-grid" id="modal-calendar-grid" style="display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px"></div>
 
-          <!-- Removable Date Chips -->
           <div id="modal-busy-chips-wrap" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);min-height:28px;align-items:center"></div>
         </div>
 
-        <!-- Time Settings -->
         <div style="display:flex;align-items:center;gap:12px">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer">
             <input type="checkbox" id="busy-all-day" checked onchange="window.toggleBusyTimeInputs(this.checked)" style="accent-color:var(--gold)"/> All Day Block
@@ -939,9 +924,7 @@ window.deleteBusySlot = function(id) {
   });
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  CALENDAR MONTH VIEW (PROPORTIONATE 7-COLUMN FLUID GRID)
-// ═══════════════════════════════════════════════════════════════
+// ── CALENDAR MONTH VIEW ──────────────────────────────────────
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 
@@ -1277,9 +1260,7 @@ function renderMonthlyCalendarGrid() {
 
 window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
 
-// ═══════════════════════════════════════════════════════════════
-//  DATE POPUP MODAL (CONFIDENTIALITY & STRICT 1-PERSON EDIT)
-// ═══════════════════════════════════════════════════════════════
+// ── DATE SCHEDULE POPUP MODAL ────────────────────────────────
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
   const titleEl = document.getElementById("dsm-title");
@@ -1595,9 +1576,7 @@ window.saveEventInlineDescription = async function(kind, id, dateStr, subId) {
   }
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  SYSTEM HEALTH & DIAGNOSTIC ENGINE
-// ═══════════════════════════════════════════════════════════════
+// ── SYSTEM HEALTH & DIAGNOSTIC ENGINE ─────────────────────────
 let systemHealthStatus = "healthy";
 
 window.openDiagnosticModal = function() {
@@ -1716,12 +1695,10 @@ if (!window._healthIntervalId) {
 window.addEventListener("online", () => updateWorkspaceStatus(false));
 window.addEventListener("offline", () => updateWorkspaceStatus(false));
 
-// ═══════════════════════════════════════════════════════════════
-//  UNIVERSAL ACTION CONFIRMATION MODAL CONTROLLER
-// ═══════════════════════════════════════════════════════════════
+// ── UNIVERSAL CONFIRMATION DIALOG ─────────────────────────────
 let pendingActionConfirmCallback = null;
 
-window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", confirmStyle = "btn-primary", onConfirm = null }) {
+window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", cancelText = "Keep", confirmStyle = "btn-primary", onConfirm = null }) {
   const modal = document.getElementById("universal-confirm-modal");
   const iconEl = document.getElementById("ucm-icon");
   const titleEl = document.getElementById("ucm-title");
@@ -1741,6 +1718,11 @@ window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm 
     btn.textContent = confirmText;
     btn.className = `btn ${confirmStyle}`;
   }
+
+  const cancelBtns = modal.querySelectorAll('button[onclick="closeConfirmModal()"]');
+  cancelBtns.forEach(cb => {
+    cb.textContent = cancelText || "Keep";
+  });
 
   pendingActionConfirmCallback = onConfirm;
   modal.classList.remove("hidden");
@@ -1765,27 +1747,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL BACK NAVIGATION
-// ═══════════════════════════════════════════════════════════════
-let caseDetailOrigin = "allcases";
-
-window.handleCaseDetailBack = function() {
-  if (caseDetailOrigin === "profileDetail" && selProfile) {
-    showView("profileDetail");
-    renderProfileDetail();
-  } else if (caseDetailOrigin === "dashboard") {
-    navTo("dashboard");
-  } else {
-    navTo("allcases");
-  }
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  UNSAVED CASE FORM CHANGES INTERCEPTION & DISCARD GUARD
-// ═══════════════════════════════════════════════════════════════
+// ── NAVIGATION & DISCARD INTERCEPTION ────────────────────────
 let pendingNavigationDestination = null;
 let _isSubmittingCase = false;
+let caseDetailOrigin = "allcases";
 
 function hasUnsavedCaseChanges() {
   if (_isSubmittingCase) return false;
@@ -1835,6 +1800,17 @@ window.handleCaseCancelOrExit = function() {
   }
 };
 
+window.handleCaseDetailBack = function() {
+  if (caseDetailOrigin === "profileDetail" && selProfile) {
+    showView("profileDetail");
+    renderProfileDetail();
+  } else if (caseDetailOrigin === "dashboard") {
+    navTo("dashboard");
+  } else {
+    navTo("allcases");
+  }
+};
+
 function resetCaseFormFields() {
   setElVal("cf-case-title", "");
   setElVal("cf-narrative", "");
@@ -1864,9 +1840,7 @@ window.addEventListener("beforeunload", (e) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  VALIDATION HELPERS (GMAIL, OUTLOOK & YAHOO DOMAINS)
-// ═══════════════════════════════════════════════════════════════
+// ── VALIDATION HELPERS ───────────────────────────────────────
 function isValidMobile(num) {
   if (!num) return true;
   const cleaned = String(num).replace(/\D/g, "");
@@ -1879,9 +1853,7 @@ function isValidEmail(email) {
 }
 window.isValidEmail = isValidEmail;
 
-// ═══════════════════════════════════════════════════════════════
-//  PASSWORD STRENGTH CHECKER
-// ═══════════════════════════════════════════════════════════════
+// ── PASSWORD STRENGTH CHECKER ────────────────────────────────
 function initPasswordStrengthChecker() {
   const passInput = document.getElementById("setting-password");
   const reqContainer = document.getElementById("password-requirements");
@@ -1932,9 +1904,7 @@ function initPasswordStrengthChecker() {
 
 window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 
-// ═══════════════════════════════════════════════════════════════
-//  NAVIGATION (WITH AUTO-CLOSE CHAT & NOTIFICATIONS)
-// ═══════════════════════════════════════════════════════════════
+// ── NAVIGATION CONTROLLER ────────────────────────────────────
 function showView(name) {
   const chatPanel = document.getElementById("chat-panel");
   if (chatPanel && !chatPanel.classList.contains("hidden")) {
@@ -2010,9 +1980,7 @@ window.showView = showView;
 window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
-// ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (STRICTLY 5 PER PAGE + ATTORNEY ROSTER CARD)
-// ═══════════════════════════════════════════════════════════════
+// ── DASHBOARD & ROSTER RENDERING ─────────────────────────────
 let currentDashPage = 1;
 const dashPageSize = 5;
 
@@ -2111,9 +2079,6 @@ function renderDashboard() {
 
 window.renderDashboard = renderDashboard;
 
-// ═══════════════════════════════════════════════════════════════
-//  ATTORNEY ROSTER ON DASHBOARD (DEVELOPER ISOLATION RULE)
-// ═══════════════════════════════════════════════════════════════
 function renderDashProfiles() {
   const el = document.getElementById("dash-profiles");
   const countBadge = document.getElementById("dash-roster-count-badge");
@@ -2124,7 +2089,6 @@ function renderDashProfiles() {
   const u = window._currentUser || window._auth?.currentUser;
   const userEmail = (u?.email || "").toLowerCase();
   const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
-  const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
   let visible = [];
@@ -2173,9 +2137,7 @@ function renderDashProfiles() {
 
 window.renderDashProfiles = renderDashProfiles;
 
-// ═══════════════════════════════════════════════════════════════
-//  PROFILES VIEW MODES & DIRECTORY (DEVELOPER ISOLATION RULE)
-// ═══════════════════════════════════════════════════════════════
+// ── PROFILES VIEW MODES & DIRECTORY ──────────────────────────
 let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
 
 window.setProfilesViewMode = function(mode) {
@@ -2201,7 +2163,6 @@ function renderProfiles() {
 
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
-  const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
   let visibleProfiles = [];
@@ -2295,9 +2256,7 @@ function renderProfiles() {
 
 window.renderProfiles = renderProfiles;
 
-// ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM (DEVELOPER ISOLATION RULE)
-// ═══════════════════════════════════════════════════════════════
+// ── CASE SHARING SYSTEM ──────────────────────────────────────
 window.openShareCaseModal = function() {
   if (!selCase) return;
   const listEl = document.getElementById("share-modal-list");
@@ -2338,7 +2297,44 @@ window.openShareCaseModal = function() {
 window.closeShareModal = function() {
   const modal = document.getElementById("share-modal");
   if (modal) modal.classList.add("hidden");
-};// ═══════════════════════════════════════════════════════════════
+};
+
+async function saveShareSettings() {
+  if (!selCase) return;
+  const checkboxes = document.querySelectorAll('input[name="share-associate-checkbox"]');
+  const selectedUids = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) selectedUids.push(cb.value);
+  });
+
+  const ownerUid = selCase.ownerUid || window._currentUser.uid;
+  const allowedUids = Array.from(new Set([ownerUid, ...selectedUids]));
+
+  try {
+    showToast("Updating share settings...");
+    if (typeof dbUpdateCase === "function") {
+      await dbUpdateCase(selCase.id, {
+        sharedWith: selectedUids,
+        allowedUids: allowedUids
+      });
+    }
+    selCase.sharedWith = selectedUids;
+    selCase.allowedUids = allowedUids;
+    
+    if (typeof dbLogAuditAction === "function") {
+      dbLogAuditAction("CASE_SHARED", { caseId: selCase.id, sharedWith: selectedUids });
+    }
+
+    if (typeof closeShareModal === "function") closeShareModal();
+    showToast("Case shared successfully!");
+  } catch (err) {
+    console.error("saveShareSettings error:", err);
+    showToast("Failed to share case: " + err.message, "error");
+  }
+}
+window.saveShareSettings = saveShareSettings;
+// ── END OF PART 1 OF 2 ──
+// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — CORE UI ENGINE (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
@@ -3391,7 +3387,7 @@ window.saveUserSettings = saveUserSettings;
 window.saveSecuritySettings = saveSecuritySettings;
 
 // ═══════════════════════════════════════════════════════════════
-//  SIGN OUT
+//  SIGN OUT & CALENDAR AGENDAS
 // ═══════════════════════════════════════════════════════════════
 async function handleLogout() {
   try {
@@ -3658,7 +3654,10 @@ window.handleNotifClick = async function(notifId, type, relatedId, fromUid, from
 
   if ((type === "case_due" || type === "case_share") && relatedId) {
     openCase(relatedId);
-  } else if (type === "appointment_request" || type === "availability_request" || type === "availability_confirmed") {
+  } else if (type === "appointment_request") {
+    const notif = notifications.find(n => n.id === notifId);
+    window.openProposalReviewModal(notif?.caseId || relatedId, notif?.relatedId || relatedId, notifId, false, "");
+  } else if (type === "availability_request" || type === "availability_confirmed") {
     if (window._chat) {
       if (typeof window._chat.toggleDock === "function" && !document.getElementById("chat-panel")?.classList.contains("open")) {
         window._chat.toggleDock();
@@ -3725,9 +3724,9 @@ function renderNotificationsView() {
     if (n.type === "appointment_request" && n.appointmentStatus === "pending") {
       actions = `
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" style="padding:4px 10px;font-size:10.5px;color:var(--gold-light)" onclick="event.stopPropagation(); window.openProposalReviewModal('${n.caseId || ''}', '${n.relatedId || ''}', '${n.id}', false, '')"><i class="bi bi-info-circle-fill"></i> Check Information</button>
           <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); acceptAppointmentRequest('${n.id}', '${n.relatedId}')"><i class="bi bi-check2"></i> Accept</button>
           <button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); declineAppointmentRequest('${n.id}', '${n.relatedId}')"><i class="bi bi-x"></i> Decline</button>
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:10px" onclick="event.stopPropagation(); handleNotifClick('${n.id}', '${n.type}', '${n.relatedId}', '${n.fromUid}', '${escHtml(n.fromName)}')"><i class="bi bi-chat-dots-fill" style="color:var(--gold)"></i> Chat</button>
         </div>
       `;
     } else if (n.type === "appointment_request") {
@@ -3800,6 +3799,384 @@ window.markAllNotificationsAsRead = async function() {
     console.error("markAllNotificationsAsRead error:", err);
   }
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  CASE INFORMATION DOSSIER MODAL ("CHECK INFORMATION" FEATURE)
+// ═══════════════════════════════════════════════════════════════
+let currentDossierContext = {
+  caseId: null,
+  apptId: null,
+  notifId: null,
+  isGroup: false,
+  channelId: ""
+};
+
+window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup = false, channelId = "") {
+  currentDossierContext = { caseId, apptId, notifId, isGroup, channelId };
+
+  const modal = document.getElementById("proposal-review-modal");
+  if (!modal) return;
+
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
+
+  // 1. Resolve Case Record (From in-memory cases or via direct Firestore lookup)
+  let targetCase = cases.find(c => c.id === caseId);
+  if (!targetCase && caseId && window._db && typeof window._fbGetDoc === "function") {
+    try {
+      const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", caseId));
+      if (snap && snap.exists()) {
+        const raw = { id: snap.id, ...snap.data() };
+        targetCase = typeof decryptCaseRecordFromFirestore === "function" 
+          ? await decryptCaseRecordFromFirestore(raw)
+          : raw;
+      }
+    } catch (e) {
+      console.warn("Direct case lookup notice:", e);
+    }
+  }
+
+  // 2. Resolve Appointment Record
+  const appt = appointments.find(a => a.id === apptId) || null;
+  const notif = notifications.find(n => n.id === notifId) || null;
+
+  // 3. Resolve Request Details
+  const purpose = appt?.title || notif?.title || "Case Strategy / Hearing Appearance";
+  const dateStr = appt?.date || notif?.date || (targetCase?.dueDate || "Scheduled Date");
+  const timeStr = appt?.time || notif?.time || "08:30 AM";
+  const venueStr = appt?.venue || targetCase?.venue || "Courtroom / Venue N/A";
+  const requesterName = appt?.requesterName || notif?.fromName || "Counsel";
+  const narrative = targetCase?.narrative || appt?.description || notif?.message || "No narrative briefing provided.";
+
+  // 4. Check whether recipient has already accepted this case
+  const isAlreadyAllowed = targetCase && (
+    targetCase.ownerUid === currentUid ||
+    (Array.isArray(targetCase.allowedUids) && targetCase.allowedUids.includes(currentUid)) ||
+    (Array.isArray(targetCase.sharedWith) && targetCase.sharedWith.includes(currentUid))
+  );
+  const isAccepted = (appt && appt.status === "accepted") || (notif && notif.appointmentStatus === "accepted") || isAlreadyAllowed;
+
+  // 5. Populate Directive Banner
+  const purposeTag = document.getElementById("pr-purpose-tag");
+  const schedBadge = document.getElementById("pr-schedule-badge");
+  const hStageEl   = document.getElementById("pr-hearing-stage");
+  const reqNameEl  = document.getElementById("pr-requester-name");
+  const venueEl    = document.getElementById("pr-venue-text");
+
+  if (purposeTag) purposeTag.innerHTML = `<i class="bi bi-bank"></i> ACTION: ${escHtml(purpose.toUpperCase())}`;
+  if (schedBadge) schedBadge.innerHTML = `<i class="bi bi-clock-fill"></i> ${formatDate(dateStr)} · ${escHtml(timeStr)}`;
+  if (hStageEl) hStageEl.textContent = purpose;
+  if (reqNameEl) reqNameEl.textContent = requesterName;
+  if (venueEl) venueEl.textContent = venueStr;
+
+  // 6. Populate Case Information Dossier
+  const catEl    = document.getElementById("pr-case-cat");
+  const statusEl = document.getElementById("pr-case-status");
+  const docketEl = document.getElementById("pr-case-docket");
+  const titleEl  = document.getElementById("pr-case-title");
+  const partiesEl= document.getElementById("pr-case-parties");
+  const cVenueEl = document.getElementById("pr-case-venue");
+  const filedEl  = document.getElementById("pr-case-filed");
+  const narrEl   = document.getElementById("pr-case-narrative");
+
+  if (catEl) catEl.textContent = targetCase?.category || "Case";
+  if (statusEl) statusEl.textContent = targetCase?.status || "On-going";
+  if (docketEl) docketEl.textContent = targetCase?.caseNumber || "No Docket Number";
+  if (titleEl) titleEl.textContent = targetCase ? targetCase.title : (appt?.caseTitle || "Case Title");
+  if (partiesEl) partiesEl.textContent = targetCase?.parties || "Parties Not Specified";
+  if (cVenueEl) cVenueEl.textContent = targetCase?.venue || venueStr;
+  if (filedEl) filedEl.textContent = targetCase?.filedDate ? formatDate(targetCase.filedDate) : "N/A";
+  if (narrEl) narrEl.textContent = narrative;
+
+  // 7. Populate Hearing Logs
+  const hLogsContainer = document.getElementById("pr-hearing-logs");
+  if (hLogsContainer) {
+    const hearings = Array.isArray(targetCase?.hearings) ? targetCase.hearings : [];
+    if (hearings.length === 0) {
+      hLogsContainer.innerHTML = `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">No previous hearing records logged.</div>`;
+    } else {
+      hLogsContainer.innerHTML = hearings.map(h => `
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--gold);padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:11.5px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong style="color:var(--text)">${formatDate(h.date)} (${h.time || '08:30'})</strong>
+            <span style="color:var(--gold-light);font-size:11px">${escHtml(h.purpose)}</span>
+          </div>
+          ${h.notes ? `<div style="color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(h.notes)}"</div>` : ''}
+        </div>
+      `).join("");
+    }
+  }
+
+  // 8. Populate Deadlines Logs
+  const dLogsContainer = document.getElementById("pr-deadline-logs");
+  if (dLogsContainer) {
+    const deadlines = Array.isArray(targetCase?.deadlines) ? targetCase.deadlines : [];
+    if (deadlines.length === 0 && !targetCase?.docDueDate) {
+      dLogsContainer.innerHTML = `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">No filing deadlines logged.</div>`;
+    } else {
+      let dHtml = "";
+      if (targetCase?.docDueDate && !deadlines.some(d => d.date === targetCase.docDueDate)) {
+        dHtml += `
+          <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--violet);padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:11.5px">
+            <strong style="color:var(--text)">${formatDate(targetCase.docDueDate)}:</strong> ${escHtml(targetCase.docType || 'Formal Pleading')}
+          </div>
+        `;
+      }
+      deadlines.forEach(d => {
+        dHtml += `
+          <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--violet);padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:11.5px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <strong style="color:var(--text)">${formatDate(d.date)}</strong>
+              <span style="color:#c7d2fe;font-size:11px">${escHtml(d.subtype || d.title || 'Filing')}</span>
+            </div>
+            ${d.notes ? `<div style="color:var(--text-dim);margin-top:2px;font-style:italic">"${escHtml(d.notes)}"</div>` : ''}
+          </div>
+        `;
+      });
+      dLogsContainer.innerHTML = dHtml;
+    }
+  }
+
+  // 9. Documents Vault Preview (Locked blur if pending, Unlocked if accepted)
+  const vaultCountEl  = document.getElementById("pr-vault-count");
+  const vaultTagEl    = document.getElementById("pr-vault-tag");
+  const vaultBannerEl = document.getElementById("pr-vault-banner");
+  const vaultListEl   = document.getElementById("pr-vault-files-list");
+
+  const docs = targetCase?.documents || [];
+  if (vaultCountEl) vaultCountEl.textContent = docs.length;
+
+  if (isAccepted) {
+    if (vaultTagEl) {
+      vaultTagEl.className = "badge";
+      vaultTagEl.style.background = "rgba(52,211,153,0.15)";
+      vaultTagEl.style.color = "var(--green)";
+      vaultTagEl.innerHTML = `<i class="bi bi-unlock-fill"></i> Unlocked`;
+    }
+    if (vaultBannerEl) {
+      vaultBannerEl.innerHTML = `
+        <i class="bi bi-check-circle-fill" style="color:var(--green);font-size:14px"></i>
+        <div style="color:var(--green)">Case documents are unlocked. Click any file to view.</div>
+      `;
+    }
+    if (vaultListEl) {
+      vaultListEl.innerHTML = docs.length === 0
+        ? `<div style="font-size:12px;color:var(--text-dim);padding:6px 0">No documents attached to this case.</div>`
+        : docs.map(d => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-bottom:4px">
+            <span onclick='openFilePreview(${JSON.stringify(d).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline;font-size:12px;font-weight:600">
+              <i class="bi bi-file-earmark-text-fill"></i> ${escHtml(d.name)}
+            </span>
+            <span style="font-size:11px;color:var(--text-dim)">${d.size || ''}</span>
+          </div>
+        `).join("");
+    }
+  } else {
+    if (vaultTagEl) {
+      vaultTagEl.className = "badge";
+      vaultTagEl.style.background = "rgba(251,191,36,0.15)";
+      vaultTagEl.style.color = "var(--amber)";
+      vaultTagEl.innerHTML = `<i class="bi bi-lock-fill"></i> Locked until accepted`;
+    }
+    if (vaultBannerEl) {
+      vaultBannerEl.innerHTML = `
+        <i class="bi bi-shield-lock" style="font-size:14px;color:var(--gold)"></i>
+        <div>Full case records and PDF documents will unlock immediately and sync to your case directory upon accepting.</div>
+      `;
+    }
+    if (vaultListEl) {
+      vaultListEl.innerHTML = docs.length === 0
+        ? `<div style="font-size:12px;color:var(--text-dim);padding:6px 0">No documents attached.</div>`
+        : docs.map(d => `
+          <div style="background:var(--surface);padding:8px 10px;border-radius:6px;filter:blur(3px);user-select:none;font-size:12px;color:var(--text-muted);margin-bottom:4px">
+            📄 ${escHtml(d.name)} (${d.size || 'File'})
+          </div>
+        `).join("");
+    }
+  }
+
+  // 10. Action Bar Rendering
+  const actionBar = document.getElementById("pr-action-bar");
+  if (actionBar) {
+    if (isAccepted) {
+      actionBar.innerHTML = `
+        <button class="btn btn-primary" style="flex:1" onclick="closeProposalReviewModal(); openCase('${targetCase?.id || caseId}')">
+          <i class="bi bi-folder2-open"></i> Open Case in Case Manager
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="promptCancelAppearanceFromDossier()">
+          <i class="bi bi-x-circle"></i> Cancel Appearance
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="closeProposalReviewModal()">Close</button>
+      `;
+    } else {
+      actionBar.innerHTML = `
+        <button class="btn btn-primary" style="flex:1" onclick="acceptProposalFromDossier()">
+          <i class="bi bi-check2"></i> Accept &amp; Add to My Cases
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="declineProposalFromDossier()">Decline</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeProposalReviewModal()">Close</button>
+      `;
+    }
+  }
+
+  modal.classList.remove("hidden");
+};
+
+window.closeProposalReviewModal = function() {
+  const modal = document.getElementById("proposal-review-modal");
+  if (modal) modal.classList.add("hidden");
+};
+
+// ── ACCEPT PROPOSAL FROM DOSSIER (ADDS CASE TO ACTIVE ROSTER) ─
+window.acceptProposalFromDossier = async function() {
+  const { caseId, apptId, notifId, isGroup, channelId } = currentDossierContext;
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
+  const myName = u?.displayName || u?.email?.split("@")[0] || "Counsel";
+
+  try {
+    showToast("Accepting appearance request...");
+
+    // 1. Update Case Permissions so it immediately shows up in the attorney's accessible list
+    if (caseId && window._db && typeof dbUpdateCase === "function") {
+      let targetCase = cases.find(c => c.id === caseId);
+      if (!targetCase && typeof window._fbGetDoc === "function") {
+        const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", caseId));
+        if (snap && snap.exists()) targetCase = { id: snap.id, ...snap.data() };
+      }
+
+      if (targetCase) {
+        const currentAllowed = Array.isArray(targetCase.allowedUids) ? [...targetCase.allowedUids] : [targetCase.ownerUid];
+        const currentShared  = Array.isArray(targetCase.sharedWith)  ? [...targetCase.sharedWith]  : [];
+
+        if (!currentAllowed.includes(currentUid)) currentAllowed.push(currentUid);
+        if (!currentShared.includes(currentUid)) currentShared.push(currentUid);
+
+        await dbUpdateCase(targetCase.id, {
+          allowedUids: currentAllowed,
+          sharedWith: currentShared
+        });
+        targetCase.allowedUids = currentAllowed;
+        targetCase.sharedWith = currentShared;
+
+        if (!cases.some(c => c.id === targetCase.id)) {
+          cases.unshift(targetCase);
+        }
+      }
+    }
+
+    // 2. Update Appointment
+    if (apptId && typeof dbUpdateAppointment === "function") {
+      await dbUpdateAppointment(apptId, { status: "accepted" });
+    }
+
+    // 3. Update Notification
+    if (notifId && typeof dbUpdateNotification === "function") {
+      await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" });
+    }
+
+    // 4. Update Chat Card if called from chat
+    if (window._chat && typeof window._chat.respondAvailCard === "function" && currentDossierContext.msgId) {
+      await window._chat.respondAvailCard(currentDossierContext.msgId, isGroup, channelId, "accepted");
+    }
+
+    showToast("Appearance Accepted! Case added to your case roster. 🏛️");
+    closeProposalReviewModal();
+
+    if (typeof renderAllCases === "function") renderAllCases();
+    if (typeof renderDashboard === "function") renderDashboard();
+    if (typeof renderCalendarView === "function") renderCalendarView();
+    if (typeof renderNotificationsView === "function") renderNotificationsView();
+  } catch (err) {
+    console.error("acceptProposalFromDossier error:", err);
+    showToast("Failed to accept appearance: " + err.message, "error");
+  }
+};
+
+window.declineProposalFromDossier = async function() {
+  const { apptId, notifId, isGroup, channelId } = currentDossierContext;
+  try {
+    showToast("Declining proposal...");
+    if (apptId && typeof dbUpdateAppointment === "function") {
+      await dbUpdateAppointment(apptId, { status: "declined" });
+    }
+    if (notifId && typeof dbUpdateNotification === "function") {
+      await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" });
+    }
+    showToast("Appearance proposal declined.");
+    closeProposalReviewModal();
+    if (typeof renderNotificationsView === "function") renderNotificationsView();
+  } catch (err) {
+    console.error("declineProposalFromDossier error:", err);
+    showToast("Failed: " + err.message, "error");
+  }
+};
+
+// ── CANCEL APPEARANCE WITH KEEP / CONFIRM DIALOG ─────────────
+window.promptCancelAppearanceFromDossier = function() {
+  const { caseId, apptId, notifId, isGroup, channelId } = currentDossierContext;
+  
+  window.openConfirmModal({
+    icon: "bi-exclamation-octagon-fill",
+    title: "Cancel Appearance Delegation?",
+    body: "Are you sure you want to cancel your appearance for this case?<br><br>This will remove the case from your active roster and notify counsel so they can reassign it.",
+    confirmText: "Confirm",
+    cancelText: "Keep",
+    confirmStyle: "btn-danger",
+    onConfirm: () => executeCancelAppearanceFromDossier(caseId, apptId, notifId, isGroup, channelId)
+  });
+};
+
+async function executeCancelAppearanceFromDossier(caseId, apptId, notifId, isGroup, channelId) {
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
+  const myName = u?.displayName || u?.email?.split("@")[0] || "Counsel";
+
+  try {
+    showToast("Cancelling appearance...");
+
+    // 1. Remove user from case allowedUids and sharedWith (unless they are the case creator)
+    if (caseId && window._db && typeof dbUpdateCase === "function") {
+      const targetCase = cases.find(c => c.id === caseId);
+      if (targetCase && targetCase.ownerUid !== currentUid) {
+        const updAllowed = (targetCase.allowedUids || []).filter(id => id !== currentUid);
+        const updShared  = (targetCase.sharedWith || []).filter(id => id !== currentUid);
+
+        await dbUpdateCase(targetCase.id, {
+          allowedUids: updAllowed,
+          sharedWith: updShared
+        });
+        targetCase.allowedUids = updAllowed;
+        targetCase.sharedWith = updShared;
+      }
+    }
+
+    // 2. Reset appointment
+    if (apptId && typeof dbUpdateAppointment === "function") {
+      await dbUpdateAppointment(apptId, { status: "cancelled" });
+    }
+
+    // 3. Reset notification
+    if (notifId && typeof dbUpdateNotification === "function") {
+      await dbUpdateNotification(notifId, { appointmentStatus: "cancelled" });
+    }
+
+    // 4. Update chat card if linked
+    if (window._chat && typeof window._chat.executeCancelAppearance === "function" && currentDossierContext.msgId) {
+      await window._chat.executeCancelAppearance(caseId, apptId, currentDossierContext.msgId, isGroup, channelId);
+    }
+
+    showToast("Appearance cancelled. Case removed from your roster.");
+    closeProposalReviewModal();
+
+    if (typeof renderAllCases === "function") renderAllCases();
+    if (typeof renderDashboard === "function") renderDashboard();
+    if (typeof renderCalendarView === "function") renderCalendarView();
+  } catch (err) {
+    console.error("executeCancelAppearanceFromDossier error:", err);
+    showToast("Failed to cancel appearance: " + err.message, "error");
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  FIXED SCHEDULE & HEARING DELEGATION ENGINE
@@ -4008,6 +4385,7 @@ window.setApptAmPm = function(val) {
   if (btnPm) btnPm.className = val === "PM" ? "ampm-btn active" : "ampm-btn";
 };
 
+// ── FIXED "SEND REQUEST" SUBMISSION WITH PROPER UID RESOLUTION ──
 window.submitAppointmentRequest = async function() {
   const caseId = document.getElementById("appt-case-select")?.value || "";
   const date   = document.getElementById("appt-date")?.value || "";
@@ -4048,7 +4426,8 @@ window.submitAppointmentRequest = async function() {
     return;
   }
 
-  const targetUid = targetProf.ownerUid || targetProf.id || null;
+  // Resilient target UID lookup
+  const targetUid = targetProf.ownerUid || targetProf.id;
   if (!targetUid) {
     showToast("Recipient attorney account ID not found.", "error");
     return;
@@ -4136,8 +4515,9 @@ window.acceptAppointmentRequest = async function(notifId, apptId) {
       }
     }
 
-    showToast("Appointment confirmed! Case files unlocked. 🏛️");
+    showToast("Appointment confirmed! Case files unlocked & added to roster. 🏛️");
     renderNotificationsView();
+    if (typeof renderAllCases === "function") renderAllCases();
   } catch (err) {
     console.error("acceptAppointmentRequest error:", err);
   }
@@ -4392,3 +4772,4 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, 300);
 });
+// ── END OF PART 2 OF 2 ──
