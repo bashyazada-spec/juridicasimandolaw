@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  SIMANDO LAW — CORE UI ENGINE (PART 1 OF 2)
+//  SIMANDO LAW — CORE UI ENGINE
 // ═══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
@@ -263,20 +263,21 @@ function initOnboarding2FAQrCodes(myProf, u) {
   const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
   const otpAuthUrl = `otpauth://totp/Simando%20Law:${encodeURIComponent(userEmail)}?secret=${onboardingGeneratedSecret}&issuer=Simando%20Law`;
 
+  // 135px width/height ensures clean padding and zero corner clipping inside the white badge
   const pairingContainer = document.getElementById("ob-qr-pairing-container");
   if (pairingContainer) {
     pairingContainer.innerHTML = "";
     if (typeof QRCode !== "undefined") {
       new QRCode(pairingContainer, {
         text: otpAuthUrl,
-        width: 175,
-        height: 175,
+        width: 135,
+        height: 135,
         colorDark: "#000000",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.L
+        correctLevel: QRCode.CorrectLevel.M
       });
     } else {
-      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=175x175&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px;width:175px;height:175px;display:block"/>`;
+      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px;width:135px;height:135px;display:block"/>`;
     }
   }
 
@@ -287,14 +288,14 @@ function initOnboarding2FAQrCodes(myProf, u) {
     if (typeof QRCode !== "undefined") {
       new QRCode(appLinkContainer, {
         text: appStoreUrl,
-        width: 175,
-        height: 175,
+        width: 135,
+        height: 135,
         colorDark: "#000000",
         colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.L
+        correctLevel: QRCode.CorrectLevel.M
       });
     } else {
-      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=175x175&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px;width:175px;height:175px;display:block"/>`;
+      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px;width:135px;height:135px;display:block"/>`;
     }
   }
 
@@ -773,8 +774,8 @@ function renderModalCalendarGrid() {
   
   const now = new Date();
   const yr = now.getFullYear();
-  const mo = String(now.getMonth() + 1).padStart(2, "0");
-  const dy = String(now.getDate()).padStart(2, "0");
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const dy = String(now.getDate()).padStart(2, '0');
   const todayStr = `${yr}-${mo}-${dy}`;
 
   let html = `
@@ -876,7 +877,7 @@ window.submitBusyDates = async function() {
         title: title,
         date: date,
         time: timeStr,
-        description: desc || "",
+        description: desc,
         type: "busy",
         targetUid: u.uid,
         targetName: myProf?.name || u.displayName || u.email,
@@ -2303,8 +2304,8 @@ window.openShareCaseModal = function() {
   if (!listEl) return;
 
   const sharedUids = selCase.sharedWith || [];
-  const currentUid = window._currentUser?.uid;
-  const userEmail = (window._currentUser?.email || "").toLowerCase();
+  const currentUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
+  const userEmail = (window._currentUser?.email || window._auth?.currentUser?.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
 
@@ -2960,7 +2961,7 @@ function renderSidebarUser() {
 
   const displayName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
   const displayRole = myProf?.role || "Attorney";
-  const displayColor = myProf?.avatarColor || "#c9a84c";
+  const displayColor = myProf?.avatarColor || "#c9a55c";
   const displayPhoto = myProf?.photoUrl || u.photoURL || null;
 
   chip.innerHTML = `
@@ -3934,7 +3935,6 @@ window.onApptCaseSelectChange = function(caseId) {
     return;
   }
 
-  // GATHER ALL HEARINGS from targetCase.hearings AND targetCase.dueDate
   const hearingsList = Array.isArray(targetCase.hearings) ? [...targetCase.hearings] : [];
   if (targetCase.dueDate && !hearingsList.some(h => h.date === targetCase.dueDate)) {
     hearingsList.push({
@@ -3946,7 +3946,7 @@ window.onApptCaseSelectChange = function(caseId) {
   }
 
   if (hearingsList.length > 0 && hSel) {
-    let opts = `<option value="">— Select scheduled hearing (${hearingsList.length} found) —</option>`;
+    let opts = `<option value="">— Select hearing appearance date —</option>`;
     hearingsList.forEach(h => {
       opts += `<option value="${h.id || h.date}">${formatDate(h.date)} (${h.time || '08:30'}) — ${escHtml(h.purpose || 'Hearing Appearance')}</option>`;
     });
@@ -3956,7 +3956,6 @@ window.onApptCaseSelectChange = function(caseId) {
       hWrap.style.display = "block";
     }
 
-    // Pre-select the nearest upcoming hearing and sync date/time
     const now = new Date();
     const yr = now.getFullYear();
     const mo = String(now.getMonth() + 1).padStart(2, "0");
