@@ -737,13 +737,13 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-sizing: border-box !important;
 }
 
-/* Dedicated white badge strictly for the QR code canvas with clean margin */
+/* Dedicated white badge strictly for the QR code canvas with clean unclipped padding */
 .ob-qr-img {
-  width: 175px !important;
-  height: 175px !important;
+  width: 185px !important;
+  height: 185px !important;
   flex-shrink: 0 !important;
   background: #ffffff !important;
-  padding: 12px !important;
+  padding: 14px !important;
   border-radius: 12px !important;
   display: flex !important;
   align-items: center !important;
