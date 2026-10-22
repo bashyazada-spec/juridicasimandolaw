@@ -715,7 +715,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
-/* ── CENTERED QR CODE BOX IN DARK MODE (ZERO TEXT OVERFLOW) ── */
+/* ── CENTERED QR CODE BOX IN DARK MODE (PROPORTIONAL PADDING) ── */
 .ob-qr-box {
   display: flex !important;
   flex-direction: column !important;
@@ -724,7 +724,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   text-align: center !important;
   background: var(--surface3) !important;
   border: 1px solid var(--border-soft) !important;
-  padding: 16px 14px !important;
+  padding: 16px 18px !important;
   border-radius: 12px !important;
   margin-bottom: 12px !important;
   box-shadow: 0 4px 16px rgba(0,0,0,0.35) !important;
@@ -732,11 +732,11 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-sizing: border-box !important;
 }
 
-/* Dedicated white badge strictly for the QR code canvas */
+/* Dedicated white badge strictly for the QR code canvas with clean margin */
 .ob-qr-img {
   flex-shrink: 0;
   background: #ffffff !important;
-  padding: 10px !important;
+  padding: 12px !important;
   border-radius: 12px !important;
   width: 175px !important;
   height: 175px !important;
@@ -751,8 +751,8 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 
 .ob-qr-img canvas,
 .ob-qr-img img {
-  width: 155px !important;
-  height: 155px !important;
+  width: 151px !important;
+  height: 151px !important;
   max-width: 100% !important;
   max-height: 100% !important;
   display: block !important;
@@ -778,7 +778,6 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   transition: all 0.2s ease !important;
 }
 
-/* Placeholder reset prevents "Enter 6-digit c" truncation */
 .ob-otp-input::placeholder {
   letter-spacing: normal !important;
   font-size: 13.5px !important;
