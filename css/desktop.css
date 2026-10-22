@@ -626,7 +626,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 .dashboard-content-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-/* ── ONBOARDING MODAL & SECURITY COMPONENT STYLES ── */
+/* ── ONBOARDING MODAL & SECURITY COMPONENT STYLES (RESTORED DARK LUXURY) ── */
 .onboarding-card {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -715,24 +715,38 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
+/* Outer box stays dark to blend seamlessly */
 .ob-qr-box {
   display: flex;
   align-items: center;
-  gap: 14px;
-  background: #ffffff;
+  gap: 16px;
+  background: var(--surface3) !important;
+  border: 1px solid var(--border-soft) !important;
   padding: 14px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
 }
 
+/* Dedicated white badge strictly for the QR code canvas */
 .ob-qr-img {
   flex-shrink: 0;
-  width: 175px;
-  height: 175px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #ffffff !important;
+  padding: 8px !important;
+  border-radius: 10px !important;
+  width: 145px !important;
+  height: 145px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
+}
+
+.ob-qr-img img,
+.ob-qr-img canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
 }
 
 .ob-otp-input {
