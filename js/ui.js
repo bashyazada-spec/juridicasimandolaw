@@ -1025,7 +1025,8 @@ function renderMonthlyCalendarGrid() {
 
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
-  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase()));
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
 
   const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
@@ -1284,7 +1285,8 @@ window.openDateScheduleModal = function(dateStr) {
 
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
-  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
 
   let dateCases = cases.filter(c => 
@@ -1607,7 +1609,8 @@ async function updateWorkspaceStatus(manualRun = false) {
   let isDriveOk = typeof hasValidToken === "function" ? hasValidToken() : false;
 
   const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
   const hasDriveFolder = !!(myProf && myProf.driveFolderId);
 
   if (netBadge && netSub) {
@@ -2099,8 +2102,9 @@ function renderDashProfiles() {
   if (!el) return;
 
   const q = (searchInp?.value || "").toLowerCase().trim();
-  const u = window._currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  const u = window._currentUser || window._auth?.currentUser;
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
   const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
@@ -2128,7 +2132,7 @@ function renderDashProfiles() {
 
   el.innerHTML = visible.map(p => {
     const caseCount = userCases.filter(c => c.profileId === p.id).length;
-    const isMe = p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === (u?.email || "").toLowerCase());
+    const isMe = p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === userEmail);
     const isDev = p.role === "developer";
 
     return `
@@ -2173,10 +2177,11 @@ window.setProfilesViewMode = function(mode) {
 };
 
 function renderProfiles() {
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   const isFirmAdmin = myProf && myProf.role === "admin";
   const isDeveloper = myProf && myProf.role === "developer";
 
@@ -2208,7 +2213,7 @@ function renderProfiles() {
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
-      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
+      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail);
       const isDev = p.role === "developer";
 
       return `
@@ -2240,7 +2245,7 @@ function renderProfiles() {
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
-      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase());
+      const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail);
       const isDev = p.role === "developer";
       
       return `
@@ -2281,7 +2286,8 @@ window.openShareCaseModal = function() {
 
   const sharedUids = selCase.sharedWith || [];
   const currentUid = window._currentUser?.uid;
-  const myProf = profiles.find(p => p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === window._currentUser?.email?.toLowerCase()));
+  const userEmail = (window._currentUser?.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
 
   const associates = isDeveloper
@@ -2313,7 +2319,7 @@ window.openShareCaseModal = function() {
 window.closeShareModal = function() {
   const modal = document.getElementById("share-modal");
   if (modal) modal.classList.add("hidden");
-  // ═══════════════════════════════════════════════════════════════
+};// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — CORE UI ENGINE (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
@@ -2324,8 +2330,9 @@ function renderProfileDetail() {
   const p = selProfile;
   if (!p) return;
 
-  const currentUid = window._currentUser?.uid;
-  const isOwner = p.ownerUid === currentUid;
+  const currentUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
+  const userEmail = (window._currentUser?.email || window._auth?.currentUser?.email || "").toLowerCase();
+  const isOwner = p.ownerUid === currentUid || (p.email && p.email.toLowerCase() === userEmail);
 
   let actionButtons = "";
   let driveChip = "";
@@ -2563,7 +2570,7 @@ function renderAllCases() {
 window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  CASE DETAIL (WITH FULL PERMISSION FOR SHARED USERS)
+//  CASE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderCaseDetail() {
   const c = selCase;
@@ -2574,9 +2581,10 @@ function renderCaseDetail() {
   const titleEl = document.getElementById("cd-title");
   if (titleEl) titleEl.textContent = c.title;
 
-  const currentUid = window._currentUser?.uid;
-  const isOwner = c.ownerUid === currentUid;
-  const isGroupAdmin = profiles.some(p => p.ownerUid === currentUid && p.role === "admin");
+  const currentUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
+  const userEmail = (window._currentUser?.email || window._auth?.currentUser?.email || "").toLowerCase();
+  const isOwner = c.ownerUid === currentUid || (p && p.email && p.email.toLowerCase() === userEmail);
+  const isGroupAdmin = profiles.some(pr => pr.ownerUid === currentUid && pr.role === "admin");
   
   const isShared = (Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid)) ||
                    (Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid));
@@ -2858,15 +2866,16 @@ async function removeDocFromCase(idx) {
 window.renderCaseDetail = renderCaseDetail;
 
 // ═══════════════════════════════════════════════════════════════
-//  QUICK ACCESS SIDEBAR (DEVELOPER ISOLATION RULE)
+//  QUICK ACCESS SIDEBAR
 // ═══════════════════════════════════════════════════════════════
 function renderQuickAccess() {
   const qa = document.getElementById("quick-access");
   const ql = document.getElementById("quick-list");
   if (!qa || !ql) return;
 
-  const u = window._currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  const u = window._currentUser || window._auth?.currentUser;
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
   const isDeveloper = myProf && myProf.role === "developer";
 
   const visible = isDeveloper
@@ -2905,36 +2914,43 @@ function openCase(id) {
 window.openProfile = openProfile;
 window.openCase = openCase;
 
+// ═══════════════════════════════════════════════════════════════
+//  SIDEBAR USER CHIP: RESILIENT INSTANT RENDERING
+// ═══════════════════════════════════════════════════════════════
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
   if (!chip) return;
 
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) {
     chip.style.display = "none";
     if (adminSection) adminSection.style.display = "none";
     return;
   }
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf) {
-    chip.style.display = "none";
-    if (adminSection) adminSection.style.display = "none";
-    return;
-  }
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => 
+    (p.ownerUid && p.ownerUid === u.uid) || 
+    (p.email && p.email.toLowerCase() === userEmail)
+  );
+
+  const displayName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
+  const displayRole = myProf?.role || "Attorney";
+  const displayColor = myProf?.avatarColor || "#c9a55c";
+  const displayPhoto = myProf?.photoUrl || u.photoURL || null;
 
   chip.innerHTML = `
-    ${avatarDiv(myProf.name, myProf.avatarColor, 28, myProf.photoUrl)}
+    ${avatarDiv(displayName, displayColor, 28, displayPhoto)}
     <div style="flex:1;min-width:0;text-align:left">
-      <div class="sidebar-user-name" style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.name)}</div>
-      <div class="sidebar-user-role" style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(myProf.role || "Attorney")}</div>
+      <div class="sidebar-user-name" style="font-size:12px;font-weight:700;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
+      <div class="sidebar-user-role" style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)}</div>
     </div>
   `;
   chip.style.display = "flex";
 
-  const isAdmin = myProf.role === "admin" || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === (u.email||"").toLowerCase()));
-  const isDev = myProf.role === "developer";
+  const isAdmin = (myProf && myProf.role === "admin") || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
+  const isDev = myProf && myProf.role === "developer";
 
   if (adminSection) {
     adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
@@ -3043,10 +3059,11 @@ window.onFilterCategoryChange = onFilterCategoryChange;
 let settingsPhotoDataUrl = null;
 
 function renderMyProfile() {
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   if (!myProf) return;
 
   const nameEl = document.getElementById("setting-name");
@@ -3151,8 +3168,9 @@ async function connectDriveFromSettings() {
     renderMyProfile();
     updateWorkspaceStatus(false);
     
-    const u = window._currentUser;
-    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+    const u = window._currentUser || window._auth?.currentUser;
+    const userEmail = (u?.email || "").toLowerCase();
+    const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
     if (myProf && !myProf.driveFolderId) {
       showToast("Initializing attorney Drive storage folder...");
       try {
@@ -3227,10 +3245,11 @@ window.handleSettingsPhotoUpload = handleSettingsPhotoUpload;
 window.removeSettingsPhoto = removeSettingsPhoto;
 
 async function saveUserSettings() {
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   if (!myProf) return;
 
   const name = (document.getElementById("setting-name")?.value || "").trim();
@@ -3276,6 +3295,7 @@ async function saveUserSettings() {
     selProfile = { ...myProf, ...upd };
     showToast("Profile settings updated!");
     renderMyProfile();
+    renderSidebarUser();
     updateWorkspaceStatus(false);
   } catch (err) {
     console.error("saveUserSettings error:", err);
@@ -3284,7 +3304,7 @@ async function saveUserSettings() {
 }
 
 async function saveSecuritySettings() {
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
 
   const email = (document.getElementById("setting-email")?.value || "").trim();
@@ -3614,7 +3634,7 @@ window.handleNotifClick = async function(notifId, type, relatedId, fromUid, from
 
   if ((type === "case_due" || type === "case_share") && relatedId) {
     openCase(relatedId);
-  } else if (type === "availability_request" || type === "availability_confirmed") {
+  } else if (type === "appointment_request" || type === "availability_request" || type === "availability_confirmed") {
     if (window._chat) {
       if (typeof window._chat.toggleDock === "function" && !document.getElementById("chat-panel")?.classList.contains("open")) {
         window._chat.toggleDock();
@@ -3930,8 +3950,9 @@ window.submitAppointmentRequest = async function() {
     return;
   }
 
-  const u = window._currentUser;
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const u = window._currentUser || window._auth?.currentUser;
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   if (!myProf || !targetApptProfile) {
     showToast("Profile credentials missing.", "error");
     return;
@@ -4001,7 +4022,7 @@ window.acceptAppointmentRequest = async function(notifId, apptId) {
     if (appt && appt.caseId && typeof dbUpdateCase === "function") {
       const targetCase = cases.find(c => c.id === appt.caseId);
       if (targetCase) {
-        const u = window._currentUser;
+        const u = window._currentUser || window._auth?.currentUser;
         const currentAllowed = Array.isArray(targetCase.allowedUids) ? targetCase.allowedUids : [targetCase.ownerUid];
         const currentShared = Array.isArray(targetCase.sharedWith) ? targetCase.sharedWith : [];
 
@@ -4061,8 +4082,9 @@ let currentExplorerFolderId = "root";
 let explorerBreadcrumbs = [];
 
 window.initDriveExplorer = function() {
-  const u = window._currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+  const u = window._currentUser || window._auth?.currentUser;
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
   const startFolder = (myProf && myProf.driveFolderId) ? myProf.driveFolderId : (DRIVE_FOLDER_ID || "root");
 
   currentExplorerFolderId = startFolder;
@@ -4080,8 +4102,9 @@ window.loadExplorerFiles = async function() {
   renderExplorerBreadcrumbs();
 
   if (nativeBtn) {
-    const u = window._currentUser;
-    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase())) : null;
+    const u = window._currentUser || window._auth?.currentUser;
+    const userEmail = (u?.email || "").toLowerCase();
+    const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
     const targetFolder = (currentExplorerFolderId && currentExplorerFolderId !== "root") 
       ? currentExplorerFolderId 
       : (myProf?.driveFolderId || DRIVE_FOLDER_ID || "");
@@ -4219,9 +4242,10 @@ function renderExplorerBreadcrumbs() {
 }
 
 function openMyDriveFolder() {
-  const u = window._currentUser;
+  const u = window._currentUser || window._auth?.currentUser;
   if (!u) { showToast("Not logged in.", "error"); return; }
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   if (myProf && myProf.driveFolderId) {
     window.open(`https://drive.google.com/drive/folders/${myProf.driveFolderId}`, "_blank");
   } else {
@@ -4262,9 +4286,11 @@ window.closeFilePreview = function() {
 // Automatic execution & profile watcher on startup
 window.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
+    if (typeof renderSidebarUser === "function") {
+      renderSidebarUser();
+    }
     if (typeof checkOnboardingSecurityStatus === "function") {
       checkOnboardingSecurityStatus();
     }
-  }, 600);
+  }, 300);
 });
-};
