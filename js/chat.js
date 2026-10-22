@@ -48,7 +48,7 @@
       window._fbOnAuth(window._auth, (user) => {
         if (user) {
           myUid = user.uid;
-          myName = user.displayName || user.email;
+          myName = user.displayName || user.email?.split("@")[0] || "Counsel";
           announcePeer();
           subscribeGroup();
           loadPeerList();
@@ -125,7 +125,7 @@
 
           <!-- Hearing Stage Sync (If Presenting Case) -->
           <div id="chat-hearing-stage-wrap" style="background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;display:none">
-            <label style="font-size:9.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:block;margin-bottom:2px"><i class="bi bi-flag"></i> Hearing to Present</label>
+            <label style="font-size:9.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;display:block;margin-bottom:2px"><i class="bi bi-flag"></i> Scheduled Court Appearance Date</label>
             <select class="chat-input" id="chat-target-hearing-select" onchange="window._chat.onHearingSync(this.value)" style="padding:5px 6px;font-size:11px;height:auto;width:100% !important;flex:none !important">
               <option value="">— Select scheduled hearing date —</option>
             </select>
@@ -164,7 +164,7 @@
         <!-- Hidden File Input for Chat Attachments -->
         <input type="file" id="chat-file-input" style="display:none" onchange="window._chat.handleFileAttachment(event)"/>
 
-        <!-- Input Row (Fully Responsive with Zero Cut-Off) -->
+        <!-- Input Row -->
         <div class="chat-input-row">
           <button class="chat-avail-btn" type="button" title="Attach Document / File" onclick="document.getElementById('chat-file-input').click()"><i class="bi bi-paperclip"></i></button>
           <button class="chat-avail-btn" type="button" title="Request Schedule / Hearing Appearance" onclick="window._chat.toggleAvailPicker()"><i class="bi bi-calendar-plus"></i></button>
@@ -616,7 +616,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  ADVANCED SCHEDULER: POPULATION & SEND
+  //  FIXED SCHEDULER: POPULATES UPCOMING HEARINGS INSTANTLY
   // ═══════════════════════════════════════════════════════════
   function toggleAvailPicker() {
     const el = document.getElementById("chat-avail-picker");
@@ -635,7 +635,7 @@
           ? window.getAccessibleCases() 
           : (window.cases || []);
 
-        let opts = `<option value="">— Select Docket File —</option>`;
+        let opts = `<option value="">— Select Docket File (${userCases.length} available) —</option>`;
         userCases.forEach(c => {
           opts += `<option value="${c.id}">${escHtml(c.title)} (${c.caseNumber || 'No Docket'})</option>`;
         });
@@ -650,8 +650,12 @@
     chatPurposeType = type;
 
     const wrap = document.getElementById("chat-hearing-stage-wrap");
+    const caseId = document.getElementById("chat-case-select")?.value;
+    const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+    const selC = allCases.find(c => c.id === caseId);
+
     if (wrap) {
-      wrap.style.display = (type === "present_hearing") ? "block" : "none";
+      wrap.style.display = (type === "present_hearing" && selC) ? "block" : "none";
     }
   }
 
@@ -666,37 +670,76 @@
     const hSel = document.getElementById("chat-target-hearing-select");
     const vInp = document.getElementById("avail-venue-input");
 
-    const userCases = window.cases || [];
-    const selC = userCases.find(c => c.id === caseId);
+    const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+    const selC = allCases.find(c => c.id === caseId);
 
     if (selC && vInp) {
       vInp.value = selC.venue || "";
     }
 
-    if (selC && Array.isArray(selC.hearings) && selC.hearings.length > 0 && hSel) {
-      let opts = `<option value="">— Select scheduled hearing —</option>`;
-      selC.hearings.forEach(h => {
-        opts += `<option value="${h.id}">${h.date} (${h.time || '08:30'}) — ${escHtml(h.purpose)}</option>`;
+    if (!selC) {
+      if (wrap) wrap.style.display = "none";
+      return;
+    }
+
+    // GATHER ALL HEARINGS from selC.hearings AND fallback selC.dueDate
+    const hearingsList = Array.isArray(selC.hearings) ? [...selC.hearings] : [];
+    if (selC.dueDate && !hearingsList.some(h => h.date === selC.dueDate)) {
+      hearingsList.push({
+        id: "h_due_legacy",
+        date: selC.dueDate,
+        time: "08:30",
+        purpose: "Scheduled Court Appearance"
+      });
+    }
+
+    if (hearingsList.length > 0 && hSel) {
+      let opts = `<option value="">— Select scheduled hearing (${hearingsList.length} found) —</option>`;
+      hearingsList.forEach(h => {
+        opts += `<option value="${h.id || h.date}">${formatDate(h.date)} (${h.time || '08:30'}) — ${escHtml(h.purpose || 'Hearing Appearance')}</option>`;
       });
       hSel.innerHTML = opts;
-      if (wrap && chatPurposeType === "present_hearing") wrap.style.display = "block";
-    } else if (wrap) {
-      wrap.style.display = "none";
+
+      // Always display stage selector if hearings are logged
+      if (wrap) wrap.style.display = "block";
+
+      // Pre-select the nearest upcoming hearing
+      const todayStr = new Date().toISOString().split("T")[0];
+      const upcomingH = hearingsList.find(h => h.date >= todayStr) || hearingsList[0];
+      if (upcomingH) {
+        hSel.value = upcomingH.id || upcomingH.date;
+        const dInp = document.getElementById("avail-date-input");
+        const tInp = document.getElementById("chat-custom-time");
+        if (dInp && upcomingH.date) dInp.value = upcomingH.date;
+        if (tInp && upcomingH.time) {
+          tInp.value = upcomingH.time.slice(0, 5);
+          chatTimeTypedCount = 4;
+        }
+      }
+    } else {
+      if (hSel) hSel.innerHTML = `<option value="">— No court hearings logged for this case —</option>`;
+      if (wrap) wrap.style.display = (chatPurposeType === "present_hearing") ? "block" : "none";
     }
   }
 
   function onHearingSync(hId) {
     const caseId = document.getElementById("chat-case-select")?.value;
-    const selC = (window.cases || []).find(c => c.id === caseId);
-    if (!selC || !Array.isArray(selC.hearings)) return;
+    const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+    const selC = allCases.find(c => c.id === caseId);
+    if (!selC) return;
 
-    const h = selC.hearings.find(x => x.id === hId);
+    const hearingsList = Array.isArray(selC.hearings) ? [...selC.hearings] : [];
+    if (selC.dueDate && !hearingsList.some(h => h.date === selC.dueDate)) {
+      hearingsList.push({ id: "h_due_legacy", date: selC.dueDate, time: "08:30", purpose: "Hearing Appearance" });
+    }
+
+    const h = hearingsList.find(x => x.id === hId || x.date === hId);
     if (h) {
       const dInp = document.getElementById("avail-date-input");
       const tInp = document.getElementById("chat-custom-time");
-      if (dInp) dInp.value = h.date;
+      if (dInp && h.date) dInp.value = h.date;
       if (tInp && h.time) {
-        tInp.value = h.time;
+        tInp.value = h.time.slice(0, 5);
         chatTimeTypedCount = 4;
       }
     }
@@ -714,7 +757,8 @@
       return;
     }
 
-    const selC = (window.cases || []).find(c => c.id === caseId);
+    const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+    const selC = allCases.find(c => c.id === caseId);
 
     let purposeLabel = "Case Strategy Meeting";
     if (chatPurposeType === "present_hearing") purposeLabel = "Present Case in Court Hearing";
@@ -758,7 +802,7 @@
             fromUid: myUid,
             fromName: myName,
             title: purposeLabel,
-            message: `${myName} requested you to ${purposeLabel.toLowerCase()} for "${selC ? selC.title : 'Court Consultation'}" on ${date} at ${time} ${chatAmPm}.`,
+            message: `${myName} requested you to ${purposeLabel.toLowerCase()} for "${selC ? selC.title : 'Court Consultation'}" on ${formatDate(date)} at ${time} ${chatAmPm}.`,
             type: "appointment_request",
             category: chatPurposeType === "present_hearing" ? "hearing" : "consultation",
             relatedId: selC ? selC.id : null,
@@ -802,7 +846,8 @@
 
         if (msgData) {
           if (msgData.caseId && typeof window.dbUpdateCase === "function") {
-            const targetCase = (window.cases || []).find(c => c.id === msgData.caseId);
+            const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
+            const targetCase = allCases.find(c => c.id === msgData.caseId);
             if (targetCase) {
               const currentAllowed = Array.isArray(targetCase.allowedUids) ? targetCase.allowedUids : [targetCase.ownerUid];
               const currentShared = Array.isArray(targetCase.sharedWith) ? targetCase.sharedWith : [];
@@ -858,7 +903,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  MESSAGE CARD RENDERING WITH FULL CASE BRIEFING
+  //  MESSAGE CARD RENDERING
   // ═══════════════════════════════════════════════════════════
   function renderMessages(containerId, msgs, isDm, isGroup, channelId) {
     const el = document.getElementById(containerId);
@@ -1001,8 +1046,12 @@
     return date.toLocaleDateString([], { month: "short", day: "numeric" });
   }
 
+  function formatDate(d) {
+    return d ? new Date(d + 'T00:00:00').toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
+  }
+
   // ═══════════════════════════════════════════════════════════
-  //  STYLES (ZERO CUTOFF & RESPONSIVE FLEXBOX CONSTRAINTS)
+  //  STYLES
   // ═══════════════════════════════════════════════════════════
   function injectStyles() {
     const s = document.createElement("style");
@@ -1130,7 +1179,6 @@
       .chat-card-btn.decline { background: transparent; border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
       .chat-card-btn:hover { opacity: .85; }
 
-      /* ── ZERO-OVERFLOW RESPONSIVE INPUT ROW ── */
       .chat-input-row {
         display: flex !important;
         gap: 6px !important;
