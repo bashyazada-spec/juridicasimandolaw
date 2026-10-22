@@ -230,18 +230,19 @@ async function dbLogAuditAction(action, details = {}) {
 }
 window.dbLogAuditAction = dbLogAuditAction;
 
-// ── STRICT ACCESSIBLE CASES FILTER ──
+// ── STRICT ACCESSIBLE CASES FILTER ───────────────────────────
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail));
   
   if (myProf && myProf.role === "developer") {
     return cases.filter(c => c.ownerUid === u.uid);
   }
 
-  const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.includes(u.email.toLowerCase()));
+  const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
   if (isFirmAdmin) {
     return cases;
   }
@@ -422,37 +423,40 @@ async function dbLoad() {
 
       const currentUser = window._currentUser || window._auth?.currentUser;
       if (currentUser) {
-        let myProf = profiles.find(p => p.ownerUid === currentUser.uid || (p.email && p.email.toLowerCase() === currentUser.email.toLowerCase()));
+        const userEmail = (currentUser.email || "").toLowerCase();
+        let myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUser.uid) || (p.email && p.email.toLowerCase() === userEmail));
 
         if (myProf) {
           if (!myProf.ownerUid) {
             dbUpdateProfile(myProf.id, { ownerUid: currentUser.uid });
             myProf.ownerUid = currentUser.uid;
           }
-          const isConfiguredAdmin = currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
+          const isConfiguredAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
           if (isConfiguredAdmin && myProf.role !== "admin" && myProf.role !== "developer") {
             dbUpdateProfile(myProf.id, { role: "admin" });
             myProf.role = "admin";
           }
         } else {
-          const defaultName = currentUser.displayName || currentUser.email;
-          const isConfiguredAdmin = currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase());
+          const defaultName = currentUser.displayName || currentUser.email?.split("@")[0] || "Attorney";
+          const isConfiguredAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
           
           const defaultData = {
             name: defaultName,
             role: isConfiguredAdmin ? "admin" : "Attorney",
             contact: "",
             email: currentUser.email,
-            avatarColor: ADMIN_EMAILS.includes(currentUser.email.toLowerCase()) ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+            avatarColor: isConfiguredAdmin ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
             photoUrl: currentUser.photoURL || null,
             ownerUid: currentUser.uid,
             createdAt: new Date().toISOString().slice(0,10)
           };
           dbAddProfile(defaultData);
+          profiles.unshift(defaultData);
         }
       }
 
       dbReady = true;
+      if (typeof renderSidebarUser === "function") renderSidebarUser();
       refreshCurrentView();
     }, (error) => {
       console.error("Profiles real-time connection error:", error);
@@ -461,9 +465,10 @@ async function dbLoad() {
     // ── Real-Time Sync: Cases (Decrypted Seamlessly on Stream) ──
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
-      const isEmailAdmin = u.email && ADMIN_EMAILS.includes(u.email.toLowerCase());
+      const userEmail = (u.email || "").toLowerCase();
+      const isEmailAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
       
-      const myProf = profiles.find(p => p.ownerUid === activeUid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+      const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === activeUid) || (p.email && p.email.toLowerCase() === userEmail));
       const isDeveloper = myProf && myProf.role === "developer";
 
       let caseQuery;
@@ -547,8 +552,6 @@ async function dbLoad() {
 
 // ═══════════════════════════════════════════════════════════════
 //  ENHANCED MULTI-TIER PROACTIVE CASE & HEARING NOTIFICATIONS
-//  Structured reminders: 30-Day, 15-Day, 7-Day, 3-Day, Due Today, Overdue
-//  Covers both Pleading Deadlines AND Court Hearing Appearances
 // ═══════════════════════════════════════════════════════════════
 function checkCaseDueNotifications() {
   const activeUid = window._currentUser?.uid;
@@ -559,7 +562,7 @@ function checkCaseDueNotifications() {
   today.setHours(0,0,0,0);
 
   userCases.forEach(c => {
-    // ── 1. MONITOR CASE PLEADING DEADLINES (c.deadlines & c.docDueDate) ──
+    // ── 1. MONITOR CASE PLEADING DEADLINES ──
     const deadlinesList = Array.isArray(c.deadlines) ? [...c.deadlines] : [];
     if (c.docDueDate && !deadlinesList.some(d => d.date === c.docDueDate)) {
       deadlinesList.push({
@@ -635,7 +638,7 @@ function checkCaseDueNotifications() {
       }
     });
 
-    // ── 2. MONITOR INDIVIDUAL COURT HEARINGS (c.hearings array) ──
+    // ── 2. MONITOR INDIVIDUAL COURT HEARINGS ──
     if (Array.isArray(c.hearings) && c.hearings.length > 0) {
       c.hearings.forEach(h => {
         if (!h.date) return;
@@ -691,6 +694,9 @@ function checkCaseDueNotifications() {
 }
 
 function refreshCurrentView() {
+  // Always update the sidebar user chip immediately so it never appears blank
+  if (typeof renderSidebarUser === "function") renderSidebarUser();
+
   if (!dbReady) return;
 
   if (selProfile) {
@@ -711,7 +717,6 @@ function refreshCurrentView() {
   if (currentView === "calendar" && typeof renderCalendarView === "function") renderCalendarView();
   if (currentView === "notifications" && typeof renderNotificationsView === "function") renderNotificationsView();
   
-  if (typeof renderSidebarUser === "function") renderSidebarUser();
   if (typeof updateNotificationBadge === "function") updateNotificationBadge();
 }
 
@@ -796,7 +801,7 @@ async function dbDeleteNotification(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db, "notifications", id));
 }
 
-// ── APPOINTMENTS & AVAILABILITY (WITH INSTANT IN-MEMORY REGISTRATION) ──
+// ── APPOINTMENTS & AVAILABILITY ─────────────────────────────
 async function dbAddAppointment(data) {
   data.createdAt = new Date().toISOString();
   const u = window._currentUser || window._auth?.currentUser;
@@ -821,7 +826,7 @@ async function dbAddAppointment(data) {
     dbLogAuditAction("APPOINTMENT_REQUESTED", { apptId: ref.id, title: data.title });
     return ref.id;
   } catch (err) {
-    console.warn("Firestore dbAddAppointment error, falling back to local memory:", err);
+    console.warn("Firestore dbAddAppointment fallback to memory:", err);
     data.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     if (!appointments.some(x => x.id === data.id)) {
       appointments.push(data);
