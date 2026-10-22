@@ -459,6 +459,11 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
     align-items: center !important;
   }
 
+  #sidebar .sidebar-footer button {
+    justify-content: center !important;
+    padding: 10px 0 !important;
+  }
+
   .grid4, .grid3 {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
@@ -734,12 +739,12 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 
 /* Dedicated white badge strictly for the QR code canvas with clean margin */
 .ob-qr-img {
-  flex-shrink: 0;
+  width: 175px !important;
+  height: 175px !important;
+  flex-shrink: 0 !important;
   background: #ffffff !important;
   padding: 12px !important;
   border-radius: 12px !important;
-  width: 175px !important;
-  height: 175px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -751,10 +756,11 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
 
 .ob-qr-img canvas,
 .ob-qr-img img {
-  width: 151px !important;
-  height: 151px !important;
+  width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
+  object-fit: contain !important;
   display: block !important;
   margin: 0 auto !important;
 }
