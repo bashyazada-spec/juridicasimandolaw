@@ -23,6 +23,12 @@ let pdFilter        = "All";
 let dbReady         = false;
 let localMode       = false;
 
+// Synchronize collections directly to window to prevent undefined errors
+window.cases         = cases;
+window.profiles      = profiles;
+window.appointments  = appointments;
+window.notifications = notifications;
+
 let profilesUnsub      = null;
 let casesUnsub         = null;
 let notificationsUnsub = null;
@@ -231,7 +237,7 @@ async function dbLogAuditAction(action, details = {}) {
 }
 window.dbLogAuditAction = dbLogAuditAction;
 
-// ── FIXED ACCESSIBLE CASES FILTER (INCLUDES SHARED & DELEGATED CASES) ──
+// ── STRICT ACCESSIBLE CASES FILTER: ONLY OWNED OR EXPLICITLY ACCEPTED/ALLOWED CASES ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
@@ -244,7 +250,7 @@ function getAccessibleCases() {
     return cases;
   }
 
-  // Both standard attorneys AND developer accounts see cases they own OR that are shared/assigned to them
+  // Returns ONLY cases where the user is the owner OR has explicitly been accepted/allowed (NOT pending)
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
@@ -419,6 +425,7 @@ async function dbLoad() {
     const pColRef = window._fbCol(db, "profiles");
     profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
       profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      window.profiles = profiles;
 
       const currentUser = window._currentUser || window._auth?.currentUser;
       if (currentUser) {
@@ -451,6 +458,7 @@ async function dbLoad() {
           };
           dbAddProfile(defaultData);
           profiles.unshift(defaultData);
+          window.profiles = profiles;
         }
       }
 
@@ -477,6 +485,7 @@ async function dbLoad() {
       casesUnsub = window._fbOnSnapshot(caseQuery, async (snap) => {
         const rawCases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         cases = await Promise.all(rawCases.map(c => decryptCaseRecordFromFirestore(c)));
+        window.cases = cases;
 
         if (window._notifsLoaded) {
           checkCaseDueNotifications();
@@ -499,6 +508,7 @@ async function dbLoad() {
           notifications = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+          window.notifications = notifications;
 
           window._notifsLoaded = true;
           checkCaseDueNotifications();
@@ -513,6 +523,7 @@ async function dbLoad() {
         }, (error) => {
           console.warn("Notifications sync permission notice:", error.message);
           notifications = [];
+          window.notifications = notifications;
           window._notifsLoaded = true;
         });
       } catch (e) {
@@ -532,6 +543,7 @@ async function dbLoad() {
       const syncApptsMerged = () => {
         const mergedMap = { ...targetApptsMap, ...reqApptsMap };
         appointments = Object.values(mergedMap);
+        window.appointments = appointments;
         refreshCurrentView();
       };
 
@@ -540,6 +552,7 @@ async function dbLoad() {
           const apptColRef = window._fbCol(db, "appointments");
           appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
             appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            window.appointments = appointments;
             refreshCurrentView();
           }, (error) => {
             console.warn("Admin appointments listener fallback:", error.message);
@@ -756,7 +769,8 @@ function refreshCurrentView() {
 async function dbAddProfile(data) {
   if (localMode || !window._db) { 
     data.id = "local_" + Date.now(); 
-    profiles.unshift(data); 
+    profiles.unshift(data);
+    window.profiles = profiles;
     return data; 
   }
   data.ownerUid = window._currentUser?.uid || window._auth?.currentUser?.uid || null;
@@ -771,19 +785,22 @@ async function dbUpdateProfile(id, data) {
   if (!localMode && window._db) await window._fbUpdate(window._fbDoc(window._db,"profiles",id), data);
   const idx = profiles.findIndex(p=>p.id===id);
   if (idx>=0) profiles[idx] = {...profiles[idx],...data};
+  window.profiles = profiles;
   dbLogAuditAction("PROFILE_UPDATED", { profileId: id });
 }
 
 async function dbDeleteProfile(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db,"profiles",id));
   profiles = profiles.filter(p=>p.id!==id);
+  window.profiles = profiles;
   dbLogAuditAction("PROFILE_DELETED", { profileId: id });
 }
 
 async function dbAddCase(data) {
   if (localMode || !window._db) { 
     data.id = "local_" + Date.now(); 
-    cases.unshift(data); 
+    cases.unshift(data);
+    window.cases = cases;
     return data; 
   }
   const uId = window._currentUser?.uid || window._auth?.currentUser?.uid || null;
@@ -811,12 +828,14 @@ async function dbUpdateCase(id, data) {
   }
   const idx = cases.findIndex(c=>c.id===id);
   if (idx>=0) cases[idx] = {...cases[idx],...data};
+  window.cases = cases;
   dbLogAuditAction("CASE_UPDATED_ENCRYPTED", { caseId: id });
 }
 
 async function dbDeleteCase(id) {
   if (!localMode && window._db) await window._fbDelete(window._fbDoc(window._db,"cases",id));
   cases = cases.filter(c=>c.id!==id);
+  window.cases = cases;
   dbLogAuditAction("CASE_DELETED", { caseId: id });
 }
 
@@ -844,6 +863,7 @@ async function dbAddAppointment(data) {
     data.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     if (!appointments.some(x => x.id === data.id)) {
       appointments.push(data);
+      window.appointments = appointments;
     }
     refreshCurrentView();
     return data.id;
@@ -854,6 +874,7 @@ async function dbAddAppointment(data) {
     data.id = ref.id;
     if (!appointments.some(x => x.id === ref.id)) {
       appointments.push(data);
+      window.appointments = appointments;
     }
     refreshCurrentView();
     dbLogAuditAction("APPOINTMENT_REQUESTED", { apptId: ref.id, title: data.title });
@@ -863,6 +884,7 @@ async function dbAddAppointment(data) {
     data.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
     if (!appointments.some(x => x.id === data.id)) {
       appointments.push(data);
+      window.appointments = appointments;
     }
     refreshCurrentView();
     return data.id;
@@ -879,6 +901,7 @@ async function dbUpdateAppointment(id, data) {
   }
   const idx = appointments.findIndex(a => a.id === id);
   if (idx >= 0) appointments[idx] = { ...appointments[idx], ...data };
+  window.appointments = appointments;
   refreshCurrentView();
   dbLogAuditAction("APPOINTMENT_UPDATED", { apptId: id });
 }
@@ -892,6 +915,7 @@ async function dbDeleteAppointment(id) {
     }
   }
   appointments = appointments.filter(a => a.id !== id);
+  window.appointments = appointments;
   refreshCurrentView();
   dbLogAuditAction("APPOINTMENT_DELETED", { apptId: id });
 }
