@@ -27,13 +27,14 @@ let profilesUnsub      = null;
 let casesUnsub         = null;
 let notificationsUnsub = null;
 let appointmentsUnsub  = null;
+let appointmentsReqUnsub = null;
 let prevNotifCount     = 0;
 
 window._notifsLoaded = false;
 
 // ═══════════════════════════════════════════════════════════════
 //  ZERO-KNOWLEDGE CLIENT-SIDE ENCRYPTION ENGINE (AES-GCM 256)
-//  Scrambles case data so Firestore shows only unidentifiable cipher
+//  Scrambles case data so Firestore stores encrypted ciphertext
 // ═══════════════════════════════════════════════════════════════
 const E2EE_SALT_PHRASE = "SimandoLaw_FirmMaster_Vault_2026_SecureCipher";
 let _cachedCryptoKey = null;
@@ -364,6 +365,7 @@ function dbUnsubscribe() {
   if (casesUnsub) { casesUnsub(); casesUnsub = null; }
   if (notificationsUnsub) { notificationsUnsub(); notificationsUnsub = null; }
   if (appointmentsUnsub) { appointmentsUnsub(); appointmentsUnsub = null; }
+  if (appointmentsReqUnsub) { appointmentsReqUnsub(); appointmentsReqUnsub = null; }
 }
 
 function enterLocalMode(reason) {
@@ -469,7 +471,6 @@ async function dbLoad() {
       if (isEmailAdmin) {
         caseQuery = window._fbCol(db, "cases");
       } else {
-        // Allows both developer and attorney accounts to stream cases they own OR are allowed to see
         caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
       }
 
@@ -520,19 +521,60 @@ async function dbLoad() {
       }
     }
 
-    // ── Real-Time Sync: Firm Appointments & Availability ─────
+    // ── Real-Time Sync: Firm Appointments & Availability (Permission-Guarded) ─────
     if (activeUid) {
-      try {
-        const apptColRef = window._fbCol(db, "appointments");
-        appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
-          appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          refreshCurrentView();
-        }, (error) => {
-          console.warn("Appointments sync permission notice:", error.message);
-          appointments = [];
-        });
-      } catch (e) {
-        console.warn("Appointments listener setup skipped:", e.message);
+      const userEmail = (u.email || "").toLowerCase();
+      const isEmailAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
+
+      let targetApptsMap = {};
+      let reqApptsMap = {};
+
+      const syncApptsMerged = () => {
+        const mergedMap = { ...targetApptsMap, ...reqApptsMap };
+        appointments = Object.values(mergedMap);
+        refreshCurrentView();
+      };
+
+      if (isEmailAdmin) {
+        try {
+          const apptColRef = window._fbCol(db, "appointments");
+          appointmentsUnsub = window._fbOnSnapshot(apptColRef, (snap) => {
+            appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            refreshCurrentView();
+          }, (error) => {
+            console.warn("Admin appointments listener fallback:", error.message);
+          });
+        } catch (e) { /* ignore */ }
+      } else {
+        // Query 1: Where active user is recipient (targetUid)
+        try {
+          const targetQuery = window._fbQuery(
+            window._fbCol(db, "appointments"),
+            window._fbWhere("targetUid", "==", activeUid)
+          );
+          appointmentsUnsub = window._fbOnSnapshot(targetQuery, (snap) => {
+            targetApptsMap = {};
+            snap.docs.forEach(d => { targetApptsMap[d.id] = { id: d.id, ...d.data() }; });
+            syncApptsMerged();
+          }, (err) => {
+            console.warn("Target appointments listener notice:", err.message);
+          });
+        } catch (e) { /* ignore */ }
+
+        // Query 2: Where active user is requester / creator
+        try {
+          const reqQuery = window._fbQuery(
+            window._fbCol(db, "appointments"),
+            window._fbWhere("requesterUid", "==", activeUid)
+          );
+          appointmentsReqUnsub = window._fbOnSnapshot(reqQuery, (snap) => {
+            reqApptsMap = {};
+            snap.docs.forEach(d => { reqApptsMap[d.id] = { id: d.id, ...d.data() }; });
+            syncApptsMerged();
+          }, (err) => {
+            console.warn("Requester appointments listener notice:", err.message);
+          });
+        } catch (e) { /* ignore */ }
       }
     }
 
