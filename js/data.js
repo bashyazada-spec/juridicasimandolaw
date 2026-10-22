@@ -230,7 +230,7 @@ async function dbLogAuditAction(action, details = {}) {
 }
 window.dbLogAuditAction = dbLogAuditAction;
 
-// ── STRICT ACCESSIBLE CASES FILTER ───────────────────────────
+// ── FIXED ACCESSIBLE CASES FILTER (INCLUDES SHARED & DELEGATED CASES) ──
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
@@ -238,15 +238,12 @@ function getAccessibleCases() {
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail));
   
-  if (myProf && myProf.role === "developer") {
-    return cases.filter(c => c.ownerUid === u.uid);
-  }
-
   const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
   if (isFirmAdmin) {
     return cases;
   }
 
+  // Both standard attorneys AND developer accounts see cases they own OR that are shared/assigned to them
   return cases.filter(c => {
     const isOwner = c.ownerUid === u.uid;
     const isAllowed = c.allowedUids && Array.isArray(c.allowedUids) && c.allowedUids.includes(u.uid);
@@ -462,21 +459,17 @@ async function dbLoad() {
       console.error("Profiles real-time connection error:", error);
     });
 
-    // ── Real-Time Sync: Cases (Decrypted Seamlessly on Stream) ──
+    // ── Real-Time Sync: Cases (Includes Allowed UIDs for Shared / Delegated Cases) ──
     const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
     if (activeUid) {
       const userEmail = (u.email || "").toLowerCase();
       const isEmailAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
-      
-      const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === activeUid) || (p.email && p.email.toLowerCase() === userEmail));
-      const isDeveloper = myProf && myProf.role === "developer";
 
       let caseQuery;
-      if (isDeveloper) {
-        caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("ownerUid", "==", activeUid));
-      } else if (isEmailAdmin) {
+      if (isEmailAdmin) {
         caseQuery = window._fbCol(db, "cases");
       } else {
+        // Allows both developer and attorney accounts to stream cases they own OR are allowed to see
         caseQuery = window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
       }
 
@@ -562,7 +555,7 @@ function checkCaseDueNotifications() {
   today.setHours(0,0,0,0);
 
   userCases.forEach(c => {
-    // ── 1. MONITOR CASE PLEADING DEADLINES ──
+    // 1. MONITOR CASE PLEADING DEADLINES
     const deadlinesList = Array.isArray(c.deadlines) ? [...c.deadlines] : [];
     if (c.docDueDate && !deadlinesList.some(d => d.date === c.docDueDate)) {
       deadlinesList.push({
@@ -638,7 +631,7 @@ function checkCaseDueNotifications() {
       }
     });
 
-    // ── 2. MONITOR INDIVIDUAL COURT HEARINGS ──
+    // 2. MONITOR INDIVIDUAL COURT HEARINGS
     if (Array.isArray(c.hearings) && c.hearings.length > 0) {
       c.hearings.forEach(h => {
         if (!h.date) return;
@@ -694,9 +687,7 @@ function checkCaseDueNotifications() {
 }
 
 function refreshCurrentView() {
-  // Always update the sidebar user chip immediately so it never appears blank
   if (typeof renderSidebarUser === "function") renderSidebarUser();
-
   if (!dbReady) return;
 
   if (selProfile) {
