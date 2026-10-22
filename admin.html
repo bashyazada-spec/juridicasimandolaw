@@ -164,8 +164,8 @@
         <input type="text" class="field-input" id="new-name" placeholder="e.g. Atty. Jane Doe" autocomplete="off"/>
       </div>
       <div>
-        <label class="field-label" style="color:var(--text-muted)">Email Address (@gmail.com or @outlook.com) *</label>
-        <input type="email" class="field-input" id="new-email" placeholder="jane.doe@gmail.com" autocomplete="off"/>
+        <label class="field-label" style="color:var(--text-muted)">Email Address (@gmail.com, @outlook.com, or @yahoo.com) *</label>
+        <input type="email" class="field-input" id="new-email" placeholder="attorney@yahoo.com" autocomplete="off"/>
       </div>
       <div>
         <label class="field-label" style="color:var(--text-muted)">Role / Privilege Level *</label>
@@ -207,8 +207,8 @@
 
       <div class="grid2">
         <div>
-          <label class="field-label">Email Address (@gmail.com or @outlook.com) *</label>
-          <input type="email" class="field-input" id="edit-email" placeholder="attorney@gmail.com"/>
+          <label class="field-label">Email Address (@gmail.com, @outlook.com, or @yahoo.com) *</label>
+          <input type="email" class="field-input" id="edit-email" placeholder="attorney@yahoo.com"/>
         </div>
         <div>
           <label class="field-label">Contact Number (11 digits)</label>
@@ -278,7 +278,7 @@
   let isDeveloperSession = false;
 
   function isValidEmail(email) {
-    return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
+    return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim());
   }
 
   function isValidMobile(num) {
@@ -542,7 +542,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
+      showToast("Email must be a valid @gmail.com, @outlook.com, or @yahoo.com address.", "error");
       return;
     }
     if (contact && !isValidMobile(contact)) {
@@ -689,7 +689,7 @@
       return;
     }
     if (!isValidEmail(email)) {
-      showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
+      showToast("Email must be a valid @gmail.com, @outlook.com, or @yahoo.com address.", "error");
       return;
     }
     if (password.length < 6) {
