@@ -16,7 +16,7 @@
   let dmMessagesMap = {}; // channelId -> msgs array
   let peersList     = [];
 
-  // Expose arrays globally so ui.js can look up chat message snapshots by ID
+  // Expose chat messages globally so ui.js can look up proposal details by message ID
   window.groupMessages = groupMessages;
   window.dmMessagesMap = dmMessagesMap;
 
@@ -41,6 +41,12 @@
   function setSeenTimestamp(channelId) {
     if (!myUid) return;
     localStorage.setItem(`chat_seen_${myUid}_${channelId}`, Date.now().toString());
+  }
+
+  function getActiveCaseList() {
+    if (typeof window.cases !== "undefined" && Array.isArray(window.cases)) return window.cases;
+    if (typeof cases !== "undefined" && Array.isArray(cases)) return cases;
+    return [];
   }
 
   // ── Bootstrap ────────────────────────────────────────────────
@@ -747,7 +753,7 @@
     }
   }
 
-  // ── SENDER PRE-AUTHORIZES RECIPIENT TO ELIMINATE PERMISSION ERRORS ──
+  // ── SEND PROPOSAL (DOES NOT ADD TO RECIPIENT'S CASE LIST UNTIL ACCEPTED) ──
   async function sendAvailRequest() {
     const caseId   = document.getElementById("chat-case-select")?.value;
     const date     = document.getElementById("avail-date-input")?.value;
@@ -762,25 +768,6 @@
 
     const allCases = typeof window.getAccessibleCases === "function" ? window.getAccessibleCases() : (window.cases || []);
     const selC = allCases.find(c => c.id === caseId);
-
-    // PRE-AUTHORIZE: Sender owns the case, so grant the recipient read permission in Firestore!
-    if (selC && activeChannel && activeChannel !== "group" && typeof window.dbUpdateCase === "function") {
-      try {
-        const curAllowed = Array.isArray(selC.allowedUids) ? [...selC.allowedUids] : [selC.ownerUid];
-        const curShared  = Array.isArray(selC.sharedWith)  ? [...selC.sharedWith]  : [];
-        if (!curAllowed.includes(activeChannel)) curAllowed.push(activeChannel);
-        if (!curShared.includes(activeChannel)) curShared.push(activeChannel);
-
-        await window.dbUpdateCase(selC.id, {
-          allowedUids: curAllowed,
-          sharedWith: curShared
-        });
-        selC.allowedUids = curAllowed;
-        selC.sharedWith = curShared;
-      } catch (authErr) {
-        console.warn("Pre-authorizing recipient in allowedUids notice:", authErr.message);
-      }
-    }
 
     let purposeLabel = "Case Strategy Meeting";
     if (chatPurposeType === "present_hearing") purposeLabel = "Present Case in Court Hearing";
@@ -901,7 +888,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  ACCEPT / DECLINE & SYNC TO CASE LIST
+  //  ACCEPT / DECLINE & SYNC TO CASE LIST (SAFE AGAINST UNDEFINED)
   // ═══════════════════════════════════════════════════════════
   async function respondAvailCard(msgId, isGroup, channelId, status) {
     if (!window._db || !msgId) return;
@@ -925,10 +912,12 @@
         } catch (e) { /* ignore */ }
       }
 
+      const caseList = getActiveCaseList();
+
       if (status === "accepted") {
-        // 1. ADD ATTORNEY TO CASE PERMISSIONS & LOCAL ROSTER
+        // 1. ADD ATTORNEY TO CASE PERMISSIONS & ACTIVE CASE LIST ONLY UPON ACCEPTANCE
         if (msgData && msgData.caseId) {
-          let targetCase = (window.cases || []).find(c => c.id === msgData.caseId);
+          let targetCase = caseList.find(c => c.id === msgData.caseId);
 
           if (!targetCase && typeof window._fbGetDoc === "function") {
             try {
@@ -982,7 +971,11 @@
             targetCase.allowedUids = currentAllowed;
             targetCase.sharedWith = currentShared;
 
-            if (!window.cases.some(c => c.id === targetCase.id)) {
+            // Safe unshift into active case list
+            if (Array.isArray(caseList) && !caseList.some(c => c.id === targetCase.id)) {
+              caseList.unshift(targetCase);
+            }
+            if (Array.isArray(window.cases) && !window.cases.some(c => c.id === targetCase.id)) {
               window.cases.unshift(targetCase);
             }
 
@@ -1016,6 +1009,18 @@
 
         if (window.showToast) window.showToast("Appearance Accepted! Case added to your active case list. 🏛️");
       } else {
+        // DECLINED / REJECTED: Ensure case is completely removed from recipient's case list
+        if (msgData && msgData.caseId) {
+          if (Array.isArray(caseList)) {
+            const idx = caseList.findIndex(c => c.id === msgData.caseId && c.ownerUid !== myUid);
+            if (idx >= 0) caseList.splice(idx, 1);
+          }
+          if (Array.isArray(window.cases)) {
+            window.cases = window.cases.filter(c => c.id !== msgData.caseId || c.ownerUid === myUid);
+          }
+          if (typeof window.renderAllCases === "function") window.renderAllCases();
+          if (typeof window.renderDashboard === "function") window.renderDashboard();
+        }
         if (window.showToast) window.showToast("Proposal declined.");
       }
     } catch (err) {
@@ -1049,9 +1054,11 @@
     try {
       if (window.showToast) window.showToast("Cancelling appearance...");
 
+      const caseList = getActiveCaseList();
+
       // 1. Remove user from case allowedUids & sharedWith
       if (caseId && typeof window.dbUpdateCase === "function") {
-        const targetCase = (window.cases || []).find(c => c.id === caseId);
+        const targetCase = caseList.find(c => c.id === caseId);
 
         if (targetCase && targetCase.ownerUid !== myUid) {
           const currentAllowed = (targetCase.allowedUids || []).filter(u => u !== myUid);
@@ -1067,7 +1074,13 @@
           targetCase.sharedWith = currentShared;
 
           // Evict from active array
-          window.cases = (window.cases || []).filter(c => c.id !== caseId);
+          if (Array.isArray(caseList)) {
+            const idx = caseList.findIndex(c => c.id === caseId);
+            if (idx >= 0) caseList.splice(idx, 1);
+          }
+          if (Array.isArray(window.cases)) {
+            window.cases = window.cases.filter(c => c.id !== caseId);
+          }
         }
       }
 
