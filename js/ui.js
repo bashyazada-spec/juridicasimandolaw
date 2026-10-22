@@ -1,4 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
+//  SIMANDO LAW — CORE UI ENGINE (PART 1 OF 2)
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
 //  THEME INITIALIZATION & TOGGLE
 // ═══════════════════════════════════════════════════════════════
 function initTheme() {
@@ -99,7 +103,7 @@ function base32Decode(base32) {
     if (bits >= 8) {
       output.push((value >>> (bits - 8)) & 255);
       bits -= 8;
-      value &= (1 << bits) - 1; // Bit-mask prevents 32-bit overflow & key corruption
+      value &= (1 << bits) - 1;
     }
   }
   return new Uint8Array(output);
@@ -144,7 +148,6 @@ async function verifyClientTOTP(token, secretBase32) {
   const cleanedToken = String(token).trim().replace(/\D/g, "");
   if (cleanedToken.length !== 6) return false;
 
-  // Tolerates up to +/- 90 seconds of clock skew between phone & PC
   for (const offset of [0, -1, 1, -2, 2, -3, 3]) {
     try {
       const valid = await generateTOTPCode(secretBase32, offset);
@@ -234,7 +237,6 @@ window.checkOnboardingSecurityStatus = function() {
 };
 
 function initOnboarding2FAQrCodes(myProf, u) {
-  // Persist secret in sessionStorage so reloads never desynchronize Authenticator
   if (!onboardingGeneratedSecret) {
     const saved = sessionStorage.getItem("simando_temp_2fa_secret");
     if (saved) {
@@ -295,7 +297,6 @@ function initOnboarding2FAQrCodes(myProf, u) {
     }
   }
 
-  // AUTOMATIC 6-DIGIT VERIFICATION LISTENER
   const otpInp = document.getElementById("ob-otp-input");
   if (otpInp) {
     otpInp.value = "";
@@ -479,7 +480,6 @@ window.onboardingActivate2FA = async function(manualCode) {
       return;
     }
 
-    // Code is valid! Display confirmed state immediately
     if (statusMsg) {
       statusMsg.innerHTML = `<span style="color:var(--green);font-size:12.5px;font-weight:700"><i class="bi bi-check-circle-fill"></i> Code confirmed! Activating 2FA...</span>`;
       statusMsg.style.display = "block";
@@ -1843,7 +1843,7 @@ window.addEventListener("beforeunload", (e) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  VALIDATION HELPERS
+//  VALIDATION HELPERS (GMAIL, OUTLOOK & YAHOO DOMAINS)
 // ═══════════════════════════════════════════════════════════════
 function isValidMobile(num) {
   if (!num) return true;
@@ -1853,7 +1853,7 @@ function isValidMobile(num) {
 window.isValidMobile = isValidMobile;
 
 function isValidEmail(email) {
-  return /^[^\s@]+@(gmail\.com|outlook\.com)$/i.test(String(email || "").trim());
+  return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim());
 }
 window.isValidEmail = isValidEmail;
 
@@ -2313,7 +2313,11 @@ window.openShareCaseModal = function() {
 window.closeShareModal = function() {
   const modal = document.getElementById("share-modal");
   if (modal) modal.classList.add("hidden");
-};// ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+//  SIMANDO LAW — CORE UI ENGINE (PART 2 OF 2)
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
 //  PROFILE DETAIL
 // ═══════════════════════════════════════════════════════════════
 function renderProfileDetail() {
@@ -2643,7 +2647,6 @@ function renderCaseDetail() {
       </div>
     `;
 
-    // 1. Separate Section: Court Hearings
     hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-bank" style="color:var(--green)"></i> Court Hearings (${sortedHearings.length})</div>`;
     if (sortedHearings.length === 0) {
       hHtml += `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No court appearances on record.</div>`;
@@ -2670,7 +2673,6 @@ function renderCaseDetail() {
       hHtml += `</div>`;
     }
 
-    // 2. Separate Section: Document & Pleading Deadlines (No combined timeline)
     const hasLegacyDue = Boolean(c.docDueDate);
     const totalDeadlinesCount = sortedDeadlines.length + (hasLegacyDue && !sortedDeadlines.some(d => d.date === c.docDueDate) ? 1 : 0);
 
@@ -2797,7 +2799,6 @@ function renderCaseDetail() {
   }
 }
 
-// CASE STATUS CONFIRMATION
 window.confirmUpdateCaseStatus = function(st) {
   if (!selCase || selCase.status === st) return;
 
@@ -2824,7 +2825,6 @@ async function updateCaseStatus(st) {
   }
 }
 
-// CASE DOCUMENT DELETION CONFIRMATION
 async function removeDocFromCase(idx) {
   const docs = selCase.documents || [];
   const doc = docs[idx];
@@ -2869,7 +2869,6 @@ function renderQuickAccess() {
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const isDeveloper = myProf && myProf.role === "developer";
 
-  // Developers only see developers; attorneys only see attorneys
   const visible = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : profiles.filter(p => p.role !== "developer");
@@ -3039,7 +3038,7 @@ window.refreshFilterTypes = refreshFilterTypes;
 window.onFilterCategoryChange = onFilterCategoryChange;
 
 // ═══════════════════════════════════════════════════════════════
-//  PERSONAL SETTINGS (ZERO ACCOUNT DELETION)
+//  PERSONAL SETTINGS
 // ═══════════════════════════════════════════════════════════════
 let settingsPhotoDataUrl = null;
 
@@ -3298,7 +3297,7 @@ async function saveSecuritySettings() {
   }
 
   if (email && !isValidEmail(email)) {
-    showToast("Email must be a valid @gmail.com or @outlook.com address.", "error");
+    showToast("Email must be a valid @gmail.com, @outlook.com, or @yahoo.com address.", "error");
     return;
   }
 
@@ -3759,9 +3758,11 @@ window.markAllNotificationsAsRead = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  APPOINTMENTS
+//  FIXED SCHEDULE & HEARING DELEGATION ENGINE
 // ═══════════════════════════════════════════════════════════════
 let targetApptProfile = null;
+let apptAmPm = "AM";
+let apptPurposeType = "present_hearing";
 
 window.openAppointmentModal = function(profileId) {
   const p = profiles.find(x => x.id === profileId);
@@ -3770,20 +3771,66 @@ window.openAppointmentModal = function(profileId) {
 
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const titleInp = document.getElementById("appt-title");
-  const dateInp = document.getElementById("appt-date");
-  const timeInp = document.getElementById("appt-time");
-  const descInp = document.getElementById("appt-desc");
-  const modalSub = document.getElementById("appointment-modal-sub");
+  const avEl = document.getElementById("appt-recipient-avatar");
+  const nameEl = document.getElementById("appt-recipient-name");
+  const roleEl = document.getElementById("appt-recipient-role");
+  
+  if (avEl) avEl.innerHTML = avatarDiv(p.name, p.avatarColor, 36, p.photoUrl);
+  if (nameEl) nameEl.textContent = p.name;
+  if (roleEl) roleEl.textContent = p.role || "Associate Counsel";
 
-  if (titleInp) titleInp.value = "";
+  apptPurposeType = "present_hearing";
+  apptAmPm = "AM";
+  const pTypeInp = document.getElementById("appt-purpose-type");
+  if (pTypeInp) pTypeInp.value = "present_hearing";
+
+  document.querySelectorAll("#appt-purpose-chips button").forEach((b, idx) => {
+    b.classList.toggle("active", idx === 0);
+  });
+
+  const caseSel = document.getElementById("appt-case-select");
+  if (caseSel) {
+    const accessibleCases = typeof getAccessibleCases === "function" 
+      ? getAccessibleCases() 
+      : (cases || []);
+
+    if (accessibleCases.length === 0) {
+      caseSel.innerHTML = `<option value="">— No active cases in your roster —</option>`;
+    } else {
+      let opts = `<option value="">— Select an active docket file —</option>`;
+      accessibleCases.forEach(c => {
+        const docket = c.caseNumber ? ` (${c.caseNumber})` : "";
+        opts += `<option value="${c.id}">${escHtml(c.title)}${docket}</option>`;
+      });
+      caseSel.innerHTML = opts;
+    }
+    caseSel.value = "";
+  }
+
+  const hWrap = document.getElementById("appt-hearing-picker-wrap");
+  if (hWrap) hWrap.style.display = "none";
+
+  const dateInp = document.getElementById("appt-date");
   if (dateInp) {
-    dateInp.value = "";
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    dateInp.value = tomorrow.toISOString().split("T")[0];
     dateInp.min = todayStr;
   }
-  if (timeInp) timeInp.value = "";
+
+  const timeBox = document.getElementById("appt-custom-time");
+  if (timeBox) timeBox.value = "08:30";
+
+  const btnAm = document.getElementById("appt-btn-am");
+  const btnPm = document.getElementById("appt-btn-pm");
+  if (btnAm) btnAm.className = "ampm-btn active";
+  if (btnPm) btnPm.className = "ampm-btn";
+
+  const venueInp = document.getElementById("appt-venue");
+  if (venueInp) venueInp.value = "";
+
+  const descInp = document.getElementById("appt-desc");
   if (descInp) descInp.value = "";
-  if (modalSub) modalSub.textContent = `Propose an appointment with ${p.name}`;
   
   const modal = document.getElementById("appointment-modal");
   if (modal) modal.classList.remove("hidden");
@@ -3795,36 +3842,121 @@ window.closeAppointmentModal = function() {
   targetApptProfile = null;
 };
 
-window.submitAppointmentRequest = async function() {
-  const title = (document.getElementById("appt-title")?.value || "").trim();
-  const date = document.getElementById("appt-date")?.value || "";
-  const time = document.getElementById("appt-time")?.value || "";
-  const desc = (document.getElementById("appt-desc")?.value || "").trim();
+window.setApptPurpose = function(btn, type) {
+  document.querySelectorAll("#appt-purpose-chips button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  apptPurposeType = type;
 
-  if (!title || !date || !time) {
-    showToast("Please fill in all required fields.", "error");
+  const pTypeInp = document.getElementById("appt-purpose-type");
+  if (pTypeInp) pTypeInp.value = type;
+
+  const hWrap = document.getElementById("appt-hearing-picker-wrap");
+  const selectedCaseId = document.getElementById("appt-case-select")?.value;
+  const targetCase = cases.find(c => c.id === selectedCaseId);
+
+  if (hWrap) {
+    if (type === "present_hearing" && targetCase && Array.isArray(targetCase.hearings) && targetCase.hearings.length > 0) {
+      hWrap.style.display = "block";
+    } else {
+      hWrap.style.display = "none";
+    }
+  }
+};
+
+window.onApptCaseSelectChange = function(caseId) {
+  const targetCase = cases.find(c => c.id === caseId);
+  const venueInp = document.getElementById("appt-venue");
+  const hWrap = document.getElementById("appt-hearing-picker-wrap");
+  const hSel = document.getElementById("appt-target-hearing-select");
+
+  if (targetCase && venueInp) {
+    venueInp.value = targetCase.venue || "";
+  }
+
+  if (targetCase && Array.isArray(targetCase.hearings) && targetCase.hearings.length > 0 && hSel) {
+    let opts = `<option value="">— Select hearing appearance date —</option>`;
+    targetCase.hearings.forEach(h => {
+      opts += `<option value="${h.id || h.date}">${formatDate(h.date)} (${h.time || '08:30'}) — ${escHtml(h.purpose)}</option>`;
+    });
+    hSel.innerHTML = opts;
+
+    if (hWrap && apptPurposeType === "present_hearing") {
+      hWrap.style.display = "block";
+    }
+  } else if (hWrap) {
+    hWrap.style.display = "none";
+  }
+};
+
+window.onApptHearingStageSync = function(hearingIdentifier) {
+  const caseId = document.getElementById("appt-case-select")?.value;
+  const targetCase = cases.find(c => c.id === caseId);
+  if (!targetCase || !Array.isArray(targetCase.hearings)) return;
+
+  const matchedHearing = targetCase.hearings.find(h => (h.id === hearingIdentifier || h.date === hearingIdentifier));
+  if (matchedHearing) {
+    const dateInp = document.getElementById("appt-date");
+    const timeInp = document.getElementById("appt-custom-time");
+
+    if (dateInp && matchedHearing.date) dateInp.value = matchedHearing.date;
+    if (timeInp && matchedHearing.time) timeInp.value = matchedHearing.time;
+  }
+};
+
+window.setApptAmPm = function(val) {
+  apptAmPm = val;
+  const btnAm = document.getElementById("appt-btn-am");
+  const btnPm = document.getElementById("appt-btn-pm");
+  if (btnAm) btnAm.className = val === "AM" ? "ampm-btn active" : "ampm-btn";
+  if (btnPm) btnPm.className = val === "PM" ? "ampm-btn active" : "ampm-btn";
+};
+
+window.submitAppointmentRequest = async function() {
+  const caseId = document.getElementById("appt-case-select")?.value || "";
+  const date   = document.getElementById("appt-date")?.value || "";
+  const time   = (document.getElementById("appt-custom-time")?.value || "08:30").trim();
+  const venue  = (document.getElementById("appt-venue")?.value || "").trim();
+  const desc   = (document.getElementById("appt-desc")?.value || "").trim();
+  const pType  = document.getElementById("appt-purpose-type")?.value || apptPurposeType;
+
+  if (!date || !time) {
+    showToast("Please provide both scheduled date and time.", "error");
     return;
   }
 
-  const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  const todayStr = new Date().toISOString().split("T")[0];
   if (date < todayStr) {
-    showToast("Cannot propose appointments on past dates.", "error");
+    showToast("Cannot propose schedule dates in the past.", "error");
     return;
   }
 
   const u = window._currentUser;
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-  if (!myProf || !targetApptProfile) return;
+  if (!myProf || !targetApptProfile) {
+    showToast("Profile credentials missing.", "error");
+    return;
+  }
+
+  const selectedCase = cases.find(c => c.id === caseId);
+
+  let purposeTitle = "Case Strategy Conference";
+  if (pType === "present_hearing") purposeTitle = "Present Case in Hearing";
+  else if (pType === "pleading_review") purposeTitle = "Urgent Pleading Review";
+
+  const fullTime = `${time} ${apptAmPm}`;
 
   try {
-    showToast("Sending request...");
-    
+    showToast("Dispatching schedule request...");
+
     const apptData = {
-      title,
-      date,
-      time,
+      title: purposeTitle,
+      date: date,
+      time: fullTime,
+      venue: venue || (selectedCase?.venue || "Firm Conference"),
       description: desc,
+      purposeType: pType,
+      caseId: selectedCase ? selectedCase.id : null,
+      caseTitle: selectedCase ? selectedCase.title : null,
       requesterUid: u.uid,
       requesterName: myProf.name,
       targetUid: targetApptProfile.ownerUid,
@@ -3832,22 +3964,26 @@ window.submitAppointmentRequest = async function() {
       ownerUid: u.uid,
       status: "pending"
     };
+
     const apptId = await dbAddAppointment(apptData);
 
     const notifData = {
       toUid: targetApptProfile.ownerUid,
       fromUid: u.uid,
       fromName: myProf.name,
-      title: "New Appointment Proposal",
-      message: `${myProf.name} proposed an appointment "${title}" on ${formatDate(date)} at ${time}.`,
+      title: purposeTitle,
+      message: `${myProf.name} requested you to ${purposeTitle.toLowerCase()} for "${selectedCase ? selectedCase.title : 'Court Matter'}" on ${formatDate(date)} at ${fullTime}.`,
       type: "appointment_request",
+      category: pType === "present_hearing" ? "hearing" : "consultation",
       relatedId: apptId,
+      caseId: selectedCase ? selectedCase.id : null,
       status: "unread",
       appointmentStatus: "pending"
     };
+
     await dbAddNotification(notifData);
 
-    showToast("Schedule request sent!");
+    showToast("Schedule proposal sent successfully! 📅");
     closeAppointmentModal();
   } catch (err) {
     console.error("submitAppointmentRequest error:", err);
@@ -3860,7 +3996,29 @@ window.acceptAppointmentRequest = async function(notifId, apptId) {
     showToast("Approving proposal...");
     await dbUpdateAppointment(apptId, { status: "accepted" });
     await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" });
-    showToast("Appointment confirmed!");
+
+    const appt = appointments.find(a => a.id === apptId);
+    if (appt && appt.caseId && typeof dbUpdateCase === "function") {
+      const targetCase = cases.find(c => c.id === appt.caseId);
+      if (targetCase) {
+        const u = window._currentUser;
+        const currentAllowed = Array.isArray(targetCase.allowedUids) ? targetCase.allowedUids : [targetCase.ownerUid];
+        const currentShared = Array.isArray(targetCase.sharedWith) ? targetCase.sharedWith : [];
+
+        if (u && !currentAllowed.includes(u.uid)) currentAllowed.push(u.uid);
+        if (u && !currentShared.includes(u.uid)) currentShared.push(u.uid);
+
+        await dbUpdateCase(targetCase.id, {
+          allowedUids: currentAllowed,
+          sharedWith: currentShared
+        });
+        targetCase.allowedUids = currentAllowed;
+        targetCase.sharedWith = currentShared;
+      }
+    }
+
+    showToast("Appointment confirmed! Case files unlocked. 🏛️");
+    renderNotificationsView();
   } catch (err) {
     console.error("acceptAppointmentRequest error:", err);
   }
@@ -3872,6 +4030,7 @@ window.declineAppointmentRequest = async function(notifId, apptId) {
     await dbUpdateAppointment(apptId, { status: "declined" });
     await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" });
     showToast("Request declined.");
+    renderNotificationsView();
   } catch (err) {
     console.error("declineAppointmentRequest error:", err);
   }
@@ -4108,3 +4267,4 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, 600);
 });
+};
