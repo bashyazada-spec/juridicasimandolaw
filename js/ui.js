@@ -180,7 +180,8 @@ window.checkOnboardingSecurityStatus = function() {
     return;
   }
 
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   if (!myProf) {
     if (_obCheckRetryCount < 15) {
       _obCheckRetryCount++;
@@ -404,8 +405,9 @@ window.onboardingConnectDrive = async function() {
     showToast("Google Account connected successfully! ✅");
     updateOnboardingDriveStatus(true);
 
-    const u = window._currentUser;
-    const myProf = u && profiles ? profiles.find(p => p.ownerUid === u.uid) : null;
+    const u = window._currentUser || window._auth?.currentUser;
+    const userEmail = (u?.email || "").toLowerCase();
+    const myProf = u && profiles ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
     if (myProf && !myProf.driveFolderId && typeof createDriveFolder === "function") {
       try {
         const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
@@ -488,7 +490,8 @@ window.onboardingActivate2FA = async function(manualCode) {
     const u = window._currentUser || window._auth?.currentUser;
     if (!u) throw new Error("User session expired. Please sign in again.");
 
-    const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+    const userEmail = (u.email || "").toLowerCase();
+    const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
     if (!myProf) throw new Error("Profile record not found.");
 
     showToast("Code confirmed! Activating 2FA...");
@@ -554,7 +557,8 @@ window.onboardingActivate2FA = onboardingActivate2FA;
 
 function checkOnboardingBothComplete() {
   const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid) : null;
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
   const is2Fa = !!myProf?.twoFactorEnabled;
   const isDrive = typeof hasValidToken === "function" ? hasValidToken() : false;
 
@@ -733,8 +737,13 @@ window.resetBusySelection = function() {
 };
 
 window.toggleBusyDateSelection = function(dateStr) {
-  const todayStr = new Date().toISOString().split("T")[0];
-  if (dateStr < todayStr) {
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dy = String(now.getDate()).padStart(2, "0");
+  const localToday = `${yr}-${mo}-${dy}`;
+
+  if (dateStr < localToday) {
     if (typeof showToast === "function") showToast("Cannot mark past dates as unavailable.", "error");
     return;
   }
@@ -761,7 +770,12 @@ function renderModalCalendarGrid() {
   const firstDay = new Date(modalCalYear, modalCalMonth, 1).getDay();
   const daysInMonth = new Date(modalCalYear, modalCalMonth + 1, 0).getDate();
   const prevMonthDays = new Date(modalCalYear, modalCalMonth, 0).getDate();
-  const todayStr = new Date().toISOString().split("T")[0];
+  
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dy = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yr}-${mo}-${dy}`;
 
   let html = `
     <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div>
@@ -845,7 +859,8 @@ window.submitBusyDates = async function() {
   const timeStr = allDay ? "All Day" : `${startTime} - ${endTime}`;
 
   const u = window._currentUser || window._auth?.currentUser;
-  const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
 
   const submitBtn = document.getElementById("busy-submit-btn");
   if (submitBtn) {
@@ -861,7 +876,7 @@ window.submitBusyDates = async function() {
         title: title,
         date: date,
         time: timeStr,
-        description: desc,
+        description: desc || "",
         type: "busy",
         targetUid: u.uid,
         targetName: myProf?.name || u.displayName || u.email,
@@ -1152,11 +1167,11 @@ function renderMonthlyCalendarGrid() {
   const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
   const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
 
-  const todayObj = new Date();
-  const todayY = todayObj.getFullYear();
-  const todayM = String(todayObj.getMonth() + 1).padStart(2, '0');
-  const todayD = String(todayObj.getDate()).padStart(2, '0');
-  const todayStr = `${todayY}-${todayM}-${todayD}`;
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const dy = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${yr}-${mo}-${dy}`;
 
   gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;margin-bottom:28px";
 
@@ -1272,8 +1287,11 @@ window.openDateScheduleModal = function(dateStr) {
   if (!modal || !listEl) return;
 
   const formattedDate = formatDate(dateStr);
-  const todayObj = new Date();
-  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dy = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yr}-${mo}-${dy}`;
   const isPast = dateStr < todayStr;
   const isToday = dateStr === todayStr;
 
@@ -2645,7 +2663,12 @@ function renderCaseDetail() {
   if (hearingsEl) {
     const hearingsList = Array.isArray(c.hearings) ? c.hearings : [];
     const deadlinesList = Array.isArray(c.deadlines) ? c.deadlines : [];
-    const todayStr = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const yr = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const dy = String(now.getDate()).padStart(2, "0");
+    const todayStr = `${yr}-${mo}-${dy}`;
+
     const sortedHearings = [...hearingsList].sort((a, b) => new Date(a.date) - new Date(b.date));
     const sortedDeadlines = [...deadlinesList].sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -2937,7 +2960,7 @@ function renderSidebarUser() {
 
   const displayName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
   const displayRole = myProf?.role || "Attorney";
-  const displayColor = myProf?.avatarColor || "#c9a55c";
+  const displayColor = myProf?.avatarColor || "#c9a84c";
   const displayPhoto = myProf?.photoUrl || u.photoURL || null;
 
   chip.innerHTML = `
@@ -3785,11 +3808,18 @@ let apptAmPm = "AM";
 let apptPurposeType = "present_hearing";
 
 window.openAppointmentModal = function(profileId) {
-  const p = profiles.find(x => x.id === profileId);
-  if (!p) return;
+  const p = profiles.find(x => x.id === profileId || x.ownerUid === profileId) || selProfile;
+  if (!p) {
+    showToast("Recipient attorney profile not found.", "error");
+    return;
+  }
   targetApptProfile = p;
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dy = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yr}-${mo}-${dy}`;
 
   const avEl = document.getElementById("appt-recipient-avatar");
   const nameEl = document.getElementById("appt-recipient-name");
@@ -3817,7 +3847,7 @@ window.openAppointmentModal = function(profileId) {
     if (accessibleCases.length === 0) {
       caseSel.innerHTML = `<option value="">— No active cases in your roster —</option>`;
     } else {
-      let opts = `<option value="">— Select an active docket file —</option>`;
+      let opts = `<option value="">— Select an active docket file (${accessibleCases.length} available) —</option>`;
       accessibleCases.forEach(c => {
         const docket = c.caseNumber ? ` (${c.caseNumber})` : "";
         opts += `<option value="${c.id}">${escHtml(c.title)}${docket}</option>`;
@@ -3834,7 +3864,10 @@ window.openAppointmentModal = function(profileId) {
   if (dateInp) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    dateInp.value = tomorrow.toISOString().split("T")[0];
+    const tmYr = tomorrow.getFullYear();
+    const tmMo = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const tmDy = String(tomorrow.getDate()).padStart(2, "0");
+    dateInp.value = `${tmYr}-${tmMo}-${tmDy}`;
     dateInp.min = todayStr;
   }
 
@@ -3872,11 +3905,13 @@ window.setApptPurpose = function(btn, type) {
 
   const hWrap = document.getElementById("appt-hearing-picker-wrap");
   const selectedCaseId = document.getElementById("appt-case-select")?.value;
-  const targetCase = cases.find(c => c.id === selectedCaseId);
+  const allCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+  const targetCase = allCases.find(c => c.id === selectedCaseId);
 
   if (hWrap) {
-    if (type === "present_hearing" && targetCase && Array.isArray(targetCase.hearings) && targetCase.hearings.length > 0) {
-      hWrap.style.display = "block";
+    if (type === "present_hearing" && targetCase) {
+      const hearingsCount = (targetCase.hearings?.length || 0) + (targetCase.dueDate ? 1 : 0);
+      hWrap.style.display = hearingsCount > 0 ? "block" : "none";
     } else {
       hWrap.style.display = "none";
     }
@@ -3884,7 +3919,8 @@ window.setApptPurpose = function(btn, type) {
 };
 
 window.onApptCaseSelectChange = function(caseId) {
-  const targetCase = cases.find(c => c.id === caseId);
+  const allCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+  const targetCase = allCases.find(c => c.id === caseId);
   const venueInp = document.getElementById("appt-venue");
   const hWrap = document.getElementById("appt-hearing-picker-wrap");
   const hSel = document.getElementById("appt-target-hearing-select");
@@ -3893,15 +3929,46 @@ window.onApptCaseSelectChange = function(caseId) {
     venueInp.value = targetCase.venue || "";
   }
 
-  if (targetCase && Array.isArray(targetCase.hearings) && targetCase.hearings.length > 0 && hSel) {
-    let opts = `<option value="">— Select hearing appearance date —</option>`;
-    targetCase.hearings.forEach(h => {
-      opts += `<option value="${h.id || h.date}">${formatDate(h.date)} (${h.time || '08:30'}) — ${escHtml(h.purpose)}</option>`;
+  if (!targetCase) {
+    if (hWrap) hWrap.style.display = "none";
+    return;
+  }
+
+  // GATHER ALL HEARINGS from targetCase.hearings AND targetCase.dueDate
+  const hearingsList = Array.isArray(targetCase.hearings) ? [...targetCase.hearings] : [];
+  if (targetCase.dueDate && !hearingsList.some(h => h.date === targetCase.dueDate)) {
+    hearingsList.push({
+      id: "h_due_legacy",
+      date: targetCase.dueDate,
+      time: "08:30",
+      purpose: "Scheduled Court Appearance"
+    });
+  }
+
+  if (hearingsList.length > 0 && hSel) {
+    let opts = `<option value="">— Select scheduled hearing (${hearingsList.length} found) —</option>`;
+    hearingsList.forEach(h => {
+      opts += `<option value="${h.id || h.date}">${formatDate(h.date)} (${h.time || '08:30'}) — ${escHtml(h.purpose || 'Hearing Appearance')}</option>`;
     });
     hSel.innerHTML = opts;
 
     if (hWrap && apptPurposeType === "present_hearing") {
       hWrap.style.display = "block";
+    }
+
+    // Pre-select the nearest upcoming hearing and sync date/time
+    const now = new Date();
+    const yr = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const dy = String(now.getDate()).padStart(2, "0");
+    const todayStr = `${yr}-${mo}-${dy}`;
+    const upcomingH = hearingsList.find(h => h.date >= todayStr) || hearingsList[0];
+    if (upcomingH) {
+      hSel.value = upcomingH.id || upcomingH.date;
+      const dateInp = document.getElementById("appt-date");
+      const timeInp = document.getElementById("appt-custom-time");
+      if (dateInp && upcomingH.date) dateInp.value = upcomingH.date;
+      if (timeInp && upcomingH.time) timeInp.value = upcomingH.time.slice(0, 5);
     }
   } else if (hWrap) {
     hWrap.style.display = "none";
@@ -3910,16 +3977,27 @@ window.onApptCaseSelectChange = function(caseId) {
 
 window.onApptHearingStageSync = function(hearingIdentifier) {
   const caseId = document.getElementById("appt-case-select")?.value;
-  const targetCase = cases.find(c => c.id === caseId);
-  if (!targetCase || !Array.isArray(targetCase.hearings)) return;
+  const allCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+  const targetCase = allCases.find(c => c.id === caseId);
+  if (!targetCase) return;
 
-  const matchedHearing = targetCase.hearings.find(h => (h.id === hearingIdentifier || h.date === hearingIdentifier));
+  const hearingsList = Array.isArray(targetCase.hearings) ? [...targetCase.hearings] : [];
+  if (targetCase.dueDate && !hearingsList.some(h => h.date === targetCase.dueDate)) {
+    hearingsList.push({
+      id: "h_due_legacy",
+      date: targetCase.dueDate,
+      time: "08:30",
+      purpose: "Scheduled Court Appearance"
+    });
+  }
+
+  const matchedHearing = hearingsList.find(h => (h.id === hearingIdentifier || h.date === hearingIdentifier));
   if (matchedHearing) {
     const dateInp = document.getElementById("appt-date");
     const timeInp = document.getElementById("appt-custom-time");
 
     if (dateInp && matchedHearing.date) dateInp.value = matchedHearing.date;
-    if (timeInp && matchedHearing.time) timeInp.value = matchedHearing.time;
+    if (timeInp && matchedHearing.time) timeInp.value = matchedHearing.time.slice(0, 5);
   }
 };
 
@@ -3944,21 +4022,41 @@ window.submitAppointmentRequest = async function() {
     return;
   }
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  if (date < todayStr) {
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dy = String(now.getDate()).padStart(2, "0");
+  const localToday = `${yr}-${mo}-${dy}`;
+
+  if (date < localToday) {
     showToast("Cannot propose schedule dates in the past.", "error");
     return;
   }
 
   const u = window._currentUser || window._auth?.currentUser;
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
-  if (!myProf || !targetApptProfile) {
-    showToast("Profile credentials missing.", "error");
+  if (!u) {
+    showToast("Please sign in first.", "error");
     return;
   }
 
-  const selectedCase = cases.find(c => c.id === caseId);
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
+  const myName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
+
+  const targetProf = targetApptProfile || selProfile;
+  if (!targetProf) {
+    showToast("Recipient attorney profile not selected.", "error");
+    return;
+  }
+
+  const targetUid = targetProf.ownerUid || targetProf.id || null;
+  if (!targetUid) {
+    showToast("Recipient attorney account ID not found.", "error");
+    return;
+  }
+
+  const allCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+  const selectedCase = allCases.find(c => c.id === caseId) || null;
 
   let purposeTitle = "Case Strategy Conference";
   if (pType === "present_hearing") purposeTitle = "Present Case in Hearing";
@@ -3974,14 +4072,14 @@ window.submitAppointmentRequest = async function() {
       date: date,
       time: fullTime,
       venue: venue || (selectedCase?.venue || "Firm Conference"),
-      description: desc,
-      purposeType: pType,
+      description: desc || "",
+      purposeType: pType || "present_hearing",
       caseId: selectedCase ? selectedCase.id : null,
       caseTitle: selectedCase ? selectedCase.title : null,
       requesterUid: u.uid,
-      requesterName: myProf.name,
-      targetUid: targetApptProfile.ownerUid,
-      targetName: targetApptProfile.name,
+      requesterName: myName,
+      targetUid: targetUid,
+      targetName: targetProf.name || "Attorney",
       ownerUid: u.uid,
       status: "pending"
     };
@@ -3989,14 +4087,14 @@ window.submitAppointmentRequest = async function() {
     const apptId = await dbAddAppointment(apptData);
 
     const notifData = {
-      toUid: targetApptProfile.ownerUid,
+      toUid: targetUid,
       fromUid: u.uid,
-      fromName: myProf.name,
+      fromName: myName,
       title: purposeTitle,
-      message: `${myProf.name} requested you to ${purposeTitle.toLowerCase()} for "${selectedCase ? selectedCase.title : 'Court Matter'}" on ${formatDate(date)} at ${fullTime}.`,
+      message: `${myName} requested you to ${purposeTitle.toLowerCase()} for "${selectedCase ? selectedCase.title : 'Court Matter'}" on ${formatDate(date)} at ${fullTime}.`,
       type: "appointment_request",
       category: pType === "present_hearing" ? "hearing" : "consultation",
-      relatedId: apptId,
+      relatedId: apptId || null,
       caseId: selectedCase ? selectedCase.id : null,
       status: "unread",
       appointmentStatus: "pending"
@@ -4020,7 +4118,8 @@ window.acceptAppointmentRequest = async function(notifId, apptId) {
 
     const appt = appointments.find(a => a.id === apptId);
     if (appt && appt.caseId && typeof dbUpdateCase === "function") {
-      const targetCase = cases.find(c => c.id === appt.caseId);
+      const allCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+      const targetCase = allCases.find(c => c.id === appt.caseId);
       if (targetCase) {
         const u = window._currentUser || window._auth?.currentUser;
         const currentAllowed = Array.isArray(targetCase.allowedUids) ? targetCase.allowedUids : [targetCase.ownerUid];
