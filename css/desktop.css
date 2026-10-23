@@ -1204,3 +1204,9 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
   padding: 8px 30px 8px 12px; transition: all 0.18s; white-space: nowrap;
 }
 .filter-select:hover { border-color: var(--gold-border); color: var(--text); }
+
+/* ── TEMPORARY VISUAL SUPPRESSION (RESTORED ON "buttons") ── */
+#pr-action-bar,
+.btn-request-schedule-target {
+  display: none !important;
+}
