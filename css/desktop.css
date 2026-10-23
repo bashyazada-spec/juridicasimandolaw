@@ -1207,8 +1207,6 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 /* ── TEMPORARY VISUAL SUPPRESSION (RESTORED ON "buttons") ── */
 #pr-action-bar,
-.btn-request-schedule-target,
-button[onclick*="openAppointmentModal"],
-.chat-card-btn {
+button[onclick*="openAppointmentModal"] {
   display: none !important;
 }
