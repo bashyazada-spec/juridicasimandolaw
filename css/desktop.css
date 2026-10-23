@@ -720,7 +720,7 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 
-/* ── HORIZONTAL SIDE-BY-SIDE QR CODE BOX IN DARK MODE (UNCLIPPED) ── */
+/* ── HORIZONTAL SIDE-BY-SIDE QR CODE BOX IN DARK MODE (UNCLIPPED QUIET ZONE) ── */
 .ob-qr-box {
   display: flex !important;
   flex-direction: row !important;
@@ -737,28 +737,28 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   box-sizing: border-box !important;
 }
 
-/* Dedicated white badge strictly for the QR code canvas with full unclipped padding */
+/* White badge strictly for the QR code canvas with full unclipped quiet zone margin */
 .ob-qr-img {
-  width: 145px !important;
-  height: 145px !important;
+  width: 154px !important;
+  height: 154px !important;
   flex-shrink: 0 !important;
   background: #ffffff !important;
-  padding: 10px !important;
-  border-radius: 10px !important;
+  padding: 14px !important;
+  border-radius: 12px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
-  overflow: hidden !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important;
   box-sizing: border-box !important;
+  overflow: visible !important;
 }
 
 .ob-qr-img canvas,
 .ob-qr-img img {
-  width: 125px !important;
-  height: 125px !important;
-  max-width: 100% !important;
-  max-height: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 126px !important;
+  max-height: 126px !important;
   object-fit: contain !important;
   display: block !important;
   margin: 0 auto !important;
