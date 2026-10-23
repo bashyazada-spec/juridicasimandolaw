@@ -1,8 +1,3 @@
-// ═══════════════════════════════════════════════════════════════
-//  SIMANDO LAW — CORE UI ENGINE (PART 1 OF 2)
-//  Total lines in Part 1: 937
-// ═══════════════════════════════════════════════════════════════
-
 // ── THEME INITIALIZATION & TOGGLE ────────────────────────────
 function initTheme() {
   const saved = localStorage.getItem('simando-theme');
@@ -878,6 +873,7 @@ window.submitBusyDates = async function() {
       } else {
         busyData.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
         appointments.push(busyData);
+        window.appointments = appointments;
       }
     }
 
@@ -912,6 +908,7 @@ window.deleteBusySlot = function(id) {
           await dbDeleteAppointment(id);
         } else {
           appointments = appointments.filter(x => x.id !== id);
+          window.appointments = appointments;
         }
         if (typeof showToast === "function") showToast("Schedule entry removed!");
         if (typeof closeDateScheduleModal === "function") closeDateScheduleModal();
@@ -1073,7 +1070,7 @@ function renderMonthlyCalendarGrid() {
     const hasAccess = isOwner || isExplicitlyShared || isAllowed || isFirmAdmin;
 
     const attorneyInitials = p ? initials(p.name) : "AT";
-    const attorneyColor = p?.avatarColor || "#c9a55c";
+    const attorneyColor = p?.avatarColor || "#c9a84c";
 
     if (c.docDueDate) {
       if (!eventsByDate[c.docDueDate]) eventsByDate[c.docDueDate] = [];
@@ -1345,7 +1342,7 @@ window.openDateScheduleModal = function(dateStr) {
         time: specificHearing.time || "8:30 AM",
         venue: c.venue || "Courtroom / Venue N/A",
         attorneyName: p?.name || "Attorney",
-        attorneyColor: p?.avatarColor || "#c9a55c",
+        attorneyColor: p?.avatarColor || "#c9a84c",
         photoUrl: p?.photoUrl || null,
         description: hasAccess ? (specificHearing.notes || specificHearing.purpose || c.narrative || "") : "Confidential attorney-client information.",
         isOwner: isOwner,
@@ -2335,11 +2332,6 @@ async function saveShareSettings() {
 }
 window.saveShareSettings = saveShareSettings;
 // ── END OF PART 1 OF 2 ──
-// ═══════════════════════════════════════════════════════════════
-//  SIMANDO LAW — CORE UI ENGINE (PART 2 OF 2)
-//  Total lines in Part 2: 1198
-// ═══════════════════════════════════════════════════════════════
-
 // ═══════════════════════════════════════════════════════════════
 //  PROFILE DETAIL
 // ═══════════════════════════════════════════════════════════════
@@ -4067,7 +4059,7 @@ window.closeProposalReviewModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// ── ACCEPT PROPOSAL FROM DOSSIER (ADDS CASE TO ACTIVE ROSTER) ─
+// ── ACCEPT PROPOSAL FROM DOSSIER (ADDS CASE TO ACTIVE ROSTER ONLY AFTER ACCEPTANCE) ─
 window.acceptProposalFromDossier = async function() {
   const { caseId, apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
   const u = window._currentUser || window._auth?.currentUser;
@@ -4077,9 +4069,11 @@ window.acceptProposalFromDossier = async function() {
   try {
     showToast("Accepting appearance request...");
 
+    const caseList = (typeof window.cases !== "undefined" && Array.isArray(window.cases)) ? window.cases : ((typeof cases !== "undefined" && Array.isArray(cases)) ? cases : []);
+
     // 1. Update Case Permissions so it immediately shows up in the attorney's accessible list
     if (caseId && window._db && typeof dbUpdateCase === "function") {
-      let targetCase = cases.find(c => c.id === caseId);
+      let targetCase = caseList.find(c => c.id === caseId);
       if (!targetCase && typeof window._fbGetDoc === "function") {
         try {
           const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", caseId));
@@ -4106,8 +4100,11 @@ window.acceptProposalFromDossier = async function() {
         targetCase.allowedUids = currentAllowed;
         targetCase.sharedWith = currentShared;
 
-        if (!cases.some(c => c.id === targetCase.id)) {
-          cases.unshift(targetCase);
+        if (Array.isArray(caseList) && !caseList.some(c => c.id === targetCase.id)) {
+          caseList.unshift(targetCase);
+        }
+        if (Array.isArray(window.cases) && !window.cases.some(c => c.id === targetCase.id)) {
+          window.cases.unshift(targetCase);
         }
       }
     }
@@ -4145,9 +4142,26 @@ window.acceptProposalFromDossier = async function() {
 };
 
 window.declineProposalFromDossier = async function() {
-  const { apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
+  const { caseId, apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
+
   try {
     showToast("Declining proposal...");
+
+    const caseList = (typeof window.cases !== "undefined" && Array.isArray(window.cases)) ? window.cases : ((typeof cases !== "undefined" && Array.isArray(cases)) ? cases : []);
+
+    // Ensure declined case is completely removed from recipient's case list
+    if (caseId) {
+      if (Array.isArray(caseList)) {
+        const idx = caseList.findIndex(c => c.id === caseId && c.ownerUid !== currentUid);
+        if (idx >= 0) caseList.splice(idx, 1);
+      }
+      if (Array.isArray(window.cases)) {
+        window.cases = window.cases.filter(c => c.id !== caseId || c.ownerUid === currentUid);
+      }
+    }
+
     if (apptId && typeof dbUpdateAppointment === "function") {
       await dbUpdateAppointment(apptId, { status: "declined" });
     }
@@ -4157,8 +4171,12 @@ window.declineProposalFromDossier = async function() {
     if (window._chat && typeof window._chat.respondAvailCard === "function" && msgId) {
       await window._chat.respondAvailCard(msgId, isGroup, channelId, "declined");
     }
+
     showToast("Appearance proposal declined.");
     closeProposalReviewModal();
+
+    if (typeof renderAllCases === "function") renderAllCases();
+    if (typeof renderDashboard === "function") renderDashboard();
     if (typeof renderNotificationsView === "function") renderNotificationsView();
   } catch (err) {
     console.error("declineProposalFromDossier error:", err);
@@ -4188,9 +4206,11 @@ async function executeCancelAppearanceFromDossier(caseId, apptId, notifId, msgId
   try {
     showToast("Cancelling appearance...");
 
+    const caseList = (typeof window.cases !== "undefined" && Array.isArray(window.cases)) ? window.cases : ((typeof cases !== "undefined" && Array.isArray(cases)) ? cases : []);
+
     // 1. Remove user from case allowedUids and sharedWith (unless they are the case creator)
     if (caseId && window._db && typeof dbUpdateCase === "function") {
-      const targetCase = cases.find(c => c.id === caseId);
+      const targetCase = caseList.find(c => c.id === caseId);
       if (targetCase && targetCase.ownerUid !== currentUid) {
         const updAllowed = (targetCase.allowedUids || []).filter(id => id !== currentUid);
         const updShared  = (targetCase.sharedWith || []).filter(id => id !== currentUid);
@@ -4204,8 +4224,14 @@ async function executeCancelAppearanceFromDossier(caseId, apptId, notifId, msgId
         targetCase.allowedUids = updAllowed;
         targetCase.sharedWith = updShared;
 
-        // Evict from current local view
-        cases = cases.filter(c => c.id !== caseId);
+        // Evict from active case lists
+        if (Array.isArray(caseList)) {
+          const idx = caseList.findIndex(c => c.id === caseId && c.ownerUid !== currentUid);
+          if (idx >= 0) caseList.splice(idx, 1);
+        }
+        if (Array.isArray(window.cases)) {
+          window.cases = window.cases.filter(c => c.id !== caseId || c.ownerUid === currentUid);
+        }
       }
     }
 
@@ -4443,7 +4469,7 @@ window.setApptAmPm = function(val) {
   if (btnPm) btnPm.className = val === "PM" ? "ampm-btn active" : "ampm-btn";
 };
 
-// ── FIXED "SEND REQUEST" SUBMISSION WITH PRE-AUTHORIZED CASE PERMISSIONS ──
+// ── FIXED "SEND REQUEST" SUBMISSION (DOES NOT ADD CASE TO RECIPIENT LIST UNTIL ACCEPTED) ──
 window.submitAppointmentRequest = async function() {
   const caseId = document.getElementById("appt-case-select")?.value || "";
   const date   = document.getElementById("appt-date")?.value || "";
@@ -4484,7 +4510,6 @@ window.submitAppointmentRequest = async function() {
     return;
   }
 
-  // Resilient target UID lookup
   const targetUid = targetProf.ownerUid || targetProf.id;
   if (!targetUid) {
     showToast("Recipient attorney account ID not found.", "error");
@@ -4493,26 +4518,6 @@ window.submitAppointmentRequest = async function() {
 
   const allCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
   const selectedCase = allCases.find(c => c.id === caseId) || null;
-
-  // PRE-AUTHORIZE: Sender owns the case, so grant the recipient read permission right away!
-  if (selectedCase && typeof dbUpdateCase === "function") {
-    try {
-      const curAllowed = Array.isArray(selectedCase.allowedUids) ? [...selectedCase.allowedUids] : [selectedCase.ownerUid];
-      const curShared  = Array.isArray(selectedCase.sharedWith)  ? [...selectedCase.sharedWith]  : [];
-
-      if (!curAllowed.includes(targetUid)) curAllowed.push(targetUid);
-      if (!curShared.includes(targetUid)) curShared.push(targetUid);
-
-      await dbUpdateCase(selectedCase.id, {
-        allowedUids: curAllowed,
-        sharedWith: curShared
-      });
-      selectedCase.allowedUids = curAllowed;
-      selectedCase.sharedWith = curShared;
-    } catch (authErr) {
-      console.warn("Pre-authorizing case permissions notice:", authErr.message);
-    }
-  }
 
   let purposeTitle = "Case Strategy Conference";
   if (pType === "present_hearing") purposeTitle = "Present Case in Hearing";
@@ -4875,4 +4880,3 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, 300);
 });
-// ── END OF PART 2 OF 2 ──
