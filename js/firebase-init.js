@@ -29,7 +29,7 @@ import {
   EmailAuthProvider 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// Obfuscated runtime credentials (no raw API key or App ID strings stored in source)
+// Obfuscated runtime credentials
 const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
 const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
 const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
@@ -47,9 +47,10 @@ const firebaseConfig = {
 try {
   const app = initializeApp(firebaseConfig);
   
-  // Force Long Polling to prevent adblockers from blocking WebChannel streams (net::ERR_BLOCKED_BY_CLIENT)
+  // Force robust long polling without streaming WebSockets to prevent ERR_BLOCKED_BY_CLIENT
   const db = initializeFirestore(app, {
     experimentalForceLongPolling: true,
+    experimentalAutoDetectLongPolling: true,
     useFetchStreams: false
   });
   
@@ -87,7 +88,7 @@ try {
   window._fbReauth         = reauthenticateWithCredential;
   window._fbEmailCred      = EmailAuthProvider.credential;
 
-  // Set ready status IMMEDIATELY after initialization
+  // Set ready status immediately after initialization
   window._fbReady = true;
 
   if (!window._firebaseReadyFired) {
