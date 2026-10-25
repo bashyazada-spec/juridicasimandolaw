@@ -140,6 +140,30 @@
     pointer-events: none;
     opacity: 0.55;
   }
+
+  /* Stealth Break-Glass Modal Elements */
+  .breakglass-otp-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 16px 0 22px;
+  }
+  .breakglass-otp-box {
+    width: 44px;
+    height: 52px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--gold-light);
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    outline: none;
+  }
+  .breakglass-otp-box:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,165,92,0.18);
+  }
 </style>
 </head>
 <body>
@@ -660,12 +684,67 @@
   </div>
 </div>
 
+<!-- ── STEALTH EMERGENCY BREAK-GLASS OVERRIDE MODAL ── -->
+<div id="cms-breakglass-modal" class="modal-overlay hidden" style="z-index: 10020;">
+  <div class="modal-box" style="max-width: 440px; border-color: var(--gold-border);">
+    
+    <!-- TIER 1: PASSWORD VERIFICATION -->
+    <div id="cms-bg-step-password">
+      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        <i class="bi bi-exclamation-triangle-fill"></i> Security Override · Tier 1
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Confirm Account Password</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:18px">
+        Emergency elevation to Firm Administrator requires dual authentication. Enter your account password to continue.
+      </div>
+
+      <label class="field-label">Account Password *</label>
+      <input type="password" id="cms-bg-input-password" class="field-input" placeholder="••••••••" autocomplete="current-password"/>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-ghost" onclick="closeCmsBreakGlassModal()">Cancel</button>
+        <button class="btn btn-primary" id="btn-cms-bg-verify-pass" onclick="verifyCmsBreakGlassPassword()">
+          Next <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- TIER 2: MICROSOFT AUTHENTICATOR -->
+    <div id="cms-bg-step-authenticator" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        <i class="bi bi-shield-check"></i> Security Override · Tier 2
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Microsoft Authenticator 2FA</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
+        Enter the 6-digit one-time code from the <strong>Microsoft Authenticator</strong> app on your mobile device.
+      </div>
+
+      <div class="breakglass-otp-grid">
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="cms-bg-otp-1"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="cms-bg-otp-2"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="cms-bg-otp-3"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="cms-bg-otp-4"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="cms-bg-otp-5"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="cms-bg-otp-6"/>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="btn btn-ghost" onclick="backToCmsBreakGlassPassword()">← Back</button>
+        <button class="btn btn-primary" id="btn-cms-bg-verify-otp" onclick="verifyCmsBreakGlassTOTP()">
+          <i class="bi bi-shield-lock-fill"></i> Unlock Full Admin
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Main App -->
 <div id="app">
 
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
-    <div class="logo-wrap">
+    <div class="logo-wrap" onclick="navTo('dashboard')" style="cursor:pointer;" title="Return to Dashboard">
       <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
         <g transform="translate(20, 14)">
           <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c" opacity="0.95"/>
@@ -821,7 +900,7 @@
         <div class="card" style="display:flex;flex-direction:column">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
-              <i class="bi bi-folder-fill" style="color:var(--gold);font-size:18px"></i> Recent Active Cases
+              <i class="bi bi-folder-fill" style="color:var(--gold-light);font-size:18px"></i> Recent Active Cases
             </div>
             <span style="font-size:11px;color:var(--gold);font-weight:700">5 cases / page</span>
           </div>
@@ -1498,6 +1577,167 @@
     if (profilesSlot) profilesSlot.style.display = (viewName === "profiles") ? "flex" : "none";
     if (mydriveSlot)  mydriveSlot.style.display  = (viewName === "mydrive")  ? "flex" : "none";
   };
+
+  // ═══════════════════════════════════════════════════════════
+  //  METHOD 2: STEALTH EMERGENCY OVERRIDE (Ctrl+Shift+Alt+E) IN CMS
+  // ═══════════════════════════════════════════════════════════
+  let cmsActiveOverrideSecret = null;
+
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modPressed = isMac ? (e.metaKey && e.shiftKey && e.altKey) : (e.ctrlKey && e.shiftKey && e.altKey);
+
+    if (modPressed && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      openCmsBreakGlassModal();
+    }
+  });
+
+  function openCmsBreakGlassModal() {
+    const modal = document.getElementById("cms-breakglass-modal");
+    if (!modal) return;
+    document.getElementById("cms-bg-step-password").style.display = "block";
+    document.getElementById("cms-bg-step-authenticator").style.display = "none";
+    const passInp = document.getElementById("cms-bg-input-password");
+    if (passInp) passInp.value = "";
+    modal.classList.remove("hidden");
+    if (passInp) setTimeout(() => passInp.focus(), 80);
+  }
+
+  window.closeCmsBreakGlassModal = function() {
+    const modal = document.getElementById("cms-breakglass-modal");
+    if (modal) modal.classList.add("hidden");
+  };
+
+  window.backToCmsBreakGlassPassword = function() {
+    document.getElementById("cms-bg-step-password").style.display = "block";
+    document.getElementById("cms-bg-step-authenticator").style.display = "none";
+  };
+
+  window.verifyCmsBreakGlassPassword = async function() {
+    const passInp = document.getElementById("cms-bg-input-password");
+    const password = (passInp?.value || "").trim();
+
+    if (!password) {
+      showToast("Please enter your account password.", "error");
+      return;
+    }
+    const u = window._currentUser || window._auth?.currentUser;
+    if (!u || !u.email) {
+      showToast("Active user session not detected.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-cms-bg-verify-pass");
+    btn.disabled = true;
+    btn.textContent = "Verifying...";
+
+    try {
+      const cred = window._fbEmailCred(u.email, password);
+      await window._fbReauth(u, cred);
+
+      const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+      cmsActiveOverrideSecret = myProf?.twoFactorSecret || null;
+
+      if (!cmsActiveOverrideSecret) {
+        showToast("Password verified. Elevating to Administrator session...");
+        await grantCmsFullAdminElevation();
+        return;
+      }
+
+      document.getElementById("cms-bg-step-password").style.display = "none";
+      document.getElementById("cms-bg-step-authenticator").style.display = "block";
+      const firstOtp = document.getElementById("cms-bg-otp-1");
+      if (firstOtp) setTimeout(() => firstOtp.focus(), 60);
+
+    } catch (err) {
+      console.error("Break-glass password error:", err);
+      showToast("Incorrect password. Verification failed.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `Next <i class="bi bi-arrow-right"></i>`;
+    }
+  };
+
+  function getCmsBreakGlassOTP() {
+    return Array.from({ length: 6 }, (_, i) => document.getElementById(`cms-bg-otp-${i + 1}`)?.value || "").join("");
+  }
+
+  window.verifyCmsBreakGlassTOTP = async function() {
+    const code = getCmsBreakGlassOTP();
+    if (code.length !== 6) {
+      showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-cms-bg-verify-otp");
+    btn.disabled = true;
+    btn.textContent = "Verifying 2FA...";
+
+    try {
+      const isValid = typeof verifyClientTOTP === "function" 
+        ? await verifyClientTOTP(code, cmsActiveOverrideSecret)
+        : true;
+
+      if (!isValid) {
+        showToast("Invalid 6-digit authenticator code. Please try again.", "error");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
+        return;
+      }
+
+      await grantCmsFullAdminElevation();
+    } catch (err) {
+      console.error("CMS break-glass 2FA verification error:", err);
+      showToast("2FA verification error: " + err.message, "error");
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
+    }
+  };
+
+  async function grantCmsFullAdminElevation() {
+    showToast("Elevation confirmed! Session upgraded to Administrator...");
+
+    const u = window._currentUser || window._auth?.currentUser;
+    const myProf = profiles.find(p => p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
+
+    if (myProf) {
+      myProf.role = "admin";
+    }
+
+    const adminSection = document.getElementById("admin-sidebar-section");
+    if (adminSection) adminSection.style.display = "block";
+
+    closeCmsBreakGlassModal();
+
+    if (typeof renderSidebarUser === "function") renderSidebarUser();
+    if (typeof renderProfiles === "function") renderProfiles();
+    if (typeof renderAllCases === "function") renderAllCases();
+    if (typeof renderDashboard === "function") renderDashboard();
+
+    showToast("Elevation Granted! Full Administrator access unlocked. 🛡️", "success");
+  }
+
+  // Auto-advance for OTP inputs in CMS
+  const cmsOtpInputs = Array.from({ length: 6 }, (_, i) => document.getElementById(`cms-bg-otp-${i + 1}`)).filter(Boolean);
+  cmsOtpInputs.forEach((inp, idx) => {
+    inp.addEventListener("input", (e) => {
+      if (e.target.value.length === 1 && idx < cmsOtpInputs.length - 1) {
+        cmsOtpInputs[idx + 1].focus();
+      }
+      if (getCmsBreakGlassOTP().length === 6) {
+        verifyCmsBreakGlassTOTP();
+      }
+    });
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !inp.value && idx > 0) {
+        cmsOtpInputs[idx - 1].focus();
+      }
+      if (e.key === "Enter") {
+        verifyCmsBreakGlassTOTP();
+      }
+    });
+  });
 </script>
 </body>
 </html>
