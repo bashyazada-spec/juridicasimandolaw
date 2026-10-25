@@ -506,6 +506,75 @@
   let currentSessionUser = null;
   let currentSessionProfile = null;
 
+  // ── SELF-CONTAINED WEB CRYPTO TOTP ENGINE FOR ADMIN.HTML ─────
+  function base32Decode(base32) {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let cleaned = (base32 || "").toUpperCase().replace(/=+$/, "").replace(/\s+/g, "");
+    let bits = 0;
+    let value = 0;
+    let output = [];
+
+    for (let i = 0; i < cleaned.length; i++) {
+      const idx = alphabet.indexOf(cleaned.charAt(i));
+      if (idx === -1) continue;
+      value = (value << 5) | idx;
+      bits += 5;
+      if (bits >= 8) {
+        output.push((value >>> (bits - 8)) & 255);
+        bits -= 8;
+        value &= (1 << bits) - 1;
+      }
+    }
+    return new Uint8Array(output);
+  }
+
+  async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
+    const keyBytes = base32Decode(secretBase32);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "HMAC", hash: "SHA-1" },
+      false,
+      ["sign"]
+    );
+
+    const epoch = Math.floor(Date.now() / 1000);
+    const timeStep = Math.floor(epoch / 30) + timeStepOffset;
+
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setUint32(0, 0, false);
+    view.setUint32(4, timeStep, false);
+
+    const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
+    const hmacBytes = new Uint8Array(hmacResult);
+
+    const offset = hmacBytes[hmacBytes.length - 1] & 0xf;
+    const binary =
+      ((hmacBytes[offset] & 0x7f) << 24) |
+      ((hmacBytes[offset + 1] & 0xff) << 16) |
+      ((hmacBytes[offset + 2] & 0xff) << 8) |
+      (hmacBytes[offset + 3] & 0xff);
+
+    const code = binary % 1000000;
+    return String(code).padStart(6, "0");
+  }
+
+  async function verifyClientTOTP(token, secretBase32) {
+    if (!token || !secretBase32) return false;
+    const cleaned = String(token).trim().replace(/\D/g, "");
+    if (cleaned.length !== 6) return false;
+
+    // ±90 seconds clock-drift window
+    for (const offset of [0, -1, 1, -2, 2, -3, 3]) {
+      try {
+        const valid = await generateTOTPCode(secretBase32, offset);
+        if (cleaned === valid) return true;
+      } catch (e) { /* continue */ }
+    }
+    return false;
+  }
+
   // Autofill management state
   let loadedCaseTypes = [];
   let selectedCategory = CASE_CATEGORIES[0] || "Cadastral and Land Registration Case";
@@ -1171,6 +1240,7 @@
   //  METHOD 2: STEALTH EMERGENCY OVERRIDE (Ctrl+Shift+Alt+E)
   // ═══════════════════════════════════════════════════════════
   let activeOverrideSecret = null;
+  let activeBackupCodes = [];
 
   document.addEventListener("keydown", (e) => {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -1232,6 +1302,7 @@
       } catch (e) { /* ignore */ }
 
       activeOverrideSecret = secData?.twoFactorSecret || currentSessionProfile?.twoFactorSecret || null;
+      activeBackupCodes = secData?.twoFactorBackupCodes || currentSessionProfile?.twoFactorBackupCodes || [];
 
       if (!activeOverrideSecret) {
         showToast("Password verified. Elevating to Administrator session...");
@@ -1270,12 +1341,24 @@
     btn.textContent = "Verifying 2FA...";
 
     try {
-      const isValid = typeof verifyClientTOTP === "function" 
-        ? await verifyClientTOTP(code, activeOverrideSecret)
-        : true;
+      let isValid = false;
+
+      // 1. Verify TOTP Code via self-contained Web Crypto TOTP
+      if (activeOverrideSecret) {
+        isValid = await verifyClientTOTP(code, activeOverrideSecret);
+      }
+
+      // 2. Fallback check for backup recovery codes
+      if (!isValid && activeBackupCodes && activeBackupCodes.length > 0) {
+        const cleanCode = code.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const matchIdx = activeBackupCodes.findIndex(c => c.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanCode);
+        if (matchIdx >= 0) {
+          isValid = true;
+        }
+      }
 
       if (!isValid) {
-        showToast("Invalid 6-digit authenticator code. Please try again.", "error");
+        showToast("Invalid 6-digit code. Check Microsoft Authenticator and try again.", "error");
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
         return;
@@ -1338,6 +1421,17 @@
         otpInputs[idx - 1].focus();
       }
       if (e.key === "Enter") {
+        verifyBreakGlassTOTP();
+      }
+    });
+    inp.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData("text").trim().replace(/\D/g, "");
+      if (pasteData.length === 6) {
+        pasteData.split("").forEach((char, i) => {
+          if (otpInputs[i]) otpInputs[i].value = char;
+        });
+        otpInputs[5].focus();
         verifyBreakGlassTOTP();
       }
     });
