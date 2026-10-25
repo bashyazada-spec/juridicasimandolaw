@@ -613,7 +613,7 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Action Buttons (Visually suppressed per user request) -->
     <div style="display:flex;gap:8px;margin-top:14px" id="pr-action-bar">
       <button class="btn btn-success" style="flex:1" onclick="acceptProposalFromDossier()"><i class="bi bi-check2"></i> Accept &amp; Unlock Case Files</button>
       <button class="btn btn-danger btn-sm" onclick="declineProposalFromDossier()">Decline</button>
@@ -1080,7 +1080,7 @@
           <div>
             <label class="field-label">Case Type / Sub-Category</label>
             <div style="position:relative">
-              <input class="field-input" id="cf-type-input" placeholder="Type or select..." oninput="filterCaseTypeSuggestions(this.value)" onfocus="showCaseTypeSuggestions()" onkeydown="onCaseTypeKeydown(event)"/>
+              <input class="field-input" id="cf-type-input" placeholder="Type or select..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="filterCaseTypeSuggestions(this.value)" onfocus="showCaseTypeSuggestions()" onkeydown="onCaseTypeKeydown(event)"/>
               <div id="cf-type-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:var(--shadow)"></div>
             </div>
           </div>
