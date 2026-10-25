@@ -117,7 +117,7 @@ function renderCaseHearings() {
   container.innerHTML = sorted.map((h, i) => {
     const isPast = h.date < todayStr;
     const badgeMarkup = isPast
-      ? `<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
+      ? `<span class="badge" style="background:rgba(255,255,200,0.06);color:var(--text-dim);font-size:9.5px"><i class="bi bi-clock-history"></i> Past Hearing</span>`
       : `<span class="badge" style="background:rgba(52,211,153,0.15);color:var(--green);font-size:9.5px"><i class="bi bi-calendar-event"></i> Upcoming Hearing</span>`;
 
     return `
@@ -1074,6 +1074,17 @@ function onCaseTypeKeydown(e) {
   if (e.key === "Escape") hideCaseTypeSuggestions();
 }
 
+// ── OUTSIDE CLICK DISMISSAL FOR SYSTEM AUTOFILL DROPDOWN ──────
+document.addEventListener("pointerdown", function(e) {
+  const dd = document.getElementById("cf-type-dropdown");
+  const inp = document.getElementById("cf-type-input");
+  if (!dd || dd.style.display === "none") return;
+
+  if (e.target !== dd && !dd.contains(e.target) && e.target !== inp) {
+    hideCaseTypeSuggestions();
+  }
+});
+
 async function onCategoryChange(category) {
   if (typeof CATEGORY_PARTY_LABELS !== "undefined") {
     const labels = CATEGORY_PARTY_LABELS[category] || ["Petitioner", "Respondent"];
@@ -1132,6 +1143,15 @@ function initNumericInputConstraints() {
     });
 
     input._numericBound = true;
+  });
+
+  // Ensure case type input does not trigger browser native autocomplete
+  const caseTypeInputs = document.querySelectorAll('#cf-type-input');
+  caseTypeInputs.forEach(inp => {
+    inp.setAttribute("autocomplete", "off");
+    inp.setAttribute("autocorrect", "off");
+    inp.setAttribute("autocapitalize", "off");
+    inp.setAttribute("spellcheck", "false");
   });
 }
 
@@ -1307,7 +1327,6 @@ async function saveCase() {
     saveBtn.textContent = "Saving...";
   }
 
-  // Flag that we are intentionally saving so navigation isn't blocked by unsaved changes guard
   window._isSubmittingCase = true;
 
   const category = document.getElementById("cf-category")?.value || CASE_CATEGORIES[0];
@@ -1433,7 +1452,6 @@ async function saveCase() {
     window.cfHearings = cfHearings;
     window.cfDeadlines = cfDeadlines;
 
-    // Turn off submission flag so future forms work normally
     window._isSubmittingCase = false;
 
     // Refresh directory views
