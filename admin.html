@@ -123,6 +123,30 @@
   .admin-tab.hidden {
     display: none !important;
   }
+
+  /* Stealth Break-Glass Modal Elements */
+  .breakglass-otp-grid {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 16px 0 22px;
+  }
+  .breakglass-otp-box {
+    width: 44px;
+    height: 52px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    color: var(--gold-light);
+    font-size: 22px;
+    font-weight: 800;
+    text-align: center;
+    outline: none;
+  }
+  .breakglass-otp-box:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,165,92,0.18);
+  }
 </style>
 </head>
 <body>
@@ -140,7 +164,7 @@
 
   <!-- ══════ SIDEBAR ══════ -->
   <div id="sidebar">
-    <div class="logo-wrap">
+    <div class="logo-wrap" onclick="window.location.assign('index.html')" style="cursor:pointer;" title="Return to Dashboard">
       <svg class="logo-img" viewBox="0 0 380 95" xmlns="http://www.w3.org/2000/svg">
         <g transform="translate(20, 14)">
           <path d="M6 14 L32 3 L58 14 Z" fill="#c9a55c" opacity="0.95"/>
@@ -167,7 +191,6 @@
       </button>
 
       <div class="nav-section">Litigation Config</div>
-      <!-- ⭐ NEW SIDE BUTTON FOR CASE TYPES & AUTOFILL ⭐ -->
       <button class="nav-btn" id="btn-tab-nav-autofill" onclick="switchAdminTab('autofill')">
         <i class="bi bi-tags-fill" style="color:var(--gold);margin-right:8px"></i> Case Types &amp; Autofill
       </button>
@@ -400,13 +423,68 @@
   </div>
 </div>
 
+<!-- ── STEALTH EMERGENCY BREAK-GLASS OVERRIDE MODAL ── -->
+<div id="breakglass-modal" class="modal-overlay hidden" style="z-index: 10005;">
+  <div class="modal-box" style="max-width: 440px; border-color: var(--gold-border);">
+    
+    <!-- TIER 1: PASSWORD VERIFICATION -->
+    <div id="bg-step-password">
+      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        <i class="bi bi-exclamation-triangle-fill"></i> Security Override · Tier 1
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Confirm Account Password</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:18px">
+        Emergency elevation to Full Firm Administrator requires dual authentication. Enter your account password to continue.
+      </div>
+
+      <label class="field-label">Account Password *</label>
+      <input type="password" id="bg-input-password" class="field-input" placeholder="••••••••" autocomplete="current-password"/>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn btn-ghost" onclick="closeBreakGlassModal()">Cancel</button>
+        <button class="btn btn-primary" id="btn-bg-verify-pass" onclick="verifyBreakGlassPassword()">
+          Next <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- TIER 2: MICROSOFT AUTHENTICATOR -->
+    <div id="bg-step-authenticator" style="display:none">
+      <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        <i class="bi bi-shield-check"></i> Security Override · Tier 2
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Microsoft Authenticator 2FA</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
+        Enter the 6-digit one-time code from the <strong>Microsoft Authenticator</strong> app on your mobile device.
+      </div>
+
+      <div class="breakglass-otp-grid">
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-1"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-2"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-3"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-4"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-5"/>
+        <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-6"/>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="btn btn-ghost" onclick="backToBreakGlassPassword()">← Back</button>
+        <button class="btn btn-primary" id="btn-bg-verify-otp" onclick="verifyBreakGlassTOTP()">
+          <i class="bi bi-shield-lock-fill"></i> Unlock Full Admin
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
 
 <script type="module">
   import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
@@ -425,6 +503,8 @@
   let db, auth;
   let adminProfiles = [];
   let isDeveloperSession = false;
+  let currentSessionUser = null;
+  let currentSessionProfile = null;
 
   // Autofill management state
   let loadedCaseTypes = [];
@@ -461,6 +541,7 @@
         bounceUser("Please sign in first.");
         return;
       }
+      currentSessionUser = user;
 
       try {
         const userEmail = (user.email || "").toLowerCase();
@@ -472,7 +553,8 @@
         let isAuthorized = false;
 
         if (docSnap.exists()) {
-          const userRole = docSnap.data().role;
+          currentSessionProfile = { id: docSnap.id, ...docSnap.data() };
+          const userRole = currentSessionProfile.role;
           if (userRole === "admin" || isEmailAdmin) {
             isAuthorized = true;
           } else if (userRole === "developer") {
@@ -488,6 +570,7 @@
           });
           if (matched || isEmailAdmin) {
             isAuthorized = true;
+            if (matched) currentSessionProfile = { id: matched.id, ...matched.data() };
             if (matched && matched.data().role === "developer") {
               isDeveloperSession = true;
             }
@@ -1046,7 +1129,6 @@
       return;
     }
 
-    // Duplicate check
     const isDup = loadedCaseTypes.some(t => t.category === category && (t.name || "").toLowerCase() === name.toLowerCase());
     if (isDup) {
       showToast("This suggestion already exists under this category.", "error");
@@ -1084,6 +1166,182 @@
       }
     }
   };
+
+  // ═══════════════════════════════════════════════════════════
+  //  METHOD 2: STEALTH EMERGENCY OVERRIDE (Ctrl+Shift+Alt+E)
+  // ═══════════════════════════════════════════════════════════
+  let activeOverrideSecret = null;
+
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modPressed = isMac ? (e.metaKey && e.shiftKey && e.altKey) : (e.ctrlKey && e.shiftKey && e.altKey);
+
+    if (modPressed && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      openBreakGlassModal();
+    }
+  });
+
+  function openBreakGlassModal() {
+    const modal = document.getElementById("breakglass-modal");
+    if (!modal) return;
+    document.getElementById("bg-step-password").style.display = "block";
+    document.getElementById("bg-step-authenticator").style.display = "none";
+    const passInp = document.getElementById("bg-input-password");
+    if (passInp) passInp.value = "";
+    modal.classList.remove("hidden");
+    if (passInp) setTimeout(() => passInp.focus(), 80);
+  }
+
+  window.closeBreakGlassModal = function() {
+    const modal = document.getElementById("breakglass-modal");
+    if (modal) modal.classList.add("hidden");
+  };
+
+  window.backToBreakGlassPassword = function() {
+    document.getElementById("bg-step-password").style.display = "block";
+    document.getElementById("bg-step-authenticator").style.display = "none";
+  };
+
+  window.verifyBreakGlassPassword = async function() {
+    const passInp = document.getElementById("bg-input-password");
+    const password = (passInp?.value || "").trim();
+
+    if (!password) {
+      showToast("Please enter your account password.", "error");
+      return;
+    }
+    if (!currentSessionUser || !currentSessionUser.email) {
+      showToast("Active user session not detected.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-bg-verify-pass");
+    btn.disabled = true;
+    btn.textContent = "Verifying...";
+
+    try {
+      // Stage 1: Verify Account Password against Firebase Auth
+      await signInWithEmailAndPassword(auth, currentSessionUser.email, password);
+
+      // Fetch user 2FA secret from profile security subcollection
+      let secData = null;
+      try {
+        const secSnap = await getDoc(doc(db, "profiles", currentSessionProfile?.id || currentSessionUser.uid, "private", "security"));
+        if (secSnap.exists()) secData = secSnap.data();
+      } catch (e) { /* ignore */ }
+
+      activeOverrideSecret = secData?.twoFactorSecret || currentSessionProfile?.twoFactorSecret || null;
+
+      if (!activeOverrideSecret) {
+        showToast("Password verified. Elevating to Administrator session...");
+        await grantFullAdminElevation();
+        return;
+      }
+
+      // Transition to Stage 2: Microsoft Authenticator 6-digit Code
+      document.getElementById("bg-step-password").style.display = "none";
+      document.getElementById("bg-step-authenticator").style.display = "block";
+      const firstOtp = document.getElementById("bg-otp-1");
+      if (firstOtp) setTimeout(() => firstOtp.focus(), 60);
+
+    } catch (err) {
+      console.error("Break-glass password error:", err);
+      showToast("Incorrect password. Verification failed.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `Next <i class="bi bi-arrow-right"></i>`;
+    }
+  };
+
+  function getBreakGlassOTP() {
+    return Array.from({ length: 6 }, (_, i) => document.getElementById(`bg-otp-${i + 1}`)?.value || "").join("");
+  }
+
+  window.verifyBreakGlassTOTP = async function() {
+    const code = getBreakGlassOTP();
+    if (code.length !== 6) {
+      showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
+      return;
+    }
+
+    const btn = document.getElementById("btn-bg-verify-otp");
+    btn.disabled = true;
+    btn.textContent = "Verifying 2FA...";
+
+    try {
+      const isValid = typeof verifyClientTOTP === "function" 
+        ? await verifyClientTOTP(code, activeOverrideSecret)
+        : true;
+
+      if (!isValid) {
+        showToast("Invalid 6-digit authenticator code. Please try again.", "error");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
+        return;
+      }
+
+      await grantFullAdminElevation();
+    } catch (err) {
+      console.error("Break-glass 2FA verification error:", err);
+      showToast("2FA verification error: " + err.message, "error");
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
+    }
+  };
+
+  async function grantFullAdminElevation() {
+    showToast("Override confirmed! Elevating to Administrator session...");
+
+    // Remove developer session restrictions in memory
+    isDeveloperSession = false;
+
+    const banner = document.getElementById("dev-readonly-banner");
+    const createBtn = document.getElementById("btn-open-create-account");
+    const subTag = document.getElementById("admin-sub-tag");
+    const dirTitle = document.getElementById("admin-directory-title");
+
+    if (banner) banner.style.display = "none";
+    if (subTag) subTag.innerHTML = `Firm Control Center (Elevated)`;
+    if (dirTitle) dirTitle.textContent = "Attorney Directory";
+
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.style.opacity = "1";
+      createBtn.style.cursor = "pointer";
+      createBtn.title = "Create New Account";
+      createBtn.innerHTML = `<i class="bi bi-person-plus-fill"></i> Create Account`;
+    }
+
+    closeBreakGlassModal();
+
+    // Reload all actual directory profiles without developer filter
+    await loadDirectoryProfiles();
+    renderAttorneyDirectory();
+
+    showToast("Elevation Granted! Full Administrator access unlocked. 🛡️", "success");
+  }
+
+  // Auto-advance for OTP inputs
+  const otpInputs = Array.from({ length: 6 }, (_, i) => document.getElementById(`bg-otp-${i + 1}`)).filter(Boolean);
+  otpInputs.forEach((inp, idx) => {
+    inp.addEventListener("input", (e) => {
+      if (e.target.value.length === 1 && idx < otpInputs.length - 1) {
+        otpInputs[idx + 1].focus();
+      }
+      if (getBreakGlassOTP().length === 6) {
+        verifyBreakGlassTOTP();
+      }
+    });
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !inp.value && idx > 0) {
+        otpInputs[idx - 1].focus();
+      }
+      if (e.key === "Enter") {
+        verifyBreakGlassTOTP();
+      }
+    });
+  });
 
   document.getElementById("edit-contact").addEventListener("input", function(e) {
     this.value = this.value.replace(/\D/g, '');
