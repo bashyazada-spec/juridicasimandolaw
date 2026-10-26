@@ -147,6 +147,31 @@
     border-color: var(--gold);
     box-shadow: 0 0 0 3px rgba(201,165,92,0.18);
   }
+
+  /* Console Showcase Isolation Button */
+  .btn-console-isolation {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.25);
+    color: var(--cyan);
+    transition: all 0.2s ease;
+  }
+  .btn-console-isolation:hover {
+    background: rgba(34,211,238,0.15);
+    border-color: var(--cyan);
+  }
+  .btn-console-isolation.active {
+    background: rgba(201,165,92,0.12);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
 </style>
 </head>
 <body>
@@ -224,7 +249,14 @@
           <div class="page-title" id="admin-directory-title">Attorney Directory</div>
           <div class="page-sub" id="admin-directory-sub">Managing firm access profiles &amp; administrative credentials</div>
         </div>
-        <button class="btn btn-primary" id="btn-open-create-account" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
+        <div style="display:flex;align-items:center;gap:10px">
+          <!-- ⭐ CONSOLE ISOLATION TOGGLE BUTTON (HIDES REAL ATTORNEYS FOR SHOWCASE) ⭐ -->
+          <button id="btn-toggle-isolation" class="btn-console-isolation" type="button" onclick="toggleAttorneyShowcaseIsolation()" title="Toggle Confidentiality Mode: Hide actual attorneys to showcase developer accounts safely">
+            <i class="bi bi-terminal" id="isolation-icon"></i>
+            <span id="isolation-label">Showcase Isolation</span>
+          </button>
+          <button class="btn btn-primary" id="btn-open-create-account" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
+        </div>
       </div>
       <div class="card">
         <div style="overflow-x:auto">
@@ -284,7 +316,7 @@
           </table>
 
           <div style="margin-top:16px;font-size:11px;color:var(--text-dim);line-height:1.5">
-            <i class="bi bi-info-circle"></i> Removing inappropriate entries or accidental typos immediately prevents them from appearing in attorney case creation forms.
+            <i class="bi bi-info-circle"></i> Administrators and developers can add new sub-category autocomplete types. Removing inappropriate entries or accidental typos immediately prevents them from appearing in attorney case creation forms.
           </div>
         </div>
       </div>
@@ -502,9 +534,13 @@
 
   let db, auth;
   let adminProfiles = [];
+  let rawAllProfiles = [];
   let isDeveloperSession = false;
   let currentSessionUser = null;
   let currentSessionProfile = null;
+
+  // Showcase Isolation State (Hides real attorneys to present developers safely)
+  let showcaseIsolationActive = sessionStorage.getItem("simando_showcase_isolation") === "true";
 
   // ── SELF-CONTAINED WEB CRYPTO TOTP ENGINE FOR ADMIN.HTML ─────
   function base32Decode(base32) {
@@ -657,6 +693,7 @@
             showToast("Admin Session Verified");
           }
 
+          updateIsolationButtonUI();
           initAdminConsole();
         } else {
           bounceUser("Unauthorized. Administrator or Developer access required.");
@@ -701,6 +738,57 @@
     renderAutofillItems();
   }
 
+  // ── SHOWCASE ISOLATION TOGGLE (HIDES REAL ATTORNEYS FOR SHOWCASING) ──
+  window.toggleAttorneyShowcaseIsolation = function() {
+    showcaseIsolationActive = !showcaseIsolationActive;
+    sessionStorage.setItem("simando_showcase_isolation", showcaseIsolationActive ? "true" : "false");
+    updateIsolationButtonUI();
+    applyProfilesFilter();
+    renderAttorneyDirectory();
+
+    if (showcaseIsolationActive) {
+      showToast("Showcase Mode: Real attorneys hidden. Only developer accounts displayed.", "info");
+    } else {
+      showToast("Full Directory: All firm attorney accounts visible.", "success");
+    }
+  };
+
+  function updateIsolationButtonUI() {
+    const btn = document.getElementById("btn-toggle-isolation");
+    const label = document.getElementById("isolation-label");
+    const icon = document.getElementById("isolation-icon");
+    if (!btn || !label || !icon) return;
+
+    if (showcaseIsolationActive) {
+      btn.className = "btn-console-isolation active";
+      label.textContent = "Showcase: Devs Only";
+      icon.className = "bi bi-eye-slash-fill";
+      btn.title = "Confidential Mode Active: Click to restore full attorney directory view";
+    } else {
+      btn.className = "btn-console-isolation";
+      label.textContent = "Showcase Isolation";
+      icon.className = "bi bi-terminal";
+      btn.title = "Click to hide actual attorneys and show only developers for safe showcasing";
+    }
+  }
+
+  function applyProfilesFilter() {
+    if (isDeveloperSession || showcaseIsolationActive) {
+      adminProfiles = rawAllProfiles.filter(p => p.role === "developer");
+    } else {
+      adminProfiles = rawAllProfiles;
+    }
+
+    const subEl = document.getElementById("admin-directory-sub");
+    if (subEl) {
+      if (isDeveloperSession || showcaseIsolationActive) {
+        subEl.textContent = `${adminProfiles.length} developer sandbox account${adminProfiles.length !== 1 ? 's' : ''} (Real attorneys hidden for showcase)`;
+      } else {
+        subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
+      }
+    }
+  }
+
   // ── TAB SWITCHING ───────────────────────────────────────────
   window.switchAdminTab = function(tabName) {
     document.querySelectorAll(".admin-tab").forEach(t => t.classList.add("hidden"));
@@ -719,22 +807,8 @@
   async function loadDirectoryProfiles() {
     try {
       const pSnap = await getDocs(collection(db, "profiles"));
-      const allProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      if (isDeveloperSession) {
-        adminProfiles = allProfiles.filter(p => p.role === "developer");
-      } else {
-        adminProfiles = allProfiles;
-      }
-
-      const subEl = document.getElementById("admin-directory-sub");
-      if (subEl) {
-        if (isDeveloperSession) {
-          subEl.textContent = `${adminProfiles.length} developer sandbox account${adminProfiles.length !== 1 ? 's' : ''} (Attorney profiles hidden)`;
-        } else {
-          subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
-        }
-      }
+      rawAllProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      applyProfilesFilter();
     } catch (err) {
       console.error("Error loading directory:", err);
       showToast("Directory sync warning.", "error");
@@ -746,7 +820,7 @@
     if (!tbody) return;
 
     if (adminProfiles.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">${isDeveloperSession ? 'No other developer sandbox accounts found.' : 'No active profiles found.'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">${(isDeveloperSession || showcaseIsolationActive) ? 'No other developer sandbox accounts found.' : 'No active profiles found.'}</td></tr>`;
       return;
     }
 
@@ -1137,14 +1211,27 @@
     }
 
     tbody.innerHTML = items.map(item => {
+      // Deletion allowed for firm admins and elevated sessions; locked for raw developer sandbox sessions
+      let actionMarkup = `
+        <button class="btn btn-danger btn-sm" onclick="adminDeleteCaseType('${item.id}', '${item.name.replace(/'/g, "\\'")}')" title="Delete case type">
+          <i class="bi bi-trash3"></i> Remove
+        </button>
+      `;
+
+      if (isDeveloperSession) {
+        actionMarkup = `
+          <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid var(--border)">
+            <i class="bi bi-lock"></i> Protected
+          </span>
+        `;
+      }
+
       return `
         <tr>
           <td><strong style="color:var(--text)">${escHtml(item.name)}</strong></td>
           <td><span style="font-size:11.5px;color:var(--gold-light)">${escHtml(item.category)}</span></td>
           <td style="text-align:right">
-            <button class="btn btn-danger btn-sm" onclick="adminDeleteCaseType('${item.id}', '${item.name.replace(/'/g, "\\'")}')" title="Delete case type">
-              <i class="bi bi-trash3"></i> Remove
-            </button>
+            ${actionMarkup}
           </td>
         </tr>
       `;
@@ -1156,6 +1243,10 @@
   };
 
   window.adminDeleteCaseType = async function(id, name) {
+    if (isDeveloperSession) {
+      showToast("Developers cannot delete case types. Only administrators may remove suggestions.", "error");
+      return;
+    }
     if (!confirm(`Are you sure you want to permanently delete the case type suggestion:\n"${name}"?\nThis removes it from autocomplete dropdowns.`)) return;
 
     try {
@@ -1172,6 +1263,7 @@
   };
 
   window.openAddCaseTypeModal = function() {
+    // Developers and Administrators can both add case types
     const catSel = document.getElementById("new-casetype-category");
     const nameInp = document.getElementById("new-casetype-name");
     
@@ -1198,6 +1290,7 @@
       return;
     }
 
+    // Duplicate check
     const isDup = loadedCaseTypes.some(t => t.category === category && (t.name || "").toLowerCase() === name.toLowerCase());
     if (isDup) {
       showToast("This suggestion already exists under this category.", "error");
@@ -1291,6 +1384,7 @@
     btn.textContent = "Verifying...";
 
     try {
+      showToast("Verifying credentials...");
       // Stage 1: Verify Account Password against Firebase Auth
       await signInWithEmailAndPassword(auth, currentSessionUser.email, password);
 
@@ -1398,9 +1492,12 @@
 
     closeBreakGlassModal();
 
-    // Reload all actual directory profiles without developer filter
+    // Reload directory profiles & update showcase isolation state
     await loadDirectoryProfiles();
     renderAttorneyDirectory();
+
+    // Re-render autofill table so delete buttons become accessible
+    renderAutofillItems();
 
     showToast("Elevation Granted! Full Administrator access unlocked. 🛡️", "success");
   }
