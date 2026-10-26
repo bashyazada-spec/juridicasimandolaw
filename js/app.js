@@ -1025,11 +1025,26 @@ async function loadCaseTypesForCategory(category) {
   _caseTypeSuggestions = [];
   if (!window._db || !category) return;
   try {
+    let blacklist = [];
+    try {
+      blacklist = JSON.parse(localStorage.getItem("simando_autofill_blacklist") || "[]");
+    } catch(e) { blacklist = []; }
+
     const snap = await window._fbGetDocs(window._fbQuery(
       window._fbCol(window._db, "caseTypes"),
       window._fbWhere("category", "==", category)
     ));
-    _caseTypeSuggestions = snap.docs.map(d => d.data().name).filter(Boolean);
+    
+    _caseTypeSuggestions = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(item => {
+        if (!item.name || !item.name.trim()) return false;
+        if (item.deleted || item.active === false) return false;
+        const cleanName = item.name.trim().toLowerCase();
+        if (blacklist.includes(cleanName) || blacklist.includes(item.id)) return false;
+        return true;
+      })
+      .map(item => item.name);
   } catch(e) { console.warn("loadCaseTypes error:", e); }
 }
 
@@ -1037,6 +1052,13 @@ async function saveCaseTypeIfNew(category, typeName) {
   if (!typeName || !category || !window._db) return;
   const name = typeName.trim();
   if (!name || _caseTypeSuggestions.includes(name)) return;
+  
+  let blacklist = [];
+  try {
+    blacklist = JSON.parse(localStorage.getItem("simando_autofill_blacklist") || "[]");
+  } catch(e) { blacklist = []; }
+  if (blacklist.includes(name.toLowerCase())) return;
+
   try {
     await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), { category, name, createdAt: new Date().toISOString() });
     _caseTypeSuggestions.push(name);
@@ -1145,7 +1167,6 @@ function initNumericInputConstraints() {
     input._numericBound = true;
   });
 
-  // Ensure case type input does not trigger browser native autocomplete
   const caseTypeInputs = document.querySelectorAll('#cf-type-input');
   caseTypeInputs.forEach(inp => {
     inp.setAttribute("autocomplete", "off");
@@ -1433,7 +1454,6 @@ async function saveCase() {
       showToast("Case details updated!");
     }
 
-    // Clear form inputs and temp state completely before navigating
     setElVal("cf-case-title", "");
     setElVal("cf-narrative", "");
     setElVal("cf-filed", "");
@@ -1454,14 +1474,12 @@ async function saveCase() {
 
     window._isSubmittingCase = false;
 
-    // Refresh directory views
     if (typeof renderDashboard === "function") renderDashboard();
     if (typeof renderAllCases === "function") renderAllCases();
     if (caseFormOrigin === "profileDetail" && selProfile && typeof renderProfileDetail === "function") {
       renderProfileDetail();
     }
 
-    // Direct clean navigation to All Cases on add, or Case Detail on edit
     if (caseFormMode === "add") {
       executeNavigation("allcases");
     } else {
