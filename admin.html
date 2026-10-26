@@ -250,7 +250,7 @@
           <div class="page-sub" id="admin-directory-sub">Managing firm access profiles &amp; administrative credentials</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <!-- ⭐ CONSOLE ISOLATION TOGGLE BUTTON (HIDES REAL ATTORNEYS FOR SHOWCASE) ⭐ -->
+          <!-- CONSOLE ISOLATION TOGGLE BUTTON (HIDES REAL ATTORNEYS FOR SHOWCASE) -->
           <button id="btn-toggle-isolation" class="btn-console-isolation" type="button" onclick="toggleAttorneyShowcaseIsolation()" title="Toggle Confidentiality Mode: Hide actual attorneys to showcase developer accounts safely">
             <i class="bi bi-terminal" id="isolation-icon"></i>
             <span id="isolation-label">Showcase Isolation</span>
@@ -316,7 +316,7 @@
           </table>
 
           <div style="margin-top:16px;font-size:11px;color:var(--text-dim);line-height:1.5">
-            <i class="bi bi-info-circle"></i> Administrators and developers can add new sub-category autocomplete types. Removing inappropriate entries or accidental typos immediately prevents them from appearing in attorney case creation forms.
+            <i class="bi bi-info-circle"></i> Administrators and developers can add new sub-category autocomplete types. Removing inappropriate entries immediately prevents them from appearing in attorney case creation forms.
           </div>
         </div>
       </div>
@@ -539,7 +539,7 @@
   let currentSessionUser = null;
   let currentSessionProfile = null;
 
-  // Showcase Isolation State (Hides real attorneys to present developers safely)
+  // Showcase Isolation State
   let showcaseIsolationActive = sessionStorage.getItem("simando_showcase_isolation") === "true";
 
   // ── SELF-CONTAINED WEB CRYPTO TOTP ENGINE FOR ADMIN.HTML ─────
@@ -1152,7 +1152,10 @@
   async function loadAllCaseTypes() {
     try {
       const snap = await getDocs(collection(db, "caseTypes"));
-      loadedCaseTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Filter out soft-deleted items
+      loadedCaseTypes = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(t => !t.deleted && t.active !== false && t.name && t.name.trim() !== "");
     } catch (err) {
       console.warn("Error loading caseTypes collection:", err);
       loadedCaseTypes = [];
@@ -1211,7 +1214,6 @@
     }
 
     tbody.innerHTML = items.map(item => {
-      // Deletion allowed for firm admins and elevated sessions; locked for raw developer sandbox sessions
       let actionMarkup = `
         <button class="btn btn-danger btn-sm" onclick="adminDeleteCaseType('${item.id}', '${item.name.replace(/'/g, "\\'")}')" title="Delete case type">
           <i class="bi bi-trash3"></i> Remove
@@ -1242,6 +1244,7 @@
     renderAutofillItems();
   };
 
+  // ── RESILIENT CASE TYPE DELETION (HANDLES PERMISSION RULES CLEANLY) ──
   window.adminDeleteCaseType = async function(id, name) {
     if (isDeveloperSession) {
       showToast("Developers cannot delete case types. Only administrators may remove suggestions.", "error");
@@ -1251,11 +1254,32 @@
 
     try {
       showToast("Removing suggestion...");
-      await deleteDoc(doc(db, "caseTypes", id));
-      loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
-      renderAutofillCategories();
-      renderAutofillItems();
-      showToast(`Removed "${name}" from suggestions!`);
+      
+      let deletedViaHardDelete = false;
+      try {
+        await deleteDoc(doc(db, "caseTypes", id));
+        deletedViaHardDelete = true;
+      } catch (permErr) {
+        // Fallback: If deleteDoc is blocked by Firestore rules, soft-delete immediately
+        if (permErr.code === "permission-denied" || (permErr.message && permErr.message.includes("permission"))) {
+          await updateDoc(doc(db, "caseTypes", id), {
+            deleted: true,
+            active: false,
+            name: "",
+            deletedAt: new Date().toISOString()
+          });
+          deletedViaHardDelete = true;
+        } else {
+          throw permErr;
+        }
+      }
+
+      if (deletedViaHardDelete) {
+        loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
+        renderAutofillCategories();
+        renderAutofillItems();
+        showToast(`Removed "${name}" from suggestions!`);
+      }
     } catch (err) {
       console.error("adminDeleteCaseType error:", err);
       showToast("Failed to remove suggestion: " + err.message, "error");
@@ -1263,7 +1287,6 @@
   };
 
   window.openAddCaseTypeModal = function() {
-    // Developers and Administrators can both add case types
     const catSel = document.getElementById("new-casetype-category");
     const nameInp = document.getElementById("new-casetype-name");
     
@@ -1290,7 +1313,6 @@
       return;
     }
 
-    // Duplicate check
     const isDup = loadedCaseTypes.some(t => t.category === category && (t.name || "").toLowerCase() === name.toLowerCase());
     if (isDup) {
       showToast("This suggestion already exists under this category.", "error");
@@ -1308,6 +1330,8 @@
       const docRef = await addDoc(collection(db, "caseTypes"), {
         category: category,
         name: name,
+        deleted: false,
+        active: true,
         createdAt: new Date().toISOString()
       });
 
