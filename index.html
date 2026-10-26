@@ -1221,7 +1221,7 @@
 
         <!-- HEARINGS TRACKER -->
         <div class="card mb-16" style="background:var(--surface2);padding:18px;border:1.5px solid var(--gold-border)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:gap:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
               <span><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearing Dates &amp; History</span>
               <span id="cf-hearing-status-badge" class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-size:10px">0 LOGGED</span>
@@ -1270,7 +1270,7 @@
 
         <!-- DOCUMENT DEADLINES TRACKER -->
         <div class="card mb-16" style="background:var(--surface2);padding:18px;border:1.5px solid var(--gold-border)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:gap:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
               <span><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines</span>
               <span id="cf-deadline-status-badge" class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:10px">0 LOGGED</span>
@@ -1582,6 +1582,7 @@
   //  METHOD 2: STEALTH EMERGENCY OVERRIDE (Ctrl+Shift+Alt+E) IN CMS
   // ═══════════════════════════════════════════════════════════
   let cmsActiveOverrideSecret = null;
+  let cmsActiveBackupCodes = [];
 
   document.addEventListener("keydown", (e) => {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -1633,11 +1634,21 @@
     btn.textContent = "Verifying...";
 
     try {
+      showToast("Verifying credentials...");
       const cred = window._fbEmailCred(u.email, password);
       await window._fbReauth(u, cred);
 
       const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
-      cmsActiveOverrideSecret = myProf?.twoFactorSecret || null;
+      
+      // Load 2FA secret from profile or security subcollection
+      let secData = null;
+      try {
+        const secSnap = await window._fbGetDoc(window._fbDoc(window._db, "profiles", myProf?.id || u.uid, "private", "security"));
+        if (secSnap && secSnap.exists()) secData = secSnap.data();
+      } catch (e) { /* ignore */ }
+
+      cmsActiveOverrideSecret = secData?.twoFactorSecret || myProf?.twoFactorSecret || null;
+      cmsActiveBackupCodes = secData?.twoFactorBackupCodes || myProf?.twoFactorBackupCodes || [];
 
       if (!cmsActiveOverrideSecret) {
         showToast("Password verified. Elevating to Administrator session...");
@@ -1675,9 +1686,21 @@
     btn.textContent = "Verifying 2FA...";
 
     try {
-      const isValid = typeof verifyClientTOTP === "function" 
-        ? await verifyClientTOTP(code, cmsActiveOverrideSecret)
-        : true;
+      let isValid = false;
+
+      // 1. Verify TOTP Code via Web Crypto TOTP engine
+      if (cmsActiveOverrideSecret && typeof verifyClientTOTP === "function") {
+        isValid = await verifyClientTOTP(code, cmsActiveOverrideSecret);
+      }
+
+      // 2. Check backup recovery codes as fallback
+      if (!isValid && cmsActiveBackupCodes && cmsActiveBackupCodes.length > 0) {
+        const cleanCode = code.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const matchIdx = cmsActiveBackupCodes.findIndex(c => c.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanCode);
+        if (matchIdx >= 0) {
+          isValid = true;
+        }
+      }
 
       if (!isValid) {
         showToast("Invalid 6-digit authenticator code. Please try again.", "error");
@@ -1734,6 +1757,17 @@
         cmsOtpInputs[idx - 1].focus();
       }
       if (e.key === "Enter") {
+        verifyCmsBreakGlassTOTP();
+      }
+    });
+    inp.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData("text").trim().replace(/\D/g, "");
+      if (pasteData.length === 6) {
+        pasteData.split("").forEach((char, i) => {
+          if (cmsOtpInputs[i]) cmsOtpInputs[i].value = char;
+        });
+        cmsOtpInputs[5].focus();
         verifyCmsBreakGlassTOTP();
       }
     });
