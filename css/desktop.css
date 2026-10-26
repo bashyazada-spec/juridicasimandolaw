@@ -1161,10 +1161,26 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 .cal-day-cell.is-selected { background: rgba(201, 168, 76, 0.15) !important; border-color: var(--gold) !important; }
 .cal-day-num { font-size: clamp(11.5px, 0.9vw, 13px); font-weight: 700; color: var(--text); }
 
-#toast { position: fixed; bottom: 28px; right: 28px; padding: 13px 22px; border-radius: 12px; font-size: 13px; font-weight: 500; z-index: 100; transition: all 0.28s; pointer-events: none; opacity: 0; transform: translateY(20px); box-shadow: var(--shadow); max-width: 340px; line-height: 1.4; }
-#toast.show { opacity: 1; transform: translateY(0); }
-#toast.success { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35); color: var(--green); }
-#toast.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--red); }
+#toast { 
+  position: fixed !important; 
+  bottom: 28px !important; 
+  right: 28px !important; 
+  padding: 13px 22px !important; 
+  border-radius: 12px !important; 
+  font-size: 13px !important; 
+  font-weight: 500 !important; 
+  z-index: 999999 !important; /* Always on top of any modal popup */
+  transition: all 0.28s !important; 
+  pointer-events: none !important; 
+  opacity: 0; 
+  transform: translateY(20px); 
+  box-shadow: 0 10px 40px rgba(0,0,0,0.65) !important; 
+  max-width: 360px !important; 
+  line-height: 1.4 !important; 
+}
+#toast.show { opacity: 1 !important; transform: translateY(0) !important; }
+#toast.success { background: rgba(52,211,153,0.18) !important; border: 1.5px solid rgba(52,211,153,0.45) !important; color: #6ee7b7 !important; }
+#toast.error { background: rgba(248,113,113,0.18) !important; border: 1.5px solid rgba(248,113,113,0.45) !important; color: #fca5a5 !important; }
 
 .avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
 .spinner { width: 34px; height: 34px; border: 1.5px solid rgba(201,168,76,0.1); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
