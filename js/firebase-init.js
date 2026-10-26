@@ -47,10 +47,9 @@ const firebaseConfig = {
 try {
   const app = initializeApp(firebaseConfig);
   
-  // Force robust long polling without streaming WebSockets to prevent ERR_BLOCKED_BY_CLIENT
+  // Clean initialization: experimentalForceLongPolling must be used ALONE without experimentalAutoDetectLongPolling
   const db = initializeFirestore(app, {
     experimentalForceLongPolling: true,
-    experimentalAutoDetectLongPolling: true,
     useFetchStreams: false
   });
   
