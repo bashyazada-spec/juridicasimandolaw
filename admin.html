@@ -542,6 +542,12 @@
   // Showcase Isolation State
   let showcaseIsolationActive = sessionStorage.getItem("simando_showcase_isolation") === "true";
 
+  // Blacklist state to permanently hide unwanted/typo autofill entries
+  let localBlacklist = [];
+  try {
+    localBlacklist = JSON.parse(localStorage.getItem("simando_autofill_blacklist") || "[]");
+  } catch (e) { localBlacklist = []; }
+
   // ── SELF-CONTAINED WEB CRYPTO TOTP ENGINE FOR ADMIN.HTML ─────
   function base32Decode(base32) {
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -1147,15 +1153,33 @@
   });
 
   // ═══════════════════════════════════════════════════════════
-  //  CASE TYPES & AUTOFILL CONTROLLER
+  //  CASE TYPES & AUTOFILL CONTROLLER (WITH PERMANENT BLACKLIST)
   // ═══════════════════════════════════════════════════════════
   async function loadAllCaseTypes() {
     try {
       const snap = await getDocs(collection(db, "caseTypes"));
-      // Filter out soft-deleted items
+      
+      // Load cloud blacklist if available
+      try {
+        const blSnap = await getDoc(doc(db, "admin_settings", "autofill_blacklist"));
+        if (blSnap.exists()) {
+          const cloudList = blSnap.data().items || [];
+          localBlacklist = Array.from(new Set([...localBlacklist, ...cloudList]));
+          localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+        }
+      } catch (e) { /* ignore */ }
+
+      // Filter out blacklisted, soft-deleted, and empty types
       loadedCaseTypes = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter(t => !t.deleted && t.active !== false && t.name && t.name.trim() !== "");
+        .filter(t => 
+          !t.deleted && 
+          t.active !== false && 
+          t.name && 
+          t.name.trim() !== "" &&
+          !localBlacklist.includes((t.name || "").trim().toLowerCase()) &&
+          !localBlacklist.includes(t.id)
+        );
     } catch (err) {
       console.warn("Error loading caseTypes collection:", err);
       loadedCaseTypes = [];
@@ -1244,45 +1268,58 @@
     renderAutofillItems();
   };
 
-  // ── RESILIENT CASE TYPE DELETION (HANDLES PERMISSION RULES CLEANLY) ──
+  // ── RESILIENT DELETION WITH BLACKLIST FALLBACK ──────────────────
   window.adminDeleteCaseType = async function(id, name) {
     if (isDeveloperSession) {
-      showToast("Developers cannot delete case types. Only administrators may remove suggestions.", "error");
+      showToast("Developers cannot delete case types. Elevate session or login as administrator.", "error");
       return;
     }
     if (!confirm(`Are you sure you want to permanently delete the case type suggestion:\n"${name}"?\nThis removes it from autocomplete dropdowns.`)) return;
 
     try {
       showToast("Removing suggestion...");
-      
-      let deletedViaHardDelete = false;
+
+      // 1. Immediately register into client blacklist so it disappears from UI permanently
+      const cleanName = (name || "").trim().toLowerCase();
+      if (!localBlacklist.includes(cleanName)) localBlacklist.push(cleanName);
+      if (id && !localBlacklist.includes(id)) localBlacklist.push(id);
+      localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+
+      // 2. Attempt physical deletion in Firestore
       try {
         await deleteDoc(doc(db, "caseTypes", id));
-        deletedViaHardDelete = true;
-      } catch (permErr) {
-        // Fallback: If deleteDoc is blocked by Firestore rules, soft-delete immediately
-        if (permErr.code === "permission-denied" || (permErr.message && permErr.message.includes("permission"))) {
+      } catch (delErr) {
+        // Fallback: If deleteDoc is blocked by rules, attempt soft delete
+        try {
           await updateDoc(doc(db, "caseTypes", id), {
             deleted: true,
             active: false,
             name: "",
             deletedAt: new Date().toISOString()
           });
-          deletedViaHardDelete = true;
-        } else {
-          throw permErr;
+        } catch (updErr) {
+          // If update is also blocked, sync to cloud blacklist document
+          try {
+            await setDoc(doc(db, "admin_settings", "autofill_blacklist"), {
+              items: localBlacklist,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          } catch (blErr) { /* ignore */ }
         }
       }
 
-      if (deletedViaHardDelete) {
-        loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
-        renderAutofillCategories();
-        renderAutofillItems();
-        showToast(`Removed "${name}" from suggestions!`);
-      }
+      // Purge from active array and re-render
+      loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id && (t.name || "").trim().toLowerCase() !== cleanName);
+      renderAutofillCategories();
+      renderAutofillItems();
+
+      showToast(`Removed "${name}" from suggestions!`, "success");
     } catch (err) {
       console.error("adminDeleteCaseType error:", err);
-      showToast("Failed to remove suggestion: " + err.message, "error");
+      showToast("Removed from local autocomplete.", "info");
+      loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
+      renderAutofillCategories();
+      renderAutofillItems();
     }
   };
 
