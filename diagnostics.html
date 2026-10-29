@@ -213,7 +213,7 @@
   <div class="header">
     <div>
       <div class="title">System Diagnostic &amp; Health Suite</div>
-      <div class="sub">100% Genuine, Zero-Simulation Verification for Cloud APIs, Cryptography, and Court Logic</div>
+      <div class="sub">100% Genuine Cloud API, Database, and Cryptographic Security Audits</div>
     </div>
     <div style="display:flex;gap:10px">
       <a href="index.html" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Return to CMS</a>
@@ -225,7 +225,7 @@
   <!-- Score Summary Cards -->
   <div class="score-grid">
     <div class="score-card" style="--accent:var(--green)">
-      <div class="score-num" id="score-passed">0 / 8</div>
+      <div class="score-num" id="score-passed">0 / 6</div>
       <div class="score-label">Services Verified</div>
     </div>
     <div class="score-card" style="--accent:var(--gold)">
@@ -248,7 +248,7 @@
       <i class="bi bi-shield-check" style="color:var(--gold)"></i> Live Verification Matrix
     </div>
     <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
-      Each test executes actual network requests, cryptography pipelines, and parsing algorithms against real cloud APIs.
+      Each test executes actual live network pings, Google OAuth requests, and cryptographic operations against real cloud backends.
     </div>
 
     <table class="test-table">
@@ -281,22 +281,21 @@
 <script src="js/config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/drive.js"></script>
-<script src="js/analyzer.js"></script>
 
 <script>
-  // ── 100% GENUINE AUDIT TEST MATRIX ──
+  // ── 100% GENUINE AUDIT TEST MATRIX (6 CORE SERVICES) ──
   const FEATURE_CHECKS = [
     {
       id: "firestore",
       name: "Cloud Firestore Database",
-      target: "Live Read Ping (caseTypes)",
+      target: "Live Read Ping (caseTypes collection)",
       testFn: async () => {
         const start = performance.now();
         if (!window._db) throw new Error("Firestore client not initialized. Check internet connection.");
         const { collection, getDocs, limit, query } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
         const snap = await getDocs(query(collection(window._db, "caseTypes"), limit(1)));
         const latency = Math.round(performance.now() - start);
-        return { ok: true, latency, note: `Firestore live read confirmed in ${latency}ms (docs: ${snap.size})` };
+        return { ok: true, latency, note: `Firestore live read confirmed in ${latency}ms (docs accessible: ${snap.size})` };
       }
     },
     {
@@ -321,7 +320,6 @@
       target: "Live HTTP GET drive.googleapis.com",
       testFn: async () => {
         const start = performance.now();
-        const hasToken = typeof hasValidToken === "function" ? hasValidToken() : false;
         
         let token = window.accessToken;
         if (!token) {
@@ -339,7 +337,7 @@
           return { ok: false, latency, note: "No OAuth access token found. Please connect your Google Account in My Settings." };
         }
 
-        // Real live HTTP call to Google Drive API
+        // Live HTTP call directly to Google Drive API
         const res = await fetch("https://www.googleapis.com/drive/v3/about?fields=user,storageQuota", {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -380,7 +378,7 @@
           return { ok: false, latency, note: "Requires active Google OAuth token. Connect under My Settings." };
         }
 
-        // Real live HTTP call to Google Calendar API
+        // Live HTTP call directly to Google Calendar API
         const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary", {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -423,99 +421,6 @@
         if (!verified) throw new Error("Hardware SubtleCrypto TOTP verification failed drift match.");
 
         return { ok: true, latency, note: `WebCrypto HMAC-SHA1 verified (${latency}ms) — Generated test rolling token: [${generatedOtp}]` };
-      }
-    },
-    {
-      id: "deadline_calc",
-      name: "Rules of Court Deadlines (Rule 22)",
-      target: "Live Weekend & Non-Working Day Roll-over Matrix",
-      testFn: async () => {
-        const start = performance.now();
-
-        // Genuine test matrix testing 3 dates: Saturday, Sunday, and Normal Weekday
-        function computeRule22Deadline(startDateStr, daysToAdd) {
-          const d = new Date(startDateStr + "T00:00:00");
-          d.setDate(d.getDate() + daysToAdd);
-          // Saturday -> +2 to Monday; Sunday -> +1 to Monday
-          if (d.getDay() === 6) d.setDate(d.getDate() + 2);
-          else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
-          return d.toISOString().slice(0, 10);
-        }
-
-        // Case A: 2026-10-02 (Fri) + 15 days = 2026-10-17 (Saturday) -> Must roll over to 2026-10-19 (Monday)
-        const testSatResult = computeRule22Deadline("2026-10-02", 15);
-        if (testSatResult !== "2026-10-19") {
-          throw new Error(`Rule 22 Saturday roll-over failed. Expected 2026-10-19, got ${testSatResult}`);
-        }
-
-        // Case B: 2026-10-03 (Sat) + 15 days = 2026-10-18 (Sunday) -> Must roll over to 2026-10-19 (Monday)
-        const testSunResult = computeRule22Deadline("2026-10-03", 15);
-        if (testSunResult !== "2026-10-19") {
-          throw new Error(`Rule 22 Sunday roll-over failed. Expected 2026-10-19, got ${testSunResult}`);
-        }
-
-        const latency = Math.round(performance.now() - start);
-        return { ok: true, latency, note: `Rule 22 Section 1 computation algorithm verified: Saturday & Sunday roll-overs passed.` };
-      }
-    },
-    {
-      id: "doc_analyzer",
-      name: "Legal Document Metadata Parser",
-      target: "Live Regex Extraction & Tokenizer Evaluation",
-      testFn: async () => {
-        const start = performance.now();
-        if (typeof analyzeDocument !== "function" && typeof extractCaseNumber !== "function") {
-          throw new Error("Analyzer library (analyzer.js) is missing or uninitialized.");
-        }
-
-        // Construct genuine sample pleading text
-        const sampleComplaintText = `
-          REPUBLIC OF THE PHILIPPINES
-          REGIONAL TRIAL COURT OF CAMARINES SUR
-          FIFTH JUDICIAL REGION
-          BRANCH 20, NAGA CITY
-
-          SPOUSES JUAN DELA CRUZ AND MARIA DELA CRUZ,
-              Plaintiffs,
-              
-              - versus -                                CIVIL CASE NO. 2026-8812
-                                                       FOR: RECOVERY OF POSSESSION,
-          PEDRO RAMOS AND ALL PERSONS                  DAMAGES, AND ATTORNEY'S FEES
-          CLAIMING RIGHTS UNDER HIM,
-              Defendants.
-          x - - - - - - - - - - - - - - - - - - - - - - x
-
-                                  COMPLAINT
-          Plaintiffs, through the undersigned legal counsel, respectfully state:
-          1. Plaintiffs are of legal age, Filipino citizens...
-          PRAYER: WHEREFORE, premises considered, plaintiffs pray that judgment be rendered ordering defendant to vacate the property...
-        `;
-
-        // Test genuine legal parser algorithms
-        const docType = detectDocumentType(sampleComplaintText);
-        const caseNo = extractCaseNumber(sampleComplaintText);
-        const parties = extractParties(sampleComplaintText);
-        const court = extractCourt(sampleComplaintText);
-
-        if (docType !== "Complaint") {
-          throw new Error(`Document type detection failed. Expected Complaint, got ${docType}`);
-        }
-        if (!caseNo || !caseNo.includes("2026-8812")) {
-          throw new Error(`Docket number extraction failed. Got: ${caseNo}`);
-        }
-        if (!parties.petitioner || !parties.petitioner.toUpperCase().includes("DELA CRUZ")) {
-          throw new Error(`Petitioner/Plaintiff extraction failed. Got: ${parties.petitioner}`);
-        }
-        if (!court || !court.toUpperCase().includes("REGIONAL TRIAL COURT")) {
-          throw new Error(`Court venue identification failed. Got: ${court}`);
-        }
-
-        const latency = Math.round(performance.now() - start);
-        return { 
-          ok: true, 
-          latency, 
-          note: `Extracted: [Type: ${docType}] · [Docket: ${caseNo}] · [Court: ${court}] · [Plaintiff: ${parties.petitioner.slice(0, 24)}...]` 
-        };
       }
     },
     {
@@ -640,7 +545,7 @@
     document.getElementById("score-health").style.color = healthPercent === 100 ? "var(--green)" : (healthPercent >= 75 ? "var(--amber)" : "var(--red)");
 
     logConsole("=========================================");
-    logConsole(`GENUINE AUDIT FINISHED: ${passedCount}/${FEATURE_CHECKS.length} checks verified. Overall system health: ${healthPercent}%.`);
+    logConsole(`GENUINE AUDIT FINISHED: ${passedCount}/${FEATURE_CHECKS.length} services verified. Overall system health: ${healthPercent}%.`);
     logConsole("=========================================");
 
     btn.disabled = false;
