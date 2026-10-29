@@ -29,12 +29,12 @@ import {
   EmailAuthProvider 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// Obfuscated runtime credentials
+// Obfuscated runtime credentials (fallback or primary via window.FIREBASE_CONFIG)
 const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
 const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
 const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
 
-const firebaseConfig = {
+const defaultFirebaseConfig = {
   apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
   authDomain: ["simando", "firebaseapp", "com"].join("."),
   projectId: ["si", "man", "do"].join(""),
@@ -43,6 +43,8 @@ const firebaseConfig = {
   appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":"),
   measurementId: "G-" + atob("Rk1NN1k2MFhLMA==")
 };
+
+const firebaseConfig = window.FIREBASE_CONFIG || defaultFirebaseConfig;
 
 try {
   const app = initializeApp(firebaseConfig);
