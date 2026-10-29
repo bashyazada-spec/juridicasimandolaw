@@ -1430,6 +1430,19 @@
   };
 
   // ═══════════════════════════════════════════════════════════
+  //  GLOBAL AUDIT SUITE SHORTCUT (Ctrl + Shift + Alt + D)
+  // ═══════════════════════════════════════════════════════════
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modPressed = isMac ? (e.metaKey && e.shiftKey && e.altKey) : (e.ctrlKey && e.shiftKey && e.altKey);
+
+    if (modPressed && e.key.toLowerCase() === "d") {
+      e.preventDefault();
+      window.open("diagnostics.html", "_blank");
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════
   //  METHOD 2: STEALTH EMERGENCY OVERRIDE (Ctrl+Shift+Alt+E)
   // ═══════════════════════════════════════════════════════════
   let activeOverrideSecret = null;
