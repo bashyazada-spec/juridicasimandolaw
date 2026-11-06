@@ -750,10 +750,15 @@ body.sidebar-collapsed #sidebar .sidebar-footer button {
   justify-content: center !important;
   box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important;
   box-sizing: border-box !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+  position: relative !important;
 }
 
-.ob-qr-img canvas,
+/* Hide the raw canvas because qrcode.js converts it to an <img> tag; prevents double QR codes */
+.ob-qr-img canvas {
+  display: none !important;
+}
+
 .ob-qr-img img {
   width: 100% !important;
   height: 100% !important;
@@ -1146,7 +1151,7 @@ select.field-input { appearance: none; -webkit-appearance: none; background-imag
 
 .cal-day-cell.is-today { 
   border-color: var(--gold) !important; 
-  background: rgba(201, 165, 92, 0.08) !important;
+  background: rgba(201, 165, 92, 0.08) !important; 
   box-shadow: 0 0 14px rgba(201, 165, 92, 0.35), inset 0 0 0 1px var(--gold) !important; 
 }
 
