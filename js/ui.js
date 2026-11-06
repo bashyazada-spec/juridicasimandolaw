@@ -263,6 +263,8 @@ function initOnboarding2FAQrCodes(myProf, u) {
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
+      const extraCanvas = pairingContainer.querySelector("canvas");
+      if (extraCanvas) extraCanvas.style.display = "none";
     } else {
       pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px;width:135px;height:135px;display:block"/>`;
     }
@@ -281,6 +283,8 @@ function initOnboarding2FAQrCodes(myProf, u) {
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
+      const extraCanvas = appLinkContainer.querySelector("canvas");
+      if (extraCanvas) extraCanvas.style.display = "none";
     } else {
       appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px;width:135px;height:135px;display:block"/>`;
     }
@@ -2066,7 +2070,10 @@ function renderDashboard() {
 
   renderDashProfiles();
   renderQuickAccess();
-  if (typeof fetchAndRenderGoogleCalendarEvents === "function") {
+  
+  if (typeof renderDashboardCalendarAgenda === "function") {
+    renderDashboardCalendarAgenda();
+  } else if (typeof fetchAndRenderGoogleCalendarEvents === "function") {
     fetchAndRenderGoogleCalendarEvents();
   }
 
@@ -3499,96 +3506,263 @@ window.closeCalendarModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-async function fetchAndRenderGoogleCalendarEvents() {
+// ═══════════════════════════════════════════════════════════════
+//  UPGRADED UNIFIED DASHBOARD SCHEDULE & AGENDA ENGINE
+//  Pulls Case Hearings, Document Passings/Deadlines, and Google Events
+// ═══════════════════════════════════════════════════════════════
+let activeDashboardAgendaFilter = "all";
+
+window.filterDashboardAgenda = function(type, btnEl) {
+  activeDashboardAgendaFilter = type;
+  document.querySelectorAll(".dash-agenda-pill").forEach(b => b.classList.remove("active"));
+  if (btnEl) btnEl.classList.add("active");
+
+  const items = document.querySelectorAll(".dash-agenda-item");
+  items.forEach(it => {
+    if (type === "all" || it.getAttribute("data-agenda-type") === type) {
+      it.style.display = "flex";
+    } else {
+      it.style.display = "none";
+    }
+  });
+};
+
+async function renderDashboardCalendarAgenda() {
   const card = document.getElementById("dash-calendar-card");
   if (!card) return;
 
-  let html = `<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;display:flex;align-items:center;gap:8px;justify-content:space-between">
-    <div style="display:flex;align-items:center;gap:8px">
-      <i class="bi bi-calendar3" style="color:var(--gold);font-size:18px"></i> Google Calendar Agenda
-    </div>
-    <button onclick="fetchAndRenderGoogleCalendarEvents()" class="btn btn-ghost" style="font-size:11px;padding:4px 8px" title="Refresh Agenda"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
-  </div>`;
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, "0");
+  const dy = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${yr}-${mo}-${dy}`;
 
-  if (!hasValidToken()) {
-    html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px">
-      <div style="font-size:24px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div>
-      <div style="font-size:12px;font-weight:600">Google Calendar Not Synced</div>
-      <div style="font-size:11px;margin-top:4px">Authorize Google Calendar under <a href="#" onclick="navTo('myprofile'); return false;" style="color:var(--gold);text-decoration:underline">My Settings</a> to sync case deadlines and view your agenda live.</div>
-    </div>`;
-    card.innerHTML = html;
-    return;
-  }
+  const accessibleCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+  const acceptedAppts = (appointments || []).filter(a => a.status === "accepted" && a.date >= todayStr);
 
-  try {
-    card.innerHTML = html + `<div style="text-align:center;padding:20px"><span class="spinner" style="border-top-color:var(--gold)"></span></div>`;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const timeMin = today.toISOString();
-    
-    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=6`;
-    
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const agendaItems = [];
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      const errorObj = new Error(errData.error?.message || "Failed to load events");
-      errorObj.status = res.status;
-      throw errorObj;
-    }
+  // 1. Gather all upcoming court hearings from accessible cases
+  accessibleCases.forEach(c => {
+    const hearings = Array.isArray(c.hearings) ? c.hearings : [];
+    hearings.forEach(h => {
+      if (h.date && h.date >= todayStr) {
+        agendaItems.push({
+          id: c.id,
+          type: "hearing",
+          date: h.date,
+          time: h.time || "08:30 AM",
+          title: h.purpose || "Court Hearing",
+          sub: `${c.title} · ${c.venue || "Courtroom / Hall of Justice"}`,
+          isCase: true,
+          caseId: c.id
+        });
+      }
+    });
 
-    const data = await res.json();
-    const events = data.items || [];
-    window._fetchedCalendarEvents = events;
-
-    if (events.length === 0) {
-      html += `<div style="text-align:center;padding:24px 12px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px">
-        No upcoming events found on your Google Calendar.
-      </div>`;
-    } else {
-      html += `<div style="display:flex;flex-direction:column;gap:10px">`;
-      events.forEach((ev, i) => {
-        const start = ev.start.date || ev.start.dateTime;
-        const parsedStart = parseGoogleDateTime(start);
-        
-        const dateStr   = parsedStart.dateStr;
-        const timeStr   = parsedStart.timeStr;
-        const eventDate = parsedStart.dateObj;
-        
-        const locationMarkup = ev.location ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:4px"><i class="bi bi-geo-alt-fill" style="color:var(--gold)"></i> ${escHtml(ev.location)}</div>` : "";
-        const descriptionMarkup = ev.description ? `<div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic">"${escHtml(ev.description.slice(0, 50))}${ev.description.length > 50 ? '...' : ''}"</div>` : "";
-
-        const weekdayStr = eventDate.toLocaleDateString("en-US", { weekday: "short" });
-
-        html += `
-          <div onclick="openCalendarEventModal(${i})" style="display:flex;gap:12px;align-items:center;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
-            <div style="text-align:center;background:rgba(201,168,76,0.1);border:1px solid var(--gold-border);border-radius:8px;padding:6px;min-width:48px">
-              <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase">${weekdayStr}</div>
-              <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px">${eventDate.getDate()}</div>
-            </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(ev.summary || 'No Title')}">${escHtml(ev.summary || 'No Title')}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px"><i class="bi bi-calendar-event" style="color:var(--gold);margin-right:2px"></i> ${dateStr} · <i class="bi bi-clock" style="color:var(--gold);margin-right:2px"></i> ${timeStr}</div>
-              ${locationMarkup}
-              ${descriptionMarkup}
-            </div>
-          </div>
-        `;
+    // Legacy dueDate fallback if hearings array wasn't used
+    if (c.dueDate && c.dueDate >= todayStr && !hearings.some(h => h.date === c.dueDate)) {
+      agendaItems.push({
+        id: c.id,
+        type: "hearing",
+        date: c.dueDate,
+        time: "08:30 AM",
+        title: "Scheduled Court Appearance",
+        sub: `${c.title} · ${c.venue || "Courtroom / Venue"}`,
+        isCase: true,
+        caseId: c.id
       });
-      html += `</div>`;
     }
-  } catch (err) {
-    console.error("fetchAndRenderGoogleCalendarEvents error:", err);
-    if (err.status === 401) {
-      fetchAndRenderGoogleCalendarEvents();
-      return;
+  });
+
+  // 2. Gather all upcoming document passings / pleading deadlines from accessible cases
+  accessibleCases.forEach(c => {
+    const deadlines = Array.isArray(c.deadlines) ? c.deadlines : [];
+    deadlines.forEach(d => {
+      if (d.date && d.date >= todayStr) {
+        const flowLabel = d.flow ? ` · ${d.flow}` : "";
+        agendaItems.push({
+          id: c.id,
+          type: "deadline",
+          date: d.date,
+          time: "Filing Deadline",
+          title: d.subtype || d.title || "Formal Pleading Submission",
+          sub: `${c.title}${flowLabel}`,
+          isCase: true,
+          caseId: c.id
+        });
+      }
+    });
+
+    // Legacy docDueDate fallback
+    if (c.docDueDate && c.docDueDate >= todayStr && !deadlines.some(d => d.date === c.docDueDate)) {
+      agendaItems.push({
+        id: c.id,
+        type: "deadline",
+        date: c.docDueDate,
+        time: "Filing Deadline",
+        title: c.docType || "Pleading Due",
+        sub: `${c.title} · Formal Submission`,
+        isCase: true,
+        caseId: c.id
+      });
+    }
+  });
+
+  // 3. Gather upcoming accepted appointments / appearances
+  acceptedAppts.forEach(a => {
+    agendaItems.push({
+      id: a.id,
+      type: a.type === "busy" ? "busy" : "appt",
+      date: a.date,
+      time: a.time || "All Day",
+      title: a.title || "Scheduled Appearance",
+      sub: a.venue || a.description || "Firm Schedule",
+      isCase: Boolean(a.caseId),
+      caseId: a.caseId || null
+    });
+  });
+
+  // 4. Optionally fetch and merge Google Calendar events if connected
+  let googleEventsLoaded = false;
+  if (hasValidToken()) {
+    try {
+      const todayFilter = new Date();
+      todayFilter.setHours(0, 0, 0, 0);
+      const timeMin = todayFilter.toISOString();
+      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&singleEvents=true&orderBy=startTime&maxResults=8`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+      if (res.ok) {
+        const data = await res.json();
+        const gItems = data.items || [];
+        window._fetchedCalendarEvents = gItems;
+        googleEventsLoaded = true;
+
+        gItems.forEach((ev, idx) => {
+          const start = ev.start.dateTime || ev.start.date;
+          const parsed = parseGoogleDateTime(start);
+          const evDate = parsed.dateObj.toISOString().split("T")[0];
+
+          agendaItems.push({
+            id: `g_${idx}`,
+            type: "google",
+            date: evDate,
+            time: parsed.isAllDay ? "All Day" : parsed.timeStr,
+            title: ev.summary || "Google Calendar Event",
+            sub: ev.location || ev.description || "Google Calendar Sync",
+            isCase: false,
+            googleIdx: idx
+          });
+        });
+      }
+    } catch (gErr) {
+      console.warn("Google Calendar agenda fetch notice:", gErr.message);
     }
   }
+
+  // 5. Sort all events chronologically (soonest first)
+  agendaItems.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return (a.time || "").localeCompare(b.time || "");
+  });
+
+  const totalHearings = agendaItems.filter(i => i.type === "hearing").length;
+  const totalDeadlines = agendaItems.filter(i => i.type === "deadline").length;
+  const totalGoogle = agendaItems.filter(i => i.type === "google").length;
+  const totalAll = agendaItems.length;
+
+  const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  let html = `
+    <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <i class="bi bi-calendar3" style="color:var(--gold);font-size:17px"></i> Command Center Schedule
+      </div>
+      <button onclick="renderDashboardCalendarAgenda()" class="btn btn-ghost" style="font-size:11px;padding:3px 8px" title="Refresh Schedule">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div style="display:flex;gap:5px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px">
+      <button class="dash-agenda-pill ${activeDashboardAgendaFilter === 'all' ? 'active' : ''}" onclick="filterDashboardAgenda('all', this)" style="padding:4px 8px;font-size:10.5px;font-weight:600;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:${activeDashboardAgendaFilter==='all'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${activeDashboardAgendaFilter==='all'?'var(--gold-light)':'var(--text-muted)'}">All (${totalAll})</button>
+      <button class="dash-agenda-pill ${activeDashboardAgendaFilter === 'hearing' ? 'active' : ''}" onclick="filterDashboardAgenda('hearing', this)" style="padding:4px 8px;font-size:10.5px;font-weight:600;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:${activeDashboardAgendaFilter==='hearing'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${activeDashboardAgendaFilter==='hearing'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-bank"></i> Hearings (${totalHearings})</button>
+      <button class="dash-agenda-pill ${activeDashboardAgendaFilter === 'deadline' ? 'active' : ''}" onclick="filterDashboardAgenda('deadline', this)" style="padding:4px 8px;font-size:10.5px;font-weight:600;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:${activeDashboardAgendaFilter==='deadline'?'rgba(201,165,92,0.15)':'var(--surface2)'};color:${activeDashboardAgendaFilter==='deadline'?'var(--gold-light)':'var(--text-muted)'}"><i class="bi bi-file-earmark-text"></i> Deadlines (${totalDeadlines})</button>
+      ${googleEventsLoaded ? `<button class="dash-agenda-pill ${activeDashboardAgendaFilter === 'google' ? 'active' : ''}" onclick="filterDashboardAgenda('google', this)" style="padding:4px 8px;font-size:10.5px;font-weight:600;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:${activeDashboardAgendaFilter==='google'?'rgba(52,211,153,0.15)':'var(--surface2)'};color:${activeDashboardAgendaFilter==='google'?'var(--green)':'var(--text-muted)'}"><i class="bi bi-google"></i> Google (${totalGoogle})</button>` : ''}
+    </div>
+  `;
+
+  if (agendaItems.length === 0) {
+    html += `
+      <div style="text-align:center;padding:26px 14px;color:var(--text-muted);border:1px dashed var(--border);border-radius:10px;font-size:12px;margin-top:4px">
+        <div style="font-size:24px;margin-bottom:6px;color:var(--gold)"><i class="bi bi-calendar-check"></i></div>
+        <div style="font-weight:600;color:var(--text)">No Upcoming Hearings or Deadlines</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:3px">All active filings and appearances are cleared.</div>
+      </div>
+    `;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;padding-right:2px">`;
+
+    agendaItems.forEach(item => {
+      const parts = item.date.split("-");
+      const dObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const dayNum = dObj.getDate();
+      const dayName = dayNames[dObj.getDay()];
+
+      let boxClass = "background:rgba(201,165,92,0.12);border:1px solid var(--gold-border);color:var(--gold-light);";
+      let tagMarkup = `<span class="badge" style="background:rgba(201,165,92,0.15);color:var(--gold-light);font-size:9px"><i class="bi bi-bank"></i> Court Hearing</span>`;
+      let timeColor = "var(--gold-light)";
+
+      if (item.type === "deadline") {
+        boxClass = "background:rgba(129,140,248,0.12);border:1px solid rgba(129,140,248,0.3);color:#c7d2fe;";
+        tagMarkup = `<span class="badge" style="background:rgba(129,140,248,0.15);color:#c7d2fe;font-size:9px"><i class="bi bi-file-earmark-text-fill"></i> Document Due</span>`;
+        timeColor = "var(--amber)";
+      } else if (item.type === "google") {
+        boxClass = "background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);color:#86efac;";
+        tagMarkup = `<span class="badge" style="background:rgba(52,211,153,0.15);color:#86efac;font-size:9px"><i class="bi bi-google"></i> Calendar Sync</span>`;
+        timeColor = "var(--green)";
+      } else if (item.type === "busy") {
+        boxClass = "background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;";
+        tagMarkup = `<span class="badge" style="background:rgba(248,113,113,0.15);color:#fca5a5;font-size:9px"><i class="bi bi-slash-circle-fill"></i> Out of Office</span>`;
+        timeColor = "var(--red)";
+      }
+
+      let clickHandler = "";
+      if (item.isCase && item.caseId) {
+        clickHandler = `onclick="openCase('${item.caseId}')"`;
+      } else if (item.type === "google" && typeof item.googleIdx === "number") {
+        clickHandler = `onclick="openCalendarEventModal(${item.googleIdx})"`;
+      }
+
+      html += `
+        <div class="dash-agenda-item" data-agenda-type="${item.type}" ${clickHandler} style="display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s" onmouseenter="this.style.borderColor='var(--gold-border)';this.style.background='var(--surface3)'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
+          <div style="text-align:center;border-radius:8px;padding:5px 6px;min-width:44px;flex-shrink:0;${boxClass}">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase">${dayName}</div>
+            <div style="font-size:14px;font-weight:800;line-height:1.1;margin-top:1px">${dayNum}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              ${tagMarkup}
+              <span style="font-size:10px;font-weight:700;color:${timeColor}">${escHtml(item.time)}</span>
+            </div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(item.title)}">${escHtml(item.title)}</div>
+            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${escHtml(item.sub)}</div>
+          </div>
+          <i class="bi bi-chevron-right" style="font-size:11px;color:var(--text-dim);flex-shrink:0"></i>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+  }
+
   card.innerHTML = html;
 }
 
-window.fetchAndRenderGoogleCalendarEvents = fetchAndRenderGoogleCalendarEvents;
+window.renderDashboardCalendarAgenda = renderDashboardCalendarAgenda;
+window.fetchAndRenderGoogleCalendarEvents = renderDashboardCalendarAgenda;
 
 // ═══════════════════════════════════════════════════════════════
 //  ENHANCED NOTIFICATIONS CENTER & FILTERED VIEWS
@@ -3811,7 +3985,7 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
     caseId, 
     apptId, 
     notifId, 
-    msgId: notifId, // often passed from chat cards
+    msgId: notifId,
     isGroup, 
     channelId 
   };
@@ -3822,7 +3996,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
 
-  // 1. Resolve chat message object if opened from chat
   let chatMsg = chatMsgObj;
   if (!chatMsg && notifId) {
     if (window._chat && Array.isArray(window.groupMessages)) {
@@ -3836,11 +4009,9 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
     }
   }
 
-  // 2. Resolve Appointment Record and Notification Record
   const appt = appointments.find(a => a.id === apptId) || null;
   const notif = notifications.find(n => n.id === notifId) || null;
 
-  // 3. Resolve Case Record (From in-memory cases or via direct Firestore lookup)
   let targetCase = cases.find(c => c.id === caseId);
   if (!targetCase && caseId && window._db && typeof window._fbGetDoc === "function") {
     try {
@@ -3856,7 +4027,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
     }
   }
 
-  // 4. Robust Dossier Snapshot Reconstruction if targetCase is restricted or pending
   const caseTitleVal = targetCase?.title || chatMsg?.caseTitle || appt?.caseTitle || notif?.caseTitle || "Case Title";
   const caseNumberVal = targetCase?.caseNumber || chatMsg?.caseNumber || appt?.caseNumber || notif?.caseNumber || "Docket N/A";
   const caseCategoryVal = targetCase?.category || chatMsg?.caseCategory || appt?.caseCategory || notif?.caseCategory || "Case";
@@ -3866,7 +4036,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   const caseStatusVal = targetCase?.status || chatMsg?.caseStatus || appt?.caseStatus || "On-going";
   const narrativeVal = targetCase?.narrative || chatMsg?.caseNarrative || appt?.caseNarrative || chatMsg?.reqNotes || appt?.description || notif?.message || "No narrative briefing provided.";
 
-  // 5. Resolve Request Directive Details without "Invalid Date"
   const purpose = chatMsg?.reqTitle || appt?.title || notif?.title || "Case Strategy / Hearing Appearance";
   const rawDateStr = chatMsg?.reqDate || appt?.date || notif?.date || targetCase?.dueDate || "";
   const timeStr = chatMsg?.reqTime || appt?.time || notif?.time || "08:30 AM";
@@ -3875,7 +4044,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
 
   const formattedSchedule = rawDateStr ? `${formatDate(rawDateStr)} · ${escHtml(timeStr)}` : escHtml(timeStr);
 
-  // 6. Check whether recipient has already accepted this case
   const isAlreadyAllowed = targetCase && (
     targetCase.ownerUid === currentUid ||
     (Array.isArray(targetCase.allowedUids) && targetCase.allowedUids.includes(currentUid)) ||
@@ -3883,7 +4051,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   );
   const isAccepted = (chatMsg && chatMsg.reqStatus === "accepted") || (appt && appt.status === "accepted") || (notif && notif.appointmentStatus === "accepted") || isAlreadyAllowed;
 
-  // 7. Populate Directive Banner
   const purposeTag = document.getElementById("pr-purpose-tag");
   const schedBadge = document.getElementById("pr-schedule-badge");
   const hStageEl   = document.getElementById("pr-hearing-stage");
@@ -3896,7 +4063,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   if (reqNameEl) reqNameEl.textContent = requesterName;
   if (venueEl) venueEl.textContent = venueStr;
 
-  // 8. Populate Case Information Dossier
   const catEl    = document.getElementById("pr-case-cat");
   const statusEl = document.getElementById("pr-case-status");
   const docketEl = document.getElementById("pr-case-docket");
@@ -3915,7 +4081,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   if (filedEl) filedEl.textContent = caseFiledDateVal ? formatDate(caseFiledDateVal) : "N/A";
   if (narrEl) narrEl.textContent = narrativeVal;
 
-  // 9. Populate Hearing Logs
   const hLogsContainer = document.getElementById("pr-hearing-logs");
   if (hLogsContainer) {
     const hearings = Array.isArray(targetCase?.hearings) ? targetCase.hearings : (chatMsg?.hearings || appt?.hearings || []);
@@ -3934,7 +4099,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
     }
   }
 
-  // 10. Populate Deadlines Logs
   const dLogsContainer = document.getElementById("pr-deadline-logs");
   if (dLogsContainer) {
     const deadlines = Array.isArray(targetCase?.deadlines) ? targetCase.deadlines : (chatMsg?.deadlines || appt?.deadlines || []);
@@ -3965,7 +4129,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
     }
   }
 
-  // 11. Documents Vault Preview (Locked blur if pending, Unlocked if accepted)
   const vaultCountEl  = document.getElementById("pr-vault-count");
   const vaultTagEl    = document.getElementById("pr-vault-tag");
   const vaultBannerEl = document.getElementById("pr-vault-banner");
@@ -4027,7 +4190,6 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
     }
   }
 
-  // 12. Action Bar Rendering
   const actionBar = document.getElementById("pr-action-bar");
   if (actionBar) {
     if (isAccepted) {
@@ -4059,19 +4221,17 @@ window.closeProposalReviewModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// ── ACCEPT PROPOSAL FROM DOSSIER (ADDS CASE TO ACTIVE ROSTER ONLY AFTER ACCEPTANCE) ─
+// ── ACCEPT PROPOSAL FROM DOSSIER ─────────────────────────────
 window.acceptProposalFromDossier = async function() {
   const { caseId, apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
-  const myName = u?.displayName || u?.email?.split("@")[0] || "Counsel";
 
   try {
     showToast("Accepting appearance request...");
 
     const caseList = (typeof window.cases !== "undefined" && Array.isArray(window.cases)) ? window.cases : ((typeof cases !== "undefined" && Array.isArray(cases)) ? cases : []);
 
-    // 1. Update Case Permissions so it immediately shows up in the attorney's accessible list
     if (caseId && window._db && typeof dbUpdateCase === "function") {
       let targetCase = caseList.find(c => c.id === caseId);
       if (!targetCase && typeof window._fbGetDoc === "function") {
@@ -4109,21 +4269,18 @@ window.acceptProposalFromDossier = async function() {
       }
     }
 
-    // 2. Update Appointment
     if (apptId && typeof dbUpdateAppointment === "function") {
       try {
         await dbUpdateAppointment(apptId, { status: "accepted" });
       } catch (e) { /* ignore */ }
     }
 
-    // 3. Update Notification
     if (notifId && typeof dbUpdateNotification === "function") {
       try {
         await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" });
       } catch (e) { /* ignore */ }
     }
 
-    // 4. Update Chat Card if called from chat
     if (window._chat && typeof window._chat.respondAvailCard === "function" && msgId) {
       await window._chat.respondAvailCard(msgId, isGroup, channelId, "accepted");
     }
@@ -4151,7 +4308,6 @@ window.declineProposalFromDossier = async function() {
 
     const caseList = (typeof window.cases !== "undefined" && Array.isArray(window.cases)) ? window.cases : ((typeof cases !== "undefined" && Array.isArray(cases)) ? cases : []);
 
-    // Ensure declined case is completely removed from recipient's case list
     if (caseId) {
       if (Array.isArray(caseList)) {
         const idx = caseList.findIndex(c => c.id === caseId && c.ownerUid !== currentUid);
@@ -4208,7 +4364,6 @@ async function executeCancelAppearanceFromDossier(caseId, apptId, notifId, msgId
 
     const caseList = (typeof window.cases !== "undefined" && Array.isArray(window.cases)) ? window.cases : ((typeof cases !== "undefined" && Array.isArray(cases)) ? cases : []);
 
-    // 1. Remove user from case allowedUids and sharedWith (unless they are the case creator)
     if (caseId && window._db && typeof dbUpdateCase === "function") {
       const targetCase = caseList.find(c => c.id === caseId);
       if (targetCase && targetCase.ownerUid !== currentUid) {
@@ -4224,7 +4379,6 @@ async function executeCancelAppearanceFromDossier(caseId, apptId, notifId, msgId
         targetCase.allowedUids = updAllowed;
         targetCase.sharedWith = updShared;
 
-        // Evict from active case lists
         if (Array.isArray(caseList)) {
           const idx = caseList.findIndex(c => c.id === caseId && c.ownerUid !== currentUid);
           if (idx >= 0) caseList.splice(idx, 1);
@@ -4235,17 +4389,14 @@ async function executeCancelAppearanceFromDossier(caseId, apptId, notifId, msgId
       }
     }
 
-    // 2. Reset appointment
     if (apptId && typeof dbUpdateAppointment === "function") {
       await dbUpdateAppointment(apptId, { status: "cancelled" });
     }
 
-    // 3. Reset notification
     if (notifId && typeof dbUpdateNotification === "function") {
       await dbUpdateNotification(notifId, { appointmentStatus: "cancelled" });
     }
 
-    // 4. Update chat card if linked
     if (window._chat && typeof window._chat.executeCancelAppearance === "function" && msgId) {
       await window._chat.executeCancelAppearance(caseId, apptId, msgId, isGroup, channelId);
     }
@@ -4469,7 +4620,7 @@ window.setApptAmPm = function(val) {
   if (btnPm) btnPm.className = val === "PM" ? "ampm-btn active" : "ampm-btn";
 };
 
-// ── FIXED "SEND REQUEST" SUBMISSION (DOES NOT ADD CASE TO RECIPIENT LIST UNTIL ACCEPTED) ──
+// ── FIXED "SEND REQUEST" SUBMISSION ──────────────────────────
 window.submitAppointmentRequest = async function() {
   const caseId = document.getElementById("appt-case-select")?.value || "";
   const date   = document.getElementById("appt-date")?.value || "";
