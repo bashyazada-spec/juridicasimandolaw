@@ -100,6 +100,7 @@ document.addEventListener("keydown", (e) => {
     if (diag) diag.classList.add("hidden");
     const dsm = document.getElementById("date-schedule-modal");
     if (dsm) dsm.classList.add("hidden");
+    if (typeof closeAllSheets === "function") closeAllSheets();
   }
 });
 
@@ -474,7 +475,7 @@ window.onboardingConnectDrive = async function() {
     showToast("Opening Google Sign-In...");
     await promptDriveAuth(true);
 
-    showToast("Google Account connected successfully! ✅");
+    showToast("Google Account connected successfully!");
     updateOnboardingDriveStatus(true);
 
     const u = window._currentUser || window._auth?.currentUser;
@@ -608,7 +609,7 @@ window.onboardingActivate2FA = async function(manualCode) {
       `;
     }
 
-    showToast("Two-Factor Authentication is now active! 🛡️");
+    showToast("Two-Factor Authentication is now active!");
     if (typeof renderMyProfile === "function") renderMyProfile();
 
     checkOnboardingBothComplete();
@@ -698,10 +699,10 @@ function renderModalCalendarUI() {
       </div>
 
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('⚖️ In Court / Hearing')"><i class="bi bi-bank"></i> In Court</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🚫 Out of Office / Leave')"><i class="bi bi-slash-circle"></i> Out of Office</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🤝 Client Meeting')"><i class="bi bi-people"></i> Consultation</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('📝 Hearing Preparation')"><i class="bi bi-pencil-square"></i> Preparation</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('In Court / Hearing')"><i class="bi bi-bank"></i> In Court</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('Out of Office / Leave')"><i class="bi bi-slash-circle"></i> Out of Office</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('Client Meeting')"><i class="bi bi-people"></i> Consultation</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('Hearing Preparation')"><i class="bi bi-pencil-square"></i> Preparation</button>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
@@ -984,7 +985,7 @@ function renderCalendarView() {
     legendBar.style.cssText = "display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;flex-wrap:wrap;font-size:11.5px;";
     calCard.parentNode.insertBefore(legendBar, calCard);
   }
-  if (legendBar) {
+  if (legendBar && !document.getElementById("mobile-shell")) {
     legendBar.innerHTML = `
       <span style="font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px"><i class="bi bi-info-circle" style="color:var(--gold)"></i> Legend:</span>
       <span style="display:inline-flex;align-items:center;gap:4px;color:var(--gold-light)"><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearing</span>
@@ -1115,16 +1116,16 @@ function renderCalendarDayPanel(dateStr) {
   const allItems = buildScheduleItemsForDate(dateStr);
   if (allItems.length === 0) {
     listEl.innerHTML = `
-      <div style="text-align:center;padding:32px 16px;background:var(--surface2);border-radius:12px;border:1px dashed var(--border-soft)">
-        <i class="bi bi-calendar-check" style="font-size:28px;color:var(--text-dim)"></i>
-        <div style="font-weight:700;margin-top:8px;color:var(--text)">No hearings or deadlines</div>
-        <div style="font-size:12.5px;color:var(--text-dim);margin-top:4px">${isPast ? "No past events recorded for this date." : "This date is currently open on the firm schedule."}</div>
+      <div style="text-align:center;padding:26px 14px;background:var(--surface2);border-radius:12px;border:1px dashed var(--border-soft)">
+        <i class="bi bi-calendar-check" style="font-size:26px;color:var(--text-dim)"></i>
+        <div style="font-weight:700;margin-top:6px;color:var(--text)">No hearings or deadlines</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px">${isPast ? "No past events recorded for this date." : "This date is currently open on the firm schedule."}</div>
       </div>`;
     return;
   }
 
   listEl.innerHTML = allItems.map(item => `
-    <div style="padding:13px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:10px;margin-bottom:10px">
+    <div style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:10px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span class="badge" style="background:${item.badgeBg};color:${item.badgeColor}">${item.badgeLabel}</span>
         <span style="font-size:11.5px;font-weight:700;color:var(--text-muted)"><i class="bi bi-clock"></i> ${escHtml(item.time)}</span>
@@ -1138,7 +1139,7 @@ function renderCalendarDayPanel(dateStr) {
       </div>
       ${item.venue ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:4px"><i class="bi bi-geo-alt" style="color:var(--gold)"></i> ${escHtml(item.venue)}</div>` : ''}
       ${item.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:6px;padding:8px;background:var(--surface);border-radius:6px;border:1px solid var(--border)">${escHtml(item.description)}</div>` : ''}
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         ${(item.kind === "hearing" || item.kind === "deadline") && item.hasAccess
           ? `<button class="btn btn-secondary btn-sm" onclick="openCase('${item.id}')">Open Case File →</button>`
           : (item.canDelete ? `<button class="btn btn-danger btn-sm" onclick="window.deleteBusySlot('${item.id}')"><i class="bi bi-trash3"></i> Remove</button>` : '')}
@@ -1153,6 +1154,7 @@ function renderMonthlyCalendarGrid() {
   const gridEl = document.getElementById("calendar-grid-container");
   if (!gridEl) return;
 
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   if (titleEl) titleEl.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
 
@@ -1243,15 +1245,18 @@ function renderMonthlyCalendarGrid() {
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const hasDayPanel = !!document.getElementById("cal-day-panel");
 
-  gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:6px;width:100%;box-sizing:border-box;";
+  gridEl.style.cssText = isMobileShell
+    ? "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;"
+    : "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:6px;width:100%;box-sizing:border-box;";
 
-  let html = `
-    <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div>
-    <div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
-  `;
+  const dayHeaders = isMobileShell
+    ? ["S","M","T","W","T","F","S"]
+    : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  let html = dayHeaders.map(dh => `<div class="cal-day-header">${dh}</div>`).join("");
 
   for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span></div>`;
+    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span>${isMobileShell ? '<div class="cal-dots-row"></div>' : ''}</div>`;
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -1261,48 +1266,63 @@ function renderMonthlyCalendarGrid() {
     const isSelected = hasDayPanel && fullDateStr === selectedCalDateStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
-    let eventsMarkup = "";
-    if (dayEvents.length > 0) {
-      const topTwo = dayEvents.slice(0, 2);
-      const remainingCount = dayEvents.length - 2;
-      eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
-      topTwo.forEach(ev => {
-        let bgStyle = "background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border);";
-        let iconMarkup = `<i class="bi bi-bank" style="font-size:8.5px;flex-shrink:0"></i>`;
-        if (ev.type === "deadline") { bgStyle = "background:var(--violet-bg);color:var(--violet);border:1px solid rgba(129,140,248,0.3);"; iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-        else if (ev.type === "busy") { bgStyle = "background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.3);"; iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-        else if (ev.type === "appt") { bgStyle = "background:var(--green-bg);color:var(--green);border:1px solid rgba(52,211,153,0.3);"; iconMarkup = `<i class="bi bi-people-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-        eventsMarkup += `
-          <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;${bgStyle}" title="${escHtml(ev.title)}">
-            <span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span>
-            ${iconMarkup}
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(ev.title)}</span>
-          </div>`;
-      });
-      if (remainingCount > 0) {
-        eventsMarkup += `<div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:var(--surface3);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px;white-space:nowrap">+${remainingCount} more</div>`;
-      }
-      eventsMarkup += `</div>`;
-    }
+    if (isMobileShell) {
+      const dots = dayEvents.slice(0, 3).map(ev => {
+        const dotCol = ev.type === "deadline" ? "var(--violet)"
+          : (ev.type === "busy" ? "var(--red)"
+          : (ev.type === "appt" ? "var(--green)" : "var(--gold)"));
+        return `<span class="cal-dot" style="background:${dotCol}"></span>`;
+      }).join("");
 
-    const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.5px;flex-shrink:0">TODAY</span>` : "";
-
-    html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}"
-           onclick="onCalendarDayClick('${fullDateStr}')"
-           title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
-        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;min-width:0">
+      html += `
+        <button class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}" onclick="onCalendarDayClick('${fullDateStr}')">
           <span class="cal-day-num">${day}</span>
-          ${todayTag}
+          <div class="cal-dots-row">${dots}</div>
+        </button>`;
+    } else {
+      let eventsMarkup = "";
+      if (dayEvents.length > 0) {
+        const topTwo = dayEvents.slice(0, 2);
+        const remainingCount = dayEvents.length - 2;
+        eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
+        topTwo.forEach(ev => {
+          let bgStyle = "background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border);";
+          let iconMarkup = `<i class="bi bi-bank" style="font-size:8.5px;flex-shrink:0"></i>`;
+          if (ev.type === "deadline") { bgStyle = "background:var(--violet-bg);color:var(--violet);border:1px solid rgba(129,140,248,0.3);"; iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
+          else if (ev.type === "busy") { bgStyle = "background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.3);"; iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
+          else if (ev.type === "appt") { bgStyle = "background:var(--green-bg);color:var(--green);border:1px solid rgba(52,211,153,0.3);"; iconMarkup = `<i class="bi bi-people-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
+          eventsMarkup += `
+            <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;${bgStyle}" title="${escHtml(ev.title)}">
+              <span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span>
+              ${iconMarkup}
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(ev.title)}</span>
+            </div>`;
+        });
+        if (remainingCount > 0) {
+          eventsMarkup += `<div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:var(--surface3);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px;white-space:nowrap">+${remainingCount} more</div>`;
+        }
+        eventsMarkup += `</div>`;
+      }
+
+      const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.5px;flex-shrink:0">TODAY</span>` : "";
+
+      html += `
+        <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}"
+             onclick="onCalendarDayClick('${fullDateStr}')"
+             title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;min-width:0">
+            <span class="cal-day-num">${day}</span>
+            ${todayTag}
+          </div>
+          ${eventsMarkup}
         </div>
-        ${eventsMarkup}
-      </div>
-    `;
+      `;
+    }
   }
 
   const rem = (7 - ((startingDayOfWeek + daysInMonth) % 7)) % 7;
   for (let i = 1; i <= rem; i++) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span></div>`;
+    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span>${isMobileShell ? '<div class="cal-dots-row"></div>' : ''}</div>`;
   }
 
   gridEl.innerHTML = html;
@@ -1463,6 +1483,7 @@ async function updateWorkspaceStatus(manualRun = false) {
   const driveSub = document.getElementById("diag-drive-sub");
   const dot = document.getElementById("status-indicator-dot");
   const txt = document.getElementById("status-indicator-text");
+  const isMobileShell = !!document.getElementById("mobile-shell");
 
   const isNetworkOk = navigator.onLine;
   const isDbOk = !localMode && !!window._db && dbReady;
@@ -1512,15 +1533,15 @@ async function updateWorkspaceStatus(manualRun = false) {
   if (!isNetworkOk || (!isDbOk && !localMode)) {
     systemHealthStatus = "danger";
     if (dot) dot.className = "status-dot danger";
-    if (txt) { txt.textContent = "System Disconnected"; txt.style.color = "var(--red)"; }
+    if (txt) { txt.textContent = isMobileShell ? "Offline" : "System Disconnected"; txt.style.color = "var(--red)"; }
   } else if (!isDriveOk || localMode || !hasDriveFolder) {
     systemHealthStatus = "warning";
     if (dot) dot.className = "status-dot warning";
-    if (txt) { txt.textContent = !isDriveOk ? "Connect Drive" : "Memory Mode"; txt.style.color = "var(--amber)"; }
+    if (txt) { txt.textContent = isMobileShell ? "Sync" : (!isDriveOk ? "Connect Drive" : "Memory Mode"); txt.style.color = "var(--amber)"; }
   } else {
     systemHealthStatus = "healthy";
     if (dot) dot.className = "status-dot healthy";
-    if (txt) { txt.textContent = "Workspace Active"; txt.style.color = "var(--green)"; }
+    if (txt) { txt.textContent = isMobileShell ? "OK" : "Workspace Active"; txt.style.color = "var(--green)"; }
   }
 
   if (manualRun && typeof showToast === "function") {
@@ -1575,10 +1596,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ── NAVIGATION, PAGE HEADERS & DISCARD INTERCEPTION ──────────
+// ── NAVIGATION, MOBILE SHELL HELPERS, PAGE HEADERS & DISCARD ──
 let pendingNavigationDestination = null;
 let _isSubmittingCase = false;
 let caseDetailOrigin = "allcases";
+let lastMobileListView = "dashboard";
 
 const DESKTOP_PAGE_META = {
   dashboard:     ["Law Office Dashboard", "Quick overview of your cases, hearings, and deadlines"],
@@ -1591,6 +1613,56 @@ const DESKTOP_PAGE_META = {
   caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["My Settings & Security", "Manage your profile, Google Drive link, 2FA, and login password"]
+};
+
+const MOBILE_PAGE_META = {
+  dashboard:     ["SIMANDO LAW", "Law Office Dashboard"],
+  calendar:      ["Schedule", "Court Hearings & Deadlines"],
+  mydrive:       ["Firm Drive", "Case Files & Folders"],
+  profiles:      ["Attorneys", "Partners & Associates"],
+  profileDetail: ["Attorney Profile", "Caseload & Contact Details"],
+  profileForm:   ["Attorney Setup", "Create or Edit Profile"],
+  allcases:      ["All Cases", "Search & Filter Dockets"],
+  caseDetail:    ["Case Details", "Summary, Hearings & Files"],
+  caseForm:      ["Add / Edit Case", "Steps 1–4 · Create Docket"],
+  myprofile:     ["My Settings", "Profile, Drive & 2FA"]
+};
+
+window.openSheet = function(id) {
+  closeAllSheets();
+  document.getElementById("notif-dropdown")?.classList.add("hidden");
+  document.getElementById(id)?.classList.remove("hidden");
+};
+
+window.closeAllSheets = function() {
+  document.querySelectorAll(".sheet-backdrop").forEach(s => s.classList.add("hidden"));
+};
+
+window.switchDashSegment = function(seg) {
+  document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
+  document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
+  document.getElementById("dash-panel-cases")?.classList.toggle("hidden", seg !== "cases");
+  document.getElementById("dash-calendar-card")?.classList.toggle("hidden", seg !== "schedule");
+};
+
+window.toggleFiltersDrawer = function() {
+  const drawer = document.getElementById("ac-filters-drawer");
+  const btn = document.getElementById("toggle-filters-btn");
+  if (!drawer) return;
+  const hidden = drawer.classList.toggle("hidden");
+  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
+};
+
+window.goBackMobile = function() {
+  if (currentView === "caseForm") {
+    window.handleCaseCancelOrExit();
+  } else if (currentView === "caseDetail") {
+    window.handleCaseDetailBack();
+  } else if (currentView === "profileDetail" || currentView === "profileForm") {
+    navTo("profiles");
+  } else {
+    navTo(lastMobileListView || "dashboard");
+  }
 };
 
 function hasUnsavedCaseChanges() {
@@ -1711,6 +1783,11 @@ function showView(name) {
   if (chatPanel && !chatPanel.classList.contains("hidden")) chatPanel.classList.add("hidden");
   const notifDropdown = document.getElementById("notif-dropdown");
   if (notifDropdown && !notifDropdown.classList.contains("hidden")) notifDropdown.classList.add("hidden");
+  if (typeof closeAllSheets === "function") closeAllSheets();
+
+  if (!["caseDetail", "caseForm", "profileDetail", "profileForm"].includes(name)) {
+    lastMobileListView = name;
+  }
 
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
   const el = document.getElementById("view-" + name);
@@ -1719,6 +1796,7 @@ function showView(name) {
 
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".bnav-btn").forEach(b => b.classList.remove("active"));
 
   let primaryNavKey = name;
   if (name === "caseDetail" || name === "caseForm" || name === "allcases") primaryNavKey = "allcases";
@@ -1730,6 +1808,22 @@ function showView(name) {
   const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${primaryNavKey}"]`);
   if (mBtn) mBtn.classList.add("active");
 
+  const bottomKey = (name === "caseDetail") ? "allcases"
+    : (["mydrive", "profiles", "profileDetail", "profileForm", "myprofile"].includes(name) ? "more" : name);
+  const bBtn = document.querySelector(`.bnav-btn[data-nav="${bottomKey}"]`);
+  if (bBtn) bBtn.classList.add("active");
+
+  document.querySelectorAll(".menu-row[data-menu]").forEach(r => {
+    r.classList.toggle("active", r.getAttribute("data-menu") === name);
+  });
+
+  const showBack = ["caseDetail", "caseForm", "profileDetail", "profileForm"].includes(name);
+  document.getElementById("topbar-back-btn")?.classList.toggle("hidden", !showBack);
+  document.getElementById("topbar-crest")?.classList.toggle("hidden", showBack);
+
+  document.getElementById("bottom-nav-wrap")?.classList.toggle("hidden", name === "caseForm" || name === "profileForm");
+  document.getElementById("mobile-form-bar")?.classList.toggle("hidden", name !== "caseForm");
+
   const meta = DESKTOP_PAGE_META[name];
   if (meta) {
     const tEl = document.getElementById("main-page-title");
@@ -1737,6 +1831,16 @@ function showView(name) {
     if (tEl) tEl.textContent = meta[0];
     if (sEl) sEl.textContent = meta[1];
   }
+
+  const mMeta = MOBILE_PAGE_META[name];
+  if (mMeta) {
+    const mtEl = document.getElementById("mobile-page-title");
+    const msEl = document.getElementById("mobile-page-sub");
+    if (mtEl) mtEl.textContent = mMeta[0];
+    if (msEl) msEl.textContent = mMeta[1];
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function navTo(view) {
@@ -1783,10 +1887,13 @@ window.executeNavigation = executeNavigation;
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
-// ── DASHBOARD & COMPACT ACTIVE CASES (5 PER PAGE) ────────────
+// ── DASHBOARD & COMPACT ACTIVE CASES ──────────────────────────
 let currentDashPage = 1;
 let dashCasesFilter = "all";
-const dashPageSize = 5;
+
+function getDashPageSize() {
+  return document.getElementById("mobile-shell") ? 4 : 5;
+}
 
 window.changeDashPage = function(delta) {
   currentDashPage += delta;
@@ -1800,6 +1907,7 @@ window.setDashCasesFilter = function(kind) {
 };
 
 function renderDashboard() {
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const todayDateEl = document.getElementById("today-date");
   if (todayDateEl) {
     todayDateEl.textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -1824,14 +1932,15 @@ function renderDashboard() {
     `;
   }
 
+  const pageSize = getDashPageSize();
   const listToDisplay = dashCasesFilter === "all" ? baseList : baseList.filter(c => c.status === dashCasesFilter);
   const total = listToDisplay.length;
-  const totalPages = Math.max(1, Math.ceil(total / dashPageSize));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (currentDashPage > totalPages) currentDashPage = totalPages;
   if (currentDashPage < 1) currentDashPage = 1;
 
-  const startIdx = (currentDashPage - 1) * dashPageSize;
-  const pagedCases = listToDisplay.slice(startIdx, startIdx + dashPageSize);
+  const startIdx = (currentDashPage - 1) * pageSize;
+  const pagedCases = listToDisplay.slice(startIdx, startIdx + pageSize);
 
   const dcEl = document.getElementById("dash-cases");
   const pageInfoEl = document.getElementById("dash-page-info");
@@ -1841,7 +1950,7 @@ function renderDashboard() {
 
   if (dcEl) {
     dcEl.innerHTML = pagedCases.length === 0
-      ? '<div class="empty-state" style="padding:36px 16px"><div class="empty-state-icon" style="color:var(--gold);font-size:32px"><i class="bi bi-folder2-open"></i></div><div>No active cases match this filter.</div></div>'
+      ? '<div class="empty-state" style="padding:32px 16px"><div class="empty-state-icon" style="color:var(--gold);font-size:32px"><i class="bi bi-folder2-open"></i></div><div>No active cases match this filter.</div></div>'
       : pagedCases.map(c => {
         const p = profiles.find(x => x.id === c.profileId);
         const targetDue = c.dueDate || c.docDueDate;
@@ -1856,7 +1965,7 @@ function renderDashboard() {
 
         return `
           <button class="case-item" onclick="openCase('${c.id}')">
-            ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
+            ${p ? avatarDiv(p.name, p.avatarColor, isMobileShell ? 34 : 30, p.photoUrl) : ""}
             <div style="flex:1;min-width:0">
               <div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
               <div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.category || "Case")} · ${escHtml(p?.name || c.type || "Litigation")}</div>
@@ -1869,8 +1978,8 @@ function renderDashboard() {
       }).join("");
   }
 
-  if (pageInfoEl) pageInfoEl.textContent = total === 0 ? "Showing 0 cases" : `Showing ${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}`;
-  if (pageNumEl) pageNumEl.textContent = `Page ${currentDashPage} of ${totalPages}`;
+  if (pageInfoEl) pageInfoEl.textContent = total === 0 ? "0 cases" : (isMobileShell ? `${startIdx + 1}–${Math.min(startIdx + pageSize, total)} of ${total}` : `Showing ${startIdx + 1}–${Math.min(startIdx + pageSize, total)} of ${total}`);
+  if (pageNumEl) pageNumEl.textContent = isMobileShell ? `${currentDashPage}/${totalPages}` : `Page ${currentDashPage} of ${totalPages}`;
   if (prevBtn) prevBtn.disabled = currentDashPage <= 1;
   if (nextBtn) nextBtn.disabled = currentDashPage >= totalPages;
 
@@ -1935,6 +2044,7 @@ window.setProfilesViewMode = function(mode) {
 function renderProfiles() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
@@ -1960,33 +2070,35 @@ function renderProfiles() {
       const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail);
       return `
         <div class="profile-list-row" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border)' : ''}">
-          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
             ${avatarDiv(p.name, p.avatarColor, 38, p.photoUrl)}
             <div style="min-width:0">
-              <div style="font-weight:700;font-size:14.5px;color:var(--text)">${escHtml(p.name)} ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:var(--gold-dim);padding:1px 5px;border-radius:4px;margin-left:6px">YOU</span>' : ""}</div>
-              <div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
+              <div style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)} ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:var(--gold-dim);padding:1px 5px;border-radius:4px;margin-left:4px">YOU</span>' : ""}</div>
+              <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.role || "Attorney")}</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
-            ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
-            <span style="font-size:14px;color:var(--gold)"><i class="bi bi-arrow-right"></i></span>
+            ${ongoing > 0 && !isMobileShell ? badge(ongoing + " active", statusColor("On-going")) : ""}
+            <span style="font-size:14px;color:var(--gold)"><i class="bi bi-chevron-right"></i></span>
           </div>
         </div>`;
     }).join("");
   } else {
-    el.style.display = "grid"; el.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))"; el.style.gap = "18px";
+    el.style.display = "grid";
+    el.style.gridTemplateColumns = isMobileShell ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))";
+    el.style.gap = isMobileShell ? "10px" : "18px";
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
       const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail);
       return `
         <div class="profile-card" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border)' : ''}">
-          <div class="flex-center gap-14 mb-16">
-            ${avatarDiv(p.name, p.avatarColor, 48, p.photoUrl)}
-            <div>
-              <div style="font-weight:700;font-size:15.5px;color:var(--text)">${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:var(--gold-dim);padding:2px 6px;border-radius:4px;margin-left:6px">YOU</span>' : ""}</div>
-              <div style="font-size:13px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div>
+          <div class="flex-center" style="gap:12px;margin-bottom:12px">
+            ${avatarDiv(p.name, p.avatarColor, 46, p.photoUrl)}
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:15px;color:var(--text)">${escHtml(p.name)} ${isMe ? '<span style="font-size:10px;color:var(--gold);background:var(--gold-dim);padding:2px 6px;border-radius:4px;margin-left:4px">YOU</span>' : ""}</div>
+              <div style="font-size:12.5px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div>
             </div>
           </div>
           <hr class="divider"/>
@@ -2071,17 +2183,19 @@ function renderProfileDetail() {
   const headerCard = document.getElementById("profile-header-card");
   if (headerCard) {
     headerCard.innerHTML = `
-      ${avatarDiv(p.name, p.avatarColor, 64, p.photoUrl)}
-      <div style="flex:1">
-        <div style="font-size:22px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
-        <div style="font-size:13.5px;color:var(--text-muted);margin-top:2px">${escHtml(p.role || "Attorney")}</div>
-        <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;align-items:center">
-          ${p.email ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.email)}</span>` : ""}
-          ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.contact)}</span>` : ""}
-          ${driveChip}
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%">
+        ${avatarDiv(p.name, p.avatarColor, 56, p.photoUrl)}
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:19px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:2px">${escHtml(p.role || "Attorney")}</div>
+          <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;align-items:center">
+            ${p.email ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.email)}</span>` : ""}
+            ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.contact)}</span>` : ""}
+            ${driveChip}
+          </div>
         </div>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">${actionButtons}</div>`;
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${actionButtons}</div>
+      </div>`;
   }
 
   const noticeEl = document.getElementById("profile-restricted-notice");
@@ -2100,7 +2214,7 @@ function renderProfileDetail() {
         ["Active", pc.filter(c => c.status === "On-going").length, "var(--amber)"],
         ["Resolved", pc.filter(c => c.status === "Completed").length, "var(--green)"],
         ["Documents", docs, "var(--gold)"]
-      ].map(([l, n, c]) => `<div class="stat-card" style="--accent:${c};padding:16px 18px"><div class="stat-number" style="color:${c};font-size:32px">${n}</div><div class="stat-label">${l}</div></div>`).join("");
+      ].map(([l, n, c]) => `<div class="stat-card" style="--accent:${c};padding:14px 16px"><div class="stat-number" style="color:${c};font-size:28px">${n}</div><span class="stat-label">${l}</span></div>`).join("");
     }
     updateAllFilterDropdowns();
     renderProfileCases();
@@ -2136,9 +2250,9 @@ function renderProfileCases() {
   el.innerHTML = filtered.map(c => `
     <div class="case-row" onclick="openCase('${c.id}')">
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
+        <div style="font-weight:700;font-size:14.5px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
         <div style="font-size:12px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(c.type || "Litigation")} · ${escHtml(c.venue || "No Venue")}</div>
-        <div style="font-size:12.5px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">${badge(c.status, statusColor(c.status))}${dueBadge(c.dueDate || c.docDueDate)}</div>
     </div>`).join("");
@@ -2172,6 +2286,7 @@ window.resetAllCaseFilters = function() {
 function renderAllCasesStatusTabs(accessible, activeStatus) {
   const tabsEl = document.getElementById("ac-status-tabs");
   if (!tabsEl) return;
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const counts = {
     All: accessible.length,
     "On-going": accessible.filter(c => c.status === "On-going").length,
@@ -2179,12 +2294,13 @@ function renderAllCasesStatusTabs(accessible, activeStatus) {
     Completed: accessible.filter(c => c.status === "Completed").length
   };
   tabsEl.innerHTML = Object.entries(counts).map(([k, n]) => `
-    <button class="pill-tab ${activeStatus === k ? 'active' : ''}" onclick="setAllCasesStatusTab('${k}')">${k === 'All' ? 'All Cases' : k} (${n})</button>
+    <button class="pill-tab ${activeStatus === k ? 'active' : ''}" onclick="setAllCasesStatusTab('${k}')">${k === 'All' ? (isMobileShell ? 'All' : 'All Cases') : k} (${n})</button>
   `).join("");
 }
 
 function renderAllCases() {
   updateAllFilterDropdowns();
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const q = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
@@ -2219,7 +2335,7 @@ function renderAllCases() {
   if (!el) return;
 
   if (filtered.length === 0) {
-    el.innerHTML = `<div class="card" style="text-align:center;padding:36px"><div style="font-size:15px;font-weight:700;margin-bottom:8px">No cases match your filters</div><button class="btn btn-secondary btn-sm" onclick="resetAllCaseFilters()">Clear Filters</button></div>`;
+    el.innerHTML = `<div class="card" style="text-align:center;padding:32px"><div style="font-size:15px;font-weight:700;margin-bottom:8px">No cases match your filters</div><button class="btn btn-secondary btn-sm" onclick="resetAllCaseFilters()">Clear Filters</button></div>`;
     if (paginationBar) paginationBar.style.display = "none";
     return;
   }
@@ -2228,6 +2344,20 @@ function renderAllCases() {
 
   el.innerHTML = pagedCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
+    if (isMobileShell) {
+      return `<button class="case-row" onclick="openCase('${c.id}')">
+        ${p ? avatarDiv(p.name, p.avatarColor, 38, p.photoUrl) : ""}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px;color:var(--text);line-height:1.25;margin-bottom:2px">${escHtml(c.title)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(p?.name || "")}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+            ${badge(c.status, statusColor(c.status))}
+            ${dueBadge(c.dueDate || c.docDueDate)}
+          </div>
+        </div>
+        <i class="bi bi-chevron-right" style="color:var(--text-dim);flex-shrink:0"></i>
+      </button>`;
+    }
     return `<div class="case-row" onclick="openCase('${c.id}')">
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
@@ -2239,7 +2369,7 @@ function renderAllCases() {
     </div>`;
   }).join("");
 
-  if (pageInfoEl) pageInfoEl.textContent = `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`;
+  if (pageInfoEl) pageInfoEl.textContent = isMobileShell ? `${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total}` : `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`;
   if (prevBtn) prevBtn.disabled = currentAllCasesPage <= 1;
   if (nextBtn) nextBtn.disabled = currentAllCasesPage >= totalPages;
   if (buttonsWrap) {
@@ -2283,7 +2413,7 @@ function renderCaseDetail() {
   const infoEl = document.getElementById("cd-info");
   if (infoEl) {
     infoEl.innerHTML = `
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         ${badge(c.status, statusColor(c.status))} ${badge(c.category || "Case", "var(--gold)")} ${badge(c.type || "Litigation", "var(--violet)")}
       </div>
       <hr class="divider"/>
@@ -2293,8 +2423,8 @@ function renderCaseDetail() {
         ["Date Case Filed", formatDate(c.filedDate)],
         ["Case / Docket Number", c.caseNumber || "Not indicated"],
         ["Date Added", c.createdAt || "N/A"]
-      ].map(([l, v]) => `<div style="margin-bottom:14px"><div class="field-label">${l}</div><div style="font-size:14px;color:var(--text)">${escHtml(v)}</div></div>`).join("")}
-      <div><div class="field-label">Case Narrative</div><div style="font-size:14px;color:var(--text-muted);line-height:1.75">${escHtml(c.narrative || "")}</div></div>`;
+      ].map(([l, v]) => `<div style="margin-bottom:12px"><div class="field-label">${l}</div><div style="font-size:13.5px;color:var(--text)">${escHtml(v)}</div></div>`).join("")}
+      <div><div class="field-label">Case Narrative</div><div style="font-size:13.5px;color:var(--text-muted);line-height:1.7">${escHtml(c.narrative || "")}</div></div>`;
   }
 
   const hearingsEl = document.getElementById("cd-hearings");
@@ -2333,15 +2463,15 @@ function renderCaseDetail() {
     ${canEdit ? `<div style="display:inline-flex;align-items:center;gap:8px"><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> In</label><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold)"/> Out</label><button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload</button></div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected</span>`}
   </div>`;
   if (docs.length === 0) {
-    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:24px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Click to attach a document' : 'No documents uploaded'}</div></div>`;
+    docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:24px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Tap to attach a document' : 'No documents uploaded'}</div></div>`;
   } else {
     docsHtml += docs.map((doc, idx) => `
       <div class="doc-item">
-        <div>
-          <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);font-weight:600;text-decoration:underline">${escHtml(doc.name)}</span>
+        <div style="min-width:0;flex:1">
+          <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);font-weight:600;text-decoration:underline;word-break:break-word">${escHtml(doc.name)}</span>
           <div style="font-size:11.5px;color:var(--text-dim)">${doc.size} · ${doc.date} ${doc.fileType ? '· ' + doc.fileType : ''}</div>
         </div>
-        ${canEdit ? `<button style="color:var(--red);font-size:15px" onclick="removeDocFromCase(${idx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
+        ${canEdit ? `<button style="color:var(--red);font-size:15px;flex-shrink:0" onclick="removeDocFromCase(${idx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
       </div>`).join("");
   }
   const docsEl = document.getElementById("cd-docs");
@@ -2350,782 +2480,4 @@ function renderCaseDetail() {
   const statusPanelEl = document.getElementById("cd-status-panel");
   if (statusPanelEl) {
     statusPanelEl.innerHTML = canEdit
-      ? `<div style="font-size:15px;font-weight:700;margin-bottom:12px">Update Status</div>` + STATUS_OPTIONS.map(st => `<button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:9px 14px;border-radius:9px;border:1px solid ${c.status === st ? statusColor(st) : 'var(--border)'};background:${c.status === st ? 'var(--gold-dim)' : 'transparent'};color:${c.status === st ? statusColor(st) : 'var(--text)'};text-align:left;font-weight:${c.status === st ? 700 : 500}">${c.status === st ? '<i class="bi bi-check-lg" style="margin-right:6px"></i>' : ''}${st}</button>`).join("")
-      : `<div style="font-size:14px;font-weight:700;margin-bottom:8px">Current Status</div>${badge(c.status, statusColor(c.status))}`;
-  }
-}
-window.renderCaseDetail = renderCaseDetail;
-
-window.confirmUpdateCaseStatus = function(st) {
-  if (!selCase || selCase.status === st) return;
-  window.openConfirmModal({
-    icon: "bi-arrow-repeat", title: "Update Case Status?",
-    body: `Update status of <strong>"${escHtml(selCase.title)}"</strong> to <strong>"${st}"</strong>?`,
-    confirmText: "Update Status", confirmStyle: "btn-primary",
-    onConfirm: async () => {
-      await dbUpdateCase(selCase.id, { status: st });
-      selCase = { ...selCase, status: st };
-      renderCaseDetail();
-      showToast(`Status updated to "${st}"`);
-    }
-  });
-};
-
-async function removeDocFromCase(idx) {
-  const docs = selCase.documents || [];
-  const doc = docs[idx];
-  if (!doc) return;
-  window.openConfirmModal({
-    icon: "bi-trash3", title: "Delete Case Document?",
-    body: `Delete <strong>"${escHtml(doc.name)}"</strong> permanently from this case and Google Drive?`,
-    confirmText: "Delete Document", confirmStyle: "btn-danger",
-    onConfirm: async () => {
-      showToast("Deleting file...");
-      if (doc.driveFileId && typeof deleteDriveFile === "function") await deleteDriveFile(doc.driveFileId);
-      const updDocs = docs.filter((_, i) => i !== idx);
-      await dbUpdateCase(selCase.id, { documents: updDocs });
-      selCase = { ...selCase, documents: updDocs };
-      renderCaseDetail();
-      showToast("Document deleted successfully!");
-    }
-  });
-}
-
-// ── SIDEBAR CHIP, QUICK ACCESS & HELPERS ─────────────────────
-function renderQuickAccess() {
-  const qa = document.getElementById("quick-access");
-  const ql = document.getElementById("quick-list");
-  if (!qa || !ql) return;
-  const u = window._currentUser || window._auth?.currentUser;
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
-  const visible = (myProf && myProf.role === "developer") ? profiles.filter(p => p.role === "developer") : profiles.filter(p => p.role !== "developer");
-  if (visible.length === 0) { qa.style.display = "none"; return; }
-  qa.style.display = "block";
-  ql.innerHTML = visible.slice(0, 7).map(p => `<button class="nav-btn ${selProfile?.id === p.id ? 'active' : ''}" onclick="openProfile('${p.id}')">${avatarDiv(p.name, p.avatarColor, 24, p.photoUrl)}<span>${escHtml(p.name)}</span></button>`).join("");
-}
-
-function openProfile(id) { selProfile = profiles.find(p => p.id === id); if (!selProfile) return; showView("profileDetail"); renderProfileDetail(); }
-function openCase(id) { caseDetailOrigin = currentView; selCase = cases.find(c => c.id === id); if (!selCase) return; const p = profiles.find(x => x.id === selCase.profileId); if (p) selProfile = p; showView("caseDetail"); renderCaseDetail(); }
-window.openProfile = openProfile;
-window.openCase = openCase;
-
-function renderSidebarUser() {
-  const chip = document.getElementById("sidebar-user-chip");
-  const adminSection = document.getElementById("admin-sidebar-section");
-  if (!chip) return;
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u) { chip.style.display = "none"; if (adminSection) adminSection.style.display = "none"; return; }
-
-  const userEmail = (u.email || "").toLowerCase();
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
-  const displayName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
-  const displayRole = myProf?.role || "Attorney";
-
-  chip.innerHTML = `
-    ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 30, myProf?.photoUrl || u.photoURL || null)}
-    <div class="user-meta" style="min-width:0;flex:1">
-      <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
-      <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)}</div>
-    </div>`;
-  chip.style.display = "flex";
-  chip.setAttribute("data-tooltip", `${displayName} · My Settings`);
-
-  const isAdmin = (myProf && myProf.role === "admin") || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
-  const isDev = myProf && myProf.role === "developer";
-  if (adminSection) adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
-}
-window.renderSidebarUser = renderSidebarUser;
-
-function openCurrentProfile() { if (selProfile) openProfile(selProfile.id); }
-window.openCurrentProfile = openCurrentProfile;
-
-function sortCasesByDue(arr, dir) {
-  if (dir === "none") return arr;
-  return [...arr].sort((a, b) => {
-    const da = (a.dueDate || a.docDueDate) ? new Date(a.dueDate || a.docDueDate) : null;
-    const db = (b.dueDate || b.docDueDate) ? new Date(b.dueDate || b.docDueDate) : null;
-    if (!da && !db) return 0; if (!da) return 1; if (!db) return -1;
-    return dir === "asc" ? da - db : db - da;
-  });
-}
-
-function dueBadge(dueDate) {
-  if (!dueDate) return '<span style="font-size:11px;color:var(--text-dim)">No due date</span>';
-  const days = Math.ceil((new Date(dueDate) - new Date()) / (1000 * 60 * 60 * 24));
-  const formatted = formatDate(dueDate);
-  if (days < 0) return `<span style="font-size:11px;font-weight:700;color:var(--red)">Overdue (${formatted})</span>`;
-  if (days === 0) return `<span style="font-size:11px;font-weight:700;color:var(--red)">Due today</span>`;
-  if (days <= 7) return `<span style="font-size:11px;font-weight:700;color:var(--amber)">${days}d left (${formatted})</span>`;
-  if (days <= 30) return `<span style="font-size:11px;font-weight:600;color:var(--gold)">${days}d (${formatted})</span>`;
-  return `<span style="font-size:11px;color:var(--text-muted)">Due ${formatted}</span>`;
-}
-
-function updateAllFilterDropdowns() {
-  ["pd", "ac"].forEach(prefix => {
-    const statusSel = document.getElementById(prefix + "-status");
-    const catSel = document.getElementById(prefix + "-category");
-    if (!statusSel || !catSel) return;
-    const curStatus = statusSel.value; const curCat = catSel.value;
-    statusSel.innerHTML = `<option value="All">All Statuses</option>` + STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join("");
-    statusSel.value = curStatus || "All";
-    catSel.innerHTML = `<option value="All">All Categories</option>` + CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-    catSel.value = curCat || "All";
-    refreshFilterTypes(prefix);
-  });
-}
-
-function refreshFilterTypes(prefix) {
-  const catSel = document.getElementById(prefix + "-category");
-  const typeSel = document.getElementById(prefix + "-type");
-  if (!catSel || !typeSel) return;
-  const selectedCat = catSel.value; const curType = typeSel.value;
-  const filteredTypes = selectedCat === "All" ? globalCaseTypes.map(t => t.name) : globalCaseTypes.filter(t => t.category === selectedCat).map(t => t.name);
-  const distinctTypes = [...new Set(filteredTypes)].sort();
-  typeSel.innerHTML = `<option value="All">All Types</option>` + distinctTypes.map(t => `<option value="${t}">${t}</option>`).join("");
-  typeSel.value = distinctTypes.includes(curType) ? curType : "All";
-}
-
-function onFilterCategoryChange(prefix) {
-  refreshFilterTypes(prefix);
-  if (prefix === "pd") renderProfileCases();
-  if (prefix === "ac") { currentAllCasesPage = 1; renderAllCases(); }
-}
-window.updateAllFilterDropdowns = updateAllFilterDropdowns;
-window.refreshFilterTypes = refreshFilterTypes;
-window.onFilterCategoryChange = onFilterCategoryChange;
-
-// ── PERSONAL SETTINGS ────────────────────────────────────────
-let settingsPhotoDataUrl = null;
-
-function renderMyProfile() {
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u) return;
-  const userEmail = (u.email || "").toLowerCase();
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
-  if (!myProf) return;
-
-  setElVal("setting-name", myProf.name || "");
-  setElVal("setting-role", myProf.role || "Attorney");
-  setElVal("setting-contact", myProf.contact || "");
-  setElVal("setting-email", u.email || "");
-  setElVal("setting-password", "");
-  setElVal("setting-current-password", "");
-  const reauthEl = document.getElementById("setting-reauth-panel");
-  if (reauthEl) reauthEl.style.display = "none";
-
-  settingsPhotoDataUrl = myProf.photoUrl || null;
-  if (settingsPhotoDataUrl) showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
-  else resetSettingsPhotoUpload();
-
-  const statusEl = document.getElementById("settings-drive-status");
-  const btn = document.getElementById("settings-connect-drive-btn");
-  const btnText = document.getElementById("settings-connect-drive-text");
-  const disconnectBtn = document.getElementById("settings-disconnect-drive-btn");
-
-  if (statusEl && btn && btnText) {
-    if (hasValidToken()) {
-      statusEl.className = "drive-status-chip connected";
-      statusEl.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i> Connected`;
-      btnText.textContent = "✓ Connected"; btn.classList.add("connected"); btn.disabled = true;
-      if (disconnectBtn) disconnectBtn.classList.remove("hidden");
-    } else {
-      statusEl.className = "drive-status-chip disconnected";
-      statusEl.innerHTML = `<i class="bi bi-circle-fill" style="color:var(--amber)"></i> Not Connected`;
-      btnText.textContent = "Connect Google Drive"; btn.classList.remove("connected"); btn.disabled = false;
-      if (disconnectBtn) disconnectBtn.classList.add("hidden");
-    }
-  }
-
-  const tfaBadge = document.getElementById("setting-2fa-status-badge");
-  const tfaBtn = document.getElementById("setting-2fa-action-btn");
-  const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
-  if (tfaBadge && tfaBtn) {
-    if (myProf.twoFactorEnabled) {
-      tfaBadge.className = "badge"; tfaBadge.style.background = "var(--green-bg)"; tfaBadge.style.color = "var(--green)";
-      tfaBadge.innerHTML = `<i class="bi bi-shield-check"></i> 2FA Active`;
-      tfaBtn.className = "btn btn-danger btn-sm"; tfaBtn.innerHTML = `<i class="bi bi-shield-x"></i> Disable 2FA`;
-      tfaBtn.onclick = disableTwoFactor;
-      if (tfaBackupWrap) tfaBackupWrap.style.display = "block";
-    } else {
-      tfaBadge.className = "badge"; tfaBadge.style.background = "var(--amber-bg)"; tfaBadge.style.color = "var(--amber)";
-      tfaBadge.innerHTML = `<i class="bi bi-circle-fill" style="font-size:8px"></i> Not Configured`;
-      tfaBtn.className = "btn btn-primary btn-sm"; tfaBtn.innerHTML = `<i class="bi bi-qr-code-scan"></i> Configure Authenticator`;
-      tfaBtn.onclick = openTwoFactorSetupModal;
-      if (tfaBackupWrap) tfaBackupWrap.style.display = "none";
-    }
-  }
-}
-window.renderMyProfile = renderMyProfile;
-
-async function connectDriveFromSettings() {
-  const btn = document.getElementById("settings-connect-drive-btn");
-  const btnText = document.getElementById("settings-connect-drive-text");
-  if (!btn) return;
-  btn.disabled = true; if (btnText) btnText.textContent = "Connecting...";
-  try {
-    await promptDriveAuth(true);
-    showToast("Google Drive connected successfully!");
-    renderMyProfile(); updateWorkspaceStatus(false);
-    const u = window._currentUser || window._auth?.currentUser;
-    const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
-    if (myProf && !myProf.driveFolderId) {
-      const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
-      if (folderId && typeof dbUpdateProfile === "function") {
-        await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
-        myProf.driveFolderId = folderId;
-        updateWorkspaceStatus(false);
-      }
-    }
-  } catch (err) {
-    if (btnText) btnText.textContent = "Connect Google Drive";
-    btn.disabled = false;
-    showToast("Drive connection failed: " + err.message, "error");
-  }
-}
-window.connectDriveFromSettings = connectDriveFromSettings;
-
-function showSettingsPhotoPreview(url, name, role) {
-  const dz = document.getElementById("setting-photo-dropzone");
-  const wrap = document.getElementById("setting-photo-preview-wrap");
-  const img = document.getElementById("setting-photo-preview-img");
-  if (dz) dz.style.display = "none";
-  if (wrap) wrap.style.display = "flex";
-  if (img) img.src = url;
-  setElText("setting-name-preview", name || "Attorney Name");
-  setElText("setting-role-preview", role || "Role");
-}
-function resetSettingsPhotoUpload() {
-  const dz = document.getElementById("setting-photo-dropzone");
-  const wrap = document.getElementById("setting-photo-preview-wrap");
-  const inp = document.getElementById("setting-photo-input");
-  if (dz) dz.style.display = "block"; if (wrap) wrap.style.display = "none"; if (inp) inp.value = "";
-  settingsPhotoDataUrl = null;
-}
-function handleSettingsPhotoUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { showToast("Photo must be under 2MB", "error"); return; }
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    settingsPhotoDataUrl = e.target.result;
-    showSettingsPhotoPreview(settingsPhotoDataUrl, document.getElementById("setting-name")?.value, document.getElementById("setting-role")?.value);
-  };
-  reader.readAsDataURL(file);
-}
-function removeSettingsPhoto() { resetSettingsPhotoUpload(); }
-window.handleSettingsPhotoUpload = handleSettingsPhotoUpload;
-window.removeSettingsPhoto = removeSettingsPhoto;
-
-async function saveUserSettings() {
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u) return;
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
-  if (!myProf) return;
-  const name = (document.getElementById("setting-name")?.value || "").trim();
-  const role = (document.getElementById("setting-role")?.value || "").trim();
-  const contact = (document.getElementById("setting-contact")?.value || "").trim();
-  if (!name || !role) { showToast("Display Name and Role are required.", "error"); return; }
-  if (contact && !isValidMobile(contact)) { showToast("Contact number must be exactly 11 digits.", "error"); return; }
-  const upd = { name, role, contact };
-  try {
-    showToast("Saving settings...");
-    if (settingsPhotoDataUrl && settingsPhotoDataUrl.startsWith("data:") && hasValidToken()) {
-      if (myProf.photoFileId) await deleteDriveFile(myProf.photoFileId).catch(() => {});
-      const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(settingsPhotoDataUrl, myProf.driveFolderId || null, name);
-      upd.photoFileId = fileId; upd.photoUrl = thumbnailUrl;
-    } else if (!settingsPhotoDataUrl && myProf.photoFileId) {
-      if (hasValidToken()) await deleteDriveFile(myProf.photoFileId).catch(() => {});
-      upd.photoFileId = null; upd.photoUrl = null;
-    }
-    await dbUpdateProfile(myProf.id, upd);
-    if (typeof window._fbUpdateProfile === "function") await window._fbUpdateProfile(u, { displayName: name, photoURL: upd.photoUrl || null });
-    selProfile = { ...myProf, ...upd };
-    showToast("Profile settings updated!");
-    renderMyProfile(); renderSidebarUser(); updateWorkspaceStatus(false);
-  } catch (err) {
-    showToast("Failed to save settings: " + err.message, "error");
-  }
-}
-
-async function saveSecuritySettings() {
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u) return;
-  const email = (document.getElementById("setting-email")?.value || "").trim();
-  const pass = document.getElementById("setting-password")?.value || "";
-  const currentPass = document.getElementById("setting-current-password")?.value || "";
-  if (email === u.email && !pass) { showToast("No security modifications requested."); return; }
-  if (email && !isValidEmail(email)) { showToast("Email must be @gmail.com, @outlook.com, or @yahoo.com.", "error"); return; }
-  if (pass && pass.length < 6) { showToast("Password must be at least 6 characters.", "error"); return; }
-
-  const reauthPanel = document.getElementById("setting-reauth-panel");
-  if (reauthPanel && reauthPanel.style.display === "none") {
-    reauthPanel.style.display = "block";
-    showToast("Enter your current password to verify identity.", "error");
-    return;
-  }
-  if (!currentPass) { showToast("Please enter your current password to proceed.", "error"); return; }
-  try {
-    showToast("Verifying credentials...");
-    await window._fbReauth(u, window._fbEmailCred(u.email, currentPass));
-    if (email !== u.email) {
-      await window._fbUpdateEmail(u, email);
-      const myProf = profiles.find(p => p.ownerUid === u.uid);
-      if (myProf) await dbUpdateProfile(myProf.id, { email });
-    }
-    if (pass) await window._fbUpdatePassword(u, pass);
-    showToast("Credentials updated successfully!");
-    if (reauthPanel) reauthPanel.style.display = "none";
-  } catch (err) {
-    showToast("Verification failed: " + err.message, "error");
-  }
-}
-window.saveUserSettings = saveUserSettings;
-window.saveSecuritySettings = saveSecuritySettings;
-
-async function handleLogout() {
-  try {
-    if (typeof dbUnsubscribe === "function") dbUnsubscribe();
-    if (window._fbSignOut) {
-      sessionStorage.removeItem("simando_2fa_verified");
-      await window._fbSignOut(window._auth);
-      window.location.replace("login.html");
-    }
-  } catch (err) { console.error("Signout error:", err); }
-}
-window.handleLogout = handleLogout;
-
-function escHtml(str) {
-  return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function parseGoogleDateTime(isoString) {
-  if (!isoString) return { dateStr: "", timeStr: "", dateObj: new Date(), isAllDay: false };
-  if (isoString.length === 10 && !isoString.includes("T")) {
-    const [y, m, d] = isoString.split("-").map(Number);
-    const dateObj = new Date(y, m - 1, d);
-    return { dateStr: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: "All Day", dateObj, isAllDay: true };
-  }
-  const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-  if (!match) {
-    const d = new Date(isoString);
-    return { dateStr: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }), dateObj: d, isAllDay: false };
-  }
-  const dateObj = new Date(+match[1], +match[2] - 1, +match[3], +match[4], +match[5]);
-  const hh = +match[4];
-  return { dateStr: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: `${hh % 12 || 12}:${match[5]} ${hh >= 12 ? "PM" : "AM"}`, dateObj, isAllDay: false };
-}
-
-window.openCalendarEventModal = function(index) {
-  const ev = window._fetchedCalendarEvents?.[index];
-  if (!ev) return;
-  const modal = document.getElementById("calendar-event-modal");
-  if (!modal) return;
-  const parsedStart = parseGoogleDateTime(ev.start.dateTime || ev.start.date);
-  const parsedEnd = parseGoogleDateTime(ev.end?.dateTime || ev.end?.date);
-  let timeString = parsedStart.dateStr + (parsedStart.isAllDay ? " (All Day)" : ` · ${parsedStart.timeStr}`);
-  if (!parsedStart.isAllDay && ev.end && !parsedEnd.isAllDay) timeString += ` - ${parsedEnd.timeStr}`;
-
-  document.getElementById("cem-title").innerHTML = `<i class="bi bi-calendar-event" style="color:var(--gold);margin-right:6px"></i> ${escHtml(ev.summary || "No Title")}`;
-  document.getElementById("cem-time").textContent = timeString;
-  document.getElementById("cem-location").textContent = ev.location || "No venue specified";
-  document.getElementById("cem-desc").textContent = ev.description || "No description provided.";
-  const linkEl = document.getElementById("cem-link");
-  if (linkEl) { linkEl.href = ev.htmlLink || "#"; linkEl.style.display = ev.htmlLink ? "inline-flex" : "none"; }
-  modal.classList.remove("hidden");
-};
-window.closeCalendarModal = function() { const m = document.getElementById("calendar-event-modal"); if (m) m.classList.add("hidden"); };
-
-// ── COMPACT DASHBOARD SCHEDULE (5 PER PAGE, ALIGNED HEIGHT) ──
-let activeDashboardAgendaFilter = "all";
-let dashSchedulePage = 1;
-const dashSchedulePageSize = 5;
-
-window.filterDashboardAgenda = function(type) {
-  activeDashboardAgendaFilter = type;
-  dashSchedulePage = 1;
-  renderDashboardCalendarAgenda();
-};
-window.changeDashSchedulePage = function(delta) {
-  dashSchedulePage += delta;
-  renderDashboardCalendarAgenda();
-};
-
-async function renderDashboardCalendarAgenda() {
-  const card = document.getElementById("dash-calendar-card");
-  if (!card) return;
-
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const accessibleCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
-  const acceptedAppts = (appointments || []).filter(a => a.status === "accepted" && a.date >= todayStr);
-  const agendaItems = [];
-
-  accessibleCases.forEach(c => {
-    const hearings = Array.isArray(c.hearings) ? c.hearings : [];
-    hearings.forEach(h => {
-      if (h.date && h.date >= todayStr) agendaItems.push({ id: c.id, type: "hearing", date: h.date, time: h.time || "08:30 AM", title: h.purpose || "Court Hearing", sub: `${c.title} · ${c.venue || "Courtroom"}`, isCase: true, caseId: c.id });
-    });
-    if (c.dueDate && c.dueDate >= todayStr && !hearings.some(h => h.date === c.dueDate)) {
-      agendaItems.push({ id: c.id, type: "hearing", date: c.dueDate, time: "08:30 AM", title: "Scheduled Court Appearance", sub: `${c.title} · ${c.venue || "Courtroom"}`, isCase: true, caseId: c.id });
-    }
-    const deadlines = Array.isArray(c.deadlines) ? c.deadlines : [];
-    deadlines.forEach(d => {
-      if (d.date && d.date >= todayStr) agendaItems.push({ id: c.id, type: "deadline", date: d.date, time: "Filing Deadline", title: d.subtype || d.title || "Formal Pleading", sub: c.title, isCase: true, caseId: c.id });
-    });
-    if (c.docDueDate && c.docDueDate >= todayStr && !deadlines.some(d => d.date === c.docDueDate)) {
-      agendaItems.push({ id: c.id, type: "deadline", date: c.docDueDate, time: "Filing Deadline", title: c.docType || "Pleading Due", sub: c.title, isCase: true, caseId: c.id });
-    }
-  });
-
-  acceptedAppts.forEach(a => {
-    agendaItems.push({ id: a.id, type: a.type === "busy" ? "busy" : "appt", date: a.date, time: a.time || "All Day", title: a.title || "Appearance", sub: a.venue || a.description || "Firm Schedule", isCase: Boolean(a.caseId), caseId: a.caseId || null });
-  });
-
-  if (hasValidToken()) {
-    try {
-      const todayFilter = new Date(); todayFilter.setHours(0, 0, 0, 0);
-      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(todayFilter.toISOString())}&singleEvents=true&orderBy=startTime&maxResults=8`, { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (res.ok) {
-        const gItems = (await res.json()).items || [];
-        window._fetchedCalendarEvents = gItems;
-        gItems.forEach((ev, idx) => {
-          const parsed = parseGoogleDateTime(ev.start.dateTime || ev.start.date);
-          agendaItems.push({ id: `g_${idx}`, type: "google", date: parsed.dateObj.toISOString().split("T")[0], time: parsed.isAllDay ? "All Day" : parsed.timeStr, title: ev.summary || "Google Event", sub: ev.location || "Google Calendar", isCase: false, googleIdx: idx });
-        });
-      }
-    } catch (e) {}
-  }
-
-  agendaItems.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : (a.time || "").localeCompare(b.time || ""));
-
-  const totalHearings = agendaItems.filter(i => i.type === "hearing").length;
-  const totalDeadlines = agendaItems.filter(i => i.type === "deadline").length;
-  const filtered = activeDashboardAgendaFilter === "all" ? agendaItems : agendaItems.filter(i => i.type === activeDashboardAgendaFilter);
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / dashSchedulePageSize));
-  if (dashSchedulePage > totalPages) dashSchedulePage = totalPages;
-  if (dashSchedulePage < 1) dashSchedulePage = 1;
-  const startIdx = (dashSchedulePage - 1) * dashSchedulePageSize;
-  const paged = filtered.slice(startIdx, startIdx + dashSchedulePageSize);
-  const dayNames = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
-
-  const rowsHtml = paged.length === 0
-    ? `<div class="empty-state" style="padding:36px 16px"><div class="empty-state-icon" style="color:var(--gold);font-size:32px"><i class="bi bi-calendar-check"></i></div><div>No upcoming hearings or deadlines.</div></div>`
-    : paged.map(item => {
-      const [y, m, d] = item.date.split("-").map(Number);
-      const dObj = new Date(y, m - 1, d);
-      let boxStyle = "background:var(--gold-dim);border:1px solid var(--gold-border);color:var(--gold-light);";
-      let labelColor = "var(--gold-light)";
-      let kindLabel = `Court Hearing · ${escHtml(item.time)}`;
-      if (item.type === "deadline") { boxStyle = "background:var(--violet-bg);border:1px solid rgba(129,140,248,0.35);color:var(--violet);"; labelColor = "var(--amber)"; kindLabel = "Filing Deadline"; }
-      else if (item.type === "google") { boxStyle = "background:var(--green-bg);border:1px solid rgba(52,211,153,0.35);color:var(--green);"; labelColor = "var(--green)"; kindLabel = `Google Calendar · ${escHtml(item.time)}`; }
-      else if (item.type === "busy") { boxStyle = "background:var(--red-bg);border:1px solid rgba(248,113,113,0.35);color:var(--red);"; labelColor = "var(--red)"; kindLabel = `Out of Office · ${escHtml(item.time)}`; }
-      const clickAttr = item.isCase && item.caseId ? `onclick="openCase('${item.caseId}')"` : (item.type === "google" ? `onclick="openCalendarEventModal(${item.googleIdx})"` : `onclick="navTo('calendar')"`);
-
-      return `
-        <button class="case-item" ${clickAttr}>
-          <div style="text-align:center;border-radius:7px;padding:4px 7px;min-width:40px;flex-shrink:0;${boxStyle}">
-            <div style="font-size:8.5px;font-weight:700;line-height:1.1">${dayNames[dObj.getDay()]}</div>
-            <div style="font-size:13.5px;font-weight:800;line-height:1.15">${dObj.getDate()}</div>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:10.5px;font-weight:700;color:${labelColor};line-height:1.2">${kindLabel}</div>
-            <div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25">${escHtml(item.title)}</div>
-            <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${escHtml(item.sub)}</div>
-          </div>
-        </button>`;
-    }).join("");
-
-  const endIdx = Math.min(startIdx + dashSchedulePageSize, total);
-  card.innerHTML = `
-    <div class="dash-panel-header">
-      <div style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Upcoming Schedule</div>
-      <button class="btn btn-secondary btn-sm" onclick="navTo('calendar')">Full Calendar →</button>
-    </div>
-    <div class="dash-panel-pills">
-      <button class="pill-tab ${activeDashboardAgendaFilter === 'all' ? 'active' : ''}" onclick="filterDashboardAgenda('all')">All (${agendaItems.length})</button>
-      <button class="pill-tab ${activeDashboardAgendaFilter === 'hearing' ? 'active' : ''}" onclick="filterDashboardAgenda('hearing')">Court Hearings (${totalHearings})</button>
-      <button class="pill-tab ${activeDashboardAgendaFilter === 'deadline' ? 'active' : ''}" onclick="filterDashboardAgenda('deadline')">Deadlines (${totalDeadlines})</button>
-    </div>
-    <div class="dash-panel-list">${rowsHtml}</div>
-    <div class="pager-bar pagination-bar">
-      <span>Showing ${total ? startIdx + 1 : 0}–${endIdx} of ${total}</span>
-      ${totalPages > 1 ? `
-        <div class="pager-controls pagination-controls">
-          <button class="page-btn" onclick="changeDashSchedulePage(-1)" ${dashSchedulePage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
-          <span style="padding:0 6px;font-weight:600;color:var(--text)">Page ${dashSchedulePage} of ${totalPages}</span>
-          <button class="page-btn" onclick="changeDashSchedulePage(1)" ${dashSchedulePage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
-        </div>` : `<span>All items shown</span>`}
-    </div>`;
-}
-window.renderDashboardCalendarAgenda = renderDashboardCalendarAgenda;
-window.fetchAndRenderGoogleCalendarEvents = renderDashboardCalendarAgenda;
-
-// ── NOTIFICATIONS CENTER ─────────────────────────────────────
-let currentNotifFilter = "all";
-window.filterNotifications = function(cat) { currentNotifFilter = cat; renderNotificationsView(); };
-
-window.toggleNotifDropdown = function() {
-  const dropdown = document.getElementById("notif-dropdown");
-  if (!dropdown) return;
-  const willOpen = dropdown.classList.contains("hidden");
-  dropdown.classList.toggle("hidden");
-  if (willOpen) {
-    const chatPanel = document.getElementById("chat-panel");
-    if (chatPanel && !chatPanel.classList.contains("hidden")) chatPanel.classList.add("hidden");
-    renderNotificationsView();
-  }
-};
-
-document.addEventListener("click", (e) => {
-  const container = document.getElementById("top-hdr-actions");
-  const dropdown = document.getElementById("notif-dropdown");
-  if (container && dropdown && !container.contains(e.target)) dropdown.classList.add("hidden");
-});
-
-function updateNotificationBadge() {
-  const badgeEl = document.getElementById("global-notif-badge");
-  if (!badgeEl) return;
-  const unreadCount = notifications.filter(n => n.status === "unread").length;
-  badgeEl.textContent = unreadCount;
-  badgeEl.style.display = unreadCount > 0 ? "inline-flex" : "none";
-}
-window.updateNotificationBadge = updateNotificationBadge;
-
-window.handleNotifClick = async function(notifId, type, relatedId, fromUid, fromName) {
-  if (notifId) markNotificationRead(notifId);
-  const dropdown = document.getElementById("notif-dropdown");
-  if (dropdown) dropdown.classList.add("hidden");
-  if ((type === "case_due" || type === "case_share") && relatedId) openCase(relatedId);
-  else if (type === "appointment_request") {
-    const notif = notifications.find(n => n.id === notifId);
-    window.openProposalReviewModal(notif?.caseId || relatedId, notif?.relatedId || relatedId, notifId, false, "");
-  } else if ((type === "availability_request" || type === "availability_confirmed") && window._chat) {
-    if (typeof window._chat.toggleDock === "function") window._chat.toggleDock();
-    if (fromUid && typeof window._chat.openConversation === "function") window._chat.openConversation(fromUid, fromName || "Attorney", false);
-  }
-};
-
-function renderNotificationsView() {
-  const listEl = document.getElementById("notifications-list");
-  if (!listEl) return;
-  const filtered = currentNotifFilter === "all" ? notifications
-    : (currentNotifFilter === "appt" ? notifications.filter(n => n.type === "appointment_request" || n.type === "availability_request")
-    : notifications.filter(n => n.category === currentNotifFilter));
-
-  const tabsHtml = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-bottom:10px;margin-bottom:8px;border-bottom:1px solid var(--border)">
-      <button onclick="event.stopPropagation();filterNotifications('all')" class="pill-tab ${currentNotifFilter==='all'?'active':''}" style="justify-content:center">All (${notifications.length})</button>
-      <button onclick="event.stopPropagation();filterNotifications('deadline')" class="pill-tab ${currentNotifFilter==='deadline'?'active':''}" style="justify-content:center">Deadlines</button>
-      <button onclick="event.stopPropagation();filterNotifications('hearing')" class="pill-tab ${currentNotifFilter==='hearing'?'active':''}" style="justify-content:center">Hearings</button>
-      <button onclick="event.stopPropagation();filterNotifications('appt')" class="pill-tab ${currentNotifFilter==='appt'?'active':''}" style="justify-content:center">Proposals</button>
-    </div>`;
-
-  if (filtered.length === 0) {
-    listEl.innerHTML = tabsHtml + `<div class="empty-state" style="padding:20px"><div style="font-size:12px">No notifications found.</div></div>`;
-    return;
-  }
-
-  listEl.innerHTML = tabsHtml + filtered.map(n => {
-    const isUnread = n.status === "unread";
-    const borderAccent = n.severity === "critical" ? "var(--red)" : (n.severity === "warning" ? "var(--amber)" : (isUnread ? "var(--gold)" : "var(--border)"));
-    return `
-      <div class="doc-item" onclick="handleNotifClick('${n.id}','${n.type}','${n.relatedId}','${n.fromUid}','${escHtml(n.fromName)}')" style="border-left:3.5px solid ${borderAccent};cursor:pointer;padding:10px 12px;font-size:12px">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;color:var(--text)">${escHtml(n.title)}</div>
-          <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(n.message)}</div>
-        </div>
-        ${isUnread ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();markNotificationRead('${n.id}')">Read</button>` : ""}
-      </div>`;
-  }).join("");
-}
-window.renderNotificationsView = renderNotificationsView;
-
-window.markNotificationRead = async function(id) {
-  const notif = notifications.find(n => n.id === id);
-  if (notif) { notif.status = "read"; updateNotificationBadge(); renderNotificationsView(); }
-  await dbUpdateNotification(id, { status: "read" }).catch(() => {});
-};
-window.markAllNotificationsAsRead = async function() {
-  notifications.forEach(n => { n.status = "read"; });
-  updateNotificationBadge(); renderNotificationsView();
-  for (const n of notifications) await dbUpdateNotification(n.id, { status: "read" }).catch(() => {});
-  showToast("All notifications cleared!");
-};
-
-// ── PROPOSAL DOSSIER & APPOINTMENT MODALS ────────────────────
-let currentDossierContext = { caseId: null, apptId: null, notifId: null, msgId: null, isGroup: false, channelId: "" };
-
-window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup = false, channelId = "", chatMsgObj = null) {
-  currentDossierContext = { caseId, apptId, notifId, msgId: notifId, isGroup, channelId };
-  const modal = document.getElementById("proposal-review-modal");
-  if (!modal) return;
-  const u = window._currentUser || window._auth?.currentUser;
-  const currentUid = u?.uid || "";
-  const appt = appointments.find(a => a.id === apptId) || null;
-  const notif = notifications.find(n => n.id === notifId) || null;
-  let targetCase = cases.find(c => c.id === caseId);
-  if (!targetCase && caseId && window._db && typeof window._fbGetDoc === "function") {
-    try {
-      const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", caseId));
-      if (snap && snap.exists()) targetCase = typeof decryptCaseRecordFromFirestore === "function" ? await decryptCaseRecordFromFirestore({ id: snap.id, ...snap.data() }) : { id: snap.id, ...snap.data() };
-    } catch (e) {}
-  }
-
-  setElText("pr-case-title", targetCase?.title || chatMsgObj?.caseTitle || appt?.caseTitle || notif?.caseTitle || "Case Title");
-  setElText("pr-case-docket", targetCase?.caseNumber || chatMsgObj?.caseNumber || appt?.caseNumber || "Docket N/A");
-  setElText("pr-case-cat", targetCase?.category || chatMsgObj?.caseCategory || "Case");
-  setElText("pr-case-parties", targetCase?.parties || chatMsgObj?.caseParties || "N/A");
-  setElText("pr-case-venue", targetCase?.venue || chatMsgObj?.caseVenue || appt?.venue || "Courtroom N/A");
-  setElText("pr-case-narrative", targetCase?.narrative || chatMsgObj?.caseNarrative || appt?.description || notif?.message || "No briefing.");
-  const docs = targetCase?.documents || chatMsgObj?.documents || appt?.documents || [];
-  setElText("pr-vault-count", docs.length);
-  const isAccepted = (appt && appt.status === "accepted") || (targetCase && (targetCase.ownerUid === currentUid || (targetCase.allowedUids || []).includes(currentUid)));
-  const vaultListEl = document.getElementById("pr-vault-files-list");
-  if (vaultListEl) {
-    vaultListEl.innerHTML = docs.length === 0 ? `<div style="font-size:12px;color:var(--text-dim)">No documents attached.</div>`
-      : docs.map(d => isAccepted
-        ? `<div style="padding:8px;background:var(--surface);border-radius:6px;margin-bottom:4px"><span onclick='openFilePreview(${JSON.stringify(d).replace(/'/g,"&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline">${escHtml(d.name)}</span></div>`
-        : `<div style="padding:8px;background:var(--surface);border-radius:6px;filter:blur(3px);margin-bottom:4px">${escHtml(d.name)}</div>`).join("");
-  }
-  modal.classList.remove("hidden");
-};
-window.closeProposalReviewModal = function() { const m = document.getElementById("proposal-review-modal"); if (m) m.classList.add("hidden"); };
-
-window.acceptProposalFromDossier = async function() {
-  const { caseId, apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
-  if (apptId && typeof dbUpdateAppointment === "function") await dbUpdateAppointment(apptId, { status: "accepted" }).catch(() => {});
-  if (notifId && typeof dbUpdateNotification === "function") await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" }).catch(() => {});
-  if (window._chat && msgId) await window._chat.respondAvailCard(msgId, isGroup, channelId, "accepted");
-  closeProposalReviewModal();
-  renderAllCases(); renderDashboard();
-};
-window.declineProposalFromDossier = async function() {
-  const { apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
-  if (apptId && typeof dbUpdateAppointment === "function") await dbUpdateAppointment(apptId, { status: "declined" }).catch(() => {});
-  if (notifId && typeof dbUpdateNotification === "function") await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" }).catch(() => {});
-  if (window._chat && msgId) await window._chat.respondAvailCard(msgId, isGroup, channelId, "declined");
-  closeProposalReviewModal();
-};
-window.promptCancelAppearanceFromDossier = function() { closeProposalReviewModal(); };
-
-let targetApptProfile = null, apptAmPm = "AM", apptPurposeType = "present_hearing";
-window.openAppointmentModal = function(profileId) {
-  const p = profiles.find(x => x.id === profileId || x.ownerUid === profileId) || selProfile;
-  if (!p) return;
-  targetApptProfile = p;
-  const avEl = document.getElementById("appt-recipient-avatar");
-  if (avEl) avEl.innerHTML = avatarDiv(p.name, p.avatarColor, 36, p.photoUrl);
-  setElText("appt-recipient-name", p.name);
-  setElText("appt-recipient-role", p.role || "Associate Counsel");
-  const caseSel = document.getElementById("appt-case-select");
-  if (caseSel) {
-    const accessible = getAccessibleCases();
-    caseSel.innerHTML = `<option value="">— Select an active docket file (${accessible.length}) —</option>` + accessible.map(c => `<option value="${c.id}">${escHtml(c.title)}</option>`).join("");
-  }
-  document.getElementById("appointment-modal")?.classList.remove("hidden");
-};
-window.closeAppointmentModal = function() { document.getElementById("appointment-modal")?.classList.add("hidden"); targetApptProfile = null; };
-window.setApptPurpose = function(btn, type) { apptPurposeType = type; document.querySelectorAll("#appt-purpose-chips button").forEach(b => b.classList.remove("active")); btn.classList.add("active"); };
-window.onApptCaseSelectChange = function(caseId) { const c = getAccessibleCases().find(x => x.id === caseId); if (c) setElVal("appt-venue", c.venue || ""); };
-window.onApptHearingStageSync = function() {};
-window.setApptAmPm = function(val) { apptAmPm = val; };
-window.submitAppointmentRequest = async function() {
-  const date = document.getElementById("appt-date")?.value;
-  const time = document.getElementById("appt-custom-time")?.value || "08:30";
-  if (!date) { showToast("Please pick a date.", "error"); return; }
-  const u = window._currentUser || window._auth?.currentUser;
-  if (!u || !targetApptProfile) return;
-  await dbAddAppointment({ title: "Case Appearance Request", date, time: `${time} ${apptAmPm}`, venue: document.getElementById("appt-venue")?.value || "", description: document.getElementById("appt-desc")?.value || "", requesterUid: u.uid, targetUid: targetApptProfile.ownerUid || targetApptProfile.id, ownerUid: u.uid, status: "pending" });
-  showToast("Schedule proposal sent!");
-  closeAppointmentModal();
-};
-window.acceptAppointmentRequest = async function(notifId, apptId) { await dbUpdateAppointment(apptId, { status: "accepted" }); await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" }); renderNotificationsView(); };
-window.declineAppointmentRequest = async function(notifId, apptId) { await dbUpdateAppointment(apptId, { status: "declined" }); await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" }); renderNotificationsView(); };
-
-// ── CASE FORM SELECTS & DRIVE EXPLORER ───────────────────────
-function populateCaseSelects(isEdit = false) {
-  const catSel = document.getElementById("cf-category");
-  const statusSel = document.getElementById("cf-status");
-  const venueSel = document.getElementById("cf-venue");
-  if (catSel) catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-  const opts = isEdit ? STATUS_OPTIONS : (typeof NEW_CASE_STATUS_OPTIONS !== "undefined" ? NEW_CASE_STATUS_OPTIONS : ["On-going", "Pending"]);
-  if (statusSel) statusSel.innerHTML = opts.map(t => `<option value="${t}">${t}</option>`).join("");
-  if (venueSel) venueSel.innerHTML = VENUES.map(v => `<option value="${v}">${v}</option>`).join("");
-}
-window.populateCaseSelects = populateCaseSelects;
-
-let currentExplorerFolderId = "root", explorerBreadcrumbs = [];
-window.initDriveExplorer = function() {
-  const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
-  currentExplorerFolderId = (myProf && myProf.driveFolderId) ? myProf.driveFolderId : (DRIVE_FOLDER_ID || "root");
-  explorerBreadcrumbs = [{ id: currentExplorerFolderId, name: "Firm Drive" }];
-  loadExplorerFiles();
-};
-
-window.loadExplorerFiles = async function() {
-  const listEl = document.getElementById("mydrive-explorer-list");
-  const emptyEl = document.getElementById("mydrive-empty-state");
-  const nativeBtn = document.getElementById("mydrive-open-native-btn");
-  if (!listEl) return;
-  renderExplorerBreadcrumbs();
-  if (nativeBtn) nativeBtn.href = (currentExplorerFolderId && currentExplorerFolderId !== "root") ? `https://drive.google.com/drive/folders/${currentExplorerFolderId}` : "https://drive.google.com";
-  if (!hasValidToken()) {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:28px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div><div style="font-size:13px;font-weight:600;margin-top:6px">Google Drive Not Connected</div><div style="font-size:11.5px;margin-top:4px">Connect Google Drive in My Settings to browse case files.</div></div>`;
-    if (emptyEl) emptyEl.classList.add("hidden");
-    return;
-  }
-  try {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><span class="spinner"></span></div>`;
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${currentExplorerFolderId || "root"}' in parents and trashed = false`)}&fields=files(id,name,mimeType,size,webViewLink)&orderBy=folder,name`, { headers: { Authorization: "Bearer " + accessToken } });
-    if (!res.ok) throw new Error("Drive API error");
-    const files = (await res.json()).files || [];
-    if (files.length === 0) { listEl.innerHTML = ""; if (emptyEl) emptyEl.classList.remove("hidden"); return; }
-    if (emptyEl) emptyEl.classList.add("hidden");
-    listEl.innerHTML = files.map(f => {
-      const isFolder = f.mimeType === "application/vnd.google-apps.folder";
-      const icon = isFolder ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>` : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`;
-      const action = isFolder ? `onclick="navigateIntoFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')"` : `onclick="window.open('${f.webViewLink}','_blank')"`;
-      return `<div style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer"><div ${action}><div style="margin-bottom:8px">${icon}</div><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.name)}</div></div><button onclick="event.stopPropagation();adminDeleteDriveExplorerFile('${f.id}','${f.name.replace(/'/g,"\\'")}')" style="position:absolute;top:6px;right:6px;color:var(--red);font-size:13px"><i class="bi bi-trash3"></i></button></div>`;
-    }).join("");
-  } catch (err) {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted)">Click Open Google Drive above to view files directly.</div>`;
-  }
-};
-
-window.adminDeleteDriveExplorerFile = function(fileId, fileName) {
-  window.openConfirmModal({ icon: "bi-trash3", title: "Delete from Firm Drive?", body: `Delete <strong>"${escHtml(fileName)}"</strong> from Google Drive?`, confirmText: "Delete", confirmStyle: "btn-danger", onConfirm: async () => { await deleteDriveFile(fileId); loadExplorerFiles(); } });
-};
-window.navigateIntoFolder = function(id, name) { explorerBreadcrumbs.push({ id, name }); currentExplorerFolderId = id; loadExplorerFiles(); };
-window.navigateBreadcrumb = function(index) { explorerBreadcrumbs = explorerBreadcrumbs.slice(0, index + 1); currentExplorerFolderId = explorerBreadcrumbs[index].id; loadExplorerFiles(); };
-function renderExplorerBreadcrumbs() {
-  const el = document.getElementById("mydrive-breadcrumbs");
-  if (!el) return;
-  el.innerHTML = explorerBreadcrumbs.map((b, i) => i === explorerBreadcrumbs.length - 1 ? `<span style="color:var(--gold)"><i class="bi bi-folder-fill"></i> ${escHtml(b.name)}</span>` : `<span onclick="navigateBreadcrumb(${i})" style="cursor:pointer;text-decoration:underline">${escHtml(b.name)}</span> / `).join("");
-}
-window.openMyDriveFolder = function() {
-  const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
-  if (myProf?.driveFolderId) window.open(`https://drive.google.com/drive/folders/${myProf.driveFolderId}`, "_blank");
-  else showToast("No Drive folder linked yet.", "error");
-};
-
-window.openFilePreview = function(doc) {
-  if (!doc) return;
-  if (doc.driveLink) { window.open(doc.driveLink, "_blank"); return; }
-  if (doc._localTempId && typeof pendingLocalFiles !== "undefined" && pendingLocalFiles[doc._localTempId]) {
-    window.open(URL.createObjectURL(pendingLocalFiles[doc._localTempId]), "_blank");
-    return;
-  }
-  showToast("File link not found.", "error");
-};
-window.closeFilePreview = function() { const m = document.getElementById("file-preview-modal"); if (m) m.style.display = "none"; };
-
-window.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    if (typeof renderSidebarUser === "function") renderSidebarUser();
-    if (typeof checkOnboardingSecurityStatus === "function") checkOnboardingSecurityStatus();
-  }, 300);
-});
+      ? `<div style="font-size:15px;font-weight:700;margin-bottom:12px">Update Status</div>` + STATUS_OPTIONS.map(st => `<button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:9px 14px;border-r
