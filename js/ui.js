@@ -100,6 +100,7 @@ document.addEventListener("keydown", (e) => {
     if (diag) diag.classList.add("hidden");
     const dsm = document.getElementById("date-schedule-modal");
     if (dsm) dsm.classList.add("hidden");
+    if (typeof closeAllSheets === "function") closeAllSheets();
   }
 });
 
@@ -984,7 +985,7 @@ function renderCalendarView() {
     legendBar.style.cssText = "display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;flex-wrap:wrap;font-size:11.5px;";
     calCard.parentNode.insertBefore(legendBar, calCard);
   }
-  if (legendBar) {
+  if (legendBar && !document.getElementById("mobile-shell")) {
     legendBar.innerHTML = `
       <span style="font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px"><i class="bi bi-info-circle" style="color:var(--gold)"></i> Legend:</span>
       <span style="display:inline-flex;align-items:center;gap:4px;color:var(--gold-light)"><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearing</span>
@@ -1153,6 +1154,7 @@ function renderMonthlyCalendarGrid() {
   const gridEl = document.getElementById("calendar-grid-container");
   if (!gridEl) return;
 
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   if (titleEl) titleEl.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
 
@@ -1243,15 +1245,15 @@ function renderMonthlyCalendarGrid() {
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const hasDayPanel = !!document.getElementById("cal-day-panel");
 
-  gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:6px;width:100%;box-sizing:border-box;";
+  gridEl.style.cssText = isMobileShell
+    ? "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;"
+    : "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:6px;width:100%;box-sizing:border-box;";
 
-  let html = `
-    <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div>
-    <div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
-  `;
+  const dayHeaders = isMobileShell ? ["S","M","T","W","T","F","S"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  let html = dayHeaders.map(dh => `<div class="cal-day-header">${dh}</div>`).join("");
 
   for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span></div>`;
+    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span>${isMobileShell ? '<div class="cal-dots-row"></div>' : ''}</div>`;
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -1261,48 +1263,63 @@ function renderMonthlyCalendarGrid() {
     const isSelected = hasDayPanel && fullDateStr === selectedCalDateStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
-    let eventsMarkup = "";
-    if (dayEvents.length > 0) {
-      const topTwo = dayEvents.slice(0, 2);
-      const remainingCount = dayEvents.length - 2;
-      eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
-      topTwo.forEach(ev => {
-        let bgStyle = "background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border);";
-        let iconMarkup = `<i class="bi bi-bank" style="font-size:8.5px;flex-shrink:0"></i>`;
-        if (ev.type === "deadline") { bgStyle = "background:var(--violet-bg);color:var(--violet);border:1px solid rgba(129,140,248,0.3);"; iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-        else if (ev.type === "busy") { bgStyle = "background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.3);"; iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-        else if (ev.type === "appt") { bgStyle = "background:var(--green-bg);color:var(--green);border:1px solid rgba(52,211,153,0.3);"; iconMarkup = `<i class="bi bi-people-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-        eventsMarkup += `
-          <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;${bgStyle}" title="${escHtml(ev.title)}">
-            <span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span>
-            ${iconMarkup}
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(ev.title)}</span>
-          </div>`;
-      });
-      if (remainingCount > 0) {
-        eventsMarkup += `<div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:var(--surface3);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px;white-space:nowrap">+${remainingCount} more</div>`;
-      }
-      eventsMarkup += `</div>`;
-    }
+    if (isMobileShell) {
+      const dots = dayEvents.slice(0, 3).map(ev => {
+        const dotCol = ev.type === "deadline" ? "var(--violet)"
+          : (ev.type === "busy" ? "var(--red)"
+          : (ev.type === "appt" ? "var(--green)" : "var(--gold)"));
+        return `<span class="cal-dot" style="background:${dotCol}"></span>`;
+      }).join("");
 
-    const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.5px;flex-shrink:0">TODAY</span>` : "";
-
-    html += `
-      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}"
-           onclick="onCalendarDayClick('${fullDateStr}')"
-           title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
-        <div style="display:flex;align-items:center;justify-content:space-between;width:100%;min-width:0">
+      html += `
+        <button class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}" onclick="onCalendarDayClick('${fullDateStr}')">
           <span class="cal-day-num">${day}</span>
-          ${todayTag}
+          <div class="cal-dots-row">${dots}</div>
+        </button>`;
+    } else {
+      let eventsMarkup = "";
+      if (dayEvents.length > 0) {
+        const topTwo = dayEvents.slice(0, 2);
+        const remainingCount = dayEvents.length - 2;
+        eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
+        topTwo.forEach(ev => {
+          let bgStyle = "background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border);";
+          let iconMarkup = `<i class="bi bi-bank" style="font-size:8.5px;flex-shrink:0"></i>`;
+          if (ev.type === "deadline") { bgStyle = "background:var(--violet-bg);color:var(--violet);border:1px solid rgba(129,140,248,0.3);"; iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
+          else if (ev.type === "busy") { bgStyle = "background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.3);"; iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
+          else if (ev.type === "appt") { bgStyle = "background:var(--green-bg);color:var(--green);border:1px solid rgba(52,211,153,0.3);"; iconMarkup = `<i class="bi bi-people-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
+          eventsMarkup += `
+            <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;${bgStyle}" title="${escHtml(ev.title)}">
+              <span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span>
+              ${iconMarkup}
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(ev.title)}</span>
+            </div>`;
+        });
+        if (remainingCount > 0) {
+          eventsMarkup += `<div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:var(--surface3);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px;white-space:nowrap">+${remainingCount} more</div>`;
+        }
+        eventsMarkup += `</div>`;
+      }
+
+      const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.5px;flex-shrink:0">TODAY</span>` : "";
+
+      html += `
+        <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}"
+             onclick="onCalendarDayClick('${fullDateStr}')"
+             title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;min-width:0">
+            <span class="cal-day-num">${day}</span>
+            ${todayTag}
+          </div>
+          ${eventsMarkup}
         </div>
-        ${eventsMarkup}
-      </div>
-    `;
+      `;
+    }
   }
 
   const rem = (7 - ((startingDayOfWeek + daysInMonth) % 7)) % 7;
   for (let i = 1; i <= rem; i++) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span></div>`;
+    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span>${isMobileShell ? '<div class="cal-dots-row"></div>' : ''}</div>`;
   }
 
   gridEl.innerHTML = html;
@@ -1463,6 +1480,7 @@ async function updateWorkspaceStatus(manualRun = false) {
   const driveSub = document.getElementById("diag-drive-sub");
   const dot = document.getElementById("status-indicator-dot");
   const txt = document.getElementById("status-indicator-text");
+  const isMobileShell = !!document.getElementById("mobile-shell");
 
   const isNetworkOk = navigator.onLine;
   const isDbOk = !localMode && !!window._db && dbReady;
@@ -1512,15 +1530,15 @@ async function updateWorkspaceStatus(manualRun = false) {
   if (!isNetworkOk || (!isDbOk && !localMode)) {
     systemHealthStatus = "danger";
     if (dot) dot.className = "status-dot danger";
-    if (txt) { txt.textContent = "System Disconnected"; txt.style.color = "var(--red)"; }
+    if (txt) { txt.textContent = isMobileShell ? "Offline" : "System Disconnected"; txt.style.color = "var(--red)"; }
   } else if (!isDriveOk || localMode || !hasDriveFolder) {
     systemHealthStatus = "warning";
     if (dot) dot.className = "status-dot warning";
-    if (txt) { txt.textContent = !isDriveOk ? "Connect Drive" : "Memory Mode"; txt.style.color = "var(--amber)"; }
+    if (txt) { txt.textContent = isMobileShell ? "Sync" : (!isDriveOk ? "Connect Drive" : "Memory Mode"); txt.style.color = "var(--amber)"; }
   } else {
     systemHealthStatus = "healthy";
     if (dot) dot.className = "status-dot healthy";
-    if (txt) { txt.textContent = "Workspace Active"; txt.style.color = "var(--green)"; }
+    if (txt) { txt.textContent = isMobileShell ? "OK" : "Workspace Active"; txt.style.color = "var(--green)"; }
   }
 
   if (manualRun && typeof showToast === "function") {
@@ -1575,10 +1593,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ── NAVIGATION, PAGE HEADERS & DISCARD INTERCEPTION ──────────
+// ── NAVIGATION, MOBILE SHELL HELPERS, PAGE HEADERS & DISCARD ──
 let pendingNavigationDestination = null;
 let _isSubmittingCase = false;
 let caseDetailOrigin = "allcases";
+let lastMobileListView = "dashboard";
 
 const DESKTOP_PAGE_META = {
   dashboard:     ["Law Office Dashboard", "Quick overview of your cases, hearings, and deadlines"],
@@ -1591,6 +1610,56 @@ const DESKTOP_PAGE_META = {
   caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["My Settings & Security", "Manage your profile, Google Drive link, 2FA, and login password"]
+};
+
+const MOBILE_PAGE_META = {
+  dashboard:     ["SIMANDO LAW", "Law Office Dashboard"],
+  calendar:      ["Schedule", "Court Hearings & Deadlines"],
+  mydrive:       ["Firm Drive", "Case Files & Folders"],
+  profiles:      ["Attorneys", "Partners & Associates"],
+  profileDetail: ["Attorney Profile", "Caseload & Contact Details"],
+  profileForm:   ["Attorney Setup", "Create or Edit Profile"],
+  allcases:      ["All Cases", "Search & Filter Dockets"],
+  caseDetail:    ["Case Details", "Summary, Hearings & Files"],
+  caseForm:      ["Add / Edit Case", "Steps 1–4 · Create Docket"],
+  myprofile:     ["My Settings", "Profile, Drive & 2FA"]
+};
+
+window.openSheet = function(id) {
+  closeAllSheets();
+  document.getElementById("notif-dropdown")?.classList.add("hidden");
+  document.getElementById(id)?.classList.remove("hidden");
+};
+
+window.closeAllSheets = function() {
+  document.querySelectorAll(".sheet-backdrop").forEach(s => s.classList.add("hidden"));
+};
+
+window.switchDashSegment = function(seg) {
+  document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
+  document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
+  document.getElementById("dash-panel-cases")?.classList.toggle("hidden", seg !== "cases");
+  document.getElementById("dash-calendar-card")?.classList.toggle("hidden", seg !== "schedule");
+};
+
+window.toggleFiltersDrawer = function() {
+  const drawer = document.getElementById("ac-filters-drawer");
+  const btn = document.getElementById("toggle-filters-btn");
+  if (!drawer) return;
+  const hidden = drawer.classList.toggle("hidden");
+  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
+};
+
+window.goBackMobile = function() {
+  if (currentView === "caseForm") {
+    window.handleCaseCancelOrExit();
+  } else if (currentView === "caseDetail") {
+    window.handleCaseDetailBack();
+  } else if (currentView === "profileDetail" || currentView === "profileForm") {
+    navTo("profiles");
+  } else {
+    navTo(lastMobileListView || "dashboard");
+  }
 };
 
 function hasUnsavedCaseChanges() {
@@ -1711,6 +1780,11 @@ function showView(name) {
   if (chatPanel && !chatPanel.classList.contains("hidden")) chatPanel.classList.add("hidden");
   const notifDropdown = document.getElementById("notif-dropdown");
   if (notifDropdown && !notifDropdown.classList.contains("hidden")) notifDropdown.classList.add("hidden");
+  if (typeof closeAllSheets === "function") closeAllSheets();
+
+  if (!["caseDetail", "caseForm", "profileDetail", "profileForm"].includes(name)) {
+    lastMobileListView = name;
+  }
 
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
   const el = document.getElementById("view-" + name);
@@ -1719,6 +1793,7 @@ function showView(name) {
 
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".bnav-btn").forEach(b => b.classList.remove("active"));
 
   let primaryNavKey = name;
   if (name === "caseDetail" || name === "caseForm" || name === "allcases") primaryNavKey = "allcases";
@@ -1730,12 +1805,40 @@ function showView(name) {
   const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${primaryNavKey}"]`);
   if (mBtn) mBtn.classList.add("active");
 
+  const bottomKey = (name === "caseDetail") ? "allcases"
+    : (["mydrive", "profiles", "profileDetail", "profileForm", "myprofile"].includes(name) ? "more" : name);
+  const bBtn = document.querySelector(`.bnav-btn[data-nav="${bottomKey}"]`);
+  if (bBtn) bBtn.classList.add("active");
+
+  document.querySelectorAll(".menu-row[data-menu]").forEach(r => {
+    r.classList.toggle("active", r.getAttribute("data-menu") === name);
+  });
+
+  const showBack = ["caseDetail", "caseForm", "profileDetail", "profileForm"].includes(name);
+  document.getElementById("topbar-back-btn")?.classList.toggle("hidden", !showBack);
+  document.getElementById("topbar-crest")?.classList.toggle("hidden", showBack);
+
+  document.getElementById("bottom-nav-wrap")?.classList.toggle("hidden", name === "caseForm" || name === "profileForm");
+  document.getElementById("mobile-form-bar")?.classList.toggle("hidden", name !== "caseForm");
+
   const meta = DESKTOP_PAGE_META[name];
   if (meta) {
     const tEl = document.getElementById("main-page-title");
     const sEl = document.getElementById("main-page-sub");
     if (tEl) tEl.textContent = meta[0];
     if (sEl) sEl.textContent = meta[1];
+  }
+
+  const mMeta = MOBILE_PAGE_META[name];
+  if (mMeta) {
+    const mtEl = document.getElementById("mobile-page-title");
+    const msEl = document.getElementById("mobile-page-sub");
+    if (mtEl) mtEl.textContent = mMeta[0];
+    if (msEl) msEl.textContent = mMeta[1];
+  }
+
+  if (document.getElementById("mobile-shell")) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
@@ -1783,10 +1886,13 @@ window.executeNavigation = executeNavigation;
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
-// ── DASHBOARD & COMPACT ACTIVE CASES (5 PER PAGE) ────────────
+// ── DASHBOARD & COMPACT ACTIVE CASES (5 DESKTOP / 4 MOBILE) ──
 let currentDashPage = 1;
 let dashCasesFilter = "all";
-const dashPageSize = 5;
+
+function getDashPageSize() {
+  return document.getElementById("mobile-shell") ? 4 : 5;
+}
 
 window.changeDashPage = function(delta) {
   currentDashPage += delta;
@@ -1800,6 +1906,7 @@ window.setDashCasesFilter = function(kind) {
 };
 
 function renderDashboard() {
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const todayDateEl = document.getElementById("today-date");
   if (todayDateEl) {
     todayDateEl.textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -1824,6 +1931,7 @@ function renderDashboard() {
     `;
   }
 
+  const dashPageSize = getDashPageSize();
   const listToDisplay = dashCasesFilter === "all" ? baseList : baseList.filter(c => c.status === dashCasesFilter);
   const total = listToDisplay.length;
   const totalPages = Math.max(1, Math.ceil(total / dashPageSize));
@@ -1856,7 +1964,7 @@ function renderDashboard() {
 
         return `
           <button class="case-item" onclick="openCase('${c.id}')">
-            ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
+            ${p ? avatarDiv(p.name, p.avatarColor, isMobileShell ? 34 : 30, p.photoUrl) : ""}
             <div style="flex:1;min-width:0">
               <div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
               <div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.category || "Case")} · ${escHtml(p?.name || c.type || "Litigation")}</div>
@@ -1869,8 +1977,8 @@ function renderDashboard() {
       }).join("");
   }
 
-  if (pageInfoEl) pageInfoEl.textContent = total === 0 ? "Showing 0 cases" : `Showing ${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}`;
-  if (pageNumEl) pageNumEl.textContent = `Page ${currentDashPage} of ${totalPages}`;
+  if (pageInfoEl) pageInfoEl.textContent = total === 0 ? "Showing 0 cases" : (isMobileShell ? `${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}` : `Showing ${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}`);
+  if (pageNumEl) pageNumEl.textContent = isMobileShell ? `${currentDashPage}/${totalPages}` : `Page ${currentDashPage} of ${totalPages}`;
   if (prevBtn) prevBtn.disabled = currentDashPage <= 1;
   if (nextBtn) nextBtn.disabled = currentDashPage >= totalPages;
 
@@ -1935,6 +2043,7 @@ window.setProfilesViewMode = function(mode) {
 function renderProfiles() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
@@ -1969,13 +2078,15 @@ function renderProfiles() {
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
             <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
-            ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
+            ${ongoing > 0 && !isMobileShell ? badge(ongoing + " active", statusColor("On-going")) : ""}
             <span style="font-size:14px;color:var(--gold)"><i class="bi bi-arrow-right"></i></span>
           </div>
         </div>`;
     }).join("");
   } else {
-    el.style.display = "grid"; el.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))"; el.style.gap = "18px";
+    el.style.display = "grid";
+    el.style.gridTemplateColumns = isMobileShell ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))";
+    el.style.gap = isMobileShell ? "10px" : "18px";
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
@@ -2172,6 +2283,7 @@ window.resetAllCaseFilters = function() {
 function renderAllCasesStatusTabs(accessible, activeStatus) {
   const tabsEl = document.getElementById("ac-status-tabs");
   if (!tabsEl) return;
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const counts = {
     All: accessible.length,
     "On-going": accessible.filter(c => c.status === "On-going").length,
@@ -2179,12 +2291,13 @@ function renderAllCasesStatusTabs(accessible, activeStatus) {
     Completed: accessible.filter(c => c.status === "Completed").length
   };
   tabsEl.innerHTML = Object.entries(counts).map(([k, n]) => `
-    <button class="pill-tab ${activeStatus === k ? 'active' : ''}" onclick="setAllCasesStatusTab('${k}')">${k === 'All' ? 'All Cases' : k} (${n})</button>
+    <button class="pill-tab ${activeStatus === k ? 'active' : ''}" onclick="setAllCasesStatusTab('${k}')">${k === 'All' ? (isMobileShell ? 'All' : 'All Cases') : k} (${n})</button>
   `).join("");
 }
 
 function renderAllCases() {
   updateAllFilterDropdowns();
+  const isMobileShell = !!document.getElementById("mobile-shell");
   const q = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
@@ -2228,6 +2341,20 @@ function renderAllCases() {
 
   el.innerHTML = pagedCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
+    if (isMobileShell) {
+      return `<button class="case-row" onclick="openCase('${c.id}')">
+        ${p ? avatarDiv(p.name, p.avatarColor, 38, p.photoUrl) : ""}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px;color:var(--text);line-height:1.25;margin-bottom:2px">${escHtml(c.title)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(p?.name || "")}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+            ${badge(c.status, statusColor(c.status))}
+            ${dueBadge(c.dueDate || c.docDueDate)}
+          </div>
+        </div>
+        <i class="bi bi-chevron-right" style="color:var(--text-dim);flex-shrink:0"></i>
+      </button>`;
+    }
     return `<div class="case-row" onclick="openCase('${c.id}')">
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
@@ -2239,7 +2366,7 @@ function renderAllCases() {
     </div>`;
   }).join("");
 
-  if (pageInfoEl) pageInfoEl.textContent = `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`;
+  if (pageInfoEl) pageInfoEl.textContent = isMobileShell ? `${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total}` : `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`;
   if (prevBtn) prevBtn.disabled = currentAllCasesPage <= 1;
   if (nextBtn) nextBtn.disabled = currentAllCasesPage >= totalPages;
   if (buttonsWrap) {
@@ -2413,27 +2540,51 @@ window.openCase = openCase;
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
-  if (!chip) return;
+  const mobileAdminCard = document.getElementById("mobile-admin-portal-card");
+  const mobileWelcome = document.getElementById("mobile-welcome-name");
+  const isMobileShell = !!document.getElementById("mobile-shell");
+
   const u = window._currentUser || window._auth?.currentUser;
-  if (!u) { chip.style.display = "none"; if (adminSection) adminSection.style.display = "none"; return; }
+  if (!u) {
+    if (chip) chip.style.display = "none";
+    if (adminSection) adminSection.style.display = "none";
+    if (mobileAdminCard) mobileAdminCard.style.display = "none";
+    return;
+  }
 
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   const displayName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
   const displayRole = myProf?.role || "Attorney";
 
-  chip.innerHTML = `
-    ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 30, myProf?.photoUrl || u.photoURL || null)}
-    <div class="user-meta" style="min-width:0;flex:1">
-      <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
-      <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)}</div>
-    </div>`;
-  chip.style.display = "flex";
-  chip.setAttribute("data-tooltip", `${displayName} · My Settings`);
+  if (mobileWelcome) mobileWelcome.textContent = `Hello, ${displayName}`;
+
+  if (chip) {
+    if (isMobileShell) {
+      chip.innerHTML = `
+        ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 40, myProf?.photoUrl || u.photoURL || null)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
+          <div style="font-size:11.5px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)} · Tap for Settings</div>
+        </div>
+        <i class="bi bi-chevron-right" style="color:var(--text-dim)"></i>`;
+    } else {
+      chip.innerHTML = `
+        ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 30, myProf?.photoUrl || u.photoURL || null)}
+        <div class="user-meta" style="min-width:0;flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
+          <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)}</div>
+        </div>`;
+    }
+    chip.style.display = "flex";
+    chip.setAttribute("data-tooltip", `${displayName} · My Settings`);
+  }
 
   const isAdmin = (myProf && myProf.role === "admin") || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
   const isDev = myProf && myProf.role === "developer";
-  if (adminSection) adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
+  const hasAdminAccess = isAdmin || isDev;
+  if (adminSection) adminSection.style.display = hasAdminAccess ? "block" : "none";
+  if (mobileAdminCard) mobileAdminCard.style.display = hasAdminAccess ? "block" : "none";
 }
 window.renderSidebarUser = renderSidebarUser;
 
@@ -2736,10 +2887,13 @@ window.openCalendarEventModal = function(index) {
 };
 window.closeCalendarModal = function() { const m = document.getElementById("calendar-event-modal"); if (m) m.classList.add("hidden"); };
 
-// ── COMPACT DASHBOARD SCHEDULE (5 PER PAGE, ALIGNED HEIGHT) ──
+// ── COMPACT DASHBOARD SCHEDULE (5 DESKTOP / 4 MOBILE) ────────
 let activeDashboardAgendaFilter = "all";
 let dashSchedulePage = 1;
-const dashSchedulePageSize = 5;
+
+function getDashSchedulePageSize() {
+  return document.getElementById("mobile-shell") ? 4 : 5;
+}
 
 window.filterDashboardAgenda = function(type) {
   activeDashboardAgendaFilter = type;
@@ -2754,6 +2908,8 @@ window.changeDashSchedulePage = function(delta) {
 async function renderDashboardCalendarAgenda() {
   const card = document.getElementById("dash-calendar-card");
   if (!card) return;
+  const isMobileShell = !!document.getElementById("mobile-shell");
+  const dashSchedulePageSize = getDashSchedulePageSize();
 
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -2839,22 +2995,22 @@ async function renderDashboardCalendarAgenda() {
 
   const endIdx = Math.min(startIdx + dashSchedulePageSize, total);
   card.innerHTML = `
-    <div class="dash-panel-header">
-      <div style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Upcoming Schedule</div>
-      <button class="btn btn-secondary btn-sm" onclick="navTo('calendar')">Full Calendar →</button>
+    <div class="${isMobileShell ? 'card-hdr' : 'dash-panel-header'}">
+      <div class="card-title" style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Upcoming Schedule</div>
+      <button class="btn btn-secondary btn-sm" onclick="navTo('calendar')">${isMobileShell ? 'Calendar →' : 'Full Calendar →'}</button>
     </div>
-    <div class="dash-panel-pills">
+    <div class="${isMobileShell ? 'pills-scroll' : 'dash-panel-pills'}">
       <button class="pill-tab ${activeDashboardAgendaFilter === 'all' ? 'active' : ''}" onclick="filterDashboardAgenda('all')">All (${agendaItems.length})</button>
-      <button class="pill-tab ${activeDashboardAgendaFilter === 'hearing' ? 'active' : ''}" onclick="filterDashboardAgenda('hearing')">Court Hearings (${totalHearings})</button>
+      <button class="pill-tab ${activeDashboardAgendaFilter === 'hearing' ? 'active' : ''}" onclick="filterDashboardAgenda('hearing')">${isMobileShell ? 'Hearings' : 'Court Hearings'} (${totalHearings})</button>
       <button class="pill-tab ${activeDashboardAgendaFilter === 'deadline' ? 'active' : ''}" onclick="filterDashboardAgenda('deadline')">Deadlines (${totalDeadlines})</button>
     </div>
-    <div class="dash-panel-list">${rowsHtml}</div>
+    <div class="${isMobileShell ? '' : 'dash-panel-list'}">${rowsHtml}</div>
     <div class="pager-bar pagination-bar">
-      <span>Showing ${total ? startIdx + 1 : 0}–${endIdx} of ${total}</span>
+      <span>${total ? (isMobileShell ? `${startIdx + 1}–${endIdx} of ${total}` : `Showing ${startIdx + 1}–${endIdx} of ${total}`) : '0 items'}</span>
       ${totalPages > 1 ? `
         <div class="pager-controls pagination-controls">
           <button class="page-btn" onclick="changeDashSchedulePage(-1)" ${dashSchedulePage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
-          <span style="padding:0 6px;font-weight:600;color:var(--text)">Page ${dashSchedulePage} of ${totalPages}</span>
+          <span style="padding:0 6px;font-weight:600;color:var(--text)">${isMobileShell ? `${dashSchedulePage}/${totalPages}` : `Page ${dashSchedulePage} of ${totalPages}`}</span>
           <button class="page-btn" onclick="changeDashSchedulePage(1)" ${dashSchedulePage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
         </div>` : `<span>All items shown</span>`}
     </div>`;
@@ -2870,6 +3026,7 @@ window.toggleNotifDropdown = function() {
   const dropdown = document.getElementById("notif-dropdown");
   if (!dropdown) return;
   const willOpen = dropdown.classList.contains("hidden");
+  if (willOpen && typeof closeAllSheets === "function") closeAllSheets();
   dropdown.classList.toggle("hidden");
   if (willOpen) {
     const chatPanel = document.getElementById("chat-panel");
