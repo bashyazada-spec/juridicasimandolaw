@@ -257,8 +257,35 @@ async function shareDriveFolderWithAssociate(folderId, associateEmail) {
 window.shareDriveFolderWithAssociate = shareDriveFolderWithAssociate;
 
 // ═══════════════════════════════════════════════════════════════
-//  INTERNAL GOOGLE DOCS API ENGINE (docs.googleapis.com/v1)
+//  IN-APP FILE BLOB FETCHER & GOOGLE DOCS API ENGINE
 // ═══════════════════════════════════════════════════════════════
+function guessMimeFromFilename(name = "") {
+  const ext = String(name).split(".").pop().toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "txt") return "text/plain";
+  return "";
+}
+
+async function fetchDriveFileBlob(driveFileId, fileName = "") {
+  if (!hasValidToken() || !driveFileId) throw new Error("Google Drive not connected.");
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || "Unable to fetch file from Google Drive.");
+  }
+  const rawBlob = await res.blob();
+  const guessed = guessMimeFromFilename(fileName);
+  const finalMime = (rawBlob.type && rawBlob.type !== "application/octet-stream") ? rawBlob.type : (guessed || rawBlob.type || "application/octet-stream");
+  return new Blob([rawBlob], { type: finalMime });
+}
+window.fetchDriveFileBlob = fetchDriveFileBlob;
+
 async function createInternalGoogleDoc(docTitle, initialPlainText = "", targetFolderId = null) {
   if (!hasValidToken()) throw new Error("Google account not connected.");
 
@@ -329,7 +356,6 @@ window.moveDriveFileToFolder = moveDriveFileToFolder;
 async function updateInternalGoogleDocText(docId, plainText) {
   if (!hasValidToken() || !docId) throw new Error("Google account not connected.");
 
-  // Read current endIndex so we replace cleanly
   let endIndex = 1;
   try {
     const getRes = await fetch(`https://docs.googleapis.com/v1/documents/${docId}?fields=body/content/endIndex`, {
@@ -395,12 +421,14 @@ window.loadInternalGoogleDocContent = loadInternalGoogleDocContent;
 
 async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderId) {
   if (!hasValidToken()) throw new Error("Google Drive access token expired.");
-  showToast("Opening in Collaborative Editor...");
+  showToast("Converting file to editable Google Doc...");
   const folder = (targetFolderId && targetFolderId !== "root") ? targetFolderId : null;
+  const cleanTitle = (docTitle || "Document").replace(/\.[^/.]+$/, "") + " (Editable)";
 
+  // 1. If it's already a Drive file ID, use Drive copy -> Google Doc conversion
   if (typeof fileOrDriveFileId === "string") {
     const copyMeta = {
-      name: docTitle.replace(/\.[^/.]+$/, "") + " (Editable Master)",
+      name: cleanTitle,
       mimeType: "application/vnd.google-apps.document"
     };
     if (folder) copyMeta.parents = [folder];
@@ -411,9 +439,25 @@ async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderI
       body: JSON.stringify(copyMeta)
     });
     if (copyRes.ok) return await copyRes.json();
+
+    // Fallback: fetch blob and extract text locally (e.g. via pdf.js in analyzer.js)
+    let extractedText = "";
+    try {
+      const blob = await fetchDriveFileBlob(fileOrDriveFileId, docTitle);
+      const tempFile = new File([blob], docTitle || "document.pdf", { type: blob.type });
+      if (typeof extractTextFromFile === "function") {
+        extractedText = await extractTextFromFile(tempFile);
+      }
+    } catch (e) {}
+    return await createInternalGoogleDoc(cleanTitle, extractedText, folder);
   }
 
-  return await createInternalGoogleDoc(docTitle.replace(/\.[^/.]+$/, "") + " (Editable Master)", "", folder);
+  // 2. If it's a local File object, extract text if possible and create Google Doc
+  let localText = "";
+  if (fileOrDriveFileId instanceof File && typeof extractTextFromFile === "function") {
+    try { localText = await extractTextFromFile(fileOrDriveFileId); } catch (e) {}
+  }
+  return await createInternalGoogleDoc(cleanTitle, localText, folder);
 }
 window.convertFileToGoogleDoc = convertFileToGoogleDoc;
 
