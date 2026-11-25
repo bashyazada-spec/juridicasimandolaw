@@ -425,7 +425,6 @@ async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderI
   const folder = (targetFolderId && targetFolderId !== "root") ? targetFolderId : null;
   const cleanTitle = (docTitle || "Document").replace(/\.[^/.]+$/, "") + " (Editable)";
 
-  // 1. If it's already a Drive file ID, use Drive copy -> Google Doc conversion
   if (typeof fileOrDriveFileId === "string") {
     const copyMeta = {
       name: cleanTitle,
@@ -440,7 +439,6 @@ async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderI
     });
     if (copyRes.ok) return await copyRes.json();
 
-    // Fallback: fetch blob and extract text locally (e.g. via pdf.js in analyzer.js)
     let extractedText = "";
     try {
       const blob = await fetchDriveFileBlob(fileOrDriveFileId, docTitle);
@@ -452,7 +450,6 @@ async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderI
     return await createInternalGoogleDoc(cleanTitle, extractedText, folder);
   }
 
-  // 2. If it's a local File object, extract text if possible and create Google Doc
   let localText = "";
   if (fileOrDriveFileId instanceof File && typeof extractTextFromFile === "function") {
     try { localText = await extractTextFromFile(fileOrDriveFileId); } catch (e) {}
@@ -461,9 +458,35 @@ async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderI
 }
 window.convertFileToGoogleDoc = convertFileToGoogleDoc;
 
-async function exportGoogleDocToPdf(docId, pdfName, targetFolderId) {
+async function updateDriveFileContent(driveFileId, newBlob, newName = null) {
+  if (!hasValidToken() || !driveFileId) throw new Error("Google Drive access token expired.");
+  const url = `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media&fields=id,name,size,webViewLink`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": newBlob.type || "application/pdf"
+    },
+    body: newBlob
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || "Failed to update PDF content in Drive.");
+  }
+
+  const updatedMeta = await res.json();
+  if (newName && newName !== updatedMeta.name) {
+    await renameDriveFile(driveFileId, newName).catch(() => {});
+    updatedMeta.name = newName;
+  }
+  return updatedMeta;
+}
+window.updateDriveFileContent = updateDriveFileContent;
+
+async function exportGoogleDocToPdf(docId, pdfName, targetFolderId, existingDrivePdfId = null) {
   if (!hasValidToken()) throw new Error("Google Drive access token expired.");
-  showToast("Compiling revisions to official PDF...");
+  showToast("Compiling revisions directly into PDF...");
 
   const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`, {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -471,6 +494,23 @@ async function exportGoogleDocToPdf(docId, pdfName, targetFolderId) {
   if (!exportRes.ok) throw new Error("Failed to export Google Doc to PDF layout.");
 
   const pdfBlob = await exportRes.blob();
+
+  // If a PDF already exists on this case, REPLACE ITS CONTENT directly in Google Drive!
+  if (existingDrivePdfId) {
+    try {
+      const updatedMeta = await updateDriveFileContent(existingDrivePdfId, pdfBlob, pdfName);
+      return {
+        ...updatedMeta,
+        name: pdfName,
+        size: (pdfBlob.size / 1024).toFixed(1) + " KB",
+        date: new Date().toLocaleDateString(),
+        id: existingDrivePdfId
+      };
+    } catch (err) {
+      console.warn("Direct PDF replacement failed, uploading fresh copy:", err.message);
+    }
+  }
+
   const pdfFile = new File([pdfBlob], pdfName, { type: "application/pdf" });
   pdfFile._isConvertedPdf = true;
 
@@ -634,6 +674,7 @@ async function addDocToCase() {
         size: (f.size / 1024).toFixed(1) + " KB",
         date: new Date().toLocaleDateString(),
         fileType, version: "v1.0", history: [],
+        lastEditedBy: myProf?.name || "Counsel",
         ...(driveFileId && { driveFileId, driveLink })
       });
     }
