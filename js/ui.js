@@ -169,39 +169,174 @@ function renderOnlineUsersPopover() {
 }
 window.renderOnlineUsersPopover = renderOnlineUsersPopover;
 
-// ── FLOATING LEGAL RESEARCH WIDGET (OPENS TRUE FLOATING WINDOW) ──
+// ═══════════════════════════════════════════════════════════════
+//  INTERNAL PERSISTENT MOVABLE CASE RESEARCH WIDGET
+// ═══════════════════════════════════════════════════════════════
+let activeResearchTab = "similar";
+let currentResearchWebUrl = "https://lawphil.net/";
+window.activeResearchTab = activeResearchTab;
+
 window.toggleResearchWidget = function(e) {
   if (e) e.stopPropagation();
   const w = document.getElementById("research-widget");
-  if (w) w.classList.toggle("hidden");
+  if (!w) return;
+  const isHidden = w.classList.contains("hidden");
+  if (isHidden) {
+    w.classList.remove("hidden");
+    renderInternalSimilarCases();
+  } else {
+    w.classList.add("hidden");
+  }
 };
 
-window.openResearchFloatingWindow = function(url, label = "Legal Research") {
-  if (!url) return;
-  const w = Math.min(1100, Math.max(820, Math.round(window.screen.availWidth * 0.72)));
-  const h = Math.min(820, Math.max(600, Math.round(window.screen.availHeight * 0.80)));
-  const left = Math.max(20, Math.round((window.screen.availWidth - w) / 2));
-  const top  = Math.max(20, Math.round((window.screen.availHeight - h) / 2));
+window.minimizeResearchWidget = function() {
+  document.getElementById("research-widget")?.classList.add("hidden");
+};
 
-  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes`;
-  const win = window.open(url, "SimandoLegalResearchWindow", features);
-  if (win) {
-    try { win.focus(); } catch (e) {}
+window.toggleResearchExpand = function() {
+  const w = document.getElementById("research-widget");
+  const icon = document.getElementById("research-expand-icon");
+  if (!w) return;
+  const expanded = w.classList.toggle("is-expanded");
+  if (icon) icon.className = expanded ? "bi bi-arrows-angle-contract" : "bi bi-arrows-angle-expand";
+};
+
+window.switchResearchTab = function(tab) {
+  activeResearchTab = tab;
+  window.activeResearchTab = tab;
+  document.getElementById("res-tab-similar")?.classList.toggle("active", tab === "similar");
+  document.getElementById("res-tab-web")?.classList.toggle("active", tab === "web");
+  document.getElementById("research-view-similar")?.classList.toggle("hidden", tab !== "similar");
+  document.getElementById("research-view-web")?.classList.toggle("hidden", tab !== "web");
+
+  if (tab === "similar") {
+    renderInternalSimilarCases();
   } else {
-    showToast(`Popup blocked — allow popups to open ${label} in a floating window.`, "error");
+    const frame = document.getElementById("research-internal-frame");
+    if (frame && (!frame.src || frame.src === "about:blank")) {
+      frame.src = currentResearchWebUrl;
+    }
   }
+};
+
+window.loadInternalResearchSite = function(url, chipBtn) {
+  currentResearchWebUrl = url;
+  document.querySelectorAll(".research-site-chip").forEach(b => b.classList.remove("active"));
+  if (chipBtn) chipBtn.classList.add("active");
+  setElText("research-current-url", url);
+  const frame = document.getElementById("research-internal-frame");
+  if (frame) frame.src = url;
+};
+
+window.popOutCurrentResearchUrl = function() {
+  const w = Math.min(1080, Math.max(820, Math.round(window.screen.availWidth * 0.72)));
+  const h = Math.min(780, Math.max(600, Math.round(window.screen.availHeight * 0.80)));
+  window.open(currentResearchWebUrl, "SimandoLegalResearchPopout", `popup=yes,width=${w},height=${h},resizable=yes,scrollbars=yes`);
+};
+
+function renderInternalSimilarCases() {
+  const listEl = document.getElementById("research-similar-list");
+  if (!listEl) return;
+
+  const q = (document.getElementById("research-query-inp")?.value || "").toLowerCase().trim();
+  const pool = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+
+  const matches = !q
+    ? pool.slice(0, 12)
+    : pool.filter(c =>
+        (c.title || "").toLowerCase().includes(q) ||
+        (c.category || "").toLowerCase().includes(q) ||
+        (c.type || "").toLowerCase().includes(q) ||
+        (c.parties || "").toLowerCase().includes(q) ||
+        (c.venue || "").toLowerCase().includes(q) ||
+        (c.narrative || "").toLowerCase().includes(q)
+      );
+
+  if (matches.length === 0) {
+    listEl.innerHTML = `
+      <div style="text-align:center;padding:24px 12px;color:var(--text-dim);font-size:12.5px">
+        No firm cases match "<strong>${escHtml(q)}</strong>".<br/>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="switchResearchTab('web')">
+          <i class="bi bi-globe2"></i> Search in Web Reader
+        </button>
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = matches.map(c => {
+    const p = profiles.find(x => x.id === c.profileId);
+    return `
+      <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer" onclick="openCaseKeepResearch('${c.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px">
+          <span style="font-size:10.5px;font-weight:700;color:var(--gold)">${escHtml(c.category || "Case")}</span>
+          ${badge(c.status || "On-going", statusColor(c.status))}
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${escHtml(c.title)}</div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">${escHtml(c.type || "Litigation")} · ${escHtml(p?.name || "Counsel")}</div>
+        ${c.narrative ? `<div style="font-size:11px;color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(c.narrative)}</div>` : ""}
+      </div>`;
+  }).join("");
+}
+window.renderInternalSimilarCases = renderInternalSimilarCases;
+
+window.openCaseKeepResearch = function(caseId) {
+  const widget = document.getElementById("research-widget");
+  const wasOpen = widget && !widget.classList.contains("hidden");
+  if (typeof openCase === "function") openCase(caseId);
+  if (wasOpen && widget) widget.classList.remove("hidden");
 };
 
 window.searchSimilarCases = function() {
-  const inp = document.getElementById("research-query-inp");
-  const q = (inp?.value || "").trim();
-  if (!q) {
-    showToast("Enter keywords or case citation to search.", "error");
-    if (inp) inp.focus();
+  const q = (document.getElementById("research-query-inp")?.value || "").trim();
+  if (activeResearchTab === "similar") {
+    renderInternalSimilarCases();
     return;
   }
-  window.openResearchFloatingWindow("https://scholar.google.com/scholar?q=" + encodeURIComponent(q), "Google Scholar");
+  const url = q ? ("https://www.chanrobles.com/search.html?q=" + encodeURIComponent(q)) : currentResearchWebUrl;
+  loadInternalResearchSite(url, null);
 };
+
+function initResearchWidgetDrag() {
+  const widget = document.getElementById("research-widget");
+  const handle = document.getElementById("research-drag-handle");
+  if (!widget || !handle || handle._dragBound) return;
+  handle._dragBound = true;
+
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return;
+    dragging = true;
+    const rect = widget.getBoundingClientRect();
+    widget.style.left = rect.left + "px";
+    widget.style.top  = rect.top + "px";
+    widget.style.right = "auto";
+    widget.style.bottom = "auto";
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop  = rect.top;
+    handle.setPointerCapture(e.pointerId);
+  });
+
+  handle.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    const maxLeft = Math.max(0, window.innerWidth - 140);
+    const maxTop  = Math.max(0, window.innerHeight - 60);
+    widget.style.left = Math.min(maxLeft, Math.max(0, startLeft + dx)) + "px";
+    widget.style.top  = Math.min(maxTop, Math.max(0, startTop + dy)) + "px";
+  });
+
+  const stopDrag = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+  };
+  handle.addEventListener("pointerup", stopDrag);
+  handle.addEventListener("pointercancel", stopDrag);
+}
 
 // ── INTERNAL GOOGLE DOCS WORKSPACE CONTROLLER ────────────────
 let activeInternalDocId = null;
@@ -248,8 +383,7 @@ window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
 };
 
 window.closeGoogleDocModal = function() {
-  const modal = document.getElementById("gdoc-modal");
-  if (modal) modal.classList.add("hidden");
+  document.getElementById("gdoc-modal")?.classList.add("hidden");
 };
 
 window.execInternalDocFmt = function(cmd) {
@@ -431,17 +565,14 @@ function restoreDismissedBanners() {
   });
 }
 
+// Note: #research-widget stays open persistently when clicking outside—only closes via Minimize!
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#top-hdr-actions")) window.closeAllTopPopovers();
-  if (!e.target.closest("#research-widget") && !e.target.closest("#research-fab-btn")) {
-    document.getElementById("research-widget")?.classList.add("hidden");
-  }
 });
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     window.closeAllTopPopovers();
-    document.getElementById("research-widget")?.classList.add("hidden");
     document.getElementById("diagnostic-modal")?.classList.add("hidden");
     document.getElementById("date-schedule-modal")?.classList.add("hidden");
     document.getElementById("gdoc-modal")?.classList.add("hidden");
@@ -453,6 +584,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSidebarEnhancements();
   restoreDismissedBanners();
   initAccessibilityAndSounds();
+  initResearchWidgetDrag();
 });
 
 // ── DOM HELPERS & ERROR CLEARING ─────────────────────────────
