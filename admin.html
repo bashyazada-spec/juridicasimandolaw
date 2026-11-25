@@ -1036,7 +1036,19 @@
     const snap = await getDocs(collection(db, "caseTypes")).catch(() => ({ docs: [] }));
     loadedCaseTypes = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter(t => !t.deleted && t.active !== false && t.name && t.name.trim() !== "");
+      .filter(t => {
+        if (t.deleted || t.active === false || !t.name || !t.name.trim()) return false;
+        const cleanName = t.name.trim().toLowerCase();
+        const scopedKey = `${t.category || ""}::${cleanName}`;
+        if (
+          localBlacklist.includes(t.id) ||
+          localBlacklist.includes(scopedKey) ||
+          localBlacklist.includes(cleanName)
+        ) {
+          return false;
+        }
+        return true;
+      });
   }
   window.reloadAutofillData = async function() { await loadAllCaseTypes(); renderAutofillCategories(); renderAutofillItems(); showToast("Refreshed from Firestore!"); };
 
@@ -1052,53 +1064,92 @@
     const q = (document.getElementById("autofill-search-input")?.value || "").toLowerCase().trim();
     const items = loadedCaseTypes.filter(t => t.category === selectedCategory && (!q || t.name.toLowerCase().includes(q)));
     tbody.innerHTML = items.length === 0 ? `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:24px">No case types registered.</td></tr>`
-      : items.map(item => `<tr><td><strong>${escHtml(item.name)}</strong></td><td>${escHtml(item.category)}</td><td style="text-align:right">${isDeveloperSession ? '<span class="badge">Protected</span>' : `<button class="btn btn-danger btn-sm" onclick="promptDeleteCaseType('${item.id}','${item.name.replace(/'/g,"\\'")}')"><i class="bi bi-trash3"></i> Remove</button>`}</td></tr>`).join("");
+      : items.map(item => `<tr><td><strong>${escHtml(item.name)}</strong></td><td>${escHtml(item.category)}</td><td style="text-align:right">${isDeveloperSession ? '<span class="badge">Protected</span>' : `<button class="btn btn-danger btn-sm" onclick="promptDeleteCaseType('${escHtml(item.id)}')"><i class="bi bi-trash3"></i> Remove</button>`}</td></tr>`).join("");
   }
   window.filterAutofillTable = renderAutofillItems;
 
   let pendingDel = null;
-  window.promptDeleteCaseType = function(id, name) {
+  window.promptDeleteCaseType = function(id) {
     if (isDeveloperSession) return showToast("Read-only developer mode.", "error");
-    pendingDel = { id, name };
-    document.getElementById("del-casetype-modal-msg").textContent = `Permanently delete "${name}" from the Firestore database and autocomplete suggestions?`;
+    const item = loadedCaseTypes.find(t => t.id === id);
+    if (!item) return;
+    pendingDel = { id: item.id, name: item.name, category: item.category };
+    document.getElementById("del-casetype-modal-msg").textContent = `Permanently delete "${item.name}" from the Firestore database and autocomplete suggestions?`;
     document.getElementById("delete-casetype-modal").classList.remove("hidden");
   };
-  window.closeDeleteCaseTypeModal = function() { document.getElementById("delete-casetype-modal").classList.add("hidden"); };
+  window.closeDeleteCaseTypeModal = function() {
+    document.getElementById("delete-casetype-modal").classList.add("hidden");
+    pendingDel = null;
+  };
 
   document.getElementById("btn-confirm-del-casetype").addEventListener("click", async () => {
     if (!pendingDel) return;
-    const { id, name } = pendingDel;
+    const { id, name, category } = pendingDel;
+    const targetCategory = category || selectedCategory;
+    const delBtn = document.getElementById("btn-confirm-del-casetype");
+    if (delBtn) delBtn.disabled = true;
     closeDeleteCaseTypeModal();
 
     const cleanName = (name || "").trim().toLowerCase();
+    const scopedKey = `${targetCategory}::${cleanName}`;
+
     try {
       showToast("Deleting from Firestore database...");
 
       const snap = await getDocs(collection(db, "caseTypes")).catch(() => ({ docs: [] }));
-      const docsToDelete = snap.docs.filter(d => {
-        const data = d.data();
-        return d.id === id || (
-          data.category === selectedCategory &&
-          (data.name || "").trim().toLowerCase() === cleanName
-        );
-      });
+      const matchedIds = snap.docs
+        .filter(d => {
+          const data = d.data();
+          return d.id === id || (
+            data.category === targetCategory &&
+            (data.name || "").trim().toLowerCase() === cleanName
+          );
+        })
+        .map(d => d.id);
 
-      if (docsToDelete.length === 0) {
-        await deleteDoc(doc(db, "caseTypes", id)).catch(() => {});
-      } else {
-        await Promise.all(docsToDelete.map(d => deleteDoc(doc(db, "caseTypes", d.id)).catch(() => {})));
+      const idsToRemove = matchedIds.length > 0 ? matchedIds : [id];
+      let remoteDeleted = true;
+      let remoteSoftDeleted = false;
+
+      for (const docId of idsToRemove) {
+        try {
+          await deleteDoc(doc(db, "caseTypes", docId));
+        } catch (delErr) {
+          remoteDeleted = false;
+          console.warn("Firestore deleteDoc rejected, trying soft-delete:", delErr.message);
+          try {
+            await updateDoc(doc(db, "caseTypes", docId), { deleted: true, active: false });
+            remoteSoftDeleted = true;
+          } catch (updErr) {
+            console.warn("Firestore updateDoc soft-delete rejected:", updErr.message);
+            if (!localBlacklist.includes(docId)) localBlacklist.push(docId);
+            if (!localBlacklist.includes(scopedKey)) localBlacklist.push(scopedKey);
+          }
+        }
       }
 
-      if (!localBlacklist.includes(cleanName)) localBlacklist.push(cleanName);
-      localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+      if (!remoteDeleted && !remoteSoftDeleted) {
+        if (!localBlacklist.includes(id)) localBlacklist.push(id);
+        if (!localBlacklist.includes(scopedKey)) localBlacklist.push(scopedKey);
+        localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+      }
 
       await loadAllCaseTypes();
       renderAutofillCategories();
       renderAutofillItems();
-      showToast(`Permanently deleted "${name}" from database!`, "success");
+
+      if (remoteDeleted) {
+        showToast(`Permanently deleted "${name}" from database!`, "success");
+      } else if (remoteSoftDeleted) {
+        showToast(`Archived & removed "${name}" from suggestions!`, "success");
+      } else {
+        showToast(`Removed "${name}" locally (Firestore rules blocked remote delete).`, "error");
+      }
     } catch (err) {
       console.error("Firestore caseTypes delete failed:", err);
       showToast("Database delete failed: " + err.message, "error");
+    } finally {
+      if (delBtn) delBtn.disabled = false;
     }
   });
 
@@ -1117,7 +1168,8 @@
     if (!name) return showToast("Enter a case type name.", "error");
 
     const cleanName = name.toLowerCase();
-    localBlacklist = localBlacklist.filter(x => x !== cleanName);
+    const scopedKey = `${category}::${cleanName}`;
+    localBlacklist = localBlacklist.filter(x => x !== cleanName && x !== scopedKey);
     localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
 
     await addDoc(collection(db, "caseTypes"), { category, name, deleted: false, active: true, createdAt: new Date().toISOString() });
