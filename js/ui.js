@@ -134,7 +134,7 @@ window.connectOrOpenGoogleAction = async function() {
     renderGoogleStatusPopover();
     if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
     if (currentView === "allcases" && allCasesActiveTab === "docs") {
-      loadAllCasesGoogleDocs(true);
+      renderDriveExplorer();
     }
     showToast("Google Drive, Docs & Calendar connected!");
   } catch (err) {
@@ -342,11 +342,298 @@ function initResearchWidgetDrag() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REAL GOOGLE DOCS + LEGAL DRAFT WORKSPACE (SAVED TO SPECIFIC CASE)
+//  GUIDED 4-STEP "NEW GOOGLE DOC" WIZARD
+// ═══════════════════════════════════════════════════════════════
+let newDocWizardState = {
+  step: 1,
+  category: "",
+  type: "",
+  caseId: "",
+  flow: "Outbound",
+  template: "pleading",
+  title: ""
+};
+
+window.openNewDocWizard = function(preselectedCaseId = "") {
+  const modal = document.getElementById("new-doc-wizard-modal");
+  if (!modal) {
+    if (typeof openGoogleDocModal === "function") openGoogleDocModal(preselectedCaseId);
+    return;
+  }
+
+  const accessible = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+  const targetCase = preselectedCaseId ? accessible.find(c => c.id === preselectedCaseId) : null;
+
+  if (targetCase) {
+    newDocWizardState = {
+      step: 4,
+      category: targetCase.category || "Others",
+      type: targetCase.type || "General",
+      caseId: targetCase.id,
+      flow: "Outbound",
+      template: "pleading",
+      title: `${targetCase.title} — Draft Pleading`
+    };
+  } else {
+    newDocWizardState = {
+      step: 1,
+      category: "",
+      type: "",
+      caseId: "",
+      flow: "Outbound",
+      template: "pleading",
+      title: ""
+    };
+  }
+
+  renderNewDocWizardStep();
+  modal.classList.remove("hidden");
+};
+
+window.openNewDocWizardForCase = function(caseId) {
+  window.openNewDocWizard(caseId);
+};
+
+window.closeNewDocWizard = function() {
+  document.getElementById("new-doc-wizard-modal")?.classList.add("hidden");
+};
+
+function renderNewDocWizardStep() {
+  const s = newDocWizardState.step;
+  [1, 2, 3, 4].forEach(i => {
+    const chip = document.getElementById(`wiz-step-${i}-lbl`);
+    if (chip) {
+      chip.className = i === s ? "wizard-step-chip active" : (i < s ? "wizard-step-chip completed" : "wizard-step-chip");
+    }
+  });
+
+  const backBtn = document.getElementById("wiz-btn-back");
+  const nextBtn = document.getElementById("wiz-btn-next");
+  if (backBtn) backBtn.style.visibility = s === 1 ? "hidden" : "visible";
+  if (nextBtn) {
+    nextBtn.innerHTML = s === 4
+      ? `<i class="bi bi-google"></i> Create &amp; Open Doc`
+      : `Continue <i class="bi bi-arrow-right"></i>`;
+  }
+
+  const contentEl = document.getElementById("wizard-content");
+  if (!contentEl) return;
+
+  const accessible = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+
+  if (s === 1) {
+    const caseCats = accessible.map(c => c.category || "Others");
+    const allCats = Array.from(new Set([...caseCats, ...(typeof CASE_CATEGORIES !== "undefined" ? CASE_CATEGORIES : [])]));
+    contentEl.innerHTML = `
+      <label class="field-label">1. Choose Litigation Category *</label>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;max-height:290px;overflow-y:auto;padding-right:4px">
+        ${allCats.map(cat => {
+          const cnt = accessible.filter(c => (c.category || "Others") === cat).length;
+          const isSel = newDocWizardState.category === cat;
+          return `
+            <button type="button" class="case-item" onclick="wizardSelectCategory('${cat.replace(/'/g, "\\'")}')" style="margin-bottom:0;border-color:${isSel ? 'var(--gold)' : 'var(--border)'};background:${isSel ? 'var(--gold-dim)' : 'var(--surface2)'}">
+              <i class="bi bi-folder-fill" style="color:var(--gold);font-size:18px"></i>
+              <div style="flex:1;font-weight:700;font-size:13.5px">${escHtml(cat)}</div>
+              <span class="badge" style="background:var(--surface3);color:var(--text-dim)">${cnt} case${cnt !== 1 ? 's' : ''}</span>
+            </button>`;
+        }).join("")}
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--text-dim)">Not tied to a specific case yet?</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="wizardSelectStandalone()"><i class="bi bi-file-earmark"></i> Standalone Draft</button>
+      </div>`;
+    return;
+  }
+
+  if (s === 2) {
+    const inCat = accessible.filter(c => (c.category || "Others") === newDocWizardState.category);
+    const types = Array.from(new Set(inCat.map(c => c.type || "General")));
+    if (types.length === 0) types.push("General");
+    contentEl.innerHTML = `
+      <label class="field-label">2. Choose Case Type under "${escHtml(newDocWizardState.category)}" *</label>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;max-height:300px;overflow-y:auto">
+        ${types.map(t => {
+          const cnt = inCat.filter(c => (c.type || "General") === t).length;
+          const isSel = newDocWizardState.type === t;
+          return `
+            <button type="button" class="case-item" onclick="wizardSelectType('${t.replace(/'/g, "\\'")}')" style="margin-bottom:0;border-color:${isSel ? 'var(--gold)' : 'var(--border)'};background:${isSel ? 'var(--gold-dim)' : 'var(--surface2)'}">
+              <i class="bi bi-folder-symlink-fill" style="color:var(--gold);font-size:18px"></i>
+              <div style="flex:1;font-weight:700;font-size:13.5px">${escHtml(t)}</div>
+              <span class="badge" style="background:var(--surface3);color:var(--text-dim)">${cnt} docket${cnt !== 1 ? 's' : ''}</span>
+            </button>`;
+        }).join("")}
+      </div>`;
+    return;
+  }
+
+  if (s === 3) {
+    const matchedCases = accessible.filter(c =>
+      (c.category || "Others") === newDocWizardState.category &&
+      (c.type || "General") === newDocWizardState.type
+    );
+    contentEl.innerHTML = `
+      <label class="field-label">3. Select Target Case Docket *</label>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;max-height:290px;overflow-y:auto">
+        ${matchedCases.length === 0
+          ? `<div style="text-align:center;padding:24px;color:var(--text-dim);font-size:13px">No existing cases in this sub-category.<br/><button type="button" class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="wizardSelectStandalone()">Continue as Standalone Draft</button></div>`
+          : matchedCases.map(c => {
+              const isSel = newDocWizardState.caseId === c.id;
+              return `
+                <button type="button" class="case-item" onclick="wizardSelectCase('${c.id}')" style="margin-bottom:0;border-color:${isSel ? 'var(--gold)' : 'var(--border)'};background:${isSel ? 'var(--gold-dim)' : 'var(--surface2)'}">
+                  <i class="bi bi-briefcase-fill" style="color:var(--violet);font-size:18px"></i>
+                  <div style="flex:1;text-align:left;min-width:0">
+                    <div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
+                    <div style="font-size:11.5px;color:var(--text-dim)">${escHtml(c.caseNumber || "No Docket #")} · ${escHtml(c.venue || "No Venue")}</div>
+                  </div>
+                </button>`;
+            }).join("")
+        }
+      </div>`;
+    return;
+  }
+
+  if (s === 4) {
+    const c = newDocWizardState.caseId ? accessible.find(x => x.id === newDocWizardState.caseId) : null;
+    const defaultTitle = newDocWizardState.title || (c ? `${c.title} — Pleading Draft` : "Legal Memorandum Draft");
+    newDocWizardState.title = defaultTitle;
+    contentEl.innerHTML = `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-size:10.5px;color:var(--text-dim);text-transform:uppercase;font-weight:700">Target Case Docket</div>
+        <div style="font-weight:700;font-size:14px;color:var(--gold-light)">${c ? `${escHtml(c.title)} (${escHtml(c.caseNumber || "No Docket")})` : "Standalone Firm Draft"}</div>
+      </div>
+
+      <label class="field-label">4. Designate Document Flow Direction *</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--surface2);border:1.5px solid ${newDocWizardState.flow === 'Outbound' ? 'var(--gold)' : 'var(--border)'};border-radius:10px;cursor:pointer">
+          <input type="radio" name="wiz-flow" value="Outbound" ${newDocWizardState.flow === 'Outbound' ? 'checked' : ''} onchange="newDocWizardState.flow='Outbound';renderNewDocWizardStep()" style="accent-color:var(--gold)"/>
+          <div>
+            <div style="font-weight:700;font-size:13px"><i class="bi bi-box-arrow-up" style="color:var(--gold)"></i> Outbound</div>
+            <div style="font-size:11px;color:var(--text-dim)">Filed / Drafted by Firm</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--surface2);border:1.5px solid ${newDocWizardState.flow === 'Inbound' ? 'var(--gold)' : 'var(--border)'};border-radius:10px;cursor:pointer">
+          <input type="radio" name="wiz-flow" value="Inbound" ${newDocWizardState.flow === 'Inbound' ? 'checked' : ''} onchange="newDocWizardState.flow='Inbound';renderNewDocWizardStep()" style="accent-color:var(--gold)"/>
+          <div>
+            <div style="font-weight:700;font-size:13px"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound</div>
+            <div style="font-size:11px;color:var(--text-dim)">Opposing / Court Pleading</div>
+          </div>
+        </label>
+      </div>
+
+      <label class="field-label">Document Title *</label>
+      <input type="text" id="wiz-inp-title" class="field-input" value="${escHtml(defaultTitle)}" oninput="newDocWizardState.title=this.value" style="margin-bottom:12px"/>
+
+      <label class="field-label">Document Starter Template</label>
+      <select id="wiz-inp-tpl" class="field-input" onchange="newDocWizardState.template=this.value">
+        <option value="pleading" ${newDocWizardState.template === 'pleading' ? 'selected' : ''}>Template: Court Pleading / Motion</option>
+        <option value="memo" ${newDocWizardState.template === 'memo' ? 'selected' : ''}>Template: Legal Memorandum</option>
+        <option value="demand" ${newDocWizardState.template === 'demand' ? 'selected' : ''}>Template: Formal Demand Letter</option>
+        <option value="affidavit" ${newDocWizardState.template === 'affidavit' ? 'selected' : ''}>Template: Judicial Affidavit / Verification</option>
+        <option value="blank" ${newDocWizardState.template === 'blank' ? 'selected' : ''}>Blank Google Document</option>
+      </select>`;
+  }
+}
+
+window.wizardSelectCategory = function(cat) {
+  newDocWizardState.category = cat;
+  newDocWizardState.type = "";
+  newDocWizardState.caseId = "";
+  newDocWizardState.step = 2;
+  renderNewDocWizardStep();
+};
+
+window.wizardSelectType = function(t) {
+  newDocWizardState.type = t;
+  newDocWizardState.caseId = "";
+  newDocWizardState.step = 3;
+  renderNewDocWizardStep();
+};
+
+window.wizardSelectCase = function(caseId) {
+  newDocWizardState.caseId = caseId;
+  newDocWizardState.title = "";
+  newDocWizardState.step = 4;
+  renderNewDocWizardStep();
+};
+
+window.wizardSelectStandalone = function() {
+  newDocWizardState.caseId = "";
+  newDocWizardState.title = "Legal Memorandum Draft";
+  newDocWizardState.step = 4;
+  renderNewDocWizardStep();
+};
+
+window.wizardBack = function() {
+  if (newDocWizardState.step > 1) {
+    newDocWizardState.step--;
+    renderNewDocWizardStep();
+  }
+};
+
+window.wizardNext = async function() {
+  if (newDocWizardState.step < 4) {
+    if (newDocWizardState.step === 1 && !newDocWizardState.category) return showToast("Please pick a category.", "error");
+    if (newDocWizardState.step === 2 && !newDocWizardState.type) return showToast("Please pick a case type.", "error");
+    if (newDocWizardState.step === 3 && !newDocWizardState.caseId) return showToast("Please select a case docket or choose Standalone.", "error");
+    newDocWizardState.step++;
+    renderNewDocWizardStep();
+    return;
+  }
+
+  const title = (document.getElementById("wiz-inp-title")?.value || newDocWizardState.title || "Legal Draft").trim();
+  const template = document.getElementById("wiz-inp-tpl")?.value || newDocWizardState.template || "pleading";
+  const flow = newDocWizardState.flow || "Outbound";
+  const caseId = newDocWizardState.caseId || "";
+
+  closeNewDocWizard();
+  await openGoogleDocModal(caseId, null, { flow, template, title });
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  REAL GOOGLE DOCS + LEGAL DRAFT WORKSPACE + SINGLE-PDF REPLACE
 // ═══════════════════════════════════════════════════════════════
 let activeInternalDocId = null;
 let activeGdocMode = "live"; // "live" | "draft"
+let activeGdocFlow = "Outbound";
+let activeEditingPdfContext = null; // { caseId, docIndex, drivePdfId, originalName, version, fileType }
+let docIsDirty = false;
+let pendingDiscardTarget = null; // "gdoc" | "pdf"
 let cachedDriveGoogleDocs = null;
+
+window.markDocDirty = function() {
+  docIsDirty = true;
+};
+
+window.attemptCloseGdocModal = function() {
+  if (docIsDirty) {
+    pendingDiscardTarget = "gdoc";
+    const descEl = document.getElementById("discard-modal-desc");
+    if (descEl) {
+      descEl.textContent = "You have unsaved changes in this Google Doc. If you close without pressing 'Save & Replace PDF', your edits will not be saved into the case PDF.";
+    }
+    const discardModal = document.getElementById("discard-confirm-modal");
+    if (discardModal) {
+      discardModal.classList.remove("hidden");
+      return;
+    }
+  }
+  closeGoogleDocModal();
+};
+
+window.closeDiscardModal = function() {
+  document.getElementById("discard-confirm-modal")?.classList.add("hidden");
+  pendingDiscardTarget = null;
+};
+
+window.executeDiscardAndClose = function() {
+  closeDiscardModal();
+  if (pendingDiscardTarget === "pdf") {
+    closeFilePreview();
+  } else {
+    closeGoogleDocModal();
+  }
+  showToast("Changes discarded.");
+};
 
 function buildGdocTemplateText(templateKey, targetCase) {
   const court = targetCase?.venue || "REGIONAL TRIAL COURT — NAGA CITY";
@@ -436,6 +723,7 @@ function updateGdocCaseBindingUI() {
   const caseId = document.getElementById("gdoc-case-select")?.value || "";
   const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
   const folderBadge = document.getElementById("gdoc-case-folder-badge");
+  const flowBadge = document.getElementById("gdoc-flow-badge");
   const savedInd = document.getElementById("gdoc-saved-indicator");
   const popoutLink = document.getElementById("gdoc-popout-link");
   const bannerPopout = document.getElementById("gdoc-banner-popout");
@@ -446,6 +734,17 @@ function updateGdocCaseBindingUI() {
     folderBadge.innerHTML = targetCase
       ? `<i class="bi bi-folder-check"></i> Case: ${escHtml(targetCase.title)}`
       : `<i class="bi bi-folder2"></i> Standalone Firm Draft`;
+  }
+
+  if (flowBadge) {
+    flowBadge.textContent = activeGdocFlow || "Outbound";
+    if (activeGdocFlow === "Inbound") {
+      flowBadge.style.background = "var(--green-bg)";
+      flowBadge.style.color = "var(--green)";
+    } else {
+      flowBadge.style.background = "var(--violet-bg)";
+      flowBadge.style.color = "var(--violet)";
+    }
   }
 
   const gdocUrl = activeInternalDocId ? `https://docs.google.com/document/d/${activeInternalDocId}/edit` : "#";
@@ -459,13 +758,15 @@ function updateGdocCaseBindingUI() {
   }
 
   if (savedInd) {
-    if (activeInternalDocId) {
+    if (activeEditingPdfContext && activeEditingPdfContext.originalName) {
+      savedInd.innerHTML = `<span style="color:var(--gold-light);font-weight:600"><i class="bi bi-arrow-repeat"></i> Saving compiles &amp; replaces <strong>${escHtml(activeEditingPdfContext.originalName)}</strong> directly</span>`;
+    } else if (activeInternalDocId) {
       savedInd.innerHTML = targetCase
-        ? `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Linked &amp; saved to "${escHtml(targetCase.title)}"</span>`
-        : `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Saved in Google Docs</span>`;
+        ? `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Linked to "${escHtml(targetCase.title)}" · Click Save &amp; Replace PDF when done</span>`
+        : `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Open in Google Docs</span>`;
     } else {
       savedInd.textContent = targetCase
-        ? `Will save into "${targetCase.title}" Drive folder & case files`
+        ? `Will save into "${targetCase.title}" (${activeGdocFlow})`
         : "Select a case above or click Create & Open Google Doc";
     }
   }
@@ -517,7 +818,7 @@ window.reloadLiveGoogleDocFrame = function() {
   }
 };
 
-async function resolveGdocTargetFolder(caseId) {
+async function resolveGdocTargetFolder(caseId, flowDir = null) {
   const u = window._currentUser || window._auth?.currentUser;
   const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   let folderId = myProf?.driveFolderId || null;
@@ -527,37 +828,60 @@ async function resolveGdocTargetFolder(caseId) {
   }
 
   const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
+  const flow = flowDir || activeGdocFlow || "Outbound";
   if (targetCase && typeof getOrCreateCaseFolderHierarchy === "function") {
     folderId = await getOrCreateCaseFolderHierarchy(
       targetCase.category || "Other",
       targetCase.type || "Other",
       targetCase.title || "Untitled",
-      "Outbound",
+      flow,
       folderId || "root"
     );
   }
   return { folderId, targetCase };
 }
 
-async function attachDocEntryToSpecificCase(targetCase, entry) {
+async function attachDocEntryToSpecificCase(targetCase, entry, replaceIndex = -1, logActionText = null) {
   if (!targetCase) return;
   const existingDocs = Array.isArray(targetCase.documents) ? [...targetCase.documents] : [];
-  const idx = entry.driveFileId
-    ? existingDocs.findIndex(d => d.driveFileId === entry.driveFileId)
-    : -1;
-
-  if (idx >= 0) {
-    existingDocs[idx] = { ...existingDocs[idx], ...entry };
+  if (replaceIndex >= 0 && replaceIndex < existingDocs.length) {
+    existingDocs[replaceIndex] = { ...existingDocs[replaceIndex], ...entry };
   } else {
-    existingDocs.push(entry);
+    const idx = entry.driveFileId
+      ? existingDocs.findIndex(d => d.driveFileId === entry.driveFileId)
+      : -1;
+    if (idx >= 0) existingDocs[idx] = { ...existingDocs[idx], ...entry };
+    else existingDocs.push(entry);
   }
 
-  await dbUpdateCase(targetCase.id, { documents: existingDocs });
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  const editorName = myProf?.name || u?.displayName || u?.email?.split("@")[0] || "Counsel";
+  const existingLogs = Array.isArray(targetCase.logs) ? [...targetCase.logs] : [];
+
+  if (logActionText) {
+    existingLogs.unshift({
+      version: entry.version || "v1.0",
+      action: logActionText,
+      user: editorName,
+      time: new Date().toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    });
+  }
+
+  await dbUpdateCase(targetCase.id, { documents: existingDocs, logs: existingLogs });
   targetCase.documents = existingDocs;
+  targetCase.logs = existingLogs;
+
   if (selCase && selCase.id === targetCase.id) {
     selCase = { ...targetCase };
     if (typeof renderCaseDetail === "function") renderCaseDetail();
   }
+}
+
+function bumpDocVersion(verStr) {
+  const num = parseFloat(String(verStr || "v1.0").replace(/^v/i, ""));
+  if (isNaN(num)) return "v1.1";
+  return "v" + (num + 0.1).toFixed(1);
 }
 
 window.launchLiveGoogleDocForCase = async function() {
@@ -574,25 +898,14 @@ window.launchLiveGoogleDocForCase = async function() {
     const caseId = document.getElementById("gdoc-case-select")?.value || "";
     const templateKey = document.getElementById("gdoc-template-select")?.value || "pleading";
 
-    const { folderId, targetCase } = await resolveGdocTargetFolder(caseId);
+    const { folderId, targetCase } = await resolveGdocTargetFolder(caseId, activeGdocFlow);
     const initialText = buildGdocTemplateText(templateKey, targetCase);
 
-    showToast(targetCase ? `Creating Google Doc inside "${targetCase.title}"...` : "Creating Google Doc...");
+    showToast(targetCase ? `Opening Google Doc workspace for "${targetCase.title}"...` : "Creating Google Doc...");
     const docMeta = await createInternalGoogleDoc(title, initialText, folderId);
     activeInternalDocId = docMeta.id;
     cachedDriveGoogleDocs = null;
-
-    if (targetCase) {
-      await attachDocEntryToSpecificCase(targetCase, {
-        name: `${title} (Google Doc)`,
-        size: "Google Doc",
-        date: new Date().toLocaleDateString(),
-        fileType: "Outbound",
-        version: "v1.0",
-        driveFileId: docMeta.id,
-        driveLink: docMeta.webViewLink || `https://docs.google.com/document/d/${docMeta.id}/edit`
-      });
-    }
+    docIsDirty = true;
 
     const canvasEl = document.getElementById("gdoc-canvas");
     if (canvasEl && initialText) canvasEl.innerText = initialText;
@@ -602,13 +915,7 @@ window.launchLiveGoogleDocForCase = async function() {
 
     updateGdocCaseBindingUI();
     renderGoogleStatusPopover();
-    if (currentView === "mydrive" && typeof loadExplorerFiles === "function") loadExplorerFiles();
-    if (currentView === "allcases") {
-      renderAllCases();
-      if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(true);
-    }
-
-    showToast(targetCase ? `Google Doc created & saved to "${targetCase.title}"!` : "Google Doc created!");
+    showToast("Google Doc ready! Click 'Save & Replace PDF' when finished.");
   } catch (err) {
     console.error("launchLiveGoogleDocForCase error:", err);
     showToast("Failed to create Google Doc: " + err.message, "error");
@@ -620,10 +927,13 @@ window.launchLiveGoogleDocForCase = async function() {
   }
 };
 
-window.openGoogleDocModal = async function(caseId = "", existingDocId = null) {
+window.openGoogleDocModal = async function(caseId = "", existingDocId = null, opts = {}) {
   const modal = document.getElementById("gdoc-modal");
   if (!modal) return;
   activeInternalDocId = existingDocId || null;
+  activeGdocFlow = opts.flow || "Outbound";
+  activeEditingPdfContext = opts.editingPdfContext || null;
+  docIsDirty = !!existingDocId;
 
   const caseSel = document.getElementById("gdoc-case-select");
   if (caseSel) {
@@ -633,8 +943,11 @@ window.openGoogleDocModal = async function(caseId = "", existingDocId = null) {
   }
 
   const titleInp = document.getElementById("gdoc-title-input");
+  const tplSel = document.getElementById("gdoc-template-select");
   const canvasEl = document.getElementById("gdoc-canvas");
   const frame = document.getElementById("gdoc-live-iframe");
+
+  if (tplSel && opts.template) tplSel.value = opts.template;
 
   const connected = typeof hasValidToken === "function" && hasValidToken();
   const badgeEl = document.getElementById("gdoc-api-status-badge");
@@ -646,10 +959,11 @@ window.openGoogleDocModal = async function(caseId = "", existingDocId = null) {
   const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
 
   if (activeInternalDocId) {
+    if (titleInp && opts.title) titleInp.value = opts.title;
     if (frame) frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
     if (connected && typeof loadInternalGoogleDocContent === "function") {
       loadInternalGoogleDocContent(activeInternalDocId).then(docData => {
-        if (titleInp) titleInp.value = docData.title;
+        if (titleInp && !opts.title) titleInp.value = docData.title;
         if (canvasEl && docData.text) canvasEl.innerText = docData.text;
       }).catch(() => {});
     }
@@ -659,16 +973,15 @@ window.openGoogleDocModal = async function(caseId = "", existingDocId = null) {
   } else {
     if (frame) frame.src = "about:blank";
     if (titleInp) {
-      titleInp.value = targetCase ? `${targetCase.title} — Draft Pleading` : "Legal Memorandum Draft";
+      titleInp.value = opts.title || (targetCase ? `${targetCase.title} — Draft Pleading` : "Legal Memorandum Draft");
     }
     if (canvasEl) {
-      canvasEl.innerText = buildGdocTemplateText("pleading", targetCase);
+      canvasEl.innerText = buildGdocTemplateText(opts.template || "pleading", targetCase);
     }
     updateGdocCaseBindingUI();
     switchGdocEditorMode("live");
     modal.classList.remove("hidden");
 
-    // If opened directly from a specific case & Google is connected, launch real Google Docs immediately!
     if (targetCase && connected) {
       await launchLiveGoogleDocForCase();
     }
@@ -677,11 +990,14 @@ window.openGoogleDocModal = async function(caseId = "", existingDocId = null) {
 
 window.closeGoogleDocModal = function() {
   document.getElementById("gdoc-modal")?.classList.add("hidden");
+  docIsDirty = false;
+  activeEditingPdfContext = null;
 };
 
 window.execInternalDocFmt = function(cmd, val = null) {
   document.execCommand(cmd, false, val);
   document.getElementById("gdoc-canvas")?.focus();
+  markDocDirty();
 };
 
 window.insertInternalDocTemplate = function(type) {
@@ -704,16 +1020,20 @@ window.insertInternalDocTemplate = function(type) {
   } else if (type === "service") {
     c.innerHTML += `<p style="margin-top:12px"><strong>EXPLANATION &amp; PROOF OF SERVICE</strong><br/>Copy furnished opposing counsel via registered mail / personal service due to distance and lack of messengerial personnel.</p>`;
   }
+  markDocDirty();
   showToast("Inserted legal template block");
 };
 
-window.saveInternalGoogleDoc = async function(exportPdf = false) {
+// ── SAVE & REPLACE CASE PDF DIRECTLY (NO DUPLICATES) ─────────
+window.saveAndReplaceCasePdf = async function(exportNewCopy = false) {
   if (typeof hasValidToken !== "function" || !hasValidToken()) {
     try { await promptDriveAuth(true); }
     catch (e) { showToast("Connect Google Account first.", "error"); return; }
   }
 
-  const title = (document.getElementById("gdoc-title-input")?.value || "").trim() || "Untitled Legal Draft";
+  const rawTitle = (document.getElementById("gdoc-title-input")?.value || "").trim() || "Untitled Legal Draft";
+  const cleanTitle = rawTitle.replace(/\.pdf$/i, "");
+  const pdfName = cleanTitle + ".pdf";
   const caseId = document.getElementById("gdoc-case-select")?.value || "";
   const plainText = (document.getElementById("gdoc-canvas")?.innerText || "").trim();
 
@@ -723,80 +1043,84 @@ window.saveInternalGoogleDoc = async function(exportPdf = false) {
   if (pdfBtn) pdfBtn.disabled = true;
 
   try {
-    const { folderId, targetCase } = await resolveGdocTargetFolder(caseId);
-    showToast(exportPdf ? "Compiling Google Doc & exporting PDF to case..." : "Saving & linking Google Doc to case...");
-    let docMeta = null;
+    const { folderId, targetCase } = await resolveGdocTargetFolder(caseId, activeGdocFlow);
+    showToast(exportNewCopy ? `Exporting standalone copy "${pdfName}"...` : `Saving & replacing "${pdfName}"...`);
 
-    if (activeInternalDocId) {
-      if (typeof renameDriveFile === "function") {
-        await renameDriveFile(activeInternalDocId, title).catch(() => {});
-      }
-      if (activeGdocMode === "draft") {
-        await updateInternalGoogleDocText(activeInternalDocId, plainText);
-      }
-      if (targetCase && folderId && typeof moveDriveFileToFolder === "function") {
-        await moveDriveFileToFolder(activeInternalDocId, folderId);
-      }
-      docMeta = { id: activeInternalDocId, name: title, webViewLink: `https://docs.google.com/document/d/${activeInternalDocId}/edit` };
-    } else {
+    let docId = activeInternalDocId;
+    if (!docId) {
       const initialContent = activeGdocMode === "draft"
         ? plainText
         : buildGdocTemplateText(document.getElementById("gdoc-template-select")?.value || "pleading", targetCase);
-      docMeta = await createInternalGoogleDoc(title, initialContent, folderId);
-      activeInternalDocId = docMeta.id;
-      const frame = document.getElementById("gdoc-live-iframe");
-      if (frame) frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
+      const docMeta = await createInternalGoogleDoc(cleanTitle, initialContent, folderId);
+      docId = docMeta.id;
+      activeInternalDocId = docId;
+    } else {
+      if (typeof renameDriveFile === "function") {
+        await renameDriveFile(docId, cleanTitle).catch(() => {});
+      }
+      if (activeGdocMode === "draft" && typeof updateInternalGoogleDocText === "function") {
+        await updateInternalGoogleDocText(docId, plainText);
+      }
     }
 
+    const existingPdfId = (!exportNewCopy && activeEditingPdfContext?.drivePdfId) ? activeEditingPdfContext.drivePdfId : null;
+    const pdfMeta = await exportGoogleDocToPdf(docId, pdfName, folderId, existingPdfId);
     cachedDriveGoogleDocs = null;
 
-    if (targetCase) {
-      await attachDocEntryToSpecificCase(targetCase, {
-        name: `${title} (Google Doc)`,
-        size: "Google Doc",
-        date: new Date().toLocaleDateString(),
-        fileType: "Outbound",
-        version: "v1.0",
-        driveFileId: docMeta.id,
-        driveLink: docMeta.webViewLink || `https://docs.google.com/document/d/${docMeta.id}/edit`
-      });
-    }
+    const u = window._currentUser || window._auth?.currentUser;
+    const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+    const editorName = myProf?.name || u?.displayName || u?.email?.split("@")[0] || "Counsel";
 
-    if (exportPdf && typeof exportGoogleDocToPdf === "function") {
-      const pdfName = title.replace(/\.pdf$/i, "") + ".pdf";
-      const pdfMeta = await exportGoogleDocToPdf(docMeta.id, pdfName, folderId);
+    if (targetCase) {
+      const isReplacing = !exportNewCopy && activeEditingPdfContext && activeEditingPdfContext.caseId === targetCase.id && activeEditingPdfContext.docIndex >= 0;
+      const nextVer = isReplacing ? bumpDocVersion(activeEditingPdfContext.version) : "v1.0";
+
       const pdfEntry = {
         name: pdfName,
         size: pdfMeta.size || "PDF",
         date: new Date().toLocaleDateString(),
-        fileType: "Outbound",
-        version: "v1.0",
+        fileType: activeGdocFlow || activeEditingPdfContext?.fileType || "Outbound",
+        version: nextVer,
+        lastEditedBy: editorName,
         driveFileId: pdfMeta.id,
-        driveLink: pdfMeta.webViewLink
+        driveLink: pdfMeta.webViewLink || `https://drive.google.com/file/d/${pdfMeta.id}/view`,
+        editableGdocId: docId
       };
-      if (targetCase) {
-        await attachDocEntryToSpecificCase(targetCase, pdfEntry);
-      }
-      showToast(targetCase ? `Exported & saved "${pdfName}" to "${targetCase.title}"!` : `Exported "${pdfName}" to Drive!`);
+
+      const logMsg = isReplacing
+        ? `Edited in Google Docs → compiled & replaced ${pdfName}`
+        : (exportNewCopy ? `Exported new PDF copy: ${pdfName}` : `Created in Google Docs → saved ${pdfName}`);
+
+      await attachDocEntryToSpecificCase(
+        targetCase,
+        pdfEntry,
+        isReplacing ? activeEditingPdfContext.docIndex : -1,
+        logMsg
+      );
+
+      showToast(isReplacing ? `Replaced "${pdfName}" (${nextVer}) directly in "${targetCase.title}"!` : `Saved "${pdfName}" to "${targetCase.title}"!`);
     } else {
-      showToast(targetCase ? `Saved "${title}" to "${targetCase.title}"!` : `Saved "${title}" to Google Docs!`);
+      showToast(`Exported "${pdfName}" to Google Drive!`);
     }
 
-    updateGdocCaseBindingUI();
+    docIsDirty = false;
+    closeGoogleDocModal();
+
     if (currentView === "mydrive" && typeof loadExplorerFiles === "function") loadExplorerFiles();
     if (currentView === "allcases") {
       renderAllCases();
-      if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(true);
+      if (allCasesActiveTab === "docs") renderDriveExplorer();
     }
-    if (exportPdf) closeGoogleDocModal();
   } catch (err) {
-    console.error("saveInternalGoogleDoc error:", err);
-    showToast("Google Docs error: " + err.message, "error");
+    console.error("saveAndReplaceCasePdf error:", err);
+    showToast("Failed to save PDF: " + err.message, "error");
   } finally {
     if (saveBtn) saveBtn.disabled = false;
     if (pdfBtn) pdfBtn.disabled = false;
   }
 };
+
+window.saveInternalGoogleDoc = window.saveAndReplaceCasePdf;
 
 // ── CAPSULE SIDEBAR SYNC, EDGE HANDLE & FLOATING TOOLTIPS ────
 function syncSidebarHandleUI() {
@@ -856,7 +1180,6 @@ function restoreDismissedBanners() {
   });
 }
 
-// Note: #research-widget stays open persistently when clicking outside—only closes via Minimize!
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#top-hdr-actions")) window.closeAllTopPopovers();
 });
@@ -866,7 +1189,9 @@ document.addEventListener("keydown", (e) => {
     window.closeAllTopPopovers();
     document.getElementById("diagnostic-modal")?.classList.add("hidden");
     document.getElementById("date-schedule-modal")?.classList.add("hidden");
-    document.getElementById("gdoc-modal")?.classList.add("hidden");
+    if (!document.getElementById("gdoc-modal")?.classList.contains("hidden")) {
+      attemptCloseGdocModal();
+    }
     closeFilePreview();
     if (typeof closeAllSheets === "function") closeAllSheets();
   }
@@ -1265,7 +1590,7 @@ window.deleteBusySlot = function(id) {
   });
 };
 
-// ── CALENDAR MONTH VIEW + FIXED ATTORNEY FILTER + STEALTH ────
+// ── CALENDAR MONTH VIEW + ATTORNEY FILTER + STEALTH ──────────
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 let selectedCalDateStr = (() => {
@@ -1662,8 +1987,8 @@ const DESKTOP_PAGE_META = {
   profiles:      ["Office Attorneys", "Directory of partners and associates in the firm"],
   profileDetail: ["Attorney Profile", "Assigned caseload, practice bio, and contact details"],
   profileForm:   ["Attorney Profile Setup", "Create or edit attorney profile information"],
-  allcases:      ["All Cases & Google Docs", "Search, filter, manage cases, and create or edit Google Docs"],
-  caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
+  allcases:      ["All Cases & Google Docs", "Search, filter, manage cases, and explore sorted document folders"],
+  caseDetail:    ["Case File Details", "Full summary, hearing schedule, activity logs, and attached PDFs"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["Profile Settings", "Manage your display name, contact number, profile photo, and practice bio"],
   settings:      ["Settings", "Accessibility, notification sounds, security credentials, and firm policies"]
@@ -1721,16 +2046,33 @@ function showView(name) {
   document.getElementById("view-" + name)?.classList.remove("hidden");
   currentView = name;
 
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn, .bnav-btn").forEach(b => b.classList.remove("active"));
   let key = name;
   if (name === "caseDetail" || name === "caseForm") key = "allcases";
   else if (name === "profileDetail" || name === "profileForm") key = "profiles";
   document.querySelector(`.nav-btn[data-nav="${key}"]`)?.classList.add("active");
+  document.querySelector(`.bnav-btn[data-nav="${key}"]`)?.classList.add("active");
+
+  const mobileFormBar = document.getElementById("mobile-form-bar");
+  const bottomNavWrap = document.getElementById("bottom-nav-wrap");
+  if (mobileFormBar) mobileFormBar.classList.toggle("hidden", name !== "caseForm");
+  if (bottomNavWrap) bottomNavWrap.classList.toggle("hidden", name === "caseForm");
+
+  const topbarBackBtn = document.getElementById("topbar-back-btn");
+  const topbarCrest   = document.getElementById("topbar-crest");
+  const subViews = ["caseDetail", "caseForm", "profileDetail", "profileForm"];
+  if (topbarBackBtn && topbarCrest) {
+    const isSub = subViews.includes(name);
+    topbarBackBtn.classList.toggle("hidden", !isSub);
+    topbarCrest.classList.toggle("hidden", isSub);
+  }
 
   const meta = DESKTOP_PAGE_META[name];
   if (meta) {
     setElText("main-page-title", meta[0]);
     setElText("main-page-sub", meta[1]);
+    setElText("mobile-page-title", meta[0]);
+    setElText("mobile-page-sub", meta[1]);
   }
 }
 
@@ -1746,7 +2088,7 @@ function executeNavigation(view) {
   if (view === "allcases") {
     if (typeof currentAllCasesPage !== "undefined") currentAllCasesPage = 1;
     renderAllCases();
-    if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(false);
+    if (allCasesActiveTab === "docs") renderDriveExplorer();
   }
   if (view === "myprofile")     renderMyProfile();
   if (view === "settings" && typeof renderSettingsView === "function") renderSettingsView();
@@ -1764,6 +2106,30 @@ window.showView = showView;
 window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
+// Mobile UI Helpers (safe when not on mobile)
+window.switchDashSegment = function(seg) {
+  document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
+  document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
+  document.getElementById("dash-panel-cases")?.classList.toggle("hidden", seg !== "cases");
+  document.getElementById("dash-calendar-card")?.classList.toggle("hidden", seg !== "schedule");
+};
+window.toggleFiltersDrawer = function() {
+  const drawer = document.getElementById("ac-filters-drawer");
+  const btn = document.getElementById("toggle-filters-btn");
+  if (!drawer) return;
+  const hidden = drawer.classList.toggle("hidden");
+  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
+};
+window.openSheet = function(id) { document.getElementById(id)?.classList.remove("hidden"); };
+window.closeAllSheets = function() {
+  document.querySelectorAll(".sheet-backdrop").forEach(s => s.classList.add("hidden"));
+};
+window.goBackMobile = function() {
+  if (currentView === "caseForm") handleCaseCancelOrExit();
+  else if (currentView === "caseDetail") handleCaseDetailBack();
+  else if (currentView === "profileDetail" || currentView === "profileForm") navTo("profiles");
+  else navTo("dashboard");
+};
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
@@ -1977,7 +2343,7 @@ function renderProfiles() {
 }
 window.renderProfiles = renderProfiles;
 
-// ── CASE SHARING SYSTEM (STEALTH HIDES SUPERDEV FROM ASSOCIATES) ──
+// ── CASE SHARING SYSTEM (WITH AUDIT LOGGING & DRIVE PERMISSION) ──
 window.openShareCaseModal = function() {
   if (!selCase) return;
   const listEl = document.getElementById("share-modal-list");
@@ -2014,12 +2380,38 @@ async function saveShareSettings() {
   document.querySelectorAll('input[name="share-associate-checkbox"]').forEach(cb => { if (cb.checked) selectedUids.push(cb.value); });
   const ownerUid = selCase.ownerUid || window._currentUser.uid;
   const allowedUids = Array.from(new Set([ownerUid, ...selectedUids]));
+
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  const editorName = myProf?.name || u?.displayName || u?.email?.split("@")[0] || "Counsel";
+  const sharedNames = selectedUids.map(uid => profiles.find(p => p.ownerUid === uid)?.name).filter(Boolean);
+  const existingLogs = Array.isArray(selCase.logs) ? [...selCase.logs] : [];
+  existingLogs.unshift({
+    version: "—",
+    action: sharedNames.length ? `Updated sharing & co-editing: ${sharedNames.join(", ")}` : "Removed shared associates",
+    user: editorName,
+    time: new Date().toLocaleString("en-PH", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  });
+
   try {
     showToast("Updating share settings...");
-    if (typeof dbUpdateCase === "function") await dbUpdateCase(selCase.id, { sharedWith: selectedUids, allowedUids });
-    selCase.sharedWith = selectedUids; selCase.allowedUids = allowedUids;
+    if (typeof dbUpdateCase === "function") await dbUpdateCase(selCase.id, { sharedWith: selectedUids, allowedUids, logs: existingLogs });
+    selCase.sharedWith = selectedUids; selCase.allowedUids = allowedUids; selCase.logs = existingLogs;
+
+    if (typeof shareDriveFolderWithAssociate === "function" && typeof hasValidToken === "function" && hasValidToken()) {
+      for (const uid of selectedUids) {
+        const assoc = profiles.find(p => p.ownerUid === uid);
+        if (assoc?.email && Array.isArray(selCase.documents)) {
+          for (const d of selCase.documents) {
+            if (d.driveFileId) await shareDriveFolderWithAssociate(d.driveFileId, assoc.email).catch(() => {});
+          }
+        }
+      }
+    }
+
     if (typeof dbLogAuditAction === "function") dbLogAuditAction("CASE_SHARED", { caseId: selCase.id, sharedWith: selectedUids });
     closeShareModal();
+    renderCaseDetail();
     showToast("Case shared successfully!");
   } catch (err) {
     showToast("Failed to share case: " + err.message, "error");
@@ -2121,10 +2513,13 @@ function renderProfileCases() {
 }
 window.renderProfileCases = renderProfileCases;
 
-// ── ALL CASES & COMBINED GOOGLE DOCS VIEW ─────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  ALL CASES + SORTED DRIVE-STYLE EXPLORER (Category -> Type -> Case -> In/Out)
+// ═══════════════════════════════════════════════════════════════
 let currentAllCasesPage = 1;
 const allCasesPageSize = 10;
 let allCasesActiveTab = "cases"; // "cases" | "docs"
+let driveNavState = { level: "root", category: null, type: null, caseId: null, flow: null };
 
 window.changeAllCasesPage = (delta) => { currentAllCasesPage += delta; renderAllCases(); };
 window.goToAllCasesPage = (pageNum) => { currentAllCasesPage = pageNum; renderAllCases(); };
@@ -2144,162 +2539,294 @@ window.switchAllCasesTab = function(tab) {
   document.getElementById("ac-docs-body")?.classList.toggle("hidden", allCasesActiveTab !== "docs");
 
   if (allCasesActiveTab === "docs") {
-    loadAllCasesGoogleDocs(false);
+    resetDriveExplorer();
   } else {
     renderAllCases();
   }
 };
 
-function populateAllCasesDocsFilter() {
-  const sel = document.getElementById("ac-docs-case-filter");
-  if (!sel) return;
-  const cur = sel.value || "All";
-  const accessible = getAccessibleCases();
-  sel.innerHTML = `<option value="All">All Cases &amp; Standalone Drafts</option>` +
-    `<option value="__standalone__">Standalone Drive Google Docs</option>` +
-    accessible.map(c => `<option value="${c.id}">${escHtml(c.title)}</option>`).join("");
-  const exists = Array.from(sel.options).some(o => o.value === cur);
-  sel.value = exists ? cur : "All";
-}
+window.resetDriveExplorer = function() {
+  driveNavState = { level: "root", category: null, type: null, caseId: null, flow: null };
+  const s = document.getElementById("ac-docs-search");
+  if (s) s.value = "";
+  renderDriveExplorer();
+};
 
-async function loadAllCasesGoogleDocs(forceSync = false) {
-  populateAllCasesDocsFilter();
-  const listEl = document.getElementById("ac-docs-list");
-  if (!listEl) return;
+window.driveGoBackOneLevel = function() {
+  if (driveNavState.level === "flow") {
+    navDriveCase(driveNavState.caseId);
+  } else if (driveNavState.level === "case") {
+    navDriveType(driveNavState.category, driveNavState.type);
+  } else if (driveNavState.level === "type") {
+    navDriveCategory(driveNavState.category);
+  } else if (driveNavState.level === "category") {
+    resetDriveExplorer();
+  }
+};
 
-  if (typeof hasValidToken === "function" && hasValidToken() && (forceSync || cachedDriveGoogleDocs === null)) {
-    listEl.innerHTML = `<div class="card" style="text-align:center;padding:36px"><span class="spinner"></span><div style="font-size:12.5px;color:var(--text-muted);margin-top:10px">Syncing Google Docs from Drive…</div></div>`;
-    try {
-      const q = encodeURIComponent("mimeType='application/vnd.google-apps.document' and trashed=false");
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime,webViewLink)&orderBy=modifiedTime desc&pageSize=50`, {
-        headers: { Authorization: "Bearer " + accessToken }
-      });
-      if (res.ok) {
-        cachedDriveGoogleDocs = (await res.json()).files || [];
-      } else {
-        cachedDriveGoogleDocs = [];
-      }
-    } catch (e) {
-      cachedDriveGoogleDocs = [];
+window.navDriveCategory = function(cat) {
+  driveNavState = { level: "category", category: cat, type: null, caseId: null, flow: null };
+  renderDriveExplorer();
+};
+
+window.navDriveType = function(cat, type) {
+  driveNavState = { level: "type", category: cat, type: type, caseId: null, flow: null };
+  renderDriveExplorer();
+};
+
+window.navDriveCase = function(caseId) {
+  const c = getAccessibleCases().find(x => x.id === caseId);
+  if (!c) return resetDriveExplorer();
+  driveNavState = {
+    level: "case",
+    category: c.category || "Others",
+    type: c.type || "General",
+    caseId: c.id,
+    flow: null
+  };
+  renderDriveExplorer();
+};
+
+window.navDriveFlow = function(flow) {
+  driveNavState.level = "flow";
+  driveNavState.flow = flow;
+  renderDriveExplorer();
+};
+
+function renderDriveBreadcrumb() {
+  const bar = document.getElementById("drive-breadcrumb-bar");
+  const backBtn = document.getElementById("drive-back-btn");
+  if (!bar) return;
+
+  if (backBtn) {
+    backBtn.style.display = driveNavState.level === "root" ? "none" : "inline-flex";
+  }
+
+  let html = `<span style="cursor:pointer;text-decoration:underline" onclick="resetDriveExplorer()"><i class="bi bi-folder-fill"></i> Case Vault</span>`;
+  if (driveNavState.category) {
+    html += ` / <span style="cursor:pointer;text-decoration:underline" onclick="navDriveCategory('${driveNavState.category.replace(/'/g, "\\'")}')">${escHtml(driveNavState.category)}</span>`;
+  }
+  if (driveNavState.type) {
+    html += ` / <span style="cursor:pointer;text-decoration:underline" onclick="navDriveType('${driveNavState.category.replace(/'/g, "\\'")}','${driveNavState.type.replace(/'/g, "\\'")}')">${escHtml(driveNavState.type)}</span>`;
+  }
+  if (driveNavState.caseId) {
+    const c = getAccessibleCases().find(x => x.id === driveNavState.caseId);
+    if (c) {
+      html += ` / <span style="cursor:pointer;text-decoration:underline" onclick="navDriveCase('${c.id}')">${escHtml(c.title)}</span>`;
     }
   }
-
-  renderAllCasesGoogleDocs();
+  if (driveNavState.flow) {
+    html += ` / <span style="color:var(--text);font-weight:700">${escHtml(driveNavState.flow)} Files</span>`;
+  }
+  bar.innerHTML = html;
 }
-window.loadAllCasesGoogleDocs = loadAllCasesGoogleDocs;
 
-function renderAllCasesGoogleDocs() {
-  const listEl = document.getElementById("ac-docs-list");
-  if (!listEl) return;
+window.renderDriveExplorer = function() {
+  const tilesEl = document.getElementById("drive-tiles-container");
+  const filesEl = document.getElementById("drive-files-container");
+  if (!tilesEl || !filesEl) return;
 
-  const q = (document.getElementById("ac-docs-search")?.value || "").toLowerCase().trim();
-  const caseFilter = document.getElementById("ac-docs-case-filter")?.value || "All";
+  renderDriveBreadcrumb();
+  tilesEl.classList.remove("hidden");
+  filesEl.classList.add("hidden");
+
   const accessible = getAccessibleCases();
-
-  const mergedMap = new Map();
-
-  // 1. Case-linked Google Docs
-  accessible.forEach(c => {
-    (c.documents || []).forEach(doc => {
-      const isGDoc = !!(doc.driveFileId && ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document")));
-      if (!isGDoc) return;
-      mergedMap.set(doc.driveFileId, {
-        id: doc.driveFileId,
-        name: (doc.name || "Untitled Google Doc").replace(/\s*\(Google Doc\)$/i, ""),
-        webViewLink: doc.driveLink || `https://docs.google.com/document/d/${doc.driveFileId}/edit`,
-        date: doc.date || "",
-        caseId: c.id,
-        caseTitle: c.title,
-        caseNumber: c.caseNumber || "",
-        fileType: doc.fileType || "Outbound"
-      });
-    });
-  });
-
-  // 2. Live Google Docs from user's Drive
-  if (Array.isArray(cachedDriveGoogleDocs)) {
-    cachedDriveGoogleDocs.forEach(f => {
-      if (mergedMap.has(f.id)) {
-        const existing = mergedMap.get(f.id);
-        if (!existing.date && f.modifiedTime) existing.date = new Date(f.modifiedTime).toLocaleDateString();
-        if (!existing.webViewLink && f.webViewLink) existing.webViewLink = f.webViewLink;
-      } else {
-        mergedMap.set(f.id, {
-          id: f.id,
-          name: f.name || "Untitled Google Doc",
-          webViewLink: f.webViewLink || `https://docs.google.com/document/d/${f.id}/edit`,
-          date: f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString() : "",
-          caseId: "",
-          caseTitle: "",
-          caseNumber: "",
-          fileType: "Drive"
-        });
-      }
-    });
-  }
-
-  let items = Array.from(mergedMap.values()).filter(item => {
-    const matchCase = caseFilter === "All"
-      || (caseFilter === "__standalone__" && !item.caseId)
-      || item.caseId === caseFilter;
-    const matchQ = !q
-      || (item.name || "").toLowerCase().includes(q)
-      || (item.caseTitle || "").toLowerCase().includes(q)
-      || (item.caseNumber || "").toLowerCase().includes(q);
-    return matchCase && matchQ;
-  });
-
+  const totalDocs = accessible.reduce((acc, c) => acc + (Array.isArray(c.documents) ? c.documents.length : 0), 0);
   if (allCasesActiveTab === "docs") {
-    setElText("allcases-count", `${items.length} Google Doc${items.length !== 1 ? "s" : ""} found`);
+    setElText("allcases-count", `${accessible.length} case folder${accessible.length !== 1 ? "s" : ""} · ${totalDocs} file${totalDocs !== 1 ? "s" : ""}`);
   }
 
-  const isConnected = typeof hasValidToken === "function" && hasValidToken();
+  if (accessible.length === 0) {
+    tilesEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)">No accessible cases yet. Create a case or Google Doc to populate your vault.</div>`;
+    return;
+  }
 
-  if (items.length === 0) {
-    listEl.innerHTML = `
-      <div class="card" style="text-align:center;padding:40px 20px">
-        <div style="font-size:34px;color:var(--gold);margin-bottom:10px"><i class="bi bi-file-earmark-richtext"></i></div>
-        <div style="font-size:15px;font-weight:700;margin-bottom:6px">${isConnected ? "No Google Docs match your filter" : "Connect Google Account to View All Drive Docs"}</div>
-        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">Create a new Google Doc directly inside a case docket or as a standalone firm draft.</div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-          ${!isConnected ? `<button type="button" class="btn btn-secondary btn-sm" onclick="connectOrOpenGoogleAction()"><i class="bi bi-google"></i> Connect Google Account</button>` : ""}
-          <button type="button" class="btn btn-primary btn-sm" onclick="openGoogleDocModal('${caseFilter !== 'All' && caseFilter !== '__standalone__' ? caseFilter : ''}')"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
-        </div>
+  // Level 1: Root Categories
+  if (driveNavState.level === "root") {
+    const categories = Array.from(new Set(accessible.map(c => c.category || "Others"))).sort();
+    tilesEl.innerHTML = categories.map(cat => {
+      const catCases = accessible.filter(c => (c.category || "Others") === cat);
+      const fileCount = catCases.reduce((acc, c) => acc + (Array.isArray(c.documents) ? c.documents.length : 0), 0);
+      return `
+        <div class="folder-tile" onclick="navDriveCategory('${cat.replace(/'/g, "\\'")}')">
+          <div class="folder-tile-icon"><i class="bi bi-folder-fill"></i></div>
+          <div class="folder-tile-name">${escHtml(cat)}</div>
+          <div class="folder-tile-count">${catCases.length} case(s) · ${fileCount} file(s)</div>
+        </div>`;
+    }).join("");
+    return;
+  }
+
+  // Level 2: Case Types in Category (+ First Back Tile)
+  if (driveNavState.level === "category") {
+    const matching = accessible.filter(c => (c.category || "Others") === driveNavState.category);
+    const types = Array.from(new Set(matching.map(c => c.type || "General"))).sort();
+
+    const backTile = `
+      <div class="folder-tile back-tile" onclick="driveGoBackOneLevel()" title="Go back to Case Vault">
+        <div class="folder-tile-icon"><i class="bi bi-arrow-left-circle-fill"></i></div>
+        <div class="folder-tile-name" style="color:var(--gold-light)">.. (Go Back)</div>
+        <div class="folder-tile-count">Return to Case Vault</div>
+      </div>`;
+
+    tilesEl.innerHTML = backTile + types.map(t => {
+      const count = matching.filter(c => (c.type || "General") === t).length;
+      return `
+        <div class="folder-tile" onclick="navDriveType('${driveNavState.category.replace(/'/g, "\\'")}', '${t.replace(/'/g, "\\'")}')">
+          <div class="folder-tile-icon"><i class="bi bi-folder-symlink-fill"></i></div>
+          <div class="folder-tile-name">${escHtml(t)}</div>
+          <div class="folder-tile-count">${count} case docket(s)</div>
+        </div>`;
+    }).join("");
+    return;
+  }
+
+  // Level 3: Specific Cases in Case Type (+ First Back Tile)
+  if (driveNavState.level === "type") {
+    const casesInType = accessible.filter(c =>
+      (c.category || "Others") === driveNavState.category &&
+      (c.type || "General") === driveNavState.type
+    );
+
+    const backTile = `
+      <div class="folder-tile back-tile" onclick="driveGoBackOneLevel()" title="Go back to ${escHtml(driveNavState.category)}">
+        <div class="folder-tile-icon"><i class="bi bi-arrow-left-circle-fill"></i></div>
+        <div class="folder-tile-name" style="color:var(--gold-light)">.. (Go Back)</div>
+        <div class="folder-tile-count">Back to ${escHtml(driveNavState.category)}</div>
+      </div>`;
+
+    tilesEl.innerHTML = backTile + casesInType.map(c => `
+      <div class="folder-tile" onclick="navDriveCase('${c.id}')">
+        <div class="folder-tile-icon"><i class="bi bi-briefcase-fill" style="color:var(--violet)"></i></div>
+        <div class="folder-tile-name">${escHtml(c.title)}</div>
+        <div class="folder-tile-count">${escHtml(c.caseNumber || "No Docket")} · ${(c.documents || []).length} file(s)</div>
+      </div>`).join("");
+    return;
+  }
+
+  // Level 4: Case Subfolders (Inbound vs Outbound) (+ First Back Tile)
+  if (driveNavState.level === "case") {
+    const c = accessible.find(x => x.id === driveNavState.caseId);
+    if (!c) return resetDriveExplorer();
+    const docs = Array.isArray(c.documents) ? c.documents : [];
+    const inboundCount = docs.filter(d => (d.fileType || "Inbound") === "Inbound").length;
+    const outboundCount = docs.filter(d => d.fileType === "Outbound").length;
+
+    const backTile = `
+      <div class="folder-tile back-tile" onclick="driveGoBackOneLevel()" title="Go back to ${escHtml(driveNavState.type)}">
+        <div class="folder-tile-icon"><i class="bi bi-arrow-left-circle-fill"></i></div>
+        <div class="folder-tile-name" style="color:var(--gold-light)">.. (Go Back)</div>
+        <div class="folder-tile-count">Back to ${escHtml(driveNavState.type)}</div>
+      </div>`;
+
+    tilesEl.innerHTML = backTile + `
+      <div class="folder-tile" onclick="navDriveFlow('Inbound')">
+        <div class="folder-tile-icon"><i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i></div>
+        <div class="folder-tile-name">Inbound Files (Received)</div>
+        <div class="folder-tile-count">${inboundCount} document(s)</div>
+      </div>
+      <div class="folder-tile" onclick="navDriveFlow('Outbound')">
+        <div class="folder-tile-icon"><i class="bi bi-box-arrow-up" style="color:var(--gold)"></i></div>
+        <div class="folder-tile-name">Outbound Files (Filed / Docs)</div>
+        <div class="folder-tile-count">${outboundCount} document(s)</div>
       </div>`;
     return;
   }
 
-  listEl.innerHTML = `
-    <div class="ac-docs-grid">
-      ${items.map(item => `
-        <div class="ac-doc-card">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0">
-              <div style="width:36px;height:36px;border-radius:9px;background:var(--gold-dim);border:1px solid var(--gold-border);display:grid;place-items:center;color:var(--gold);font-size:17px;flex-shrink:0">
-                <i class="bi bi-file-earmark-richtext-fill"></i>
-              </div>
-              <div style="min-width:0">
-                <div style="font-weight:700;font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(item.name)}">${escHtml(item.name)}</div>
-                <div style="font-size:11px;color:var(--text-dim)">${item.date ? `Updated ${escHtml(item.date)}` : "Google Doc"}</div>
-              </div>
-            </div>
-          </div>
-          <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            ${item.caseId
-              ? `<span class="badge" style="background:var(--gold-dim);color:var(--gold-light)"><i class="bi bi-briefcase"></i> ${escHtml(item.caseTitle)}</span>`
-              : `<span class="badge" style="background:var(--surface3);color:var(--text-dim)"><i class="bi bi-google"></i> Standalone Draft</span>`
-            }
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px;border-top:1px solid var(--border)">
-            <button type="button" class="btn btn-primary btn-sm" style="flex:1" onclick="openGoogleDocModal('${escHtml(item.caseId)}', '${escHtml(item.id)}')"><i class="bi bi-pencil-square"></i> Open Doc</button>
-            ${item.caseId ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openCase('${escHtml(item.caseId)}')" title="Open linked case"><i class="bi bi-folder2-open"></i> Case</button>` : ""}
-            <a href="${escHtml(item.webViewLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Open in Google Docs tab"><i class="bi bi-box-arrow-up-right"></i></a>
-          </div>
+  // Level 5: Concrete Files inside Inbound / Outbound
+  if (driveNavState.level === "flow") {
+    tilesEl.classList.add("hidden");
+    filesEl.classList.remove("hidden");
+    const c = accessible.find(x => x.id === driveNavState.caseId);
+    if (!c) return resetDriveExplorer();
+    const allDocs = Array.isArray(c.documents) ? c.documents : [];
+    const flowFiles = allDocs
+      .map((d, idx) => ({ d, idx }))
+      .filter(({ d }) => (d.fileType || "Inbound") === driveNavState.flow);
+
+    let headerNavHtml = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="driveGoBackOneLevel()"><i class="bi bi-arrow-left"></i> Back to ${escHtml(c.title)}</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-dim)">Showing ${flowFiles.length} ${escHtml(driveNavState.flow)} file(s)</span>
+          <button class="btn btn-primary btn-sm" onclick="openNewDocWizardForCase('${c.id}')"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
         </div>
-      `).join("")}
-    </div>`;
-}
-window.renderAllCasesGoogleDocs = renderAllCasesGoogleDocs;
+      </div>`;
+
+    filesEl.innerHTML = headerNavHtml + (flowFiles.length === 0
+      ? `<div style="text-align:center;padding:36px;color:var(--text-dim)">No ${escHtml(driveNavState.flow)} files found in this case folder.</div>`
+      : flowFiles.map(({ d, idx }) => `
+        <div class="doc-item">
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span onclick="selCase=cases.find(x=>x.id==='${c.id}');openCaseDocPreview(${idx})" style="cursor:pointer;color:var(--gold);font-weight:700;text-decoration:underline">
+                <i class="bi bi-file-earmark-pdf-fill"></i> ${escHtml(d.name)}
+              </span>
+              <span class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10px">${escHtml(d.version || "v1.0")}</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-dim);margin-top:3px">${escHtml(d.size || "")} · ${escHtml(d.date || "")}${d.lastEditedBy ? ` · Saved by <strong>${escHtml(d.lastEditedBy)}</strong>` : ""}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selCase=cases.find(x=>x.id==='${c.id}');openCaseDocPreview(${idx})"><i class="bi bi-eye"></i> View</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="editCaseDocInGoogleDocs('${c.id}', ${idx})"><i class="bi bi-pencil-square"></i> Edit in Docs</button>
+          </div>
+        </div>`).join(""));
+  }
+};
+
+window.filterDriveSearch = function(q) {
+  const needle = (q || "").toLowerCase().trim();
+  if (!needle) { renderDriveExplorer(); return; }
+
+  const tilesEl = document.getElementById("drive-tiles-container");
+  const filesEl = document.getElementById("drive-files-container");
+  const bar = document.getElementById("drive-breadcrumb-bar");
+  const backBtn = document.getElementById("drive-back-btn");
+  if (!tilesEl || !filesEl) return;
+
+  if (backBtn) backBtn.style.display = "inline-flex";
+  if (bar) bar.innerHTML = `<span><i class="bi bi-search"></i> Search results for "${escHtml(q)}"</span>`;
+
+  tilesEl.classList.add("hidden");
+  filesEl.classList.remove("hidden");
+
+  const accessible = getAccessibleCases();
+  const matches = [];
+  accessible.forEach(c => {
+    (c.documents || []).forEach((d, idx) => {
+      if ((d.name || "").toLowerCase().includes(needle) ||
+          (c.title || "").toLowerCase().includes(needle) ||
+          (c.category || "").toLowerCase().includes(needle) ||
+          (c.type || "").toLowerCase().includes(needle)) {
+        matches.push({ c, d, idx });
+      }
+    });
+  });
+
+  filesEl.innerHTML = `
+    <div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <button class="btn btn-secondary btn-sm" onclick="resetDriveExplorer()"><i class="bi bi-arrow-left"></i> Clear Search</button>
+      <span style="font-size:12px;color:var(--text-dim)">${matches.length} matching file(s)</span>
+    </div>` + (matches.length === 0
+      ? `<div style="text-align:center;padding:36px;color:var(--text-dim)">No matching documents found.</div>`
+      : matches.map(({ c, d, idx }) => `
+        <div class="doc-item">
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span onclick="selCase=cases.find(x=>x.id==='${c.id}');openCaseDocPreview(${idx})" style="cursor:pointer;color:var(--gold);font-weight:700;text-decoration:underline">
+                <i class="bi bi-file-earmark-pdf-fill"></i> ${escHtml(d.name)}
+              </span>
+              <span class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10px">${escHtml(d.version || "v1.0")}</span>
+              <span class="badge" style="background:var(--surface3);color:var(--text-dim)">${escHtml(c.title)} (${escHtml(d.fileType || "Inbound")})</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-dim);margin-top:3px">${escHtml(d.size || "")} · ${escHtml(d.date || "")}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="selCase=cases.find(x=>x.id==='${c.id}');openCaseDocPreview(${idx})"><i class="bi bi-eye"></i> View</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="editCaseDocInGoogleDocs('${c.id}', ${idx})"><i class="bi bi-pencil-square"></i> Edit</button>
+          </div>
+        </div>`).join(""));
+};
 
 function renderAllCasesStatusTabs(accessible, activeStatus) {
   const tabsEl = document.getElementById("ac-status-tabs");
@@ -2317,10 +2844,9 @@ function renderAllCasesStatusTabs(accessible, activeStatus) {
 
 function renderAllCases() {
   updateAllFilterDropdowns();
-  populateAllCasesDocsFilter();
 
-  if (allCasesActiveTab === "docs") {
-    renderAllCasesGoogleDocs();
+  if (allCasesActiveTab === "docs" && document.getElementById("drive-tiles-container")) {
+    renderDriveExplorer();
     return;
   }
 
@@ -2365,8 +2891,9 @@ function renderAllCases() {
   el.innerHTML = pagedCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
     const docsCount = Array.isArray(c.documents) ? c.documents.length : 0;
+    const sharedCount = Array.isArray(c.sharedWith) ? c.sharedWith.length : 0;
     const gDocBtn = hasGDocModal
-      ? `<button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openGoogleDocModal('${c.id}')" title="Draft or attach Google Doc to this case"><i class="bi bi-file-earmark-richtext"></i> Doc${docsCount ? ` (${docsCount})` : ""}</button>`
+      ? `<button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openNewDocWizardForCase('${c.id}')" title="Draft or attach Google Doc to this case"><i class="bi bi-file-earmark-richtext"></i> Doc${docsCount ? ` (${docsCount})` : ""}</button>`
       : "";
 
     return `<div class="case-row" onclick="openCase('${c.id}')">
@@ -2377,6 +2904,7 @@ function renderAllCases() {
         <div style="font-size:12.5px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        ${sharedCount > 0 ? `<span class="badge" style="background:var(--green-bg);color:var(--green)"><i class="bi bi-people-fill"></i> Shared (${sharedCount})</span>` : ""}
         ${gDocBtn}
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">${badge(c.status, statusColor(c.status))}${dueBadge(c.dueDate || c.docDueDate)}</div>
       </div>
@@ -2397,7 +2925,7 @@ function renderAllCases() {
 }
 window.renderAllCases = renderAllCases;
 
-// ── CASE DETAIL (SUPERDEV HAS FULL ADMIN ACCESS) ─────────────
+// ── CASE DETAIL (SINGLE PDF VIEW/EDIT + ACTIVITY LOGS) ───────
 function renderCaseDetail() {
   const c = selCase;
   if (!c) return;
@@ -2410,14 +2938,17 @@ function renderCaseDetail() {
   const isGroupAdmin = profiles.some(pr => pr.ownerUid === currentUid && (pr.role === "admin" || pr.role === "superdev"));
   const isShared = (Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid)) || (Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid));
   const canEdit = isOwner || isGroupAdmin || isShared;
+  const sharedCount = Array.isArray(c.sharedWith) ? c.sharedWith.length : 0;
 
   let actionButtons = "";
   if (canEdit) {
-    actionButtons += `<button class="btn btn-primary btn-sm" onclick="openGoogleDocModal('${c.id}')"><i class="bi bi-file-earmark-richtext"></i> New Google Doc</button>`;
+    if (document.getElementById("gdoc-modal")) {
+      actionButtons += `<button class="btn btn-primary btn-sm" onclick="openNewDocWizardForCase('${c.id}')"><i class="bi bi-file-earmark-richtext"></i> New Google Doc</button>`;
+    }
     actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit Case</button>`;
   }
   if (isOwner || isGroupAdmin) {
-    actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share</button><button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
+    actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share${sharedCount ? ` (${sharedCount})` : ""}</button><button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
   }
   if (isShared && !isOwner && !isGroupAdmin) actionButtons += `<span class="badge" style="background:var(--green-bg);color:var(--green);padding:6px 12px"><i class="bi bi-shield-check"></i> Shared Associate</span>`;
 
@@ -2470,26 +3001,56 @@ function renderCaseDetail() {
 
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files &amp; Google Docs</div>
+    <div>
+      <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files (PDF &amp; Google Docs)</div>
+      <div style="font-size:11px;color:var(--text-dim)">View inside system or edit &amp; replace PDF directly</div>
+    </div>
     ${canEdit ? `<div style="display:inline-flex;align-items:center;gap:8px"><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> In</label><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold)"/> Out</label><button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload</button></div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected</span>`}
   </div>`;
+
   if (docs.length === 0) {
     docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:24px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Click to attach a document' : 'No documents uploaded'}</div></div>`;
   } else {
     docsHtml += docs.map((doc, idx) => `
       <div class="doc-item">
         <div style="min-width:0;flex:1">
-          <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);font-weight:600;text-decoration:underline">${escHtml(doc.name)}</span>
-          <div style="font-size:11.5px;color:var(--text-dim)">${doc.size} · ${doc.date} ${doc.fileType ? '· ' + doc.fileType : ''}</div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span onclick="openCaseDocPreview(${idx})" style="cursor:pointer;color:var(--gold);font-weight:700;text-decoration:underline">${escHtml(doc.name)}</span>
+            <span class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10px">${escHtml(doc.version || "v1.0")}</span>
+            ${doc.fileType ? `<span class="badge" style="background:var(--surface3);color:var(--text-dim);font-size:10px">${escHtml(doc.fileType)}</span>` : ""}
+          </div>
+          <div style="font-size:11.5px;color:var(--text-dim);margin-top:3px">${escHtml(doc.size || "")} · ${escHtml(doc.date || "")}${doc.lastEditedBy ? ` · Saved by <strong>${escHtml(doc.lastEditedBy)}</strong>` : ""}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-          <button type="button" class="btn btn-secondary btn-sm" onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' title="View inside system"><i class="bi bi-eye"></i> View</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openCaseDocPreview(${idx})" title="View inside system"><i class="bi bi-eye"></i> View</button>
+          ${canEdit && document.getElementById("gdoc-modal") ? `<button type="button" class="btn btn-primary btn-sm" onclick="editCaseDocInGoogleDocs('${c.id}', ${idx})" title="Edit in Google Docs &amp; replace PDF"><i class="bi bi-pencil-square"></i> Edit</button>` : ""}
           ${canEdit ? `<button style="color:var(--red);font-size:15px;padding:4px" onclick="removeDocFromCase(${idx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
         </div>
       </div>`).join("");
   }
   const docsEl = document.getElementById("cd-docs");
   if (docsEl) docsEl.innerHTML = docsHtml;
+
+  const historyCard = document.getElementById("cd-history-card");
+  if (historyCard) {
+    const logs = Array.isArray(c.logs) ? c.logs : [];
+    historyCard.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:700;color:var(--text)"><i class="bi bi-clock-history" style="color:var(--gold);margin-right:6px"></i>Document Edit History &amp; Activity Logs</div>
+        <span class="badge" style="background:var(--gold-dim);color:var(--gold-light)">${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}</span>
+      </div>
+      ${logs.length === 0
+        ? `<div style="font-size:12px;color:var(--text-dim)">No edit or sharing logs recorded yet.</div>`
+        : logs.slice(0, 12).map(l => `
+          <div class="history-entry">
+            <span class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10px">${escHtml(l.version || "—")}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;color:var(--text)">${escHtml(l.action)}</div>
+              <div style="font-size:11px;color:var(--text-dim)">by ${escHtml(l.user || "Counsel")} · ${escHtml(l.time || "")}</div>
+            </div>
+          </div>`).join("")
+      }`;
+  }
 
   const statusPanelEl = document.getElementById("cd-status-panel");
   if (statusPanelEl) {
@@ -2499,6 +3060,63 @@ function renderCaseDetail() {
   }
 }
 window.renderCaseDetail = renderCaseDetail;
+
+window.openCaseDocPreview = function(idx) {
+  if (!selCase || !Array.isArray(selCase.documents) || !selCase.documents[idx]) return;
+  openFilePreview(selCase.documents[idx], idx);
+};
+
+window.editCaseDocInGoogleDocs = async function(caseId, docIndex) {
+  const targetCase = (cases || []).find(c => c.id === caseId) || selCase;
+  if (!targetCase || !Array.isArray(targetCase.documents) || !targetCase.documents[docIndex]) return;
+  const doc = targetCase.documents[docIndex];
+  selCase = targetCase;
+
+  if (typeof hasValidToken !== "function" || !hasValidToken()) {
+    try { await promptDriveAuth(true); }
+    catch (e) { showToast("Connect Google Account to edit in Google Docs.", "error"); return; }
+  }
+
+  const cleanTitle = (doc.name || "Document").replace(/\.pdf$/i, "").replace(/\s*\(Google Doc\)$/i, "");
+  const editingCtx = {
+    caseId: targetCase.id,
+    docIndex,
+    drivePdfId: doc.driveFileId || null,
+    originalName: doc.name,
+    version: doc.version || "v1.0",
+    fileType: doc.fileType || "Outbound"
+  };
+
+  if (doc.editableGdocId) {
+    await openGoogleDocModal(targetCase.id, doc.editableGdocId, {
+      flow: doc.fileType || "Outbound",
+      title: cleanTitle,
+      editingPdfContext: editingCtx
+    });
+    return;
+  }
+
+  if ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document")) {
+    await openGoogleDocModal(targetCase.id, doc.driveFileId, {
+      flow: doc.fileType || "Outbound",
+      title: cleanTitle,
+      editingPdfContext: editingCtx
+    });
+    return;
+  }
+
+  try {
+    const { folderId } = await resolveGdocTargetFolder(targetCase.id, doc.fileType || "Outbound");
+    const convertedMeta = await convertFileToGoogleDoc(doc.driveFileId, doc.name, folderId);
+    await openGoogleDocModal(targetCase.id, convertedMeta.id, {
+      flow: doc.fileType || "Outbound",
+      title: cleanTitle,
+      editingPdfContext: editingCtx
+    });
+  } catch (err) {
+    showToast("Could not open in Google Docs: " + err.message, "error");
+  }
+};
 
 window.confirmUpdateCaseStatus = function(st) {
   if (!selCase || selCase.status === st) return;
@@ -2635,8 +3253,9 @@ function refreshFilterTypes(prefix) {
   const typeSel = document.getElementById(prefix + "-type");
   if (!catSel || !typeSel) return;
   const selectedCat = catSel.value; const curType = typeSel.value;
-  const filteredTypes = selectedCat === "All" ? globalCaseTypes.map(t => t.name) : globalCaseTypes.filter(t => t.category === selectedCat).map(t => t.name);
-  const distinctTypes = [...new Set(filteredTypes)].sort();
+  const fromGlobal = (selectedCat === "All" ? globalCaseTypes : globalCaseTypes.filter(t => t.category === selectedCat)).map(t => t.name);
+  const fromCases = (selectedCat === "All" ? getAccessibleCases() : getAccessibleCases().filter(c => c.category === selectedCat)).map(c => c.type).filter(Boolean);
+  const distinctTypes = [...new Set([...fromGlobal, ...fromCases])].sort();
   typeSel.innerHTML = `<option value="All">All Types</option>` + distinctTypes.map(t => `<option value="${t}">${t}</option>`).join("");
   typeSel.value = distinctTypes.includes(curType) ? curType : "All";
 }
@@ -2668,6 +3287,8 @@ function renderMyProfile() {
   settingsPhotoDataUrl = myProf.photoUrl || null;
   if (settingsPhotoDataUrl) showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
   else resetSettingsPhotoUpload();
+
+  if (document.getElementById("settings-drive-status")) renderSettingsView();
 }
 window.renderMyProfile = renderMyProfile;
 
@@ -2818,7 +3439,6 @@ async function saveUserSettings() {
   }
 }
 
-// ── FIXED UPDATE CREDENTIALS (ALWAYS-VISIBLE CURRENT PASSWORD + CONFIRM) ──
 async function saveSecuritySettings() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
@@ -2826,7 +3446,8 @@ async function saveSecuritySettings() {
   const currentPass = document.getElementById("setting-current-password")?.value || "";
   const email = (document.getElementById("setting-email")?.value || "").trim();
   const pass = document.getElementById("setting-password")?.value || "";
-  const confirmPass = document.getElementById("setting-confirm-password")?.value || "";
+  const confirmPassEl = document.getElementById("setting-confirm-password");
+  const confirmPass = confirmPassEl ? confirmPassEl.value : pass;
 
   if (!email) { showToast("Sign-In Email is required.", "error"); return; }
   if (!isValidEmail(email)) { showToast("Email must be @gmail.com, @outlook.com, or @yahoo.com.", "error"); return; }
@@ -2836,10 +3457,12 @@ async function saveSecuritySettings() {
 
   if (pass) {
     if (pass.length < 6) { showToast("New password must be at least 6 characters.", "error"); return; }
-    if (confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
+    if (confirmPassEl && confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
   }
 
   if (!currentPass) {
+    const reauthPanel = document.getElementById("setting-reauth-panel");
+    if (reauthPanel) reauthPanel.style.display = "block";
     showToast("Enter your Current Password to verify identity before updating credentials.", "error");
     document.getElementById("setting-current-password")?.focus();
     return;
@@ -2858,7 +3481,8 @@ async function saveSecuritySettings() {
     setElVal("setting-current-password", "");
     setElVal("setting-password", "");
     setElVal("setting-confirm-password", "");
-    document.getElementById("password-requirements").style.display = "none";
+    const reqEl = document.getElementById("password-requirements");
+    if (reqEl) reqEl.style.display = "none";
   } catch (err) {
     showToast("Credential update failed: " + err.message, "error");
   }
@@ -3119,8 +3743,8 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   const vaultListEl = document.getElementById("pr-vault-files-list");
   if (vaultListEl) {
     vaultListEl.innerHTML = docs.length === 0 ? `<div style="font-size:12px;color:var(--text-dim)">No documents attached.</div>`
-      : docs.map(d => isAccepted
-        ? `<div style="padding:8px;background:var(--surface);border-radius:6px;margin-bottom:4px"><span onclick='openFilePreview(${JSON.stringify(d).replace(/'/g,"&#39;")})' style="cursor:pointer;color:var(--gold);text-decoration:underline">${escHtml(d.name)}</span></div>`
+      : docs.map((d, idx) => isAccepted
+        ? `<div style="padding:8px;background:var(--surface);border-radius:6px;margin-bottom:4px"><span onclick='openFilePreview(${JSON.stringify(d).replace(/'/g,"&#39;")}, ${idx})' style="cursor:pointer;color:var(--gold);text-decoration:underline">${escHtml(d.name)}</span></div>`
         : `<div style="padding:8px;background:var(--surface);border-radius:6px;filter:blur(3px);margin-bottom:4px">${escHtml(d.name)}</div>`).join("");
   }
   modal.classList.remove("hidden");
@@ -3169,7 +3793,7 @@ window.submitAppointmentRequest = async () => {
   closeAppointmentModal();
 };
 
-// ── CASE FORM SELECTS & DRIVE EXPLORER (SUPPORTS GOOGLE DOCS) ──
+// ── CASE FORM SELECTS & FIRM DRIVE EXPLORER (SUPPORTS GOOGLE DOCS) ──
 function populateCaseSelects(isEdit = false) {
   const catSel = document.getElementById("cf-category");
   const statusSel = document.getElementById("cf-status");
@@ -3250,6 +3874,7 @@ function renderExplorerBreadcrumbs() {
 //  IN-APP FILE PREVIEW MODAL + EDIT IN REAL GOOGLE DOCS
 // ═══════════════════════════════════════════════════════════════
 let _previewingDoc = null;
+let _previewingDocIndex = -1;
 let _previewBlobUrl = null;
 
 function renderBlobInsidePreviewModal(blob, fileName) {
@@ -3291,11 +3916,23 @@ function renderBlobInsidePreviewModal(blob, fileName) {
   }
 }
 
-window.openFilePreview = async function(doc) {
+window.openFilePreview = async function(doc, docIndex = -1) {
   if (!doc) return;
   if (doc.driveFileId && ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document"))) {
     if (typeof openGoogleDocModal === "function") {
-      openGoogleDocModal(selCase?.id || "", doc.driveFileId);
+      const idx = (docIndex >= 0) ? docIndex : (selCase?.documents || []).findIndex(d => d.driveFileId === doc.driveFileId);
+      openGoogleDocModal(selCase?.id || "", doc.driveFileId, {
+        flow: doc.fileType || "Outbound",
+        title: (doc.name || "").replace(/\s*\(Google Doc\)$/i, ""),
+        editingPdfContext: selCase ? {
+          caseId: selCase.id,
+          docIndex: idx,
+          drivePdfId: doc.driveFileId,
+          originalName: doc.name,
+          version: doc.version || "v1.0",
+          fileType: doc.fileType || "Outbound"
+        } : null
+      });
       return;
     }
   }
@@ -3309,6 +3946,10 @@ window.openFilePreview = async function(doc) {
   if (!modal || !bodyEl) return;
 
   _previewingDoc = doc;
+  _previewingDocIndex = (docIndex >= 0)
+    ? docIndex
+    : (selCase?.documents || []).findIndex(d => (doc.driveFileId && d.driveFileId === doc.driveFileId) || d.name === doc.name);
+
   if (titleEl) titleEl.textContent = doc.name || "Document Preview";
   if (editBtn) editBtn.style.display = document.getElementById("gdoc-modal") ? "inline-flex" : "none";
   if (dlEl) {
@@ -3324,7 +3965,7 @@ window.openFilePreview = async function(doc) {
     return;
   }
 
-  // 2. Drive file — fetch bytes via OAuth token so it renders cleanly inside the system!
+  // 2. Drive file — fetch bytes via OAuth token so it renders cleanly inside the system
   if (doc.driveFileId) {
     if (typeof hasValidToken === "function" && hasValidToken() && typeof fetchDriveFileBlob === "function") {
       bodyEl.innerHTML = `<div style="text-align:center;color:var(--text)"><span class="spinner"></span><div style="margin-top:12px;font-size:13px;color:var(--text-muted)">Loading file inside Simando Law…</div></div>`;
@@ -3357,33 +3998,42 @@ window.editPreviewedFileInGoogleDocs = async function() {
 
   try {
     const targetCaseId = selCase?.id || "";
-    const { folderId, targetCase } = await resolveGdocTargetFolder(targetCaseId);
+    const flowDir = doc.fileType || "Outbound";
+    const { folderId, targetCase } = await resolveGdocTargetFolder(targetCaseId, flowDir);
     const localFile = (doc._localTempId && typeof pendingLocalFiles !== "undefined") ? pendingLocalFiles[doc._localTempId] : null;
-    const source = doc.driveFileId || localFile;
+    const source = doc.editableGdocId || doc.driveFileId || localFile;
 
     if (!source) {
       throw new Error("No editable source found for this file.");
     }
 
-    const convertedMeta = await convertFileToGoogleDoc(source, doc.name, folderId);
-    cachedDriveGoogleDocs = null;
-
-    if (targetCase) {
-      const baseName = (doc.name || "Document").replace(/\.[^/.]+$/, "");
-      await attachDocEntryToSpecificCase(targetCase, {
-        name: `${baseName} (Google Doc)`,
-        size: "Google Doc",
-        date: new Date().toLocaleDateString(),
-        fileType: doc.fileType || "Outbound",
-        version: "v1.0",
-        driveFileId: convertedMeta.id,
-        driveLink: convertedMeta.webViewLink || `https://docs.google.com/document/d/${convertedMeta.id}/edit`
-      });
+    const cleanTitle = (doc.name || "Document").replace(/\.[^/.]+$/, "").replace(/\s*\(Google Doc\)$/i, "");
+    let gdocId = doc.editableGdocId || null;
+    if (!gdocId) {
+      const convertedMeta = await convertFileToGoogleDoc(source, doc.name, folderId);
+      gdocId = convertedMeta.id;
     }
 
+    const idx = (_previewingDocIndex >= 0)
+      ? _previewingDocIndex
+      : (targetCase?.documents || []).findIndex(d => (doc.driveFileId && d.driveFileId === doc.driveFileId) || d.name === doc.name);
+
+    const editingCtx = targetCase ? {
+      caseId: targetCase.id,
+      docIndex: idx,
+      drivePdfId: doc.driveFileId || null,
+      originalName: doc.name,
+      version: doc.version || "v1.0",
+      fileType: flowDir
+    } : null;
+
     closeFilePreview();
-    openGoogleDocModal(targetCaseId, convertedMeta.id);
-    showToast(targetCase ? `Opened in Google Docs & saved to "${targetCase.title}"!` : "Opened in Google Docs!");
+    await openGoogleDocModal(targetCaseId, gdocId, {
+      flow: flowDir,
+      title: cleanTitle,
+      editingPdfContext: editingCtx
+    });
+    showToast("Opened in Google Docs! Click 'Save & Replace PDF' when finished.");
   } catch (err) {
     console.error("editPreviewedFileInGoogleDocs error:", err);
     showToast("Could not open in Google Docs: " + err.message, "error");
@@ -3405,6 +4055,7 @@ window.closeFilePreview = () => {
     _previewBlobUrl = null;
   }
   _previewingDoc = null;
+  _previewingDocIndex = -1;
 };
 
 window.addEventListener("DOMContentLoaded", () => {
