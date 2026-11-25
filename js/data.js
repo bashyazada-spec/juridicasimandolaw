@@ -38,6 +38,8 @@ let appointmentsReqUnsub = null;
 let presenceUnsub        = null;
 let presenceHeartbeatId  = null;
 let prevNotifCount       = 0;
+let _casesFullAccess     = false;
+let _apptsFullAccess     = false;
 
 window._notifsLoaded = false;
 
@@ -230,14 +232,15 @@ async function dbLogAuditAction(action, details = {}) {
 }
 window.dbLogAuditAction = dbLogAuditAction;
 
-// ── STRICT ACCESSIBLE CASES FILTER ───────────────────────────
+// ── STRICT ACCESSIBLE CASES FILTER (INCLUDES SUPERDEV) ───────
 function getAccessibleCases() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return [];
 
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail));
-  const isFirmAdmin = (myProf && myProf.role === "admin") || (u.email && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
+  const isFirmAdmin = (myProf && (myProf.role === "admin" || myProf.role === "superdev")) ||
+                      (u.email && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
   if (isFirmAdmin) return cases;
 
   return cases.filter(c => {
@@ -364,7 +367,7 @@ function showToast(msg, type = "success") {
   toastTimer = setTimeout(() => { t.className = ""; }, 3000);
 }
 
-// ── LIVE ONLINE PRESENCE ENGINE ──────────────────────────────
+// ── LIVE ONLINE PRESENCE ENGINE (STEALTH HIDES SUPERDEV FROM ADMINS) ──
 async function updateUserPresenceHeartbeat() {
   if (localMode || !window._db) return;
   const u = window._currentUser || window._auth?.currentUser;
@@ -379,17 +382,18 @@ async function updateUserPresenceHeartbeat() {
       name: displayName,
       lastSeen: window._fbServerTs ? window._fbServerTs() : new Date()
     }, { merge: true });
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
 }
 
 function computeOnlineUsersFromPeers(peerDocs) {
   const u = window._currentUser || window._auth?.currentUser;
   const currentUid = u?.uid || "";
   const nowMs = Date.now();
-  const ONLINE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes active window
+  const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
   const myProf = profiles.find(p => p.ownerUid === currentUid);
   const isDev = myProf && myProf.role === "developer";
+  const isSuperDev = myProf && myProf.role === "superdev";
 
   const activeMap = new Map();
   if (currentUid) {
@@ -409,8 +413,10 @@ function computeOnlineUsersFromPeers(peerDocs) {
     if (d.uid !== currentUid && (nowMs - seenMs) > ONLINE_WINDOW_MS) return;
 
     const prof = profiles.find(p => p.ownerUid === d.uid);
+    // Stealth rule: hide superdev from regular admins, attorneys, and sandbox developers
+    if (!isSuperDev && prof && prof.role === "superdev") return;
     if (isDev && prof && prof.role !== "developer") return;
-    if (!isDev && prof && prof.role === "developer") return;
+    if (!isDev && !isSuperDev && prof && prof.role === "developer") return;
 
     activeMap.set(d.uid, {
       uid: d.uid,
@@ -437,6 +443,8 @@ function dbUnsubscribe() {
   if (appointmentsReqUnsub) { appointmentsReqUnsub(); appointmentsReqUnsub = null; }
   if (presenceUnsub)        { presenceUnsub();        presenceUnsub = null; }
   if (presenceHeartbeatId)  { clearInterval(presenceHeartbeatId); presenceHeartbeatId = null; }
+  _casesFullAccess = false;
+  _apptsFullAccess = false;
 }
 
 function enterLocalMode(reason) {
@@ -461,12 +469,68 @@ function connectDatabase() {
     const u = window._currentUser || window._auth?.currentUser;
     if (u) {
       try { dbLoad(); } catch (err) {
-        console.error("Database load failed:", err);
         enterLocalMode("Database connection failed.");
       }
     }
   } else {
     enterLocalMode("Firebase initialization failed.");
+  }
+}
+
+function subscribeCasesStream(db, activeUid, isFullAdmin) {
+  if (casesUnsub) { casesUnsub(); casesUnsub = null; }
+  _casesFullAccess = isFullAdmin;
+  const caseQuery = isFullAdmin
+    ? window._fbCol(db, "cases")
+    : window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
+
+  casesUnsub = window._fbOnSnapshot(caseQuery, async (snap) => {
+    const rawCases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    cases = await Promise.all(rawCases.map(c => decryptCaseRecordFromFirestore(c)));
+    window.cases = cases;
+    if (window._notifsLoaded) checkCaseDueNotifications();
+    refreshCurrentView();
+  }, (error) => {
+    console.warn("Cases real-time connection notice:", error.message);
+  });
+}
+
+function subscribeAppointmentsStream(db, activeUid, isFullAdmin) {
+  if (appointmentsUnsub)    { appointmentsUnsub();    appointmentsUnsub = null; }
+  if (appointmentsReqUnsub) { appointmentsReqUnsub(); appointmentsReqUnsub = null; }
+  _apptsFullAccess = isFullAdmin;
+
+  let targetApptsMap = {};
+  let reqApptsMap = {};
+  const syncApptsMerged = () => {
+    appointments = Object.values({ ...targetApptsMap, ...reqApptsMap });
+    window.appointments = appointments;
+    refreshCurrentView();
+  };
+
+  if (isFullAdmin) {
+    appointmentsUnsub = window._fbOnSnapshot(window._fbCol(db, "appointments"), (snap) => {
+      appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      window.appointments = appointments;
+      refreshCurrentView();
+    }, () => {});
+  } else {
+    appointmentsUnsub = window._fbOnSnapshot(
+      window._fbQuery(window._fbCol(db, "appointments"), window._fbWhere("targetUid", "==", activeUid)),
+      (snap) => {
+        targetApptsMap = {};
+        snap.docs.forEach(d => { targetApptsMap[d.id] = { id: d.id, ...d.data() }; });
+        syncApptsMerged();
+      }, () => {}
+    );
+    appointmentsReqUnsub = window._fbOnSnapshot(
+      window._fbQuery(window._fbCol(db, "appointments"), window._fbWhere("requesterUid", "==", activeUid)),
+      (snap) => {
+        reqApptsMap = {};
+        snap.docs.forEach(d => { reqApptsMap[d.id] = { id: d.id, ...d.data() }; });
+        syncApptsMerged();
+      }, () => {}
+    );
   }
 }
 
@@ -479,37 +543,41 @@ async function dbLoad() {
     const db = window._db;
     dbUnsubscribe();
 
+    const activeUid = u.uid;
+    const userEmail = (u.email || "").toLowerCase();
+    const isEmailAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
+
     // ── Real-Time Sync: Profiles ─────────────────────────────
-    const pColRef = window._fbCol(db, "profiles");
-    profilesUnsub = window._fbOnSnapshot(pColRef, (snap) => {
+    profilesUnsub = window._fbOnSnapshot(window._fbCol(db, "profiles"), (snap) => {
       profiles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       window.profiles = profiles;
 
       const currentUser = window._currentUser || window._auth?.currentUser;
-      if (currentUser) {
-        const userEmail = (currentUser.email || "").toLowerCase();
-        let myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUser.uid) || (p.email && p.email.toLowerCase() === userEmail));
+      let isRoleFullAdmin = isEmailAdmin;
 
+      if (currentUser) {
+        let myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUser.uid) || (p.email && p.email.toLowerCase() === userEmail));
         if (myProf) {
           if (!myProf.ownerUid) {
             dbUpdateProfile(myProf.id, { ownerUid: currentUser.uid });
             myProf.ownerUid = currentUser.uid;
           }
-          const isConfiguredAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
-          if (isConfiguredAdmin && myProf.role !== "admin" && myProf.role !== "developer") {
+          if (isEmailAdmin && myProf.role !== "admin" && myProf.role !== "developer" && myProf.role !== "superdev") {
             dbUpdateProfile(myProf.id, { role: "admin" });
             myProf.role = "admin";
           }
+          if (myProf.role === "admin" || myProf.role === "superdev") {
+            isRoleFullAdmin = true;
+          }
         } else {
           const defaultName = currentUser.displayName || currentUser.email?.split("@")[0] || "Attorney";
-          const isConfiguredAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
           const defaultData = {
             name: defaultName,
-            role: isConfiguredAdmin ? "admin" : "Attorney",
+            role: isEmailAdmin ? "admin" : "Attorney",
             contact: "",
             description: "",
             email: currentUser.email,
-            avatarColor: isConfiguredAdmin ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+            avatarColor: isEmailAdmin ? "#c9a84c" : AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
             photoUrl: currentUser.photoURL || null,
             ownerUid: currentUser.uid,
             createdAt: new Date().toISOString().slice(0, 10)
@@ -519,6 +587,9 @@ async function dbLoad() {
           window.profiles = profiles;
         }
       }
+
+      if (isRoleFullAdmin && !_casesFullAccess) subscribeCasesStream(db, activeUid, true);
+      if (isRoleFullAdmin && !_apptsFullAccess) subscribeAppointmentsStream(db, activeUid, true);
 
       dbReady = true;
       updateUserPresenceHeartbeat();
@@ -532,102 +603,42 @@ async function dbLoad() {
     try {
       presenceUnsub = window._fbOnSnapshot(window._fbCol(db, "chat_peers"), (snap) => {
         computeOnlineUsersFromPeers(snap.docs.map(d => d.data()));
-      }, () => {
-        computeOnlineUsersFromPeers([]);
-      });
+      }, () => computeOnlineUsersFromPeers([]));
       presenceHeartbeatId = setInterval(updateUserPresenceHeartbeat, 60000);
     } catch (e) {
       computeOnlineUsersFromPeers([]);
     }
 
-    // ── Real-Time Sync: Cases ────────────────────────────────
-    const activeUid = window._currentUser?.uid || window._auth?.currentUser?.uid;
-    if (activeUid) {
-      const userEmail = (u.email || "").toLowerCase();
-      const isEmailAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
-      const caseQuery = isEmailAdmin
-        ? window._fbCol(db, "cases")
-        : window._fbQuery(window._fbCol(db, "cases"), window._fbWhere("allowedUids", "array-contains", activeUid));
-
-      casesUnsub = window._fbOnSnapshot(caseQuery, async (snap) => {
-        const rawCases = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        cases = await Promise.all(rawCases.map(c => decryptCaseRecordFromFirestore(c)));
-        window.cases = cases;
-
-        if (window._notifsLoaded) checkCaseDueNotifications();
-        refreshCurrentView();
-      }, (error) => {
-        console.warn("Cases real-time connection notice:", error.message);
-      });
-    }
+    // ── Initial Case & Appointment Streams ───────────────────
+    subscribeCasesStream(db, activeUid, isEmailAdmin);
+    subscribeAppointmentsStream(db, activeUid, isEmailAdmin);
 
     // ── Real-Time Sync: Notifications ────────────────────────
-    if (activeUid) {
-      try {
-        const notifQuery = window._fbQuery(
-          window._fbCol(db, "notifications"),
-          window._fbWhere("toUid", "==", activeUid)
-        );
-        notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
-          notifications = snap.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          window.notifications = notifications;
-          window._notifsLoaded = true;
-          checkCaseDueNotifications();
-
-          const unreadCount = notifications.filter(n => n.status === "unread").length;
-          if (unreadCount > prevNotifCount && prevNotifCount > 0) playNotificationSound();
-          prevNotifCount = unreadCount;
-
-          refreshCurrentView();
-        }, () => {
-          notifications = [];
-          window.notifications = notifications;
-          window._notifsLoaded = true;
-        });
-      } catch (e) {
+    try {
+      const notifQuery = window._fbQuery(
+        window._fbCol(db, "notifications"),
+        window._fbWhere("toUid", "==", activeUid)
+      );
+      notificationsUnsub = window._fbOnSnapshot(notifQuery, (snap) => {
+        notifications = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        window.notifications = notifications;
         window._notifsLoaded = true;
-      }
-    }
+        checkCaseDueNotifications();
 
-    // ── Real-Time Sync: Appointments ─────────────────────────
-    if (activeUid) {
-      const userEmail = (u.email || "").toLowerCase();
-      const isEmailAdmin = ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
-      let targetApptsMap = {};
-      let reqApptsMap = {};
+        const unreadCount = notifications.filter(n => n.status === "unread").length;
+        if (unreadCount > prevNotifCount && prevNotifCount > 0) playNotificationSound();
+        prevNotifCount = unreadCount;
 
-      const syncApptsMerged = () => {
-        appointments = Object.values({ ...targetApptsMap, ...reqApptsMap });
-        window.appointments = appointments;
         refreshCurrentView();
-      };
-
-      if (isEmailAdmin) {
-        appointmentsUnsub = window._fbOnSnapshot(window._fbCol(db, "appointments"), (snap) => {
-          appointments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          window.appointments = appointments;
-          refreshCurrentView();
-        }, () => {});
-      } else {
-        appointmentsUnsub = window._fbOnSnapshot(
-          window._fbQuery(window._fbCol(db, "appointments"), window._fbWhere("targetUid", "==", activeUid)),
-          (snap) => {
-            targetApptsMap = {};
-            snap.docs.forEach(d => { targetApptsMap[d.id] = { id: d.id, ...d.data() }; });
-            syncApptsMerged();
-          }, () => {}
-        );
-        appointmentsReqUnsub = window._fbOnSnapshot(
-          window._fbQuery(window._fbCol(db, "appointments"), window._fbWhere("requesterUid", "==", activeUid)),
-          (snap) => {
-            reqApptsMap = {};
-            snap.docs.forEach(d => { reqApptsMap[d.id] = { id: d.id, ...d.data() }; });
-            syncApptsMerged();
-          }, () => {}
-        );
-      }
+      }, () => {
+        notifications = [];
+        window.notifications = notifications;
+        window._notifsLoaded = true;
+      });
+    } catch (e) {
+      window._notifsLoaded = true;
     }
   } catch (e) {
     console.error("Firestore database connection error:", e);
