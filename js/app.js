@@ -969,7 +969,8 @@ async function loadCaseTypesForCategory(category) {
         if (!item.name || !item.name.trim()) return false;
         if (item.deleted || item.active === false) return false;
         const cleanName = item.name.trim().toLowerCase();
-        if (blacklist.includes(cleanName) || blacklist.includes(item.id)) return false;
+        const scopedKey = `${category}::${cleanName}`;
+        if (blacklist.includes(cleanName) || blacklist.includes(scopedKey) || blacklist.includes(item.id)) return false;
         return true;
       })
       .map(item => item.name);
@@ -987,8 +988,9 @@ async function saveCaseTypeIfNew(category, typeName) {
   } catch(e) { blacklist = []; }
 
   const cleanLower = name.toLowerCase();
+  const scopedKey = `${category}::${cleanLower}`;
   // Do NOT re-add if user explicitly deleted/blacklisted it from the Autofill Manager
-  if (blacklist.includes(cleanLower)) return;
+  if (blacklist.includes(cleanLower) || blacklist.includes(scopedKey)) return;
 
   if (_caseTypeSuggestions.some(s => s.toLowerCase() === cleanLower)) return;
 
@@ -1011,7 +1013,7 @@ function filterCaseTypeSuggestions(val) {
   const filtered = q ? _caseTypeSuggestions.filter(s => s.toLowerCase().includes(q)) : _caseTypeSuggestions;
   if (!filtered.length) { dd.style.display = "none"; return; }
   dd.innerHTML = filtered.map(s =>
-    `<div onclick="selectCaseType('${s.replace(/'/g,"\'")}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s" onmouseover="this.style.background='rgba(201,165,92,0.08)'" onmouseout="this.style.background=''">${s}</div>`
+    `<div onclick="selectCaseType('${s.replace(/'/g,"\\'")}')" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:background 0.1s" onmouseover="this.style.background='rgba(201,165,92,0.08)'" onmouseout="this.style.background=''">${s}</div>`
   ).join("");
   dd.style.display = "block";
 }
