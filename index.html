@@ -29,7 +29,6 @@
     --kpi-grad-3: linear-gradient(135deg, #065f46 0%, #8a6210 100%);
   }
 
-  /* ── Minimal KPI Stat Cards (No colored top bar, gradient numbers) ── */
   .stat-card::before { display: none !important; content: none !important; }
   .stat-card { background: linear-gradient(160deg, var(--surface) 0%, var(--surface2) 100%); }
   .stat-number {
@@ -53,7 +52,6 @@
     -webkit-text-fill-color: transparent;
   }
 
-  /* ── Plain Solid Dots (NO glowing shadow or pulse) ── */
   .plain-dot {
     width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block;
     box-shadow: none !important; animation: none !important;
@@ -62,7 +60,6 @@
   .plain-dot.amber { background: var(--amber); }
   .plain-dot.red   { background: var(--red); }
 
-  /* ── Top Utility Popovers (Google & Online Users) ── */
   .top-popover {
     position: absolute; top: 48px; right: 0; width: 315px; max-width: calc(100vw - 32px);
     background: var(--surface); border: 1px solid var(--gold-border); border-radius: 14px;
@@ -74,7 +71,6 @@
   }
   .top-popover-body { padding: 10px 12px; max-height: 330px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 
-  /* ── Full-Width Balanced Profile Settings ── */
   .profile-settings-grid {
     display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; width: 100%;
   }
@@ -82,7 +78,6 @@
     .profile-settings-grid { grid-template-columns: 1fr; }
   }
 
-  /* ── Retractable & Expandable Settings Accordions ── */
   .settings-accordion-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
   .settings-accordion { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
   .settings-accordion.is-open { border-color: var(--gold-border); }
@@ -108,7 +103,6 @@
   }
   .setting-row-item:last-child { margin-bottom: 0; }
 
-  /* ── Accessibility Modes ── */
   html[data-font-scale="compact"] { font-size: 13px; }
   html[data-font-scale="large"]   { font-size: 15.5px; }
   html[data-font-scale="xlarge"]  { font-size: 17px; }
@@ -121,7 +115,6 @@
   html[data-reduce-motion="true"] *::before,
   html[data-reduce-motion="true"] *::after { transition: none !important; animation: none !important; }
 
-  /* ── Internal Movable Persistent Floating Legal Research Widget ── */
   .research-fab {
     position: fixed; bottom: 24px; right: 24px; z-index: 940;
     display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px;
@@ -216,7 +209,7 @@
     flex: 1;
   }
 
-  /* ── Internal Google Docs Workspace Modal ── */
+  /* ── Embedded Google Docs Workspace Modal ── */
   .gdoc-editor-shell {
     max-width: 1140px; width: 100%; height: 92vh; background: var(--surface); border: 1px solid var(--gold-border);
     border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column;
@@ -252,7 +245,7 @@
     padding: 36px 44px; color: var(--text); font-size: 13.5px; line-height: 1.7; outline: none;
   }
 
-  /* ── All Cases + Google Docs Combined Switcher ── */
+  /* ── All Cases + Sorted Drive Explorer ── */
   .allcases-mode-switch {
     display: inline-flex;
     background: var(--surface2);
@@ -277,25 +270,59 @@
     color: var(--gold-light);
     border: 1px solid var(--gold-border);
   }
-  .ac-docs-grid {
+
+  /* ── Drive-Style Sorted Folder Tiles ── */
+  .folder-tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+    margin-top: 14px;
   }
-  .ac-doc-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: border-color 0.15s, background 0.15s;
+  .folder-tile {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 14px; text-align: center;
+    cursor: pointer; transition: all 0.16s ease; display: flex; flex-direction: column; align-items: center;
   }
-  .ac-doc-card:hover {
+  .folder-tile:hover {
+    border-color: var(--gold-border); background: var(--surface3); transform: translateY(-2px);
+  }
+  .folder-tile-icon { font-size: 38px; color: var(--gold); margin-bottom: 8px; line-height: 1; }
+  .folder-tile-name { font-size: 13px; font-weight: 700; color: var(--text); word-break: break-word; line-height: 1.3; }
+  .folder-tile-count { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  .folder-tile.back-tile {
+    border-style: dashed;
     border-color: var(--gold-border);
-    background: var(--surface3);
+    background: rgba(201,165,92,0.04);
   }
+  .folder-tile.back-tile:hover {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+  }
+  .folder-tile.back-tile .folder-tile-icon {
+    color: var(--gold-light);
+    font-size: 32px;
+  }
+
+  /* ── Document Edit History Logs & Co-Editing Presence ── */
+  .history-entry {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 11px; background: var(--surface2); border: 1px solid var(--border);
+    border-left: 3px solid var(--gold); border-radius: 8px; margin-bottom: 7px; font-size: 12px;
+  }
+  .live-editor-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px;
+    border-radius: 999px; font-size: 10.5px; font-weight: 700;
+    background: rgba(52,211,153,0.14); color: var(--green); border: 1px solid rgba(52,211,153,0.35);
+  }
+
+  /* ── 4-Step New Google Doc Wizard ── */
+  .wizard-step-chip {
+    padding: 6px 12px; border-radius: 8px; background: var(--surface2);
+    border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-dim);
+  }
+  .wizard-step-chip.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); }
+  .wizard-step-chip.completed { border-color: var(--green); color: var(--green); }
 
   .diagnostic-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
   .diagnostic-item-left { display: flex; align-items: center; gap: 12px; }
@@ -332,24 +359,24 @@
   <i class="bi bi-exclamation-triangle-fill" style="color:var(--amber);margin-right:6px"></i> <strong>Firebase not connected.</strong> Data is stored in memory only and will be lost on refresh.
 </div>
 
-<!-- Real Google Docs & Legal Draft Workspace Modal (Bound to Selected Case) -->
-<div id="gdoc-modal" class="modal-overlay hidden" style="z-index: 10012;" onclick="if(event.target===this)closeGoogleDocModal()">
+<!-- Real Google Docs Workspace Modal (Live Embedded Editor & Specific Case Binding) -->
+<div id="gdoc-modal" class="modal-overlay hidden" style="z-index: 10012;" onclick="if(event.target===this)attemptCloseGdocModal()">
   <div class="gdoc-editor-shell">
-    <!-- Top Header: Title, Assigned Case Picker, Actions -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px">
         <i class="bi bi-file-earmark-richtext-fill" style="color:var(--gold);font-size:20px"></i>
-        <input id="gdoc-title-input" class="field-input" style="max-width:300px;padding:6px 10px;font-weight:700" placeholder="Document Title (e.g. Motion for Extension)" value="Legal Memorandum Draft"/>
+        <input id="gdoc-title-input" class="field-input" style="max-width:300px;padding:6px 10px;font-weight:700" placeholder="Document Title" value="Legal Memorandum Draft" oninput="markDocDirty()"/>
         <span class="badge" id="gdoc-api-status-badge" style="background:var(--green-bg);color:var(--green)"><i class="bi bi-cloud-check"></i> Google Docs</span>
+        <span class="badge" id="gdoc-flow-badge" style="background:var(--violet-bg);color:var(--violet)">Outbound</span>
       </div>
 
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <select class="field-input" id="gdoc-case-select" onchange="onGdocCaseSelectionChange()" style="width:auto;max-width:250px;padding:6px 10px;font-size:12px" title="Select which specific case this Google Doc belongs to">
           <option value="">— Standalone Firm Draft —</option>
         </select>
-        <button type="button" class="btn btn-secondary btn-sm" id="gdoc-save-btn" onclick="saveInternalGoogleDoc(false)" title="Save / Assign Doc to Selected Case"><i class="bi bi-cloud-arrow-up"></i> Save to Case</button>
-        <button type="button" class="btn btn-primary btn-sm" id="gdoc-pdf-btn" onclick="saveInternalGoogleDoc(true)" title="Export live Google Doc as PDF and attach to Selected Case"><i class="bi bi-file-earmark-pdf"></i> Export Case PDF</button>
-        <button onclick="closeGoogleDocModal()" style="color:var(--text-dim);font-size:18px;padding:4px" title="Close"><i class="bi bi-x-lg"></i></button>
+        <button type="button" class="btn btn-primary btn-sm" id="gdoc-save-btn" onclick="saveAndReplaceCasePdf(false)" title="Save changes and replace existing case PDF directly"><i class="bi bi-file-earmark-pdf-fill"></i> Save &amp; Replace PDF</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="gdoc-pdf-btn" onclick="saveAndReplaceCasePdf(true)" title="Export a new standalone PDF copy"><i class="bi bi-cloud-arrow-up"></i> Export Copy</button>
+        <button type="button" onclick="attemptCloseGdocModal()" style="color:var(--text-dim);font-size:18px;padding:4px" title="Close"><i class="bi bi-x-lg"></i></button>
       </div>
     </div>
 
@@ -373,16 +400,15 @@
       </div>
     </div>
 
-    <!-- Mode 1: Real Live Google Docs Editor (All Native Google Docs Features) -->
+    <!-- Mode 1: Live Google Docs Editor -->
     <div id="gdoc-live-pane" style="flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)">
-      <!-- Pre-launch screen (shown only when no case is pre-selected or Google isn't connected yet) -->
       <div id="gdoc-live-launch" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;gap:14px">
         <div style="width:62px;height:62px;border-radius:16px;background:var(--gold-dim);border:1px solid var(--gold-border);display:grid;place-items:center;font-size:28px;color:var(--gold)">
           <i class="bi bi-file-earmark-richtext-fill"></i>
         </div>
-        <div style="font-size:18px;font-weight:700;color:var(--text)" id="gdoc-launch-heading">Create Real Google Doc</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">Create Real Google Doc for Selected Case</div>
         <div style="font-size:13px;color:var(--text-muted);max-width:480px;line-height:1.55">
-          Creates a full Google Doc inside the selected case's Drive folder, automatically attaches it to that specific case in Simando Law, and embeds the complete Google Docs editor here.
+          Creates a full Google Doc inside the selected case's Drive folder, binds it to this docket, and opens the live embedded Google Docs editor.
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;width:100%;max-width:460px">
           <select id="gdoc-template-select" class="field-input" style="flex:1;min-width:210px">
@@ -396,76 +422,75 @@
             <i class="bi bi-google"></i> Create &amp; Open Google Doc
           </button>
         </div>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="switchGdocEditorMode('draft')" style="font-size:12px">
-          Or start typing offline in Legal Draft Pad →
-        </button>
       </div>
 
-      <!-- Active Embedded Google Docs Iframe -->
       <div id="gdoc-iframe-wrap" class="hidden" style="flex:1;min-height:0;display:flex;flex-direction:column">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)">
-          <span><i class="bi bi-shield-check" style="color:var(--green);margin-right:5px"></i>Auto-saved in Google Docs · Linked to selected case</span>
+          <span><i class="bi bi-shield-check" style="color:var(--green);margin-right:5px"></i>Live Google Docs · Saving converts and replaces original PDF</span>
           <div style="display:flex;gap:10px;align-items:center">
             <button type="button" class="btn btn-ghost btn-sm" onclick="reloadLiveGoogleDocFrame()" style="padding:3px 8px;font-size:11px"><i class="bi bi-arrow-clockwise"></i> Reload Editor</button>
-            <a id="gdoc-banner-popout" href="#" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-weight:700;text-decoration:underline;font-size:11.5px">Open full Google Docs tab <i class="bi bi-box-arrow-up-right"></i></a>
+            <a id="gdoc-banner-popout" href="#" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-weight:700;text-decoration:underline;font-size:11.5px">Open in Google Docs tab <i class="bi bi-box-arrow-up-right"></i></a>
           </div>
         </div>
         <iframe id="gdoc-live-iframe" src="about:blank" style="width:100%;flex:1;border:none;background:#fff" allow="clipboard-read; clipboard-write"></iframe>
       </div>
     </div>
 
-    <!-- Mode 2: Built-in Legal Draft Pad (Full Rich Formatting + Legal Templates) -->
+    <!-- Mode 2: Legal Draft Pad -->
     <div id="gdoc-draft-pane" class="hidden" style="flex:1;min-height:0;display:flex;flex-direction:column">
       <div class="gdoc-toolbar">
-        <select class="gdoc-tool-select" onchange="execInternalDocFmt('formatBlock', this.value); this.selectedIndex=0;" title="Paragraph style">
-          <option value="">Style</option>
-          <option value="P">Normal Text</option>
-          <option value="H1">Heading 1</option>
-          <option value="H2">Heading 2</option>
-          <option value="H3">Heading 3</option>
-        </select>
-        <select class="gdoc-tool-select" onchange="execInternalDocFmt('fontSize', this.value); this.selectedIndex=0;" title="Font size">
-          <option value="">Size</option>
-          <option value="2">Small</option>
-          <option value="3">Normal</option>
-          <option value="4">Medium</option>
-          <option value="5">Large</option>
-          <option value="6">Title</option>
-        </select>
-        <span style="width:1px;height:18px;background:var(--border-soft);margin:0 2px"></span>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('bold')" title="Bold"><strong>B</strong></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('italic')" title="Italic"><em>I</em></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('underline')" title="Underline"><u>U</u></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('strikeThrough')" title="Strikethrough"><s>S</s></button>
-        <span style="width:1px;height:18px;background:var(--border-soft);margin:0 2px"></span>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('justifyLeft')" title="Align Left"><i class="bi bi-text-left"></i></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('justifyCenter')" title="Align Center"><i class="bi bi-text-center"></i></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('justifyRight')" title="Align Right"><i class="bi bi-text-right"></i></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('justifyFull')" title="Justify"><i class="bi bi-justify"></i></button>
-        <span style="width:1px;height:18px;background:var(--border-soft);margin:0 2px"></span>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('insertUnorderedList')" title="Bulleted List"><i class="bi bi-list-ul"></i></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('insertOrderedList')" title="Numbered List"><i class="bi bi-list-ol"></i></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('indent')" title="Increase Indent"><i class="bi bi-text-indent-left"></i></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('outdent')" title="Decrease Indent"><i class="bi bi-text-indent-right"></i></button>
+        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('bold')"><strong>B</strong></button>
+        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('italic')"><em>I</em></button>
+        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('underline')"><u>U</u></button>
         <span style="width:1px;height:18px;background:var(--border-soft);margin:0 2px"></span>
         <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('caption')"><i class="bi bi-bank"></i> Caption</button>
         <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('prayer')"><i class="bi bi-paragraph"></i> Prayer</button>
         <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('jurat')"><i class="bi bi-pen"></i> Jurat</button>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('notice')"><i class="bi bi-calendar-event"></i> Notice</button>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('service')"><i class="bi bi-envelope-check"></i> Service</button>
       </div>
       <div style="flex:1;overflow-y:auto;background:var(--bg)">
-        <div id="gdoc-canvas" class="gdoc-page-canvas" contenteditable="true">
-          <div style="text-align:center;font-weight:700;margin-bottom:16px">
-            REPUBLIC OF THE PHILIPPINES<br/>
-            REGIONAL TRIAL COURT<br/>
-            FIFTH JUDICIAL REGION — NAGA CITY
-          </div>
-          <p style="margin-bottom:12px"><strong>PETITIONER / PLAINTIFF</strong>,<br/>— versus —<br/><strong>RESPONDENT / DEFENDANT</strong>.</p>
-          <p style="text-align:center;font-weight:700;text-decoration:underline;margin:16px 0">PLEADING / LEGAL DRAFT</p>
-          <p>COMES NOW the undersigned counsel, and unto this Honorable Court most respectfully states that...</p>
-        </div>
+        <div id="gdoc-canvas" class="gdoc-page-canvas" contenteditable="true" oninput="markDocDirty()"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ GUIDED 4-STEP "NEW GOOGLE DOC" WIZARD MODAL ══════ -->
+<div id="new-doc-wizard-modal" class="modal-overlay hidden" style="z-index: 10014;" onclick="if(event.target===this)closeNewDocWizard()">
+  <div class="modal-box" style="max-width:580px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <div style="font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <i class="bi bi-file-earmark-plus" style="color:var(--gold)"></i> New Google Doc Setup
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeNewDocWizard()"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+      <span class="wizard-step-chip active" id="wiz-step-1-lbl">1. Category</span>
+      <span class="wizard-step-chip" id="wiz-step-2-lbl">2. Case Type</span>
+      <span class="wizard-step-chip" id="wiz-step-3-lbl">3. Select Case</span>
+      <span class="wizard-step-chip" id="wiz-step-4-lbl">4. Flow &amp; Template</span>
+    </div>
+
+    <div id="wizard-content"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
+      <button class="btn btn-ghost btn-sm" id="wiz-btn-back" onclick="wizardBack()">Back</button>
+      <button class="btn btn-primary btn-sm" id="wiz-btn-next" onclick="wizardNext()">Continue <i class="bi bi-arrow-right"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ ACCIDENTAL CLOSE DISCARD CONFIRMATION MODAL ══════ -->
+<div id="discard-confirm-modal" class="modal-overlay hidden" style="z-index: 10030;">
+  <div class="modal-box" style="text-align: center; max-width: 440px;">
+    <div style="font-size:38px;color:var(--amber);margin-bottom:8px"><i class="bi bi-exclamation-octagon-fill"></i></div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px">Discard Unsaved Changes?</div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px" id="discard-modal-desc">
+      You have unsaved changes in this document. If you close without saving, your edits will not be recorded in the case.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-secondary" onclick="closeDiscardModal()">Continue Editing</button>
+      <button class="btn btn-danger" id="discard-confirm-action-btn" onclick="executeDiscardAndClose()"><i class="bi bi-trash3"></i> Discard &amp; Close</button>
     </div>
   </div>
 </div>
@@ -784,7 +809,7 @@
   </div>
 </div>
 
-<!-- Internal File Preview Modal (In-App Viewer + Edit in Google Docs Button) -->
+<!-- Internal In-App File Preview Modal (With Edit in Google Docs button) -->
 <div id="file-preview-modal" style="display:none;position:fixed;inset:0;z-index:10011;background:rgba(6,12,19,0.92);align-items:center;justify-content:center;flex-direction:column" onclick="if(event.target===this)closeFilePreview()">
   <div style="position:absolute;top:0;left:0;right:0;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--gold-border);gap:12px">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
@@ -792,7 +817,7 @@
       <div id="fpm-title" style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
-      <button type="button" id="fpm-edit-btn" class="btn btn-primary btn-sm" onclick="editPreviewedFileInGoogleDocs()" title="Convert/open this file inside the embedded Google Docs editor">
+      <button type="button" id="fpm-edit-btn" class="btn btn-primary btn-sm" onclick="editPreviewedFileInGoogleDocs()" title="Convert/open this file inside Google Docs">
         <i class="bi bi-pencil-square"></i> Edit in Google Docs
       </button>
       <a id="fpm-download" download class="btn btn-secondary btn-sm"><i class="bi bi-download"></i> Download</a>
@@ -880,12 +905,10 @@
     </div>
   </div>
 
-  <!-- Tab 1: Internal Similar Cases (Firm Dockets & Citations) -->
   <div id="research-view-similar" class="research-body-area" style="padding:12px;overflow-y:auto">
     <div id="research-similar-list" style="display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
-  <!-- Tab 2: Internal Embedded Web Reader + Quick Legal Portals -->
   <div id="research-view-web" class="research-body-area hidden">
     <div class="research-sites-strip">
       <button type="button" class="research-site-chip active" onclick="loadInternalResearchSite('https://lawphil.net/', this)"><i class="bi bi-book-half"></i> LawPhil</button>
@@ -995,7 +1018,6 @@
   <!-- ══════ MAIN CONTENT ══════ -->
   <main id="main">
 
-    <!-- Labeled Top Header Bar -->
     <div class="top-utility-bar">
       <div>
         <h1 class="page-title" id="main-page-title">Law Office Dashboard</h1>
@@ -1012,7 +1034,6 @@
 
           <div class="top-capsule-divider"></div>
 
-          <!-- Google Workspace Button beside Messages -->
           <div style="position:relative">
             <button onclick="toggleTopPopover('google-popover', event)" class="top-labeled-btn" title="Google Drive, Docs &amp; Calendar">
               <i class="bi bi-google"></i>
@@ -1039,7 +1060,7 @@
                 </div>
                 <div style="display:flex;gap:8px;margin-top:4px">
                   <button type="button" class="btn btn-primary btn-sm" style="flex:1" id="gpop-connect-btn" onclick="connectOrOpenGoogleAction()"><i class="bi bi-google"></i> Connect</button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="closeAllTopPopovers();openGoogleDocModal()"><i class="bi bi-file-earmark-plus"></i> New Doc</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="closeAllTopPopovers();openNewDocWizard()"><i class="bi bi-file-earmark-plus"></i> New Doc</button>
                 </div>
               </div>
             </div>
@@ -1047,7 +1068,6 @@
 
           <div class="top-capsule-divider"></div>
 
-          <!-- Online Users List Pill -->
           <div style="position:relative">
             <button onclick="toggleTopPopover('online-popover', event)" class="top-labeled-btn" title="Users Currently Online">
               <span class="plain-dot green"></span>
@@ -1089,7 +1109,7 @@
         </div>
 
         <div class="top-action-slot" id="slot-mydrive-action" style="display:none">
-          <button class="btn btn-secondary btn-sm" onclick="openGoogleDocModal()"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
+          <button class="btn btn-secondary btn-sm" onclick="openNewDocWizard()"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
           <a id="mydrive-open-native-btn" class="btn btn-primary btn-sm" href="#" target="_blank"><i class="bi bi-google"></i> Open Google Drive <i class="bi bi-box-arrow-up-right"></i></a>
         </div>
       </div>
@@ -1104,9 +1124,9 @@
           <div class="qa-icon"><i class="bi bi-plus-lg"></i></div>
           <div><div class="qa-title">Add New Case</div><div class="qa-desc">Create a new client docket</div></div>
         </button>
-        <button class="quick-action-tile" onclick="openGoogleDocModal()">
+        <button class="quick-action-tile" onclick="openNewDocWizard()">
           <div class="qa-icon"><i class="bi bi-file-earmark-richtext"></i></div>
-          <div><div class="qa-title">New Google Doc</div><div class="qa-desc">Draft &amp; attach to a case</div></div>
+          <div><div class="qa-title">New Google Doc</div><div class="qa-desc">Guided Category &amp; Case picker</div></div>
         </button>
         <button class="quick-action-tile" onclick="navTo('allcases')">
           <div class="qa-icon"><i class="bi bi-search"></i></div>
@@ -1216,7 +1236,7 @@
       </div>
     </div>
 
-    <!-- ── 3. ALL CASES & GOOGLE DOCS ── -->
+    <!-- ── 3. ALL CASES & SORTED DRIVE-STYLE EXPLORER ── -->
     <div id="view-allcases" class="view hidden">
       <div class="card mb-16">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
@@ -1226,18 +1246,18 @@
                 <i class="bi bi-briefcase-fill"></i> Case Dockets
               </button>
               <button type="button" class="allcases-mode-btn" id="ac-mode-docs-btn" onclick="switchAllCasesTab('docs')">
-                <i class="bi bi-file-earmark-richtext-fill"></i> Google Docs &amp; Drafts
+                <i class="bi bi-folder2-open"></i> Case PDFs &amp; Google Docs (Drive Explorer)
               </button>
             </div>
             <div style="font-size:12px;color:var(--text-dim)" id="allcases-count"></div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="openGoogleDocModal()"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
+            <button class="btn btn-secondary btn-sm" onclick="openNewDocWizard()"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
             <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-lg"></i> Add New Case</button>
           </div>
         </div>
 
-        <!-- Sub-view 1 Controls: Case Filters -->
+        <!-- Mode 1 Controls: Case Docket Filters -->
         <div id="ac-cases-controls">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="ac-status-tabs"></div>
           <div class="filter-grid">
@@ -1250,26 +1270,29 @@
           </div>
         </div>
 
-        <!-- Sub-view 2 Controls: Google Docs Filters -->
+        <!-- Mode 2 Controls: Drive Explorer Header with Dedicated Back Button -->
         <div id="ac-docs-controls" class="hidden">
-          <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
-            <div style="flex:1;min-width:200px">
-              <label class="filter-label" for="ac-docs-search">Search Google Docs &amp; Case Drafts</label>
-              <input class="field-input" id="ac-docs-search" placeholder="Search by document title or case name…" oninput="renderAllCasesGoogleDocs()"/>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+              <button class="btn btn-secondary btn-sm" id="drive-back-btn" onclick="driveGoBackOneLevel()" title="Go back one folder">
+                <i class="bi bi-arrow-left"></i> Back
+              </button>
+              <div style="font-size:13.5px;font-weight:700;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="drive-breadcrumb-bar">
+                <span><i class="bi bi-folder-fill"></i> Case Vault</span>
+              </div>
             </div>
-            <div style="min-width:210px">
-              <label class="filter-label" for="ac-docs-case-filter">Filter by Case Docket</label>
-              <select class="filter-select" id="ac-docs-case-filter" onchange="renderAllCasesGoogleDocs()">
-                <option value="All">All Cases &amp; Standalone Drafts</option>
-              </select>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="ac-docs-search" class="field-input" placeholder="Search case or PDF name..." oninput="filterDriveSearch(this.value)" style="width:240px;padding:6px 12px;font-size:12px"/>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="resetDriveExplorer()" title="Return to root categories"><i class="bi bi-arrow-counterclockwise"></i> Root</button>
             </div>
-            <button type="button" class="btn btn-secondary" onclick="loadAllCasesGoogleDocs(true)"><i class="bi bi-arrow-clockwise"></i> Sync Drive Docs</button>
-            <a href="https://docs.google.com" target="_blank" class="btn btn-secondary"><i class="bi bi-google"></i> Open Google Docs <i class="bi bi-box-arrow-up-right"></i></a>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-dim);margin-top:6px">
+            Browse cases structured by <strong>Category → Case Type → Case Docket → Inbound / Outbound</strong>.
           </div>
         </div>
       </div>
 
-      <!-- Sub-view 1 Body: Cases List -->
+      <!-- Mode 1 Body -->
       <div id="ac-cases-body">
         <div id="all-cases-list"></div>
         <div class="pagination-bar" id="allcases-pagination-bar">
@@ -1282,9 +1305,12 @@
         </div>
       </div>
 
-      <!-- Sub-view 2 Body: Combined Google Docs List -->
+      <!-- Mode 2 Body (Sorted Google Drive Style Explorer with Back Tiles) -->
       <div id="ac-docs-body" class="hidden">
-        <div id="ac-docs-list"></div>
+        <div class="card" style="min-height:360px">
+          <div id="drive-tiles-container" class="folder-tile-grid"></div>
+          <div id="drive-files-container" class="hidden" style="margin-top:14px"></div>
+        </div>
       </div>
     </div>
 
@@ -1503,12 +1529,13 @@
         <div style="display:flex;flex-direction:column;gap:16px">
           <div class="card" id="cd-hearings"></div>
           <div class="card" id="cd-docs"></div>
+          <div class="card" id="cd-history-card"></div>
           <div class="card" id="cd-status-panel"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── 8A. PROFILE SETTINGS (Full-Width Balanced Layout: Name, Number, Pfp, Description) ── -->
+    <!-- ── 8A. PROFILE SETTINGS ── -->
     <div id="view-myprofile" class="view hidden">
       <div class="profile-settings-grid">
         <div class="card" style="text-align:center">
@@ -1563,11 +1590,9 @@
       </div>
     </div>
 
-    <!-- ── 8B. SETTINGS (Every Section Retractable & Expandable Accordion) ── -->
+    <!-- ── 8B. SETTINGS ── -->
     <div id="view-settings" class="view hidden">
       <div class="settings-accordion-list">
-
-        <!-- 1. Accessibility Settings -->
         <div class="settings-accordion is-open" id="acc-accessibility">
           <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
             <div class="settings-acc-title-wrap">
@@ -1604,7 +1629,6 @@
           </div>
         </div>
 
-        <!-- 2. Notification Sounds -->
         <div class="settings-accordion" id="acc-sounds">
           <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
             <div class="settings-acc-title-wrap">
@@ -1631,7 +1655,6 @@
           </div>
         </div>
 
-        <!-- 3. Security Settings & Update Credentials -->
         <div class="settings-accordion" id="acc-security">
           <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
             <div class="settings-acc-title-wrap">
@@ -1703,7 +1726,6 @@
           </div>
         </div>
 
-        <!-- 4. Terms of Service -->
         <div class="settings-accordion" id="acc-terms">
           <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
             <div class="settings-acc-title-wrap">
@@ -1721,7 +1743,6 @@
           </div>
         </div>
 
-        <!-- 5. Privacy and Policy -->
         <div class="settings-accordion" id="acc-privacy">
           <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
             <div class="settings-acc-title-wrap">
@@ -1739,7 +1760,6 @@
           </div>
         </div>
 
-        <!-- 6. Suggestions / Report -->
         <div class="settings-accordion" id="acc-suggestions">
           <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
             <div class="settings-acc-title-wrap">
@@ -1756,7 +1776,6 @@
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Open Feedback Form <i class="bi bi-box-arrow-up-right"></i></a>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -1846,7 +1865,7 @@
       try {
         const secSnap = await window._fbGetDoc(window._fbDoc(window._db, "profiles", myProf?.id || u.uid, "private", "security"));
         if (secSnap.exists()) secData = secSnap.data();
-      } catch (e) { /* ignore */ }
+      } catch (e) { }
 
       cmsActiveOverrideSecret = secData?.twoFactorSecret || myProf?.twoFactorSecret || null;
       cmsActiveBackupCodes = secData?.twoFactorBackupCodes || myProf?.twoFactorBackupCodes || [];
