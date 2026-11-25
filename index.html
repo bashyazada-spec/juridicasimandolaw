@@ -233,6 +233,51 @@
     padding: 28px 34px; color: var(--text); font-size: 13.5px; line-height: 1.7; outline: none;
   }
 
+  /* ── All Cases + Google Docs Combined Switcher ── */
+  .allcases-mode-switch {
+    display: inline-flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 4px;
+  }
+  .allcases-mode-btn {
+    padding: 6px 13px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .allcases-mode-btn.active {
+    background: var(--gold-dim);
+    color: var(--gold-light);
+    border: 1px solid var(--gold-border);
+  }
+  .ac-docs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+  .ac-doc-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .ac-doc-card:hover {
+    border-color: var(--gold-border);
+    background: var(--surface3);
+  }
+
   .diagnostic-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
   .diagnostic-item-left { display: flex; align-items: center; gap: 12px; }
   .diag-icon { font-size: 18px; width: 28px; text-align: center; }
@@ -781,8 +826,8 @@
       <button class="nav-btn active" data-nav="dashboard" data-tooltip="Dashboard" onclick="navTo('dashboard')">
         <i class="bi bi-columns-gap"></i><span class="nav-label">Dashboard</span>
       </button>
-      <button class="nav-btn" data-nav="allcases" data-tooltip="All Cases" onclick="navTo('allcases')">
-        <i class="bi bi-briefcase"></i><span class="nav-label">All Cases</span>
+      <button class="nav-btn" data-nav="allcases" data-tooltip="All Cases &amp; Google Docs" onclick="navTo('allcases')">
+        <i class="bi bi-briefcase"></i><span class="nav-label">All Cases &amp; Docs</span>
       </button>
       <button class="nav-btn" data-nav="calendar" data-tooltip="Schedule / Calendar" onclick="navTo('calendar')">
         <i class="bi bi-calendar3"></i><span class="nav-label">Schedule / Calendar</span>
@@ -837,7 +882,7 @@
   <!-- ══════ MAIN CONTENT ══════ -->
   <main id="main">
 
-    <!-- Labeled Top Header Bar (Diagnostic Button Removed) -->
+    <!-- Labeled Top Header Bar -->
     <div class="top-utility-bar">
       <div>
         <h1 class="page-title" id="main-page-title">Law Office Dashboard</h1>
@@ -1058,34 +1103,75 @@
       </div>
     </div>
 
-    <!-- ── 3. ALL CASES ── -->
+    <!-- ── 3. ALL CASES & GOOGLE DOCS ── -->
     <div id="view-allcases" class="view hidden">
       <div class="card mb-16">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
-          <div>
-            <div style="font-size:15px;font-weight:700">Search &amp; Filter Cases</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="allcases-mode-switch" role="tablist">
+              <button type="button" class="allcases-mode-btn active" id="ac-mode-cases-btn" onclick="switchAllCasesTab('cases')">
+                <i class="bi bi-briefcase-fill"></i> Case Dockets
+              </button>
+              <button type="button" class="allcases-mode-btn" id="ac-mode-docs-btn" onclick="switchAllCasesTab('docs')">
+                <i class="bi bi-file-earmark-richtext-fill"></i> Google Docs &amp; Drafts
+              </button>
+            </div>
             <div style="font-size:12px;color:var(--text-dim)" id="allcases-count"></div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-lg"></i> Add New Case</button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="openGoogleDocModal()"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-lg"></i> Add New Case</button>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="ac-status-tabs"></div>
-        <div class="filter-grid">
-          <div><label class="filter-label" for="ac-search">Search by Title, Parties, or Docket #</label><input class="field-input" placeholder="Search cases…" id="ac-search" oninput="renderAllCases()"/></div>
-          <div><label class="filter-label" for="ac-category">Category</label><select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')"><option value="All">All Categories</option></select></div>
-          <div><label class="filter-label" for="ac-status">Status</label><select class="filter-select" id="ac-status" onchange="setAllCasesStatusTab(this.value)"><option value="All">All Statuses</option></select></div>
-          <div><label class="filter-label" for="ac-type">Type</label><select class="filter-select" id="ac-type" onchange="renderAllCases()"><option value="All">All Types</option></select></div>
-          <div><label class="filter-label" for="ac-sort">Sort</label><select class="filter-select" id="ac-sort" onchange="renderAllCases()"><option value="asc">Due: Soonest First</option><option value="desc">Due: Furthest First</option><option value="none">Date Added</option></select></div>
-          <div><button class="btn btn-secondary" onclick="resetAllCaseFilters()"><i class="bi bi-arrow-counterclockwise"></i> Clear</button></div>
+
+        <!-- Sub-view 1 Controls: Case Filters -->
+        <div id="ac-cases-controls">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="ac-status-tabs"></div>
+          <div class="filter-grid">
+            <div><label class="filter-label" for="ac-search">Search by Title, Parties, or Docket #</label><input class="field-input" placeholder="Search cases…" id="ac-search" oninput="renderAllCases()"/></div>
+            <div><label class="filter-label" for="ac-category">Category</label><select class="filter-select" id="ac-category" onchange="onFilterCategoryChange('ac')"><option value="All">All Categories</option></select></div>
+            <div><label class="filter-label" for="ac-status">Status</label><select class="filter-select" id="ac-status" onchange="setAllCasesStatusTab(this.value)"><option value="All">All Statuses</option></select></div>
+            <div><label class="filter-label" for="ac-type">Type</label><select class="filter-select" id="ac-type" onchange="renderAllCases()"><option value="All">All Types</option></select></div>
+            <div><label class="filter-label" for="ac-sort">Sort</label><select class="filter-select" id="ac-sort" onchange="renderAllCases()"><option value="asc">Due: Soonest First</option><option value="desc">Due: Furthest First</option><option value="none">Date Added</option></select></div>
+            <div><button class="btn btn-secondary" onclick="resetAllCaseFilters()"><i class="bi bi-arrow-counterclockwise"></i> Clear</button></div>
+          </div>
+        </div>
+
+        <!-- Sub-view 2 Controls: Google Docs Filters -->
+        <div id="ac-docs-controls" class="hidden">
+          <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <label class="filter-label" for="ac-docs-search">Search Google Docs &amp; Case Drafts</label>
+              <input class="field-input" id="ac-docs-search" placeholder="Search by document title or case name…" oninput="renderAllCasesGoogleDocs()"/>
+            </div>
+            <div style="min-width:210px">
+              <label class="filter-label" for="ac-docs-case-filter">Filter by Case Docket</label>
+              <select class="filter-select" id="ac-docs-case-filter" onchange="renderAllCasesGoogleDocs()">
+                <option value="All">All Cases &amp; Standalone Drafts</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="loadAllCasesGoogleDocs(true)"><i class="bi bi-arrow-clockwise"></i> Sync Drive Docs</button>
+            <a href="https://docs.google.com" target="_blank" class="btn btn-secondary"><i class="bi bi-google"></i> Open Google Docs <i class="bi bi-box-arrow-up-right"></i></a>
+          </div>
         </div>
       </div>
-      <div id="all-cases-list"></div>
-      <div class="pagination-bar" id="allcases-pagination-bar">
-        <span id="allcases-page-info">Showing 0 cases</span>
-        <div class="pagination-controls">
-          <button class="page-btn" id="allcases-btn-prev" onclick="changeAllCasesPage(-1)"><i class="bi bi-chevron-left"></i></button>
-          <div id="allcases-page-buttons" style="display:flex;gap:4px"></div>
-          <button class="page-btn" id="allcases-btn-next" onclick="changeAllCasesPage(1)"><i class="bi bi-chevron-right"></i></button>
+
+      <!-- Sub-view 1 Body: Cases List -->
+      <div id="ac-cases-body">
+        <div id="all-cases-list"></div>
+        <div class="pagination-bar" id="allcases-pagination-bar">
+          <span id="allcases-page-info">Showing 0 cases</span>
+          <div class="pagination-controls">
+            <button class="page-btn" id="allcases-btn-prev" onclick="changeAllCasesPage(-1)"><i class="bi bi-chevron-left"></i></button>
+            <div id="allcases-page-buttons" style="display:flex;gap:4px"></div>
+            <button class="page-btn" id="allcases-btn-next" onclick="changeAllCasesPage(1)"><i class="bi bi-chevron-right"></i></button>
+          </div>
         </div>
+      </div>
+
+      <!-- Sub-view 2 Body: Combined Google Docs List -->
+      <div id="ac-docs-body" class="hidden">
+        <div id="ac-docs-list"></div>
       </div>
     </div>
 
