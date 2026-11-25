@@ -8,17 +8,111 @@
 <!-- Instant 0ms Device Router -->
 <script src="js/redirect.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<!-- Bootstrap Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 <link rel="stylesheet" href="css/style.css"/>
 <script type="module" src="js/firebase-init.js"></script>
 
 <style>
+  :root, [data-theme="dark"] {
+    --bg: #060c13;
+    --surface: #0c1826;
+    --surface2: #091422;
+    --surface3: #122334;
+    --border: #1a293f;
+    --border-soft: #263a55;
+    --text: #f8fafc;
+    --text-muted: #cbd5e1;
+    --text-dim: #94a3b8;
+    --gold: #c9a55c;
+    --gold-light: #e5c787;
+    --gold-dim: rgba(201,165,92,0.12);
+    --gold-border: rgba(201,165,92,0.32);
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --cyan: #22d3ee;
+    --kpi-grad: linear-gradient(135deg, #f8fafc 0%, #c9a55c 100%);
+  }
+  [data-theme="light"] {
+    --bg: #e2e0d8;
+    --surface: #eeece5;
+    --surface2: #e5e3db;
+    --surface3: #dcd9cf;
+    --border: #cbc8bc;
+    --border-soft: #b8b4a6;
+    --text: #1c1e21;
+    --text-muted: #3b4048;
+    --text-dim: #585e68;
+    --gold: #8a6210;
+    --gold-light: #6d4c08;
+    --gold-dim: rgba(138, 98, 16, 0.11);
+    --gold-border: rgba(138, 98, 16, 0.36);
+    --green: #065f46;
+    --amber: #92400e;
+    --red: #991b1b;
+    --cyan: #155e75;
+    --kpi-grad: linear-gradient(135deg, #1c1e21 0%, #8a6210 100%);
+  }
+
+  body, button, input, select, textarea {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  }
+
+  .admin-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .admin-kpi-card {
+    background: linear-gradient(160deg, var(--surface) 0%, var(--surface2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+  }
+  .admin-kpi-num {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 4px;
+    background: var(--kpi-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .admin-kpi-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+  }
+
+  .admin-filter-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .admin-search-box {
+    flex: 1;
+    min-width: 220px;
+    background: var(--surface2);
+    border: 1px solid var(--border-soft);
+    border-radius: 9px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+  .admin-search-box:focus { border-color: var(--gold); }
+
   .admin-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 12px;
+    margin-top: 8px;
   }
   .admin-table th {
     text-align: left;
@@ -36,14 +130,9 @@
     color: var(--text);
     border-bottom: 1px solid var(--border);
   }
-  .admin-table tr:hover td {
-    background-color: var(--surface2);
-  }
-  .action-btn-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .admin-table tr:hover td { background-color: var(--surface2); }
+  .action-btn-group { display: flex; align-items: center; gap: 8px; }
+
   .developer-readonly-banner {
     background: rgba(34,211,238,0.08);
     border: 1px solid rgba(34,211,238,0.25);
@@ -56,7 +145,6 @@
     gap: 12px;
   }
 
-  /* ── CASE TYPES & AUTOFILL MANAGER STYLES ── */
   .manager-grid {
     display: grid;
     grid-template-columns: 280px 1fr;
@@ -87,99 +175,54 @@
     text-align: left;
     transition: all 0.18s ease;
   }
-  .category-pill:hover {
-    background: var(--surface2);
-    color: var(--text);
-  }
-  .category-pill.active {
-    background: rgba(201,165,92,0.12);
-    border-color: var(--gold-border);
-    color: var(--gold-light);
-  }
-  .autofill-items-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-  }
-  .autofill-action-bar {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
+  .category-pill:hover { background: var(--surface2); color: var(--text); }
+  .category-pill.active { background: var(--gold-dim); border-color: var(--gold-border); color: var(--gold-light); }
+
+  .autofill-items-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .autofill-action-bar { display: flex; gap: 10px; margin-bottom: 16px; }
   .autofill-search-input {
     flex: 1;
     background: var(--surface2);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-soft);
     border-radius: 8px;
     padding: 8px 12px;
     color: var(--text);
     font-size: 12.5px;
     outline: none;
   }
-  .autofill-search-input:focus {
-    border-color: var(--gold);
-  }
-  .admin-tab.hidden {
-    display: none !important;
-  }
+  .autofill-search-input:focus { border-color: var(--gold); }
+  .admin-tab.hidden { display: none !important; }
 
-  /* Stealth Break-Glass Modal Elements */
-  .breakglass-otp-grid {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin: 16px 0 22px;
-  }
+  .breakglass-otp-grid { display: flex; gap: 8px; justify-content: center; margin: 16px 0 22px; }
   .breakglass-otp-box {
-    width: 44px;
-    height: 52px;
-    border-radius: 8px;
-    background: var(--surface2);
-    border: 1.5px solid var(--border);
-    color: var(--gold-light);
-    font-size: 22px;
-    font-weight: 800;
-    text-align: center;
-    outline: none;
+    width: 44px; height: 52px; border-radius: 8px; background: var(--surface2);
+    border: 1.5px solid var(--border-soft); color: var(--gold-light); font-size: 22px; font-weight: 800; text-align: center; outline: none;
   }
-  .breakglass-otp-box:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(201,165,92,0.18);
+  .breakglass-otp-box:focus { border-color: var(--gold); }
+
+  .btn-console-isolation {
+    display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 8px;
+    font-size: 11.5px; font-weight: 600; cursor: pointer;
+    background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.25); color: var(--cyan);
+  }
+  .btn-console-isolation.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); }
+
+  .theme-toggle-chip {
+    display: inline-flex; align-items: center; justify-content: space-between; width: 100%;
+    padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(201,165,92,0.22); color: #e2e8f0; font-size: 12px; font-weight: 600; margin-bottom: 10px;
   }
 
-  /* Console Showcase Isolation Button */
-  .btn-console-isolation {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 7px 12px;
-    border-radius: 8px;
-    font-size: 11.5px;
-    font-weight: 600;
-    cursor: pointer;
-    background: rgba(34,211,238,0.08);
-    border: 1px solid rgba(34,211,238,0.25);
-    color: var(--cyan);
-    transition: all 0.2s ease;
-  }
-  .btn-console-isolation:hover {
-    background: rgba(34,211,238,0.15);
-    border-color: var(--cyan);
-  }
-  .btn-console-isolation.active {
-    background: rgba(201,165,92,0.12);
-    border-color: var(--gold);
-    color: var(--gold-light);
+  @media (max-width: 980px) {
+    .admin-kpi-grid { grid-template-columns: 1fr 1fr; }
+    .manager-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
 
-<!-- Toast Alert -->
 <div id="toast"></div>
 
-<!-- Initial Security Verification Screen -->
 <div id="loading-screen" style="position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
   <div class="spinner"></div>
   <div style="font-size:14px;color:var(--text-muted);font-weight:500" id="gate-message">Verifying Admin Authorization...</div>
@@ -208,7 +251,7 @@
       </svg>
       <div class="logo-sub" id="admin-sub-tag">Firm Control Center</div>
     </div>
-    
+
     <div style="flex:1">
       <div class="nav-section">Access &amp; Users</div>
       <button class="nav-btn active" id="btn-tab-nav-attorneys" onclick="switchAdminTab('attorneys')">
@@ -222,15 +265,18 @@
     </div>
 
     <div class="sidebar-footer">
+      <button type="button" class="theme-toggle-chip" onclick="toggleAdminTheme()">
+        <span><i class="bi bi-circle-half" style="color:var(--gold);margin-right:6px"></i>Display Mode</span>
+        <span id="admin-theme-label" style="color:var(--gold)">Dark</span>
+      </button>
       <a href="index.html" target="_self" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;margin-bottom:12px;color:var(--gold-light)"><i class="bi bi-arrow-return-left"></i> Return to CMS</a>
-      Simando Law Admin v2.0
+      Simando Law Admin v2.1
     </div>
   </div>
 
   <!-- ══════ MAIN CONTENT ══════ -->
   <div id="main">
 
-    <!-- Developer Read-Only Alert Banner -->
     <div id="dev-readonly-banner" class="developer-readonly-banner" style="display:none">
       <div style="display:flex;align-items:center;gap:10px">
         <i class="bi bi-shield-lock-fill" style="color:var(--cyan);font-size:18px"></i>
@@ -242,6 +288,26 @@
       <span class="badge" style="background:rgba(34,211,238,0.15);color:var(--cyan);border:1px solid rgba(34,211,238,0.3)">SANDBOX ONLY</span>
     </div>
 
+    <!-- KPI Summary Strip -->
+    <div class="admin-kpi-grid">
+      <div class="admin-kpi-card">
+        <div class="admin-kpi-num" id="kpi-total-accounts">0</div>
+        <div class="admin-kpi-lbl">Total Accounts</div>
+      </div>
+      <div class="admin-kpi-card">
+        <div class="admin-kpi-num" id="kpi-admin-count">0</div>
+        <div class="admin-kpi-lbl">Firm Admins</div>
+      </div>
+      <div class="admin-kpi-card">
+        <div class="admin-kpi-num" id="kpi-tfa-count">0</div>
+        <div class="admin-kpi-lbl">2FA Protected</div>
+      </div>
+      <div class="admin-kpi-card">
+        <div class="admin-kpi-num" id="kpi-drive-count">0</div>
+        <div class="admin-kpi-lbl">Drive Linked</div>
+      </div>
+    </div>
+
     <!-- ── TAB 1: ATTORNEY DATABASE PANEL ── -->
     <div id="tab-attorneys" class="admin-tab">
       <div class="page-hdr">
@@ -250,15 +316,25 @@
           <div class="page-sub" id="admin-directory-sub">Managing firm access profiles &amp; administrative credentials</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <!-- CONSOLE ISOLATION TOGGLE BUTTON (HIDES REAL ATTORNEYS FOR SHOWCASE) -->
-          <button id="btn-toggle-isolation" class="btn-console-isolation" type="button" onclick="toggleAttorneyShowcaseIsolation()" title="Toggle Confidentiality Mode: Hide actual attorneys to showcase developer accounts safely">
+          <button id="btn-toggle-isolation" class="btn-console-isolation" type="button" onclick="toggleAttorneyShowcaseIsolation()" title="Toggle Confidentiality Mode">
             <i class="bi bi-terminal" id="isolation-icon"></i>
             <span id="isolation-label">Showcase Isolation</span>
           </button>
           <button class="btn btn-primary" id="btn-open-create-account" onclick="openCreateModal()"><i class="bi bi-person-plus-fill"></i> Create Account</button>
         </div>
       </div>
+
       <div class="card">
+        <div class="admin-filter-toolbar">
+          <input type="text" id="admin-search-input" class="admin-search-box" placeholder="Search attorney by name, email, or contact…" oninput="renderAttorneyDirectory()"/>
+          <select id="admin-role-filter" class="field-input" style="width:auto;min-width:170px" onchange="renderAttorneyDirectory()">
+            <option value="All">All Roles</option>
+            <option value="Attorney">Attorney</option>
+            <option value="admin">Firm Administrator</option>
+            <option value="developer">System Developer</option>
+          </select>
+        </div>
+
         <div style="overflow-x:auto">
           <table class="admin-table">
             <thead>
@@ -271,9 +347,7 @@
                 <th>Action Controls</th>
               </tr>
             </thead>
-            <tbody id="admin-attorney-tbody">
-              <!-- Rendered dynamically -->
-            </tbody>
+            <tbody id="admin-attorney-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -290,18 +364,12 @@
       </div>
 
       <div class="manager-grid">
-        <!-- Categories list -->
-        <div class="category-nav-card" id="autofill-categories-list">
-          <!-- Populated dynamically -->
-        </div>
-
-        <!-- Autofill items list table -->
+        <div class="category-nav-card" id="autofill-categories-list"></div>
         <div class="autofill-items-card">
           <div class="autofill-action-bar">
             <input type="text" id="autofill-search-input" class="autofill-search-input" placeholder="Search case types in selected category…" oninput="filterAutofillTable()"/>
             <button class="btn btn-secondary btn-sm" onclick="reloadAutofillData()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
           </div>
-
           <table class="admin-table">
             <thead>
               <tr>
@@ -310,14 +378,8 @@
                 <th style="text-align:right">Action</th>
               </tr>
             </thead>
-            <tbody id="autofill-items-tbody">
-              <!-- Rendered dynamically -->
-            </tbody>
+            <tbody id="autofill-items-tbody"></tbody>
           </table>
-
-          <div style="margin-top:16px;font-size:11px;color:var(--text-dim);line-height:1.5">
-            <i class="bi bi-info-circle"></i> Administrators and developers can add new sub-category autocomplete types. Removing inappropriate entries immediately prevents them from appearing in attorney case creation forms.
-          </div>
         </div>
       </div>
     </div>
@@ -336,15 +398,15 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
       <div>
-        <label class="field-label" style="color:var(--text-muted)">Full Name *</label>
+        <label class="field-label">Full Name *</label>
         <input type="text" class="field-input" id="new-name" placeholder="e.g. Atty. Jane Doe" autocomplete="off"/>
       </div>
       <div>
-        <label class="field-label" style="color:var(--text-muted)">Email Address (@gmail.com, @outlook.com, or @yahoo.com) *</label>
+        <label class="field-label">Email Address (@gmail.com, @outlook.com, or @yahoo.com) *</label>
         <input type="email" class="field-input" id="new-email" placeholder="attorney@yahoo.com" autocomplete="off"/>
       </div>
       <div>
-        <label class="field-label" style="color:var(--text-muted)">Role / Privilege Level *</label>
+        <label class="field-label">Role / Privilege Level *</label>
         <select class="field-input" id="new-role">
           <option value="Attorney">Attorney</option>
           <option value="admin">Firm Administrator 🛡️</option>
@@ -352,7 +414,7 @@
         </select>
       </div>
       <div>
-        <label class="field-label" style="color:var(--text-muted)">Initial Password *</label>
+        <label class="field-label">Initial Password *</label>
         <input type="password" class="field-input" id="new-password" placeholder="••••••••" autocomplete="new-password"/>
       </div>
     </div>
@@ -380,10 +442,9 @@
         <label class="field-label">Full Name *</label>
         <input type="text" class="field-input" id="edit-name" placeholder="Full Name"/>
       </div>
-
       <div class="grid2">
         <div>
-          <label class="field-label">Email Address (@gmail.com, @outlook.com, or @yahoo.com) *</label>
+          <label class="field-label">Email Address *</label>
           <input type="email" class="field-input" id="edit-email" placeholder="attorney@yahoo.com"/>
         </div>
         <div>
@@ -391,7 +452,6 @@
           <input type="text" class="field-input" id="edit-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
         </div>
       </div>
-
       <div>
         <label class="field-label">Role &amp; Privilege Designation *</label>
         <select class="field-input" id="edit-role" style="font-weight:600">
@@ -400,20 +460,16 @@
           <option value="developer">System Developer (UI Testing / Sandbox) 🛠️</option>
         </select>
       </div>
-
-      <!-- Password Recovery Tool -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-key-fill" style="color:var(--gold)"></i> Password Recovery</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text)"><i class="bi bi-key-fill" style="color:var(--gold)"></i> Password Recovery</div>
           <div style="font-size:11px;color:var(--text-dim)">Send password reset email to user</div>
         </div>
-        <button class="btn btn-secondary btn-sm" id="btn-admin-send-reset" type="button" onclick="adminSendPasswordReset()"><i class="bi bi-envelope"></i> Send Reset Email</button>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="adminSendPasswordReset()"><i class="bi bi-envelope"></i> Send Reset</button>
       </div>
-
-      <!-- 2FA Administration -->
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-shield-lock-fill" style="color:var(--gold)"></i> Two-Factor Security (2FA)</div>
+          <div style="font-size:12px;font-weight:700;color:var(--text)"><i class="bi bi-shield-lock-fill" style="color:var(--gold)"></i> Two-Factor Security (2FA)</div>
           <div id="edit-2fa-status-desc" style="font-size:11px;color:var(--text-dim)">Checking 2FA status...</div>
         </div>
         <button id="btn-admin-reset-2fa" class="btn btn-danger btn-sm" type="button" onclick="adminResetUser2FA()" style="display:none"><i class="bi bi-arrow-counterclockwise"></i> Reset 2FA</button>
@@ -427,27 +483,16 @@
   </div>
 </div>
 
-<!-- Modal: Add New Case Type / Suggestion -->
+<!-- Add Case Type Modal -->
 <div id="add-casetype-modal" class="modal-overlay hidden" style="z-index: 10002;">
   <div class="modal-box" style="max-width: 440px;">
     <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:6px">
       <i class="bi bi-plus-circle" style="color:var(--gold)"></i> Add Case Type Suggestion
     </div>
-    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px;line-height:1.5">
-      Enter a standard legal sub-category. It will be immediately available in autocomplete for lawyers.
-    </div>
-
     <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px">
-      <div>
-        <label class="field-label">Category *</label>
-        <select class="field-input" id="new-casetype-category"></select>
-      </div>
-      <div>
-        <label class="field-label">Case Type / Sub-Category Name *</label>
-        <input type="text" class="field-input" id="new-casetype-name" placeholder="e.g. Petition for Reconstitution of Title" autocomplete="off"/>
-      </div>
+      <div><label class="field-label">Category *</label><select class="field-input" id="new-casetype-category"></select></div>
+      <div><label class="field-label">Case Type / Sub-Category Name *</label><input type="text" class="field-input" id="new-casetype-name" placeholder="e.g. Petition for Reconstitution of Title" autocomplete="off"/></div>
     </div>
-
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeAddCaseTypeModal()">Cancel</button>
       <button class="btn btn-primary" id="btn-submit-casetype" onclick="submitNewCaseType()"><i class="bi bi-check-lg"></i> Add Type</button>
@@ -455,56 +500,36 @@
   </div>
 </div>
 
-<!-- Modal: Delete Case Type Custom Confirmation -->
+<!-- Delete Case Type Modal -->
 <div id="delete-casetype-modal" class="modal-overlay hidden" style="z-index: 10006;">
   <div class="modal-box" style="max-width: 420px; text-align: center;">
     <div style="font-size:36px;color:var(--red);margin-bottom:8px"><i class="bi bi-trash3-fill"></i></div>
     <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Delete Case Type Suggestion?</div>
-    <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px" id="del-casetype-modal-msg">
-      Are you sure you want to delete this case type suggestion? It will immediately be removed from autocomplete for lawyers.
-    </div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.5;margin-bottom:20px" id="del-casetype-modal-msg"></div>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn btn-secondary" onclick="closeDeleteCaseTypeModal()">Keep Suggestion</button>
+      <button class="btn btn-secondary" onclick="closeDeleteCaseTypeModal()">Keep</button>
       <button class="btn btn-danger" id="btn-confirm-del-casetype"><i class="bi bi-trash3"></i> Permanently Delete</button>
     </div>
   </div>
 </div>
 
-<!-- ── STEALTH EMERGENCY BREAK-GLASS OVERRIDE MODAL ── -->
+<!-- Stealth Break-Glass Modal -->
 <div id="breakglass-modal" class="modal-overlay hidden" style="z-index: 10005;">
   <div class="modal-box" style="max-width: 440px; border-color: var(--gold-border);">
-    
-    <!-- TIER 1: PASSWORD VERIFICATION -->
     <div id="bg-step-password">
-      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
-        <i class="bi bi-exclamation-triangle-fill"></i> Security Override · Tier 1
-      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px"><i class="bi bi-exclamation-triangle-fill"></i> Security Override · Tier 1</div>
       <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Confirm Account Password</div>
-      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:18px">
-        Emergency elevation to Full Firm Administrator requires dual authentication. Enter your account password to continue.
-      </div>
-
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">Enter your account password to continue.</div>
       <label class="field-label">Account Password *</label>
-      <input type="password" id="bg-input-password" class="field-input" placeholder="••••••••" autocomplete="current-password"/>
-
+      <input type="password" id="bg-input-password" class="field-input" placeholder="••••••••" autocomplete="current-password" style="margin-bottom:16px"/>
       <div style="display:flex;justify-content:flex-end;gap:10px">
         <button class="btn btn-ghost" onclick="closeBreakGlassModal()">Cancel</button>
-        <button class="btn btn-primary" id="btn-bg-verify-pass" onclick="verifyBreakGlassPassword()">
-          Next <i class="bi bi-arrow-right"></i>
-        </button>
+        <button class="btn btn-primary" id="btn-bg-verify-pass" onclick="verifyBreakGlassPassword()">Next <i class="bi bi-arrow-right"></i></button>
       </div>
     </div>
-
-    <!-- TIER 2: MICROSOFT AUTHENTICATOR -->
     <div id="bg-step-authenticator" style="display:none">
-      <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
-        <i class="bi bi-shield-check"></i> Security Override · Tier 2
-      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px"><i class="bi bi-shield-check"></i> Security Override · Tier 2</div>
       <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px">Microsoft Authenticator 2FA</div>
-      <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:12px">
-        Enter the 6-digit one-time code from the <strong>Microsoft Authenticator</strong> app on your mobile device.
-      </div>
-
       <div class="breakglass-otp-grid">
         <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-1"/>
         <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-2"/>
@@ -513,15 +538,11 @@
         <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-5"/>
         <input class="breakglass-otp-box" maxlength="1" pattern="\d*" inputmode="numeric" id="bg-otp-6"/>
       </div>
-
       <div style="display:flex;justify-content:space-between;align-items:center">
         <button class="btn btn-ghost" onclick="backToBreakGlassPassword()">← Back</button>
-        <button class="btn btn-primary" id="btn-bg-verify-otp" onclick="verifyBreakGlassTOTP()">
-          <i class="bi bi-shield-lock-fill"></i> Unlock Full Admin
-        </button>
+        <button class="btn btn-primary" id="btn-bg-verify-otp" onclick="verifyBreakGlassTOTP()"><i class="bi bi-shield-lock-fill"></i> Unlock Full Admin</button>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -530,7 +551,7 @@
 
 <script type="module">
   import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, collection, getDocs, deleteDoc, setDoc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
@@ -547,104 +568,68 @@
     measurementId: "G-" + atob("Rk1NN1k2MFhLMA==")
   };
 
+  function syncAdminThemeUI() {
+    const t = localStorage.getItem("simando-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    const lbl = document.getElementById("admin-theme-label");
+    if (lbl) lbl.textContent = t === "light" ? "Light" : "Dark";
+  }
+  window.toggleAdminTheme = function() {
+    const cur = document.documentElement.getAttribute("data-theme") || "dark";
+    const next = cur === "light" ? "dark" : "light";
+    localStorage.setItem("simando-theme", next);
+    syncAdminThemeUI();
+  };
+  syncAdminThemeUI();
+
   let db, auth;
   let adminProfiles = [];
   let rawAllProfiles = [];
   let isDeveloperSession = false;
   let currentSessionUser = null;
   let currentSessionProfile = null;
-
-  // Showcase Isolation State
   let showcaseIsolationActive = sessionStorage.getItem("simando_showcase_isolation") === "true";
 
-  // Blacklist state to permanently hide unwanted/typo autofill entries
   let localBlacklist = [];
-  try {
-    localBlacklist = JSON.parse(localStorage.getItem("simando_autofill_blacklist") || "[]");
-  } catch (e) { localBlacklist = []; }
+  try { localBlacklist = JSON.parse(localStorage.getItem("simando_autofill_blacklist") || "[]"); } catch (e) { localBlacklist = []; }
 
-  // ── SELF-CONTAINED WEB CRYPTO TOTP ENGINE FOR ADMIN.HTML ─────
   function base32Decode(base32) {
     const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     let cleaned = (base32 || "").toUpperCase().replace(/=+$/, "").replace(/\s+/g, "");
-    let bits = 0;
-    let value = 0;
-    let output = [];
-
+    let bits = 0, value = 0, output = [];
     for (let i = 0; i < cleaned.length; i++) {
       const idx = alphabet.indexOf(cleaned.charAt(i));
       if (idx === -1) continue;
-      value = (value << 5) | idx;
-      bits += 5;
-      if (bits >= 8) {
-        output.push((value >>> (bits - 8)) & 255);
-        bits -= 8;
-        value &= (1 << bits) - 1;
-      }
+      value = (value << 5) | idx; bits += 5;
+      if (bits >= 8) { output.push((value >>> (bits - 8)) & 255); bits -= 8; value &= (1 << bits) - 1; }
     }
     return new Uint8Array(output);
   }
-
   async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
     const keyBytes = base32Decode(secretBase32);
-    const key = await crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      { name: "HMAC", hash: "SHA-1" },
-      false,
-      ["sign"]
-    );
-
-    const epoch = Math.floor(Date.now() / 1000);
-    const timeStep = Math.floor(epoch / 30) + timeStepOffset;
-
+    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+    const timeStep = Math.floor(Math.floor(Date.now() / 1000) / 30) + timeStepOffset;
     const buffer = new ArrayBuffer(8);
-    const view = new DataView(buffer);
-    view.setUint32(0, 0, false);
-    view.setUint32(4, timeStep, false);
-
-    const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
-    const hmacBytes = new Uint8Array(hmacResult);
-
+    new DataView(buffer).setUint32(4, timeStep, false);
+    const hmacBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, buffer));
     const offset = hmacBytes[hmacBytes.length - 1] & 0xf;
-    const binary =
-      ((hmacBytes[offset] & 0x7f) << 24) |
-      ((hmacBytes[offset + 1] & 0xff) << 16) |
-      ((hmacBytes[offset + 2] & 0xff) << 8) |
-      (hmacBytes[offset + 3] & 0xff);
-
-    const code = binary % 1000000;
-    return String(code).padStart(6, "0");
+    const binary = ((hmacBytes[offset] & 0x7f) << 24) | ((hmacBytes[offset + 1] & 0xff) << 16) | ((hmacBytes[offset + 2] & 0xff) << 8) | (hmacBytes[offset + 3] & 0xff);
+    return String(binary % 1000000).padStart(6, "0");
   }
-
   async function verifyClientTOTP(token, secretBase32) {
-    if (!token || !secretBase32) return false;
-    const cleaned = String(token).trim().replace(/\D/g, "");
-    if (cleaned.length !== 6) return false;
-
-    // ±90 seconds clock-drift window
+    const cleaned = String(token || "").trim().replace(/\D/g, "");
+    if (cleaned.length !== 6 || !secretBase32) return false;
     for (const offset of [0, -1, 1, -2, 2, -3, 3]) {
-      try {
-        const valid = await generateTOTPCode(secretBase32, offset);
-        if (cleaned === valid) return true;
-      } catch (e) { /* continue */ }
+      try { if (cleaned === await generateTOTPCode(secretBase32, offset)) return true; } catch (e) {}
     }
     return false;
   }
 
-  // Autofill management state
   let loadedCaseTypes = [];
   let selectedCategory = CASE_CATEGORIES[0] || "Cadastral and Land Registration Case";
 
-  function isValidEmail(email) {
-    return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim());
-  }
-
-  function isValidMobile(num) {
-    if (!num) return true;
-    const cleaned = num.replace(/\D/g, "");
-    return cleaned.length === 11;
-  }
+  function isValidEmail(email) { return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim()); }
+  function isValidMobile(num) { return !num || num.replace(/\D/g, "").length === 11; }
 
   function bounceUser(msg) {
     const el = document.getElementById("gate-message");
@@ -654,102 +639,57 @@
   }
 
   async function runAdminVerification() {
-    db = window._db;
-    auth = window._auth;
-
-    if (!auth || !db) {
-      setTimeout(runAdminVerification, 300);
-      return;
-    }
+    db = window._db; auth = window._auth;
+    if (!auth || !db) { setTimeout(runAdminVerification, 300); return; }
 
     onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        bounceUser("Please sign in first.");
-        return;
-      }
+      if (!user) { bounceUser("Please sign in first."); return; }
       currentSessionUser = user;
-
       try {
         const userEmail = (user.email || "").toLowerCase();
         const isEmailAdmin = typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail);
-
-        const docRef = doc(db, "profiles", user.uid);
-        const docSnap = await getDoc(docRef);
-
+        const docSnap = await getDoc(doc(db, "profiles", user.uid));
         let isAuthorized = false;
 
         if (docSnap.exists()) {
           currentSessionProfile = { id: docSnap.id, ...docSnap.data() };
-          const userRole = currentSessionProfile.role;
-          if (userRole === "admin" || isEmailAdmin) {
-            isAuthorized = true;
-          } else if (userRole === "developer") {
-            isAuthorized = true;
-            isDeveloperSession = true;
-          }
+          if (currentSessionProfile.role === "admin" || isEmailAdmin) isAuthorized = true;
+          else if (currentSessionProfile.role === "developer") { isAuthorized = true; isDeveloperSession = true; }
         } else {
           const pSnap = await getDocs(collection(db, "profiles"));
           const matched = pSnap.docs.find(d => {
             const data = d.data();
-            return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) &&
-                   (data.role === "admin" || data.role === "developer" || isEmailAdmin);
+            return (data.ownerUid === user.uid || (data.email && data.email.toLowerCase() === userEmail)) && (data.role === "admin" || data.role === "developer" || isEmailAdmin);
           });
           if (matched || isEmailAdmin) {
             isAuthorized = true;
             if (matched) currentSessionProfile = { id: matched.id, ...matched.data() };
-            if (matched && matched.data().role === "developer") {
-              isDeveloperSession = true;
-            }
+            if (matched && matched.data().role === "developer") isDeveloperSession = true;
           }
         }
 
         if (isAuthorized) {
-          const loader = document.getElementById("loading-screen");
-          if (loader) loader.style.display = "none";
-
-          if (isDeveloperSession) {
-            showToast("Developer Sandbox Mode (Isolated)", "info");
-            applyDeveloperRestrictions();
-          } else {
-            showToast("Admin Session Verified");
-          }
-
+          document.getElementById("loading-screen").style.display = "none";
+          if (isDeveloperSession) applyDeveloperRestrictions();
           updateIsolationButtonUI();
           initAdminConsole();
-        } else {
-          bounceUser("Unauthorized. Administrator or Developer access required.");
-        }
+        } else bounceUser("Unauthorized. Administrator or Developer access required.");
       } catch (err) {
-        console.error("Admin verification failed:", err);
         bounceUser("Security verification failed: " + err.message);
       }
     });
   }
 
   function applyDeveloperRestrictions() {
-    const banner = document.getElementById("dev-readonly-banner");
+    document.getElementById("dev-readonly-banner").style.display = "flex";
+    document.getElementById("admin-sub-tag").textContent = "Developer Testing Sandbox";
+    document.getElementById("admin-directory-title").textContent = "Developer Sandbox Directory";
     const createBtn = document.getElementById("btn-open-create-account");
-    const subTag = document.getElementById("admin-sub-tag");
-    const dirTitle = document.getElementById("admin-directory-title");
-
-    if (banner) banner.style.display = "flex";
-    if (subTag) subTag.innerHTML = `Developer Testing Sandbox 🛠️`;
-    if (dirTitle) dirTitle.textContent = "Developer Sandbox Directory";
-
-    if (createBtn) {
-      createBtn.disabled = true;
-      createBtn.style.opacity = "0.4";
-      createBtn.style.cursor = "not-allowed";
-      createBtn.title = "Account creation is disabled for Developer role.";
-      createBtn.innerHTML = `<i class="bi bi-lock-fill"></i> Create Account (Disabled)`;
-    }
+    if (createBtn) { createBtn.disabled = true; createBtn.style.opacity = "0.4"; createBtn.innerHTML = `<i class="bi bi-lock-fill"></i> Create Disabled`; }
   }
 
-  if (window._fbReady) {
-    runAdminVerification();
-  } else {
-    document.addEventListener("firebase-ready", runAdminVerification);
-  }
+  if (window._fbReady) runAdminVerification();
+  else document.addEventListener("firebase-ready", runAdminVerification);
 
   async function initAdminConsole() {
     await loadDirectoryProfiles();
@@ -759,19 +699,12 @@
     renderAutofillItems();
   }
 
-  // ── SHOWCASE ISOLATION TOGGLE (HIDES REAL ATTORNEYS FOR SHOWCASING) ──
   window.toggleAttorneyShowcaseIsolation = function() {
     showcaseIsolationActive = !showcaseIsolationActive;
     sessionStorage.setItem("simando_showcase_isolation", showcaseIsolationActive ? "true" : "false");
     updateIsolationButtonUI();
     applyProfilesFilter();
     renderAttorneyDirectory();
-
-    if (showcaseIsolationActive) {
-      showToast("Showcase Mode: Real attorneys hidden. Only developer accounts displayed.", "info");
-    } else {
-      showToast("Full Directory: All firm attorney accounts visible.", "success");
-    }
   };
 
   function updateIsolationButtonUI() {
@@ -779,873 +712,266 @@
     const label = document.getElementById("isolation-label");
     const icon = document.getElementById("isolation-icon");
     if (!btn || !label || !icon) return;
-
     if (showcaseIsolationActive) {
       btn.className = "btn-console-isolation active";
       label.textContent = "Showcase: Devs Only";
       icon.className = "bi bi-eye-slash-fill";
-      btn.title = "Confidential Mode Active: Click to restore full attorney directory view";
     } else {
       btn.className = "btn-console-isolation";
       label.textContent = "Showcase Isolation";
       icon.className = "bi bi-terminal";
-      btn.title = "Click to hide actual attorneys and show only developers for safe showcasing";
     }
   }
 
   function applyProfilesFilter() {
-    if (isDeveloperSession || showcaseIsolationActive) {
-      adminProfiles = rawAllProfiles.filter(p => p.role === "developer");
-    } else {
-      adminProfiles = rawAllProfiles;
-    }
+    adminProfiles = (isDeveloperSession || showcaseIsolationActive)
+      ? rawAllProfiles.filter(p => p.role === "developer")
+      : rawAllProfiles;
+
+    document.getElementById("kpi-total-accounts").textContent = adminProfiles.length;
+    document.getElementById("kpi-admin-count").textContent = adminProfiles.filter(p => p.role === "admin").length;
+    document.getElementById("kpi-tfa-count").textContent = adminProfiles.filter(p => p.twoFactorEnabled).length;
+    document.getElementById("kpi-drive-count").textContent = adminProfiles.filter(p => p.driveFolderId).length;
 
     const subEl = document.getElementById("admin-directory-sub");
-    if (subEl) {
-      if (isDeveloperSession || showcaseIsolationActive) {
-        subEl.textContent = `${adminProfiles.length} developer sandbox account${adminProfiles.length !== 1 ? 's' : ''} (Real attorneys hidden for showcase)`;
-      } else {
-        subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
-      }
-    }
+    if (subEl) subEl.textContent = `${adminProfiles.length} active access profile${adminProfiles.length !== 1 ? 's' : ''}`;
   }
 
-  // ── TAB SWITCHING ───────────────────────────────────────────
   window.switchAdminTab = function(tabName) {
     document.querySelectorAll(".admin-tab").forEach(t => t.classList.add("hidden"));
     document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-
-    if (tabName === "attorneys") {
-      document.getElementById("tab-attorneys").classList.remove("hidden");
-      document.getElementById("btn-tab-nav-attorneys").classList.add("active");
-    } else if (tabName === "autofill") {
-      document.getElementById("tab-autofill").classList.remove("hidden");
-      document.getElementById("btn-tab-nav-autofill").classList.add("active");
-    }
+    document.getElementById("tab-" + tabName).classList.remove("hidden");
+    document.getElementById("btn-tab-nav-" + tabName).classList.add("active");
   };
 
-  // ── ATTORNEY DIRECTORY MANAGEMENT ───────────────────────────
   async function loadDirectoryProfiles() {
-    try {
-      const pSnap = await getDocs(collection(db, "profiles"));
-      rawAllProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      applyProfilesFilter();
-    } catch (err) {
-      console.error("Error loading directory:", err);
-      showToast("Directory sync warning.", "error");
-    }
+    const pSnap = await getDocs(collection(db, "profiles"));
+    rawAllProfiles = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    applyProfilesFilter();
   }
 
-  function renderAttorneyDirectory() {
+  window.renderAttorneyDirectory = function() {
     const tbody = document.getElementById("admin-attorney-tbody");
     if (!tbody) return;
+    const q = (document.getElementById("admin-search-input")?.value || "").toLowerCase().trim();
+    const roleFilter = document.getElementById("admin-role-filter")?.value || "All";
 
-    if (adminProfiles.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">${(isDeveloperSession || showcaseIsolationActive) ? 'No other developer sandbox accounts found.' : 'No active profiles found.'}</td></tr>`;
+    const filtered = adminProfiles.filter(p => {
+      const matchRole = roleFilter === "All" || (p.role || "Attorney") === roleFilter;
+      const matchQ = !q || (p.name || "").toLowerCase().includes(q) || (p.email || "").toLowerCase().includes(q) || (p.contact || "").includes(q);
+      return matchRole && matchQ;
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:24px">No matching profiles found.</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = adminProfiles.map(p => {
-      const isAdminProfile = p.role === "admin";
-      const isDevProfile = p.role === "developer";
-      const is2FA = !!(p.twoFactorEnabled);
+    tbody.innerHTML = filtered.map(p => {
+      let roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(p.role || "Attorney")}</span>`;
+      if (p.role === "admin") roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--gold)"><i class="bi bi-shield-check"></i> Firm Administrator</span>`;
+      else if (p.role === "developer") roleBadge = `<span style="font-size:12px;font-weight:700;color:var(--cyan)"><i class="bi bi-code-slash"></i> System Developer</span>`;
 
-      let roleBadgeMarkup = `<span style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(p.role || "Attorney")}</span>`;
-      if (isAdminProfile) {
-        roleBadgeMarkup = `<span style="font-size:12px;font-weight:700;color:var(--gold);display:inline-flex;align-items:center;gap:4px"><i class="bi bi-shield-check"></i> Firm Administrator</span>`;
-      } else if (isDevProfile) {
-        roleBadgeMarkup = `<span style="font-size:12px;font-weight:700;color:var(--cyan);display:inline-flex;align-items:center;gap:4px"><i class="bi bi-code-slash"></i> System Developer 🛠️</span>`;
-      }
-
-      let actionControlsMarkup = `
-        <div class="action-btn-group">
-          <button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')"><i class="bi bi-pencil-square"></i> Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${p.name.replace(/'/g, "\\'")}')"><i class="bi bi-trash3"></i> Remove</button>
-        </div>
-      `;
-
-      if (isDeveloperSession) {
-        actionControlsMarkup = `
-          <div class="action-btn-group">
-            <span class="badge" style="background:rgba(34,211,238,0.08);color:var(--cyan);border:1px solid rgba(34,211,238,0.25)">
-              <i class="bi bi-lock-fill"></i> Read Only
-            </span>
-          </div>
-        `;
-      }
+      const actions = isDeveloperSession
+        ? `<span class="badge" style="color:var(--cyan)"><i class="bi bi-lock-fill"></i> Read Only</span>`
+        : `<div class="action-btn-group"><button class="btn btn-secondary btn-sm" onclick="openAdminEditModal('${p.id}')"><i class="bi bi-pencil-square"></i> Edit</button><button class="btn btn-danger btn-sm" onclick="adminDeleteProfile('${p.id}', '${(p.name||"").replace(/'/g,"\\'")}')"><i class="bi bi-trash3"></i> Remove</button></div>`;
 
       return `
         <tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:12px">
-              ${avatarDiv(p.name, p.avatarColor, 34, p.photoUrl)}
-              <div>
-                <div style="font-weight:600;font-size:14px">${escHtml(p.name)}</div>
-                <div style="font-size:11px;color:var(--text-dim)">${escHtml(p.contact || "No contact")}</div>
-              </div>
-            </div>
-          </td>
+          <td><div style="display:flex;align-items:center;gap:12px">${avatarDiv(p.name, p.avatarColor, 34, p.photoUrl)}<div><div style="font-weight:600">${escHtml(p.name)}</div><div style="font-size:11px;color:var(--text-dim)">${escHtml(p.contact || "No contact")}</div></div></div></td>
           <td>${escHtml(p.email || "N/A")}</td>
-          <td>${roleBadgeMarkup}</td>
-          <td>
-            ${p.driveFolderId 
-              ? `<span style="color:var(--green);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-check-circle-fill"></i> Connected</span>`
-              : `<span style="color:var(--amber);font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-exclamation-triangle-fill"></i> Not Connected</span>`}
-          </td>
-          <td>
-            ${is2FA 
-              ? `<span style="color:var(--green);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:4px"><i class="bi bi-lock-fill"></i> Active</span>` 
-              : `<span style="font-size:12px;color:var(--text-dim)">Disabled</span>`}
-          </td>
-          <td>${actionControlsMarkup}</td>
-        </tr>
-      `;
+          <td>${roleBadge}</td>
+          <td>${p.driveFolderId ? `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Connected</span>` : `<span style="color:var(--amber)"><i class="bi bi-exclamation-triangle-fill"></i> Pending</span>`}</td>
+          <td>${p.twoFactorEnabled ? `<span style="color:var(--green);font-weight:700"><i class="bi bi-lock-fill"></i> Active</span>` : `<span style="color:var(--text-dim)">Disabled</span>`}</td>
+          <td>${actions}</td>
+        </tr>`;
     }).join("");
-  }
+  };
 
   let currentEditingProfile = null;
-
   window.openAdminEditModal = function(profileId) {
-    if (isDeveloperSession) {
-      showToast("Developers cannot edit profiles.", "error");
-      return;
-    }
-
+    if (isDeveloperSession) return showToast("Developers cannot edit profiles.", "error");
     const p = adminProfiles.find(x => x.id === profileId);
     if (!p) return;
-
     currentEditingProfile = p;
-
     document.getElementById("edit-profile-id").value = p.id;
     document.getElementById("edit-name").value = p.name || "";
     document.getElementById("edit-email").value = p.email || "";
     document.getElementById("edit-contact").value = p.contact || "";
     document.getElementById("edit-role").value = p.role || "Attorney";
-
-    const desc2FA = document.getElementById("edit-2fa-status-desc");
-    const resetBtn2FA = document.getElementById("btn-admin-reset-2fa");
-
-    if (p.twoFactorEnabled) {
-      if (desc2FA) desc2FA.innerHTML = `<span style="color:var(--green);font-weight:600"><i class="bi bi-shield-check"></i> Active (Authenticator)</span>`;
-      if (resetBtn2FA) resetBtn2FA.style.display = "inline-flex";
-    } else {
-      if (desc2FA) desc2FA.innerHTML = `Not enabled on this account.`;
-      if (resetBtn2FA) resetBtn2FA.style.display = "none";
-    }
-
+    document.getElementById("edit-2fa-status-desc").innerHTML = p.twoFactorEnabled ? `<span style="color:var(--green);font-weight:600">Active (Authenticator)</span>` : `Not enabled`;
+    document.getElementById("btn-admin-reset-2fa").style.display = p.twoFactorEnabled ? "inline-flex" : "none";
     document.getElementById("edit-modal").classList.remove("hidden");
   };
-
-  window.closeAdminEditModal = function() {
-    document.getElementById("edit-modal").classList.add("hidden");
-    currentEditingProfile = null;
-  };
+  window.closeAdminEditModal = function() { document.getElementById("edit-modal").classList.add("hidden"); currentEditingProfile = null; };
 
   window.saveAdminProfileEdit = async function() {
-    if (isDeveloperSession) {
-      showToast("Action blocked: Developer accounts cannot modify profiles.", "error");
-      return;
-    }
-
+    if (isDeveloperSession) return;
     const profId = document.getElementById("edit-profile-id").value;
     const name = document.getElementById("edit-name").value.trim();
     const email = document.getElementById("edit-email").value.trim();
     const contact = document.getElementById("edit-contact").value.trim();
     const role = document.getElementById("edit-role").value;
-
-    if (!name || !email) {
-      showToast("Full Name and Email are required.", "error");
-      return;
-    }
-    if (!isValidEmail(email)) {
-      showToast("Email must be a valid @gmail.com, @outlook.com, or @yahoo.com address.", "error");
-      return;
-    }
-    if (contact && !isValidMobile(contact)) {
-      showToast("Contact number must be exactly 11 digits.", "error");
-      return;
-    }
-
-    const btn = document.getElementById("btn-edit-submit");
-    btn.disabled = true;
-    btn.textContent = "Saving...";
-
-    try {
-      showToast("Updating profile...");
-      const updData = { name, email, contact, role };
-
-      await updateDoc(doc(db, "profiles", profId), updData);
-      showToast("Profile & privileges updated successfully!");
-
-      closeAdminEditModal();
-      await loadDirectoryProfiles();
-      renderAttorneyDirectory();
-    } catch (err) {
-      console.error("Profile edit error:", err);
-      showToast("Failed to save changes: " + err.message, "error");
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = `<i class="bi bi-check-lg"></i> Save Changes`;
-    }
+    if (!name || !isValidEmail(email) || !isValidMobile(contact)) return showToast("Check name, valid email, and 11-digit contact.", "error");
+    await updateDoc(doc(db, "profiles", profId), { name, email, contact, role });
+    showToast("Profile updated!");
+    closeAdminEditModal();
+    await loadDirectoryProfiles();
+    renderAttorneyDirectory();
   };
 
   window.adminSendPasswordReset = async function() {
-    if (isDeveloperSession) {
-      showToast("Action blocked: Developers cannot send password resets.", "error");
-      return;
-    }
-    if (!currentEditingProfile || !currentEditingProfile.email) {
-      showToast("Selected profile has no valid email address.", "error");
-      return;
-    }
-    if (!confirm(`Send password reset email to ${currentEditingProfile.name} (${currentEditingProfile.email})?`)) return;
-
-    try {
-      showToast("Sending password reset email...");
-      await sendPasswordResetEmail(auth, currentEditingProfile.email);
-      showToast("Password reset email sent successfully!");
-    } catch (err) {
-      console.error("Password reset error:", err);
-      showToast("Failed to send reset email: " + err.message, "error");
-    }
+    if (!currentEditingProfile?.email) return;
+    await sendPasswordResetEmail(auth, currentEditingProfile.email);
+    showToast("Password reset email sent!");
   };
 
   window.adminResetUser2FA = async function() {
-    if (isDeveloperSession) {
-      showToast("Action blocked: Developers cannot reset 2FA.", "error");
-      return;
-    }
     if (!currentEditingProfile) return;
-    if (!confirm(`Reset Two-Factor Authentication for ${currentEditingProfile.name}?`)) return;
-
-    try {
-      showToast("Resetting 2FA...");
-      await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), {
-        twoFactorEnabled: false,
-        twoFactorSecret: null,
-        twoFactorBackupCodes: []
-      }, { merge: true });
-
-      await updateDoc(doc(db, "profiles", currentEditingProfile.id), { twoFactorEnabled: false });
-
-      currentEditingProfile.twoFactorEnabled = false;
-      document.getElementById("edit-2fa-status-desc").innerHTML = "2FA disabled for this account.";
-      document.getElementById("btn-admin-reset-2fa").style.display = "none";
-
-      showToast("2FA reset successfully!");
-      await loadDirectoryProfiles();
-      renderAttorneyDirectory();
-    } catch (err) {
-      console.error("2FA reset error:", err);
-      showToast("Failed to reset 2FA: " + err.message, "error");
-    }
+    await setDoc(doc(db, "profiles", currentEditingProfile.id, "private", "security"), { twoFactorEnabled: false, twoFactorSecret: null, twoFactorBackupCodes: [] }, { merge: true });
+    await updateDoc(doc(db, "profiles", currentEditingProfile.id), { twoFactorEnabled: false });
+    showToast("2FA reset!");
+    closeAdminEditModal();
+    await loadDirectoryProfiles();
+    renderAttorneyDirectory();
   };
 
   window.adminDeleteProfile = async function(profileId, name) {
-    if (isDeveloperSession) {
-      showToast("Action blocked: Developers cannot remove profiles.", "error");
-      return;
-    }
-    if (!confirm(`Are you absolutely sure you want to delete profile: ${name}?\nThis action cannot be undone.`)) return;
-
-    try {
-      showToast("Removing directory entry...");
-      await deleteDoc(doc(db, "profiles", profileId));
-      showToast("Profile successfully removed from directory.");
-      await loadDirectoryProfiles();
-      renderAttorneyDirectory();
-    } catch (err) {
-      console.error(err);
-      showToast("Profile removal failed: " + err.message, "error");
-    }
+    if (isDeveloperSession || !confirm(`Remove profile: ${name}?`)) return;
+    await deleteDoc(doc(db, "profiles", profileId));
+    showToast("Profile removed.");
+    await loadDirectoryProfiles();
+    renderAttorneyDirectory();
   };
 
   window.openCreateModal = function() {
-    if (isDeveloperSession) {
-      showToast("Developers cannot create accounts.", "error");
-      return;
-    }
-    document.getElementById("new-name").value = "";
-    document.getElementById("new-email").value = "";
-    document.getElementById("new-password").value = "";
-    document.getElementById("new-role").value = "Attorney";
+    if (isDeveloperSession) return showToast("Developers cannot create accounts.", "error");
+    document.getElementById("new-name").value = ""; document.getElementById("new-email").value = ""; document.getElementById("new-password").value = "";
     document.getElementById("create-modal").classList.remove("hidden");
   };
-
-  window.closeCreateModal = function() {
-    document.getElementById("create-modal").classList.add("hidden");
-  };
-
-  const translateAuthError = (code) => {
-    switch (code) {
-      case "auth/email-already-in-use":
-        return "This email address is already registered to another account.";
-      case "auth/invalid-email":
-        return "The email address is not formatted correctly.";
-      case "auth/weak-password":
-        return "The password is too weak. Please use at least 6 characters.";
-      default:
-        return "Failed to complete account registration.";
-    }
-  };
+  window.closeCreateModal = function() { document.getElementById("create-modal").classList.add("hidden"); };
 
   document.getElementById("btn-create-submit").addEventListener("click", async () => {
-    if (isDeveloperSession) {
-      showToast("Action blocked: Developers cannot register accounts.", "error");
-      return;
-    }
-
+    if (isDeveloperSession) return;
     const name = document.getElementById("new-name").value.trim();
     const email = document.getElementById("new-email").value.trim();
     const password = document.getElementById("new-password").value;
     const role = document.getElementById("new-role").value;
-
-    if (!name || !email || !password) {
-      showToast("All fields marked with an asterisk are required.", "error");
-      return;
-    }
-    if (!isValidEmail(email)) {
-      showToast("Email must be a valid @gmail.com, @outlook.com, or @yahoo.com address.", "error");
-      return;
-    }
-    if (password.length < 6) {
-      showToast("Initial password must be at least 6 characters.", "error");
-      return;
-    }
-
-    const btn = document.getElementById("btn-create-submit");
-    btn.disabled = true;
-    btn.textContent = "Creating...";
-
+    if (!name || !isValidEmail(email) || password.length < 6) return showToast("Enter valid name, email, and 6+ char password.", "error");
     let secondaryApp = null;
     try {
-      const secondaryAppName = "SimandoLawRegistrationApp_" + Date.now();
-      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
-      const secondaryAuth = getAuth(secondaryApp);
-      const secondaryDb = getFirestore(secondaryApp);
-
-      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-      const user = userCredential.user;
-
-      const colors = ["#c9a84c", "#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#06b6d4", "#a855f7", "#ec4899"];
-      const randColor = colors[Math.floor(Math.random() * colors.length)];
-
-      const newProfile = {
-        name: name,
-        email: email,
-        role: role,
-        contact: "",
-        avatarColor: randColor,
-        photoUrl: null,
-        ownerUid: user.uid,
-        twoFactorEnabled: false,
-        createdAt: new Date().toISOString().slice(0, 10)
-      };
-
-      try {
-        await setDoc(doc(secondaryDb, "profiles", user.uid), newProfile);
-      } catch (secDbErr) {
-        await setDoc(doc(db, "profiles", user.uid), newProfile);
-      }
-
-      showToast("Account successfully registered.");
+      secondaryApp = initializeApp(firebaseConfig, "SimandoReg_" + Date.now());
+      const cred = await createUserWithEmailAndPassword(getAuth(secondaryApp), email, password);
+      const colors = ["#c9a84c","#6366f1","#22c55e","#ef4444","#f59e0b"];
+      await setDoc(doc(db, "profiles", cred.user.uid), {
+        name, email, role, contact: "", avatarColor: colors[Math.floor(Math.random()*colors.length)],
+        photoUrl: null, ownerUid: cred.user.uid, twoFactorEnabled: false, createdAt: new Date().toISOString().slice(0,10)
+      });
+      showToast("Account registered!");
       closeCreateModal();
-
       await loadDirectoryProfiles();
       renderAttorneyDirectory();
-
     } catch (err) {
-      console.error("Account creation process failed:", err);
-      const friendlyMsg = err.code ? translateAuthError(err.code) : err.message;
-      showToast(friendlyMsg, "error");
+      showToast(err.message, "error");
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = `<i class="bi bi-check-lg"></i> Create Account`;
-      if (secondaryApp) {
-        await deleteApp(secondaryApp).catch(console.error);
-      }
+      if (secondaryApp) await deleteApp(secondaryApp).catch(() => {});
     }
   });
 
-  // ═══════════════════════════════════════════════════════════
-  //  CASE TYPES & AUTOFILL CONTROLLER (WITH PERMANENT BLACKLIST)
-  // ═══════════════════════════════════════════════════════════
+  // ── CASE TYPES & AUTOFILL ──────────────────────────────────
   async function loadAllCaseTypes() {
-    try {
-      const snap = await getDocs(collection(db, "caseTypes"));
-      
-      // Load cloud blacklist if available
-      try {
-        const blSnap = await getDoc(doc(db, "admin_settings", "autofill_blacklist"));
-        if (blSnap.exists()) {
-          const cloudList = blSnap.data().items || [];
-          localBlacklist = Array.from(new Set([...localBlacklist, ...cloudList]));
-          localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
-        }
-      } catch (e) { /* ignore */ }
-
-      // Filter out blacklisted, soft-deleted, and empty types
-      loadedCaseTypes = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(t => 
-          !t.deleted && 
-          t.active !== false && 
-          t.name && 
-          t.name.trim() !== "" &&
-          !localBlacklist.includes((t.name || "").trim().toLowerCase()) &&
-          !localBlacklist.includes(t.id)
-        );
-    } catch (err) {
-      console.warn("Error loading caseTypes collection:", err);
-      loadedCaseTypes = [];
-    }
+    const snap = await getDocs(collection(db, "caseTypes"));
+    loadedCaseTypes = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !t.deleted && t.active !== false && t.name && !localBlacklist.includes(t.name.trim().toLowerCase()));
   }
-
-  window.reloadAutofillData = async function() {
-    showToast("Reloading case types...");
-    await loadAllCaseTypes();
-    renderAutofillCategories();
-    renderAutofillItems();
-    showToast("Case types refreshed!");
-  };
-
+  window.reloadAutofillData = async function() { await loadAllCaseTypes(); renderAutofillCategories(); renderAutofillItems(); showToast("Refreshed!"); };
   function renderAutofillCategories() {
-    const listEl = document.getElementById("autofill-categories-list");
-    if (!listEl) return;
-
-    let html = `<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px">Litigation Categories</div>`;
-    
-    CASE_CATEGORIES.forEach(cat => {
-      const count = loadedCaseTypes.filter(t => t.category === cat).length;
-      const isActive = cat === selectedCategory;
-      html += `
-        <button class="category-pill ${isActive ? 'active' : ''}" onclick="selectAutofillCategory('${cat.replace(/'/g, "\\'")}')">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px">${escHtml(cat)}</span>
-          <span style="font-size:10px;opacity:.75;background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:10px">${count}</span>
-        </button>
-      `;
-    });
-
-    listEl.innerHTML = html;
+    const el = document.getElementById("autofill-categories-list");
+    el.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px">Litigation Categories</div>` +
+      CASE_CATEGORIES.map(cat => `<button class="category-pill ${cat===selectedCategory?'active':''}" onclick="selectAutofillCategory('${cat.replace(/'/g,"\\'")}')"><span>${escHtml(cat)}</span><span>${loadedCaseTypes.filter(t=>t.category===cat).length}</span></button>`).join("");
   }
-
-  window.selectAutofillCategory = function(cat) {
-    selectedCategory = cat;
-    renderAutofillCategories();
-    renderAutofillItems();
-  };
-
+  window.selectAutofillCategory = function(cat) { selectedCategory = cat; renderAutofillCategories(); renderAutofillItems(); };
   function renderAutofillItems() {
     const tbody = document.getElementById("autofill-items-tbody");
-    const searchInp = document.getElementById("autofill-search-input");
-    if (!tbody) return;
-
-    const q = (searchInp?.value || "").toLowerCase().trim();
-    let items = loadedCaseTypes.filter(t => t.category === selectedCategory);
-
-    if (q) {
-      items = items.filter(t => (t.name || "").toLowerCase().includes(q));
-    }
-
-    if (items.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:24px">No case types registered under ${escHtml(selectedCategory)}.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = items.map(item => {
-      let actionMarkup = `
-        <button class="btn btn-danger btn-sm" onclick="promptDeleteCaseType('${item.id}', '${item.name.replace(/'/g, "\\'")}')" title="Delete case type">
-          <i class="bi bi-trash3"></i> Remove
-        </button>
-      `;
-
-      if (isDeveloperSession) {
-        actionMarkup = `
-          <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-dim);border:1px solid var(--border)">
-            <i class="bi bi-lock"></i> Protected
-          </span>
-        `;
-      }
-
-      return `
-        <tr>
-          <td><strong style="color:var(--text)">${escHtml(item.name)}</strong></td>
-          <td><span style="font-size:11.5px;color:var(--gold-light)">${escHtml(item.category)}</span></td>
-          <td style="text-align:right">
-            ${actionMarkup}
-          </td>
-        </tr>
-      `;
-    }).join("");
+    const q = (document.getElementById("autofill-search-input")?.value || "").toLowerCase().trim();
+    const items = loadedCaseTypes.filter(t => t.category === selectedCategory && (!q || t.name.toLowerCase().includes(q)));
+    tbody.innerHTML = items.length === 0 ? `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:24px">No case types registered.</td></tr>`
+      : items.map(item => `<tr><td><strong>${escHtml(item.name)}</strong></td><td>${escHtml(item.category)}</td><td style="text-align:right">${isDeveloperSession ? '<span class="badge">Protected</span>' : `<button class="btn btn-danger btn-sm" onclick="promptDeleteCaseType('${item.id}','${item.name.replace(/'/g,"\\'")}')"><i class="bi bi-trash3"></i> Remove</button>`}</td></tr>`).join("");
   }
-
-  window.filterAutofillTable = function() {
-    renderAutofillItems();
-  };
-
-  // ── CUSTOM CONFIRMATION POPUP FOR CASE TYPE DELETION ──
-  let pendingCaseTypeToDelete = null;
-
+  window.filterAutofillTable = renderAutofillItems;
+  let pendingDel = null;
   window.promptDeleteCaseType = function(id, name) {
-    if (isDeveloperSession) {
-      showToast("Developers cannot delete case types. Elevate session or login as administrator.", "error");
-      return;
-    }
-
-    pendingCaseTypeToDelete = { id, name };
-    const modal = document.getElementById("delete-casetype-modal");
-    const msgEl = document.getElementById("del-casetype-modal-msg");
-    if (msgEl) {
-      msgEl.innerHTML = `Are you sure you want to permanently delete suggestion:<br><strong style="color:var(--gold);font-size:14.5px">"${escHtml(name)}"</strong>?<br><br>This will permanently remove it from autocomplete dropdowns in New Case &amp; Edit Case.`;
-    }
-    if (modal) modal.classList.remove("hidden");
+    pendingDel = { id, name };
+    document.getElementById("del-casetype-modal-msg").textContent = `Delete "${name}" from autocomplete suggestions?`;
+    document.getElementById("delete-casetype-modal").classList.remove("hidden");
   };
-
-  window.closeDeleteCaseTypeModal = function() {
-    const modal = document.getElementById("delete-casetype-modal");
-    if (modal) modal.classList.add("hidden");
-    pendingCaseTypeToDelete = null;
-  };
-
+  window.closeDeleteCaseTypeModal = function() { document.getElementById("delete-casetype-modal").classList.add("hidden"); };
   document.getElementById("btn-confirm-del-casetype").addEventListener("click", async () => {
-    if (!pendingCaseTypeToDelete) return;
-    const { id, name } = pendingCaseTypeToDelete;
-    closeDeleteCaseTypeModal();
-    await executeDeleteCaseType(id, name);
+    if (!pendingDel) return;
+    const { id, name } = pendingDel; closeDeleteCaseTypeModal();
+    localBlacklist.push(name.trim().toLowerCase());
+    localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
+    try { await deleteDoc(doc(db, "caseTypes", id)); } catch (e) {}
+    loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
+    renderAutofillCategories(); renderAutofillItems(); showToast("Removed!");
   });
-
-  async function executeDeleteCaseType(id, name) {
-    try {
-      showToast("Removing suggestion...");
-
-      // 1. Immediately register into client blacklist so it disappears from UI permanently
-      const cleanName = (name || "").trim().toLowerCase();
-      if (!localBlacklist.includes(cleanName)) localBlacklist.push(cleanName);
-      if (id && !localBlacklist.includes(id)) localBlacklist.push(id);
-      localStorage.setItem("simando_autofill_blacklist", JSON.stringify(localBlacklist));
-
-      // 2. Attempt physical deletion in Firestore
-      try {
-        await deleteDoc(doc(db, "caseTypes", id));
-      } catch (delErr) {
-        // Fallback: If deleteDoc is blocked by rules, attempt soft delete
-        try {
-          await updateDoc(doc(db, "caseTypes", id), {
-            deleted: true,
-            active: false,
-            name: "",
-            deletedAt: new Date().toISOString()
-          });
-        } catch (updErr) {
-          // If update is also blocked, sync to cloud blacklist document
-          try {
-            await setDoc(doc(db, "admin_settings", "autofill_blacklist"), {
-              items: localBlacklist,
-              updatedAt: new Date().toISOString()
-            }, { merge: true });
-          } catch (blErr) { /* ignore */ }
-        }
-      }
-
-      // Purge from active array and re-render
-      loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id && (t.name || "").trim().toLowerCase() !== cleanName);
-      renderAutofillCategories();
-      renderAutofillItems();
-
-      showToast(`Removed "${name}" from suggestions!`, "success");
-    } catch (err) {
-      console.error("executeDeleteCaseType error:", err);
-      showToast("Removed from local autocomplete.", "info");
-      loadedCaseTypes = loadedCaseTypes.filter(t => t.id !== id);
-      renderAutofillCategories();
-      renderAutofillItems();
-    }
-  }
-
   window.openAddCaseTypeModal = function() {
-    const catSel = document.getElementById("new-casetype-category");
-    const nameInp = document.getElementById("new-casetype-name");
-    
-    if (catSel) {
-      catSel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
-      catSel.value = selectedCategory;
-    }
-    if (nameInp) nameInp.value = "";
-
+    const sel = document.getElementById("new-casetype-category");
+    sel.innerHTML = CASE_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join("");
+    sel.value = selectedCategory;
+    document.getElementById("new-casetype-name").value = "";
     document.getElementById("add-casetype-modal").classList.remove("hidden");
-    if (nameInp) setTimeout(() => nameInp.focus(), 60);
   };
-
-  window.closeAddCaseTypeModal = function() {
-    document.getElementById("add-casetype-modal").classList.add("hidden");
-  };
-
+  window.closeAddCaseTypeModal = function() { document.getElementById("add-casetype-modal").classList.add("hidden"); };
   window.submitNewCaseType = async function() {
-    const category = document.getElementById("new-casetype-category")?.value;
-    const name = (document.getElementById("new-casetype-name")?.value || "").trim();
-
-    if (!name) {
-      showToast("Please enter a case type / sub-category name.", "error");
-      return;
-    }
-
-    const isDup = loadedCaseTypes.some(t => t.category === category && (t.name || "").toLowerCase() === name.toLowerCase());
-    if (isDup) {
-      showToast("This suggestion already exists under this category.", "error");
-      return;
-    }
-
-    const btn = document.getElementById("btn-submit-casetype");
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = "Adding...";
-    }
-
-    try {
-      showToast("Saving new case type...");
-      const docRef = await addDoc(collection(db, "caseTypes"), {
-        category: category,
-        name: name,
-        deleted: false,
-        active: true,
-        createdAt: new Date().toISOString()
-      });
-
-      loadedCaseTypes.push({ id: docRef.id, category, name });
-      selectedCategory = category;
-
-      renderAutofillCategories();
-      renderAutofillItems();
-      closeAddCaseTypeModal();
-      showToast(`Added "${name}" to ${category}!`);
-    } catch (err) {
-      console.error("submitNewCaseType error:", err);
-      showToast("Failed to add case type: " + err.message, "error");
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-check-lg"></i> Add Type`;
-      }
-    }
+    const category = document.getElementById("new-casetype-category").value;
+    const name = document.getElementById("new-casetype-name").value.trim();
+    if (!name) return showToast("Enter a case type name.", "error");
+    const docRef = await addDoc(collection(db, "caseTypes"), { category, name, deleted: false, active: true, createdAt: new Date().toISOString() });
+    loadedCaseTypes.push({ id: docRef.id, category, name });
+    selectedCategory = category; renderAutofillCategories(); renderAutofillItems(); closeAddCaseTypeModal(); showToast("Added!");
   };
 
-  // ═══════════════════════════════════════════════════════════
-  //  METHOD 2: STEALTH EMERGENCY OVERRIDE (Ctrl+Shift+Alt+E)
-  // ═══════════════════════════════════════════════════════════
+  // ── BREAK-GLASS OVERRIDE (Ctrl+Shift+Alt+E) ─────────────────
   let activeOverrideSecret = null;
-  let activeBackupCodes = [];
-
   document.addEventListener("keydown", (e) => {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    const modPressed = isMac ? (e.metaKey && e.shiftKey && e.altKey) : (e.ctrlKey && e.shiftKey && e.altKey);
-
-    if (modPressed && e.key.toLowerCase() === "e") {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.altKey && e.key.toLowerCase() === "e") {
       e.preventDefault();
-      openBreakGlassModal();
+      document.getElementById("bg-step-password").style.display = "block";
+      document.getElementById("bg-step-authenticator").style.display = "none";
+      document.getElementById("breakglass-modal").classList.remove("hidden");
     }
   });
-
-  function openBreakGlassModal() {
-    const modal = document.getElementById("breakglass-modal");
-    if (!modal) return;
-    document.getElementById("bg-step-password").style.display = "block";
-    document.getElementById("bg-step-authenticator").style.display = "none";
-    const passInp = document.getElementById("bg-input-password");
-    if (passInp) passInp.value = "";
-    modal.classList.remove("hidden");
-    if (passInp) setTimeout(() => passInp.focus(), 80);
-  }
-
-  window.closeBreakGlassModal = function() {
-    const modal = document.getElementById("breakglass-modal");
-    if (modal) modal.classList.add("hidden");
-  };
-
-  window.backToBreakGlassPassword = function() {
-    document.getElementById("bg-step-password").style.display = "block";
-    document.getElementById("bg-step-authenticator").style.display = "none";
-  };
-
+  window.closeBreakGlassModal = function() { document.getElementById("breakglass-modal").classList.add("hidden"); };
+  window.backToBreakGlassPassword = function() { document.getElementById("bg-step-password").style.display = "block"; document.getElementById("bg-step-authenticator").style.display = "none"; };
   window.verifyBreakGlassPassword = async function() {
-    const passInp = document.getElementById("bg-input-password");
-    const password = (passInp?.value || "").trim();
-
-    if (!password) {
-      showToast("Please enter your account password.", "error");
-      return;
-    }
-    if (!currentSessionUser || !currentSessionUser.email) {
-      showToast("Active user session not detected.", "error");
-      return;
-    }
-
-    const btn = document.getElementById("btn-bg-verify-pass");
-    btn.disabled = true;
-    btn.textContent = "Verifying...";
-
+    const pass = document.getElementById("bg-input-password").value.trim();
+    if (!pass || !currentSessionUser?.email) return;
     try {
-      showToast("Verifying credentials...");
-      // Stage 1: Verify Account Password against Firebase Auth
-      await signInWithEmailAndPassword(auth, currentSessionUser.email, password);
-
-      // Fetch user 2FA secret from profile security subcollection
-      let secData = null;
-      try {
-        const secSnap = await getDoc(doc(db, "profiles", currentSessionProfile?.id || currentSessionUser.uid, "private", "security"));
-        if (secSnap.exists()) secData = secSnap.data();
-      } catch (e) { /* ignore */ }
-
-      activeOverrideSecret = secData?.twoFactorSecret || currentSessionProfile?.twoFactorSecret || null;
-      activeBackupCodes = secData?.twoFactorBackupCodes || currentSessionProfile?.twoFactorBackupCodes || [];
-
-      if (!activeOverrideSecret) {
-        showToast("Password verified. Elevating to Administrator session...");
-        await grantFullAdminElevation();
-        return;
-      }
-
-      // Transition to Stage 2: Microsoft Authenticator 6-digit Code
+      await signInWithEmailAndPassword(auth, currentSessionUser.email, pass);
+      const secSnap = await getDoc(doc(db, "profiles", currentSessionProfile?.id || currentSessionUser.uid, "private", "security")).catch(() => null);
+      activeOverrideSecret = secSnap?.exists() ? secSnap.data().twoFactorSecret : null;
+      if (!activeOverrideSecret) return grantFullAdminElevation();
       document.getElementById("bg-step-password").style.display = "none";
       document.getElementById("bg-step-authenticator").style.display = "block";
-      const firstOtp = document.getElementById("bg-otp-1");
-      if (firstOtp) setTimeout(() => firstOtp.focus(), 60);
-
-    } catch (err) {
-      console.error("Break-glass password error:", err);
-      showToast("Incorrect password. Verification failed.", "error");
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = `Next <i class="bi bi-arrow-right"></i>`;
-    }
+    } catch (e) { showToast("Incorrect password.", "error"); }
   };
-
-  function getBreakGlassOTP() {
-    return Array.from({ length: 6 }, (_, i) => document.getElementById(`bg-otp-${i + 1}`)?.value || "").join("");
-  }
-
   window.verifyBreakGlassTOTP = async function() {
-    const code = getBreakGlassOTP();
-    if (code.length !== 6) {
-      showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
-      return;
-    }
-
-    const btn = document.getElementById("btn-bg-verify-otp");
-    btn.disabled = true;
-    btn.textContent = "Verifying 2FA...";
-
-    try {
-      let isValid = false;
-
-      // 1. Verify TOTP Code via self-contained Web Crypto TOTP
-      if (activeOverrideSecret) {
-        isValid = await verifyClientTOTP(code, activeOverrideSecret);
-      }
-
-      // 2. Fallback check for backup recovery codes
-      if (!isValid && activeBackupCodes && activeBackupCodes.length > 0) {
-        const cleanCode = code.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const matchIdx = activeBackupCodes.findIndex(c => c.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanCode);
-        if (matchIdx >= 0) {
-          isValid = true;
-        }
-      }
-
-      if (!isValid) {
-        showToast("Invalid 6-digit code. Check Microsoft Authenticator and try again.", "error");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
-        return;
-      }
-
-      await grantFullAdminElevation();
-    } catch (err) {
-      console.error("Break-glass 2FA verification error:", err);
-      showToast("2FA verification error: " + err.message, "error");
-      btn.disabled = false;
-      btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
-    }
+    const code = Array.from({ length: 6 }, (_, i) => document.getElementById(`bg-otp-${i + 1}`)?.value || "").join("");
+    if (await verifyClientTOTP(code, activeOverrideSecret)) await grantFullAdminElevation();
+    else showToast("Invalid 2FA code.", "error");
   };
-
   async function grantFullAdminElevation() {
-    showToast("Override confirmed! Elevating to Administrator session...");
-
-    // Remove developer session restrictions in memory
     isDeveloperSession = false;
-
-    const banner = document.getElementById("dev-readonly-banner");
-    const createBtn = document.getElementById("btn-open-create-account");
-    const subTag = document.getElementById("admin-sub-tag");
-    const dirTitle = document.getElementById("admin-directory-title");
-
-    if (banner) banner.style.display = "none";
-    if (subTag) subTag.innerHTML = `Firm Control Center (Elevated)`;
-    if (dirTitle) dirTitle.textContent = "Attorney Directory";
-
-    if (createBtn) {
-      createBtn.disabled = false;
-      createBtn.style.opacity = "1";
-      createBtn.style.cursor = "pointer";
-      createBtn.title = "Create New Account";
-      createBtn.innerHTML = `<i class="bi bi-person-plus-fill"></i> Create Account`;
-    }
-
+    document.getElementById("dev-readonly-banner").style.display = "none";
     closeBreakGlassModal();
-
-    // Reload directory profiles & update showcase isolation state
     await loadDirectoryProfiles();
     renderAttorneyDirectory();
-
-    // Re-render autofill table so delete buttons become accessible
     renderAutofillItems();
-
-    showToast("Elevation Granted! Full Administrator access unlocked. 🛡️", "success");
+    showToast("Full Administrator unlocked!");
   }
 
-  // Auto-advance for OTP inputs
-  const otpInputs = Array.from({ length: 6 }, (_, i) => document.getElementById(`bg-otp-${i + 1}`)).filter(Boolean);
-  otpInputs.forEach((inp, idx) => {
-    inp.addEventListener("input", (e) => {
-      if (e.target.value.length === 1 && idx < otpInputs.length - 1) {
-        otpInputs[idx + 1].focus();
-      }
-      if (getBreakGlassOTP().length === 6) {
-        verifyBreakGlassTOTP();
-      }
-    });
-    inp.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" && !inp.value && idx > 0) {
-        otpInputs[idx - 1].focus();
-      }
-      if (e.key === "Enter") {
-        verifyBreakGlassTOTP();
-      }
-    });
-    inp.addEventListener("paste", (e) => {
-      e.preventDefault();
-      const pasteData = (e.clipboardData || window.clipboardData).getData("text").trim().replace(/\D/g, "");
-      if (pasteData.length === 6) {
-        pasteData.split("").forEach((char, i) => {
-          if (otpInputs[i]) otpInputs[i].value = char;
-        });
-        otpInputs[5].focus();
-        verifyBreakGlassTOTP();
-      }
-    });
-  });
-
-  document.getElementById("edit-contact").addEventListener("input", function(e) {
-    this.value = this.value.replace(/\D/g, '');
-  });
-
-  function escHtml(str) {
-    return String(str || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
+  document.getElementById("edit-contact").addEventListener("input", function() { this.value = this.value.replace(/\D/g, ""); });
+  function escHtml(str) { return String(str || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 </script>
 </body>
 </html>
