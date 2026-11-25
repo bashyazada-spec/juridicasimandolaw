@@ -8,7 +8,7 @@ window.toggleSidebar = function() {
   const isCollapsed = document.body.classList.contains("sidebar-collapsed");
   try {
     localStorage.setItem("simando-sidebar-collapsed", isCollapsed ? "true" : "false");
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
 };
 
 (function restoreSidebarState() {
@@ -17,7 +17,7 @@ window.toggleSidebar = function() {
     if (saved === "true") {
       document.body.classList.add("sidebar-collapsed");
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {}
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -466,7 +466,7 @@ window.confirmAndEnableTwoFactor = async function() {
 
     showToast("Two-Factor Authentication is now active! 🛡️");
     closeTwoFactorSetupModal();
-    if (typeof renderMyProfile === "function") renderMyProfile();
+    if (typeof renderSettingsView === "function") renderSettingsView();
   } catch (err) {
     console.error("2FA activation error:", err);
     showToast("Failed to activate 2FA: " + err.message, "error");
@@ -513,7 +513,7 @@ window.disableTwoFactor = function() {
         }
 
         showToast("Two-Factor Authentication disabled.");
-        if (typeof renderMyProfile === "function") renderMyProfile();
+        if (typeof renderSettingsView === "function") renderSettingsView();
       } catch (err) {
         console.error("2FA disable error:", err);
         showToast("Failed to disable 2FA: " + err.message, "error");
@@ -679,81 +679,6 @@ async function executeDelete() {
   }
 }
 window.executeDelete = executeDelete;
-
-// ═══════════════════════════════════════════════════════════════
-//  CASE SHARING SYSTEM
-// ═══════════════════════════════════════════════════════════════
-window.openShareCaseModal = function() {
-  if (!selCase) return;
-  const listEl = document.getElementById("share-modal-list");
-  if (!listEl) return;
-
-  const sharedUids = selCase.sharedWith || [];
-  const currentUid = window._currentUser?.uid;
-
-  const associates = profiles.filter(p => p.ownerUid && p.ownerUid !== currentUid);
-
-  if (associates.length === 0) {
-    listEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:13px;padding:12px">No other associate attorneys are currently registered in the system.</div>`;
-  } else {
-    listEl.innerHTML = associates.map(p => {
-      const isChecked = sharedUids.includes(p.ownerUid) ? "checked" : "";
-      return `
-        <label style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;margin:0;text-transform:none;letter-spacing:normal">
-          <input type="checkbox" name="share-associate-checkbox" value="${p.ownerUid}" ${isChecked} style="accent-color:var(--gold);width:16px;height:16px;margin:0"/>
-          ${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${p.email}</div>
-          </div>
-        </label>
-      `;
-    }).join("");
-  }
-
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.remove("hidden");
-};
-
-window.closeShareModal = function() {
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-async function saveShareSettings() {
-  if (!selCase) return;
-  const checkboxes = document.querySelectorAll('input[name="share-associate-checkbox"]');
-  const selectedUids = [];
-  checkboxes.forEach(cb => {
-    if (cb.checked) selectedUids.push(cb.value);
-  });
-
-  const ownerUid = selCase.ownerUid || window._currentUser.uid;
-  const allowedUids = Array.from(new Set([ownerUid, ...selectedUids]));
-
-  try {
-    showToast("Updating share settings...");
-    if (typeof dbUpdateCase === "function") {
-      await dbUpdateCase(selCase.id, {
-        sharedWith: selectedUids,
-        allowedUids: allowedUids
-      });
-    }
-    selCase.sharedWith = selectedUids;
-    selCase.allowedUids = allowedUids;
-    
-    if (typeof dbLogAuditAction === "function") {
-      dbLogAuditAction("CASE_SHARED", { caseId: selCase.id, sharedWith: selectedUids });
-    }
-
-    if (typeof closeShareModal === "function") closeShareModal();
-    showToast("Case shared successfully!");
-  } catch (err) {
-    console.error("saveShareSettings error:", err);
-    showToast("Failed to share case: " + err.message, "error");
-  }
-}
-window.saveShareSettings = saveShareSettings;
 
 // ═══════════════════════════════════════════════════════════════
 //  CASE FORM OPEN & EDIT
@@ -1019,6 +944,9 @@ function setVenueValue(val) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  CASE TYPE AUTOFILL SUGGESTIONS ENGINE (RESPECTS DB DELETIONS)
+// ═══════════════════════════════════════════════════════════════
 let _caseTypeSuggestions = [];
 
 async function loadCaseTypesForCategory(category) {
@@ -1051,16 +979,27 @@ async function loadCaseTypesForCategory(category) {
 async function saveCaseTypeIfNew(category, typeName) {
   if (!typeName || !category || !window._db) return;
   const name = typeName.trim();
-  if (!name || _caseTypeSuggestions.includes(name)) return;
-  
+  if (!name) return;
+
   let blacklist = [];
   try {
     blacklist = JSON.parse(localStorage.getItem("simando_autofill_blacklist") || "[]");
   } catch(e) { blacklist = []; }
-  if (blacklist.includes(name.toLowerCase())) return;
+
+  const cleanLower = name.toLowerCase();
+  // Do NOT re-add if user explicitly deleted/blacklisted it from the Autofill Manager
+  if (blacklist.includes(cleanLower)) return;
+
+  if (_caseTypeSuggestions.some(s => s.toLowerCase() === cleanLower)) return;
 
   try {
-    await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), { category, name, createdAt: new Date().toISOString() });
+    await window._fbAddDoc(window._fbCol(window._db, "caseTypes"), {
+      category,
+      name,
+      deleted: false,
+      active: true,
+      createdAt: new Date().toISOString()
+    });
     _caseTypeSuggestions.push(name);
   } catch(e) { console.warn("saveCaseType error:", e); }
 }
@@ -1096,7 +1035,6 @@ function onCaseTypeKeydown(e) {
   if (e.key === "Escape") hideCaseTypeSuggestions();
 }
 
-// ── OUTSIDE CLICK DISMISSAL FOR SYSTEM AUTOFILL DROPDOWN ──────
 document.addEventListener("pointerdown", function(e) {
   const dd = document.getElementById("cf-type-dropdown");
   const inp = document.getElementById("cf-type-input");
@@ -1246,7 +1184,7 @@ document.addEventListener("firebase-ready", () => {
               }
             }
           }
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
 
         if (!dbConnected) {
           dbConnected = true;
