@@ -1,52 +1,102 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Terms of Service — Simando Law</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
+  :root, [data-theme="dark"] {
+    --bg: #060c13;
+    --surface: #0c1826;
+    --border: #1a293f;
+    --text: #ffffff;
+    --text-muted: #ffffff;
+    --text-dim: rgba(255,255,255,0.75);
+  }
+  [data-theme="light"] {
+    --bg: #f4f4f2;
+    --surface: #ffffff;
+    --border: #d4d4d4;
+    --text: #000000;
+    --text-muted: #000000;
+    --text-dim: rgba(0,0,0,0.72);
+  }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    max-width: 760px;
+    max-width: 740px;
     margin: 0 auto;
-    padding: 60px 24px;
-    font-family: 'DM Sans', system-ui, sans-serif;
+    padding: 48px 24px 64px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     line-height: 1.7;
-    color: #ffffff;
-    background: #060c13;
+    color: var(--text);
+    background: var(--bg);
+    transition: background 0.2s ease, color 0.2s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
   }
   h1 {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 36px;
-    color: #f5e6c4;
-    margin-bottom: 6px;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: var(--text);
+    margin-bottom: 4px;
   }
-  .sub { color: #ffffff; font-size: 14px; margin-bottom: 36px; font-weight: 500; }
-  h2 {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 22px;
-    color: #c9a55c;
-    margin: 32px 0 12px;
+  .sub {
+    color: var(--text-dim);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .theme-btn {
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
     font-weight: 600;
-    border-bottom: 1px solid #162033;
-    padding-bottom: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
   }
-  p { margin-bottom: 14px; font-size: 14.5px; color: #ffffff; }
-  ul { margin: 0 0 16px 22px; color: #ffffff; font-size: 14.5px; }
-  li { margin-bottom: 8px; }
-  .box {
-    background: #0c1826;
-    border: 1px solid #1c2d3f;
+
+  .summary-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3.5px solid var(--text);
     border-radius: 12px;
-    padding: 20px;
-    margin: 20px 0;
+    padding: 16px 18px;
+    margin-bottom: 28px;
+    font-size: 14px;
+    color: var(--text);
   }
+
+  h2 {
+    font-size: 16.5px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 28px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  p { margin-bottom: 12px; font-size: 14px; color: var(--text-muted); }
+  ul { margin: 0 0 14px 20px; font-size: 14px; color: var(--text-muted); }
+  li { margin-bottom: 7px; }
+  li strong { color: var(--text); }
+
   .footer {
-    margin-top: 56px;
-    padding-top: 24px;
-    border-top: 1px solid #162033;
-    color: #ffffff;
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--text-dim);
     font-size: 12px;
     display: flex;
     justify-content: space-between;
@@ -54,49 +104,50 @@
     flex-wrap: wrap;
     gap: 12px;
   }
-  a { color: #c9a55c; text-decoration: none; font-weight: 500; cursor: pointer; }
-  a:hover { text-decoration: underline; color: #e0c080; }
+  a { color: var(--text); text-decoration: underline; font-weight: 600; cursor: pointer; }
   .nav-back-link {
     display: inline-flex;
     align-items: center;
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid rgba(201,165,92,0.3);
-    background: rgba(201,165,92,0.06);
-    transition: all 0.2s ease;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-decoration: none;
   }
-  .nav-back-link:hover {
-    background: rgba(201,165,92,0.15);
-    border-color: #c9a55c;
-  }
+  .nav-back-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 
-<h1>Terms of Service</h1>
-<p class="sub">Simando Law — Case Management System</p>
+<div class="top-bar">
+  <div>
+    <h1>Terms of Service</h1>
+    <p class="sub">Simando Law — Case Management System</p>
+  </div>
+  <button type="button" class="theme-btn" id="theme-toggle-btn" onclick="toggleTermsTheme()">Light Mode</button>
+</div>
 
-<div class="box">
-  <p style="margin:0;color:#ffffff"><strong>Agreement Notice:</strong> By signing in to or utilizing the Simando Law Case Management System, you agree to comply with and be bound by these Terms of Service. Please read them carefully.</p>
+<div class="summary-box">
+  <strong>Agreement Notice:</strong> By signing in to or utilizing the Simando Law Case Management System, you agree to comply with and be bound by these Terms of Service. Please read them carefully.
 </div>
 
 <h2>1. Authorized Use of Service</h2>
-<p>The Simando Law Case Management System is provided exclusively for law firm case tracking, client file management, attorney scheduling, and internal collaboration. Access is restricted to registered attorneys, partners, and authorized associates.</p>
+<p>The Simando Law Case Management System is provided exclusively for law firm case tracking, client file management, attorney scheduling, legal drafting, and internal collaboration. Access is restricted to registered attorneys, partners, and authorized associates.</p>
 
 <h2>2. User Responsibilities &amp; Professional Ethics</h2>
 <p>As an authorized attorney or user, you agree to:</p>
 <ul>
-  <li>Maintain the strict confidentiality of your account login credentials.</li>
+  <li>Maintain the strict confidentiality of your account login credentials and Two-Factor Authentication device.</li>
   <li>Ensure that all client information, court documents, and case narratives entered into the system comply with applicable legal ethics rules and attorney-client privilege.</li>
   <li>Manage access permissions responsibly when sharing cases with associate attorneys.</li>
   <li>Notify system administrators immediately if you suspect unauthorized access to your account.</li>
 </ul>
 
-<h2>3. Third-Party Integrations (Google Drive &amp; Calendar)</h2>
-<p>Our application integrates with Google Drive and Google Calendar services to enable document storage and deadline synchronization. You remain responsible for maintaining proper authorization over your linked Google Account and ensuring compliance with Google's Terms of Service.</p>
+<h2>3. Third-Party Integrations (Google Drive, Docs &amp; Calendar)</h2>
+<p>Our application integrates with Google Drive, Google Docs, and Google Calendar services to enable document storage, legal drafting, and deadline synchronization. You remain responsible for maintaining proper authorization over your linked Google Account and ensuring compliance with Google's Terms of Service.</p>
 
 <h2>4. Data Ownership &amp; Security</h2>
-<p>You retain full ownership of all case records, client data, and attached documents uploaded to the system. While we implement strict authentication and data security controls, software services are provided on an "as is" and "as available" basis. Users are encouraged to maintain backup copies of critical court filings.</p>
+<p>You retain full ownership of all case records, client data, and attached documents uploaded to the system. While we implement strict authentication and client-side encryption controls, software services are provided on an "as is" and "as available" basis. Users are encouraged to maintain backup copies of critical court filings.</p>
 
 <h2>5. Account Termination &amp; Data Purging</h2>
 <p>You may discontinue use of the service or request account deletion at any time. Permanently deleting an account purges all linked user profiles, case entries, and storage references from the database.</p>
@@ -105,7 +156,7 @@
 <p>We reserve the right to modify these terms periodically to reflect system updates or legal compliance changes. Continued use of the platform constitutes acceptance of revised terms.</p>
 
 <div class="footer">
-  <span>Last updated: 2026 · Simando Law v5.2</span>
+  <span>Last updated: 2026 · Simando Law v5.4</span>
   <div style="display:flex;align-items:center;gap:16px">
     <a href="privacy-policy.html">Privacy Policy</a>
     <a href="login.html" id="btn-back-nav" class="nav-back-link" onclick="handleSmartBack(event)">← Back to Sign In</a>
@@ -116,46 +167,46 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+  function syncTheme() {
+    const t = localStorage.getItem("simando-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    const btn = document.getElementById("theme-toggle-btn");
+    if (btn) btn.textContent = t === "light" ? "Dark Mode" : "Light Mode";
+  }
+  window.toggleTermsTheme = function() {
+    const cur = document.documentElement.getAttribute("data-theme") || "dark";
+    localStorage.setItem("simando-theme", cur === "light" ? "dark" : "light");
+    syncTheme();
+  };
+  syncTheme();
+
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
   const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
 
-  const firebaseConfig = {
+  const app = initializeApp({
     apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
     authDomain: ["simando", "firebaseapp", "com"].join("."),
     projectId: ["si", "man", "do"].join(""),
     storageBucket: ["simando", "firebasestorage", "app"].join("."),
     messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
     appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":")
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+  });
 
   let isLoggedIn = false;
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(getAuth(app), (user) => {
     isLoggedIn = !!user;
     const btn = document.getElementById("btn-back-nav");
-    if (btn) {
-      btn.textContent = isLoggedIn ? "← Back to Dashboard" : "← Back to Sign In";
-    }
+    if (btn) btn.textContent = isLoggedIn ? "← Back to Dashboard" : "← Back to Sign In";
   });
 
   window.handleSmartBack = function(e) {
     if (e) e.preventDefault();
-
-    // If there is browser history from the same application origin, go back directly
     if (window.history.length > 1 && document.referrer && (document.referrer.includes(window.location.host) || document.referrer.includes("localhost") || document.referrer.includes("127.0.0.1"))) {
       window.history.back();
       return;
     }
-
-    // Otherwise, redirect based on login session state
-    if (isLoggedIn) {
-      window.location.assign("index.html");
-    } else {
-      window.location.assign("login.html");
-    }
+    window.location.assign(isLoggedIn ? "index.html" : "login.html");
   };
 </script>
 </body>
