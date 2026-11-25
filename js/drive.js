@@ -290,6 +290,42 @@ async function createInternalGoogleDoc(docTitle, initialPlainText = "", targetFo
 }
 window.createInternalGoogleDoc = createInternalGoogleDoc;
 
+async function renameDriveFile(fileId, newName) {
+  if (!hasValidToken() || !fileId || !newName) return null;
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,webViewLink`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: newName.trim() })
+  });
+  if (!res.ok) return null;
+  return await res.json();
+}
+window.renameDriveFile = renameDriveFile;
+
+async function moveDriveFileToFolder(fileId, targetFolderId) {
+  if (!hasValidToken() || !fileId || !targetFolderId || targetFolderId === "root") return null;
+  try {
+    const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!getRes.ok) return null;
+    const data = await getRes.json();
+    const prevParents = Array.isArray(data.parents) ? data.parents.join(",") : "";
+    if (Array.isArray(data.parents) && data.parents.includes(targetFolderId)) return true;
+
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${encodeURIComponent(targetFolderId)}${prevParents ? `&removeParents=${encodeURIComponent(prevParents)}` : ""}&fields=id,parents,webViewLink`;
+    const patchRes = await fetch(url, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    return patchRes.ok;
+  } catch (err) {
+    console.warn("moveDriveFileToFolder notice:", err.message);
+    return false;
+  }
+}
+window.moveDriveFileToFolder = moveDriveFileToFolder;
+
 async function updateInternalGoogleDocText(docId, plainText) {
   if (!hasValidToken() || !docId) throw new Error("Google account not connected.");
 
