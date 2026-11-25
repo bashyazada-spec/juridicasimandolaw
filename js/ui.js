@@ -169,11 +169,27 @@ function renderOnlineUsersPopover() {
 }
 window.renderOnlineUsersPopover = renderOnlineUsersPopover;
 
-// ── FLOATING LEGAL RESEARCH WIDGET ───────────────────────────
+// ── FLOATING LEGAL RESEARCH WIDGET (OPENS TRUE FLOATING WINDOW) ──
 window.toggleResearchWidget = function(e) {
   if (e) e.stopPropagation();
   const w = document.getElementById("research-widget");
   if (w) w.classList.toggle("hidden");
+};
+
+window.openResearchFloatingWindow = function(url, label = "Legal Research") {
+  if (!url) return;
+  const w = Math.min(1100, Math.max(820, Math.round(window.screen.availWidth * 0.72)));
+  const h = Math.min(820, Math.max(600, Math.round(window.screen.availHeight * 0.80)));
+  const left = Math.max(20, Math.round((window.screen.availWidth - w) / 2));
+  const top  = Math.max(20, Math.round((window.screen.availHeight - h) / 2));
+
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes`;
+  const win = window.open(url, "SimandoLegalResearchWindow", features);
+  if (win) {
+    try { win.focus(); } catch (e) {}
+  } else {
+    showToast(`Popup blocked — allow popups to open ${label} in a floating window.`, "error");
+  }
 };
 
 window.searchSimilarCases = function() {
@@ -184,7 +200,7 @@ window.searchSimilarCases = function() {
     if (inp) inp.focus();
     return;
   }
-  window.open("https://scholar.google.com/scholar?q=" + encodeURIComponent(q), "_blank", "noopener,noreferrer");
+  window.openResearchFloatingWindow("https://scholar.google.com/scholar?q=" + encodeURIComponent(q), "Google Scholar");
 };
 
 // ── INTERNAL GOOGLE DOCS WORKSPACE CONTROLLER ────────────────
@@ -1032,7 +1048,7 @@ function renderMonthlyCalendarGrid() {
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   if (titleEl) titleEl.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
 
-  const { filteredCases, filteredAppts, currentUid, myProf, isDeveloper } = getCalendarFilteredData();
+  const { filteredCases, filteredAppts, currentUid, myProf } = getCalendarFilteredData();
   const eventsByDate = {};
 
   filteredCases.forEach(c => {
@@ -1158,21 +1174,25 @@ window.openDiagnosticModal = function() {
 window.closeDiagnosticModal = () => document.getElementById("diagnostic-modal")?.classList.add("hidden");
 
 async function updateWorkspaceStatus(manualRun = false) {
-  const dot = document.getElementById("status-indicator-dot");
-  const txt = document.getElementById("status-indicator-text");
+  const netBadge = document.getElementById("diag-network-badge");
+  const dbBadge = document.getElementById("diag-db-badge");
+  const driveBadge = document.getElementById("diag-drive-badge");
+
   const isNetworkOk = navigator.onLine;
   const isDbOk = !localMode && !!window._db && dbReady;
   const isDriveOk = typeof hasValidToken === "function" ? hasValidToken() : false;
 
-  if (!isNetworkOk || (!isDbOk && !localMode)) {
-    if (dot) dot.className = "status-dot danger";
-    if (txt) { txt.textContent = "System Disconnected"; txt.style.color = "var(--red)"; }
-  } else if (!isDriveOk || localMode) {
-    if (dot) dot.className = "status-dot warning";
-    if (txt) { txt.textContent = !isDriveOk ? "Connect Drive" : "Memory Mode"; txt.style.color = "var(--amber)"; }
-  } else {
-    if (dot) dot.className = "status-dot healthy";
-    if (txt) { txt.textContent = "Workspace Active"; txt.style.color = "var(--green)"; }
+  if (netBadge) {
+    netBadge.className = isNetworkOk ? "badge badge-pass" : "badge badge-fail";
+    netBadge.textContent = isNetworkOk ? "Online" : "Offline";
+  }
+  if (dbBadge) {
+    dbBadge.className = isDbOk ? "badge badge-pass" : "badge badge-warn";
+    dbBadge.textContent = isDbOk ? "Connected" : "Memory Mode";
+  }
+  if (driveBadge) {
+    driveBadge.className = isDriveOk ? "badge badge-pass" : "badge badge-warn";
+    driveBadge.textContent = isDriveOk ? "Linked" : "Not Connected";
   }
 
   renderGoogleStatusPopover();
@@ -1305,7 +1325,8 @@ function executeNavigation(view) {
 window.quickFilterCases = (status) => { navTo("allcases"); if (typeof setAllCasesStatusTab === "function") setAllCasesStatusTab(status); };
 window.showView = showView;
 window.navTo = navTo;
-window.executeNavigation = executeNavigation;// ═══════════════════════════════════════════════════════════════
+window.executeNavigation = executeNavigation;
+// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
