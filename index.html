@@ -1042,4 +1042,637 @@
       <div class="helper-banner" data-banner="atty">
         <i class="bi bi-people-fill banner-icon"></i>
         <span>Click any attorney card to view their assigned cases, practice bio, and contact details. <strong id="profiles-count" style="margin-left:6px;color:var(--text)"></strong></span>
-        <button class="banner-dismiss" onclick="dismissBanner(this, 'atty')" title="Dismiss t
+        <button class="banner-dismiss" onclick="dismissBanner(this, 'atty')" title="Dismiss tip"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div id="profiles-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px"></div>
+    </div>
+
+    <!-- ── 5B. PROFILE DETAIL ── -->
+    <div id="view-profileDetail" class="view hidden">
+      <div class="flex-center gap-10 mb-20">
+        <button class="btn btn-secondary btn-sm" onclick="navTo('profiles')"><i class="bi bi-arrow-left"></i> Back to Attorneys</button>
+      </div>
+      <div class="card mb-20" id="profile-header-card" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap"></div>
+      <div class="grid4 mb-20" id="profile-stats-row"></div>
+      <div id="profile-restricted-notice" class="card" style="display:none;text-align:center;padding:40px;border-color:var(--border)">
+        <span style="font-size:32px;color:var(--amber)"><i class="bi bi-lock-fill"></i></span>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-top:12px">Access Restricted</div>
+        <div style="font-size:13px;color:var(--text-dim);margin-top:6px">For privacy reasons, you can only access documents and cases belonging to your own account.</div>
+      </div>
+      <div id="profile-cases-section">
+        <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+          <input class="field-input" style="max-width:220px;flex:1;min-width:140px" placeholder="Search cases…" id="pd-search" oninput="renderProfileCases()"/>
+          <select class="filter-select" id="pd-status" onchange="renderProfileCases()" style="width:auto"><option value="All">All Statuses</option></select>
+          <select class="filter-select" id="pd-category" onchange="onFilterCategoryChange('pd')" style="width:auto"><option value="All">All Categories</option></select>
+          <select class="filter-select" id="pd-type" onchange="renderProfileCases()" style="width:auto"><option value="All">All Types</option></select>
+          <select class="filter-select" id="pd-sort" onchange="renderProfileCases()" style="width:auto"><option value="asc">Due: Soonest First</option><option value="desc">Due: Furthest First</option><option value="none">Date Added</option></select>
+        </div>
+        <div id="profile-cases-list"></div>
+      </div>
+    </div>
+
+    <!-- ── 5C. PROFILE FORM ── -->
+    <div id="view-profileForm" class="view hidden">
+      <div class="flex-center gap-10 mb-20">
+        <button class="btn btn-secondary btn-sm" id="pf-back-btn"><i class="bi bi-arrow-left"></i> Cancel</button>
+        <div style="font-size:20px;font-weight:700;color:var(--text)" id="pf-title">New Attorney Profile</div>
+      </div>
+      <div class="card" style="max-width:680px">
+        <div id="pf-drive-section" style="margin-bottom:20px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><i class="bi bi-google" style="color:var(--gold)"></i> Google Drive Integration *</span>
+            <span id="pf-drive-status" class="drive-status-chip disconnected"><i class="bi bi-circle-fill"></i> Not Connected</span>
+          </div>
+          <button type="button" class="gdrive-btn" id="pf-connect-drive-btn" onclick="connectDriveForProfile()" style="width:100%;justify-content:center"><i class="bi bi-google"></i> <span id="pf-connect-drive-text">Connect Google Drive Account</span></button>
+          <div id="pf-drive-error" class="field-err hidden" style="margin-top:8px"></div>
+        </div>
+        <div id="pf-details-section">
+          <div class="grid2 mb-16">
+            <div><label class="field-label" id="lbl-pf-name">Full Name *</label><input class="field-input" id="pf-name" placeholder="e.g. Atty. Juan Dela Cruz"/><div id="pf-name-err" class="field-err hidden">Full name is required</div></div>
+            <div><label class="field-label" id="lbl-pf-role">Role / Title *</label><input class="field-input" id="pf-role" placeholder="e.g. Senior Associate"/><div id="pf-role-err" class="field-err hidden">Role is required</div></div>
+          </div>
+          <div class="grid2 mb-16">
+            <div><label class="field-label">Contact Number (11 digits)</label><input class="field-input" id="pf-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/></div>
+            <div><label class="field-label" id="lbl-pf-email">Email Address (@gmail.com, @outlook.com, or @yahoo.com) *</label><input class="field-input" id="pf-email" placeholder="attorney@yahoo.com" type="email"/><div id="pf-email-err" class="field-err hidden">Valid @gmail.com, @outlook.com, or @yahoo.com email is required</div></div>
+          </div>
+          <div style="display:flex;gap:12px;justify-content:center;margin-top:20px">
+            <button class="btn btn-ghost" id="pf-cancel-btn">Cancel</button>
+            <button class="btn btn-primary" id="pf-save-btn" onclick="saveProfile()" style="min-width:200px;justify-content:center"><i class="bi bi-check-lg"></i> <span id="pf-save-btn-text">Create Profile</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 6. 4-STEP CASE FORM ── -->
+    <div id="view-caseForm" class="view hidden">
+      <div class="helper-banner" data-banner="form">
+        <i class="bi bi-info-circle-fill banner-icon"></i>
+        <span>Fill in the required fields marked with <strong>*</strong>. Hearings, deadlines, and file uploads are optional and can always be added later.</span>
+        <button class="btn btn-secondary btn-sm" id="cf-back-btn" onclick="handleCaseCancelOrExit()" style="margin-left:auto"><i class="bi bi-arrow-left"></i> Cancel</button>
+        <button class="banner-dismiss" onclick="dismissBanner(this, 'form')" title="Dismiss tip"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div id="cf-title" style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:14px">New Case</div>
+      <div id="cf-profile-chip" style="display:none;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px"></div>
+
+      <div class="step-card">
+        <div class="step-hdr"><div class="step-num">1</div><div class="step-title">Basic Case Information</div><div class="step-hint">Required *</div></div>
+        <div class="grid2 mb-16">
+          <div style="grid-column: 1/-1"><label class="field-label">Case Title *</label><input class="field-input" id="cf-case-title" placeholder="e.g. People of the Philippines vs. Dela Cruz"/><div id="cf-title-err" class="field-err hidden">Case title is required</div></div>
+          <div><label class="field-label">Category *</label><select class="field-input" id="cf-category" onchange="onCategoryChange(this.value)"></select></div>
+          <div>
+            <label class="field-label">Case Type / Sub-Category</label>
+            <div style="position:relative">
+              <input class="field-input" id="cf-type-input" placeholder="Type or select..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="filterCaseTypeSuggestions(this.value)" onfocus="showCaseTypeSuggestions()" onkeydown="onCaseTypeKeydown(event)"/>
+              <div id="cf-type-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+            </div>
+          </div>
+          <div><label class="field-label">Date Case Filed *</label><input type="date" class="field-input" id="cf-filed"/><div id="cf-filed-err" class="field-err hidden">Filed date is required</div></div>
+          <div><label class="field-label">Case / Docket Number</label><input class="field-input" id="cf-case-number" placeholder="e.g. Civil Case No. 2026-104"/></div>
+          <div><label class="field-label">Status</label><select class="field-input" id="cf-status"></select></div>
+          <div><label class="field-label">Venue / Court</label><select class="field-input" id="cf-venue" onchange="onVenueChange(this)"></select><input class="field-input mt-16" id="cf-venue-manual" placeholder="Specify other venue..." style="display:none"/></div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-hdr"><div class="step-num">2</div><div class="step-title">People / Parties Involved *</div><div class="step-hint">Type a name and click "+"</div></div>
+        <input type="hidden" id="cf-parties"/>
+        <div class="grid2">
+          <div>
+            <label class="field-label" id="cf-party-a-label">Petitioner / Plaintiff</label>
+            <div style="display:flex;gap:6px"><input class="field-input" id="cf-petitioner-input" placeholder="Name..." onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('petitioner');}"/><button type="button" class="btn btn-secondary btn-sm" onclick="addParty('petitioner')"><i class="bi bi-plus-lg"></i> Add</button></div>
+            <div id="cf-petitioners-list" style="margin-top:8px"></div>
+          </div>
+          <div>
+            <label class="field-label" id="cf-party-b-label">Respondent / Defendant</label>
+            <div style="display:flex;gap:6px"><input class="field-input" id="cf-respondent-input" placeholder="Name..." onkeydown="if(event.key==='Enter'){event.preventDefault();addParty('respondent');}"/><button type="button" class="btn btn-secondary btn-sm" onclick="addParty('respondent')"><i class="bi bi-plus-lg"></i> Add</button></div>
+            <div id="cf-respondents-list" style="margin-top:8px"></div>
+          </div>
+        </div>
+        <div id="cf-parties-err" class="field-err hidden">At least one party on both sides is required</div>
+      </div>
+
+      <input type="hidden" id="cf-due"/>
+      <input type="hidden" id="cf-doc-type"/>
+
+      <div class="step-card">
+        <div class="step-hdr"><div class="step-num">3</div><div class="step-title">Court Hearings &amp; Document Deadlines</div><div class="step-hint">Optional — log dates as needed</div></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:700"><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearing Dates</span>
+          <span id="cf-hearing-status-badge" class="badge" style="background:var(--surface2);color:var(--text-dim);font-size:10px">0 LOGGED</span>
+        </div>
+        <div id="cf-hearings-list" style="margin-bottom:10px"></div>
+        <div id="cf-hearings-err" class="field-err hidden" style="margin:8px 0"></div>
+        <div style="background:var(--surface2);border:1px dashed var(--gold-border);border-radius:10px;padding:14px;margin-bottom:18px">
+          <div class="grid2 mb-12">
+            <div><label class="field-label">Hearing Date</label><input type="date" class="field-input" id="cf-new-hearing-date"/></div>
+            <div><label class="field-label">Time</label><input type="time" class="field-input" id="cf-new-hearing-time" value="08:30"/></div>
+            <div><label class="field-label">Stage / Purpose</label><select class="field-input" id="cf-new-hearing-purpose"><option value="Pre-Trial Conference">Pre-Trial Conference</option><option value="Arraignment and Plea">Arraignment and Plea</option><option value="Presentation of Prosecution / Plaintiff Evidence">Presentation of Prosecution Evidence</option><option value="Presentation of Defense Evidence">Presentation of Defense Evidence</option><option value="Cross-Examination of Witness">Cross-Examination of Witness</option><option value="Judicial Dispute Resolution (JDR)">Judicial Dispute Resolution (JDR)</option><option value="Hearing on Motion">Hearing on Motion</option><option value="Promulgation of Judgment">Promulgation of Judgment</option><option value="Other Court Appearance">Other Court Appearance</option></select></div>
+            <div><label class="field-label">Remarks / Description</label><input type="text" class="field-input" id="cf-new-hearing-notes" placeholder="e.g. Witness presented"/></div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addCaseHearing()"><i class="bi bi-plus-lg"></i> Log Hearing Date</button>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:700"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document &amp; Pleading Deadlines</span>
+          <span id="cf-deadline-status-badge" class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10px">0 LOGGED</span>
+        </div>
+        <div id="cf-deadlines-list" style="margin-bottom:10px"></div>
+        <div style="background:var(--surface2);border:1px dashed var(--gold-border);border-radius:10px;padding:14px">
+          <div class="grid2 mb-12">
+            <div><label class="field-label">Filing Deadline Date</label><input type="date" class="field-input" id="cf-new-deadline-date"/></div>
+            <div><label class="field-label">Document Flow Direction</label><select class="field-input" id="cf-new-deadline-flow"><option value="Outbound Motion" selected>Outbound (Firm Filing / Submission)</option><option value="Inbound Pleading">Inbound (Opposing Counsel Submission)</option><option value="Court Compliance">Court Compliance / Manifestation</option></select></div>
+            <div><label class="field-label">Document / Pleading Subtype</label><input type="text" class="field-input" id="cf-new-deadline-subtype" placeholder="e.g. Formal Offer of Evidence"/></div>
+            <div><label class="field-label">Remarks / Description</label><input type="text" class="field-input" id="cf-new-deadline-notes" placeholder="e.g. 15-day inextendible period"/></div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addCaseDeadline()"><i class="bi bi-plus-lg"></i> Log Document Deadline</button>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-hdr"><div class="step-num">4</div><div class="step-title">Case Narrative &amp; File Upload</div><div class="step-hint">Attach PDFs or Word docs</div></div>
+        <div class="mb-16">
+          <label class="field-label">Case Narrative / Description *</label>
+          <textarea class="field-input" id="cf-narrative" rows="4" placeholder="Briefly summarize background, claims, and current posture..."></textarea>
+          <div id="cf-narrative-err" class="field-err hidden">Narrative summary is required</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text)"><i class="bi bi-paperclip" style="color:var(--gold)"></i> Attach Documents</span>
+          <span id="drive-status" style="font-size:11px;color:var(--text-dim)"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);cursor:pointer"><input type="radio" name="cf-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> <i class="bi bi-box-arrow-in-down" style="color:var(--green)"></i> Inbound (Received)</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text);cursor:pointer"><input type="radio" name="cf-file-type" value="Outbound" style="accent-color:var(--gold)"/> <i class="bi bi-box-arrow-up" style="color:var(--violet)"></i> Outbound (Filed)</label>
+        </div>
+        <div class="upload-area" onclick="triggerLocalAttach()">
+          <div style="font-size:24px;margin-bottom:4px;color:var(--gold)"><i class="bi bi-cloud-arrow-up"></i></div>
+          <div>Click to select files from your computer</div>
+        </div>
+        <input type="file" id="local-file-input" multiple style="display:none" onchange="handleLocalAttach(event)"/>
+        <div id="cf-docs-list" style="margin-top:12px"></div>
+      </div>
+
+      <div class="sticky-form-bar">
+        <span style="font-size:12.5px;color:var(--text-dim)">Step 1–4 · Files sync automatically to Google Drive on save</span>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-secondary" id="cf-cancel-btn" onclick="handleCaseCancelOrExit()">Cancel</button>
+          <button class="btn btn-primary" id="cf-save-btn" onclick="saveCase()"><i class="bi bi-check2-circle"></i> Add Case</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 7. CASE DETAIL ── -->
+    <div id="view-caseDetail" class="view hidden">
+      <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <button class="btn btn-secondary btn-sm" id="cd-back-btn" onclick="handleCaseDetailBack()"><i class="bi bi-arrow-left"></i> Back</button>
+        <div id="cd-action-buttons-wrap" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"></div>
+      </div>
+      <h2 style="font-weight:700;font-size:24px;color:var(--text);margin-bottom:12px" id="cd-title"></h2>
+      <div id="cd-profile-chip" style="display:inline-flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;cursor:pointer" onclick="openCurrentProfile()"></div>
+      <div class="detail-split-grid">
+        <div class="card" id="cd-info"></div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card" id="cd-hearings"></div>
+          <div class="card" id="cd-docs"></div>
+          <div class="card" id="cd-status-panel"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 8A. PROFILE SETTINGS (Full-Width Balanced Layout: Name, Number, Pfp, Description) ── -->
+    <div id="view-myprofile" class="view hidden">
+      <div class="profile-settings-grid">
+        <div class="card" style="text-align:center">
+          <div style="font-size:15.5px;font-weight:700;color:var(--gold);margin-bottom:14px;text-align:left;display:flex;align-items:center;gap:8px">
+            <i class="bi bi-camera-fill"></i> Profile Photo
+          </div>
+          <div id="setting-photo-upload-area">
+            <div id="setting-photo-dropzone" onclick="document.getElementById('setting-photo-input').click()" style="border:2px dashed var(--border-soft);border-radius:12px;padding:22px;text-align:center;cursor:pointer;background:var(--surface2)">
+              <div style="font-size:28px;margin-bottom:6px;color:var(--gold)"><i class="bi bi-camera-fill"></i></div>
+              <div style="font-size:13px;color:var(--text-muted);font-weight:600">Click to upload photo</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:3px">Max size: 2MB</div>
+            </div>
+            <input type="file" id="setting-photo-input" accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
+            <div id="setting-photo-preview-wrap" style="display:none;flex-direction:column;align-items:center;gap:10px;padding:14px;background:var(--surface2);border-radius:12px;border:1px solid var(--border)">
+              <img id="setting-photo-preview-img" src="" style="width:92px;height:92px;border-radius:50%;object-fit:cover;border:2.5px solid var(--gold)"/>
+              <div>
+                <div id="setting-name-preview" style="font-size:15px;font-weight:700;color:var(--text)">Name</div>
+                <div id="setting-role-preview" style="font-size:12px;color:var(--gold);font-weight:600">Role</div>
+              </div>
+              <div style="display:flex;gap:8px;justify-content:center;width:100%">
+                <button type="button" onclick="document.getElementById('setting-photo-input').click()" class="btn btn-secondary btn-sm"><i class="bi bi-upload"></i> Change</button>
+                <button type="button" onclick="removeSettingsPhoto()" class="btn btn-danger btn-sm"><i class="bi bi-x-circle"></i> Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <i class="bi bi-person-badge-fill"></i> Attorney Profile Information
+          </div>
+          <div class="grid2 mb-16">
+            <div>
+              <label class="field-label" id="lbl-setting-name">Display Name *</label>
+              <input class="field-input" id="setting-name" placeholder="e.g. Atty. Maria Garcia"/>
+            </div>
+            <div>
+              <label class="field-label">Contact Number (11 digits)</label>
+              <input class="field-input" id="setting-contact" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"/>
+            </div>
+            <input type="hidden" id="setting-role"/>
+          </div>
+          <div class="mb-16">
+            <label class="field-label">Description / Practice Bio</label>
+            <textarea class="field-input" id="setting-description" rows="5" placeholder="Describe your practice areas, bar admissions, and legal focus..."></textarea>
+            <div style="font-size:11.5px;color:var(--text-dim);margin-top:5px">Displayed on your colleague card in Office Attorneys.</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="btn btn-primary" onclick="saveUserSettings()"><i class="bi bi-check2"></i> Save Profile Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 8B. SETTINGS (Every Section Retractable & Expandable Accordion) ── -->
+    <div id="view-settings" class="view hidden">
+      <div class="settings-accordion-list">
+
+        <!-- 1. Accessibility Settings -->
+        <div class="settings-accordion is-open" id="acc-accessibility">
+          <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
+            <div class="settings-acc-title-wrap">
+              <div class="settings-acc-icon"><i class="bi bi-universal-access-circle"></i></div>
+              <div>
+                <div class="settings-acc-title">Accessibility Settings</div>
+                <div class="settings-acc-sub">Display theme, text size scale, contrast borders, and motion</div>
+              </div>
+            </div>
+            <i class="bi bi-chevron-down settings-acc-chevron"></i>
+          </button>
+          <div class="settings-acc-body">
+            <div class="setting-row-item">
+              <div><div style="font-weight:700;font-size:13px">Display Mode</div><div style="font-size:11.5px;color:var(--text-dim)">Switch between Dark Navy and low-glare Stone Light</div></div>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="toggleTheme()"><i class="bi bi-circle-half"></i> Toggle Dark / Light</button>
+            </div>
+            <div class="setting-row-item">
+              <div><div style="font-weight:700;font-size:13px">Text Size Scale</div><div style="font-size:11.5px;color:var(--text-dim)">Adjust base interface typography size</div></div>
+              <select class="field-input" id="acc-font-scale" style="width:auto;min-width:160px" onchange="setAccessibilityPref('fontScale', this.value)">
+                <option value="compact">Compact (13px)</option>
+                <option value="default">Default (14px)</option>
+                <option value="large">Large (15.5px)</option>
+                <option value="xlarge">Extra Large (17px)</option>
+              </select>
+            </div>
+            <div class="setting-row-item">
+              <div><div style="font-weight:700;font-size:13px">High-Contrast Borders</div><div style="font-size:11.5px;color:var(--text-dim)">Accentuate card, button, and input outlines</div></div>
+              <input type="checkbox" id="acc-high-contrast" style="width:18px;height:18px;accent-color:var(--gold)" onchange="setAccessibilityPref('highContrast', this.checked)"/>
+            </div>
+            <div class="setting-row-item">
+              <div><div style="font-weight:700;font-size:13px">Reduce Motion</div><div style="font-size:11.5px;color:var(--text-dim)">Disable UI animations and transitions</div></div>
+              <input type="checkbox" id="acc-reduce-motion" style="width:18px;height:18px;accent-color:var(--gold)" onchange="setAccessibilityPref('reduceMotion', this.checked)"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Notification Sounds -->
+        <div class="settings-accordion" id="acc-sounds">
+          <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
+            <div class="settings-acc-title-wrap">
+              <div class="settings-acc-icon"><i class="bi bi-volume-up-fill"></i></div>
+              <div>
+                <div class="settings-acc-title">Notification Sounds</div>
+                <div class="settings-acc-sub">Configure alert chimes and chat audio feedback</div>
+              </div>
+            </div>
+            <i class="bi bi-chevron-down settings-acc-chevron"></i>
+          </button>
+          <div class="settings-acc-body">
+            <div class="setting-row-item">
+              <div><div style="font-weight:700;font-size:13px">Alert &amp; Deadline Chimes</div><div style="font-size:11.5px;color:var(--text-dim)">Play chime when new court deadline or hearing alerts arrive</div></div>
+              <input type="checkbox" id="sound-notif-toggle" checked style="width:18px;height:18px;accent-color:var(--gold)" onchange="setSoundPref('notif', this.checked)"/>
+            </div>
+            <div class="setting-row-item">
+              <div><div style="font-weight:700;font-size:13px">Chat Message Sound</div><div style="font-size:11.5px;color:var(--text-dim)">Play tone for incoming firm chat messages</div></div>
+              <input type="checkbox" id="sound-chat-toggle" checked style="width:18px;height:18px;accent-color:var(--gold)" onchange="setSoundPref('chat', this.checked)"/>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="testNotificationAudio()"><i class="bi bi-play-fill"></i> Test Sound</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Security Settings & Update Credentials -->
+        <div class="settings-accordion" id="acc-security">
+          <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
+            <div class="settings-acc-title-wrap">
+              <div class="settings-acc-icon"><i class="bi bi-shield-lock-fill"></i></div>
+              <div>
+                <div class="settings-acc-title">Security Settings &amp; Update Credentials</div>
+                <div class="settings-acc-sub">Google Drive &amp; Docs, 2FA Authenticator, Email &amp; Password update</div>
+              </div>
+            </div>
+            <i class="bi bi-chevron-down settings-acc-chevron"></i>
+          </button>
+          <div class="settings-acc-body">
+            <div class="setting-row-item">
+              <div>
+                <div style="font-weight:700;font-size:13px"><i class="bi bi-google" style="color:var(--gold);margin-right:6px"></i>Google Drive &amp; Docs Connection</div>
+                <div style="font-size:11.5px;color:var(--text-dim)">Required for case file uploads, Google Docs, and Calendar sync</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span id="settings-drive-status" class="drive-status-chip disconnected"><i class="bi bi-circle-fill"></i> Not Connected</span>
+                <button class="gdrive-btn" id="settings-connect-drive-btn" onclick="connectDriveFromSettings()"><i class="bi bi-google"></i><span id="settings-connect-drive-text">Connect Google Account</span></button>
+                <button class="btn btn-danger btn-sm hidden" id="settings-disconnect-drive-btn" onclick="disconnectDriveAccount()"><i class="bi bi-x-circle"></i> Disconnect</button>
+              </div>
+            </div>
+
+            <div class="setting-row-item" style="margin-bottom:16px">
+              <div>
+                <div style="font-weight:700;font-size:13px"><i class="bi bi-phone" style="color:var(--gold);margin-right:6px"></i>Two-Factor Authentication (2FA)</div>
+                <div style="font-size:11.5px;color:var(--text-dim)">Protect client files using Authenticator 6-digit codes</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span id="setting-2fa-status-badge" class="badge" style="background:var(--amber-bg);color:var(--amber)">Not Enabled</span>
+                <button id="setting-2fa-action-btn" class="btn btn-primary btn-sm" onclick="openTwoFactorSetupModal()"><i class="bi bi-qr-code-scan"></i> Configure Authenticator</button>
+              </div>
+            </div>
+            <div id="setting-2fa-backup-wrap" style="display:none;margin-bottom:14px;font-size:11px;color:var(--text-dim)">Backup codes are active in your security profile.</div>
+
+            <div style="border-top:1px solid var(--border);padding-top:16px">
+              <div style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px"><i class="bi bi-key-fill"></i> Update Sign-In Credentials</div>
+              <div class="grid2 mb-12">
+                <div>
+                  <label class="field-label">Current Password (Required to save changes) *</label>
+                  <input type="password" class="field-input" id="setting-current-password" placeholder="Enter current password" autocomplete="current-password"/>
+                </div>
+                <div>
+                  <label class="field-label">Sign-In Email (@gmail.com, @outlook.com, or @yahoo.com) *</label>
+                  <input class="field-input" id="setting-email" placeholder="attorney@gmail.com" type="email"/>
+                </div>
+                <div>
+                  <label class="field-label">New Password (leave blank to keep unchanged)</label>
+                  <input type="password" class="field-input" id="setting-password" placeholder="••••••••" autocomplete="new-password"/>
+                </div>
+                <div>
+                  <label class="field-label">Confirm New Password</label>
+                  <input type="password" class="field-input" id="setting-confirm-password" placeholder="Re-enter new password" autocomplete="new-password"/>
+                </div>
+              </div>
+              <div id="password-requirements" style="display:none;margin-bottom:14px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px">
+                <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Password Requirements</div>
+                <div id="req-length" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> Min. 6 characters</div>
+                <div id="req-upper" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> At least one uppercase letter (A-Z)</div>
+                <div id="req-number" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> At least one number (0-9)</div>
+                <div id="req-special" style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px"><span class="req-icon"><i class="bi bi-x-circle" style="color:var(--red)"></i></span> At least one special character (@, #, $, etc.)</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openDiagnosticModal()"><i class="bi bi-activity"></i> System Health Check</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveSecuritySettings()"><i class="bi bi-shield-check"></i> Update Credentials</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Terms of Service -->
+        <div class="settings-accordion" id="acc-terms">
+          <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
+            <div class="settings-acc-title-wrap">
+              <div class="settings-acc-icon"><i class="bi bi-file-earmark-text"></i></div>
+              <div>
+                <div class="settings-acc-title">Terms of Service</div>
+                <div class="settings-acc-sub">Authorized use, legal ethics, and Google Workspace terms</div>
+              </div>
+            </div>
+            <i class="bi bi-chevron-down settings-acc-chevron"></i>
+          </button>
+          <div class="settings-acc-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">The Simando Law Case Management System is restricted to registered partners and authorized associates. You retain full ownership of all uploaded case files and client records.</p>
+            <a href="terms-of-service.html" target="_blank" class="btn btn-secondary btn-sm"><i class="bi bi-file-earmark-text"></i> Read Full Terms of Service <i class="bi bi-box-arrow-up-right"></i></a>
+          </div>
+        </div>
+
+        <!-- 5. Privacy and Policy -->
+        <div class="settings-accordion" id="acc-privacy">
+          <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
+            <div class="settings-acc-title-wrap">
+              <div class="settings-acc-icon"><i class="bi bi-file-earmark-lock"></i></div>
+              <div>
+                <div class="settings-acc-title">Privacy and Policy</div>
+                <div class="settings-acc-sub">Client-side encryption, OAuth scopes, and confidentiality</div>
+              </div>
+            </div>
+            <i class="bi bi-chevron-down settings-acc-chevron"></i>
+          </button>
+          <div class="settings-acc-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Case fields are encrypted client-side (AES-GCM 256) and uploaded documents live exclusively inside your own authorized Google Drive storage (`drive.file`). We never sell or share firm data.</p>
+            <a href="privacy-policy.html" target="_blank" class="btn btn-secondary btn-sm"><i class="bi bi-file-earmark-lock"></i> Read Full Privacy Policy <i class="bi bi-box-arrow-up-right"></i></a>
+          </div>
+        </div>
+
+        <!-- 6. Suggestions / Report -->
+        <div class="settings-accordion" id="acc-suggestions">
+          <button type="button" class="settings-acc-hdr" onclick="toggleSettingsAccordion(this)">
+            <div class="settings-acc-title-wrap">
+              <div class="settings-acc-icon"><i class="bi bi-chat-square-quote-fill"></i></div>
+              <div>
+                <div class="settings-acc-title">Suggestions / Report</div>
+                <div class="settings-acc-sub">Submit feedback, feature requests, or bug reports</div>
+              </div>
+            </div>
+            <i class="bi bi-chevron-down settings-acc-chevron"></i>
+          </button>
+          <div class="settings-acc-body">
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Submit workflow suggestions, feature ideas, or technical issue reports directly to Simando Law leadership.</p>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSdzPdOrdfOPttHR2OBkXjnvoAO7Lhacb2q2Tvl1Sq_89ohhxA/viewform?usp=publish-editor" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">Open Feedback Form <i class="bi bi-box-arrow-up-right"></i></a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/drive.js"></script>
+<script src="js/analyzer.js"></script>
+<script src="js/ui.js"></script>
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="if(window.onGoogleLibraryLoad)window.onGoogleLibraryLoad()"></script>
+<script src="js/app.js"></script>
+<script src="js/chat.js"></script>
+
+<script>
+  const _origShowView = window.showView;
+  window.showView = function(viewName) {
+    if (typeof _origShowView === "function") _origShowView(viewName);
+    const allcasesSlot = document.getElementById("slot-allcases-action");
+    const profilesSlot = document.getElementById("slot-profiles-action");
+    const mydriveSlot  = document.getElementById("slot-mydrive-action");
+    if (allcasesSlot) allcasesSlot.style.display = (viewName === "allcases") ? "flex" : "none";
+    if (profilesSlot) profilesSlot.style.display = (viewName === "profiles") ? "flex" : "none";
+    if (mydriveSlot)  mydriveSlot.style.display  = (viewName === "mydrive")  ? "flex" : "none";
+  };
+
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modPressed = isMac ? (e.metaKey && e.shiftKey && e.altKey) : (e.ctrlKey && e.shiftKey && e.altKey);
+    if (modPressed && e.key.toLowerCase() === "d") {
+      e.preventDefault();
+      window.open("diagnostics.html", "_blank");
+    }
+  });
+
+  let cmsActiveOverrideSecret = null;
+  let cmsActiveBackupCodes = [];
+
+  document.addEventListener("keydown", (e) => {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const modPressed = isMac ? (e.metaKey && e.shiftKey && e.altKey) : (e.ctrlKey && e.shiftKey && e.altKey);
+    if (modPressed && e.key.toLowerCase() === "e") {
+      e.preventDefault();
+      openCmsBreakGlassModal();
+    }
+  });
+
+  function openCmsBreakGlassModal() {
+    const modal = document.getElementById("cms-breakglass-modal");
+    if (!modal) return;
+    document.getElementById("cms-bg-step-password").style.display = "block";
+    document.getElementById("cms-bg-step-authenticator").style.display = "none";
+    const passInp = document.getElementById("cms-bg-input-password");
+    if (passInp) passInp.value = "";
+    modal.classList.remove("hidden");
+    if (passInp) setTimeout(() => passInp.focus(), 80);
+  }
+
+  window.closeCmsBreakGlassModal = function() {
+    const modal = document.getElementById("cms-breakglass-modal");
+    if (modal) modal.classList.add("hidden");
+  };
+
+  window.backToCmsBreakGlassPassword = function() {
+    document.getElementById("cms-bg-step-password").style.display = "block";
+    document.getElementById("cms-bg-step-authenticator").style.display = "none";
+  };
+
+  window.verifyCmsBreakGlassPassword = async function() {
+    const passInp = document.getElementById("cms-bg-input-password");
+    const password = (passInp?.value || "").trim();
+    if (!password) { showToast("Please enter your account password.", "error"); return; }
+    const u = window._currentUser || window._auth?.currentUser;
+    if (!u || !u.email) { showToast("Active user session not detected.", "error"); return; }
+
+    const btn = document.getElementById("btn-cms-bg-verify-pass");
+    btn.disabled = true;
+    btn.textContent = "Verifying...";
+
+    try {
+      showToast("Verifying credentials...");
+      const cred = window._fbEmailCred(u.email, password);
+      await window._fbReauth(u, cred);
+
+      const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === u.email.toLowerCase()));
+      let secData = null;
+      try {
+        const secSnap = await window._fbGetDoc(window._fbDoc(window._db, "profiles", myProf?.id || u.uid, "private", "security"));
+        if (secSnap.exists()) secData = secSnap.data();
+      } catch (e) { /* ignore */ }
+
+      cmsActiveOverrideSecret = secData?.twoFactorSecret || myProf?.twoFactorSecret || null;
+      cmsActiveBackupCodes = secData?.twoFactorBackupCodes || myProf?.twoFactorBackupCodes || [];
+
+      if (!cmsActiveOverrideSecret) {
+        showToast("Password verified. Elevating to Administrator session...");
+        await grantCmsFullAdminElevation();
+        return;
+      }
+
+      document.getElementById("cms-bg-step-password").style.display = "none";
+      document.getElementById("cms-bg-step-authenticator").style.display = "block";
+      const firstOtp = document.getElementById("cms-bg-otp-1");
+      if (firstOtp) setTimeout(() => firstOtp.focus(), 60);
+    } catch (err) {
+      console.error("Break-glass password error:", err);
+      showToast("Incorrect password. Verification failed.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `Next <i class="bi bi-arrow-right"></i>`;
+    }
+  };
+
+  function getCmsBreakGlassOTP() {
+    return Array.from({ length: 6 }, (_, i) => document.getElementById(`cms-bg-otp-${i + 1}`)?.value || "").join("");
+  }
+
+  window.verifyCmsBreakGlassTOTP = async function() {
+    const code = getCmsBreakGlassOTP();
+    if (code.length !== 6) { showToast("Please enter all 6 digits from Microsoft Authenticator.", "error"); return; }
+
+    const btn = document.getElementById("btn-cms-bg-verify-otp");
+    btn.disabled = true;
+    btn.textContent = "Verifying 2FA...";
+
+    try {
+      let isValid = false;
+      if (cmsActiveOverrideSecret && typeof verifyClientTOTP === "function") {
+        isValid = await verifyClientTOTP(code, cmsActiveOverrideSecret);
+      }
+      if (!isValid && cmsActiveBackupCodes && cmsActiveBackupCodes.length > 0) {
+        const cleanCode = code.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (cmsActiveBackupCodes.some(c => c.toLowerCase().replace(/[^a-z0-9]/g, "") === cleanCode)) isValid = true;
+      }
+      if (!isValid) {
+        showToast("Invalid 6-digit authenticator code. Please try again.", "error");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
+        return;
+      }
+      await grantCmsFullAdminElevation();
+    } catch (err) {
+      console.error("CMS break-glass 2FA verification error:", err);
+      showToast("2FA verification error: " + err.message, "error");
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-shield-lock-fill"></i> Unlock Full Admin`;
+    }
+  };
+
+  async function grantCmsFullAdminElevation() {
+    showToast("Elevation confirmed! Session upgraded to Administrator...");
+    const u = window._currentUser || window._auth?.currentUser;
+    const myProf = profiles.find(p => p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === u?.email?.toLowerCase()));
+    if (myProf) myProf.role = "admin";
+    const adminSection = document.getElementById("admin-sidebar-section");
+    if (adminSection) adminSection.style.display = "block";
+    closeCmsBreakGlassModal();
+    if (typeof renderSidebarUser === "function") renderSidebarUser();
+    if (typeof renderProfiles === "function") renderProfiles();
+    if (typeof renderAllCases === "function") renderAllCases();
+    if (typeof renderDashboard === "function") renderDashboard();
+    showToast("Elevation Granted! Full Administrator access unlocked. 🛡️", "success");
+  }
+
+  const cmsOtpInputs = Array.from({ length: 6 }, (_, i) => document.getElementById(`cms-bg-otp-${i + 1}`)).filter(Boolean);
+  cmsOtpInputs.forEach((inp, idx) => {
+    inp.addEventListener("input", (e) => {
+      if (e.target.value.length === 1 && idx < cmsOtpInputs.length - 1) cmsOtpInputs[idx + 1].focus();
+      if (getCmsBreakGlassOTP().length === 6) verifyCmsBreakGlassTOTP();
+    });
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !inp.value && idx > 0) cmsOtpInputs[idx - 1].focus();
+      if (e.key === "Enter") verifyCmsBreakGlassTOTP();
+    });
+    inp.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData("text").trim().replace(/\D/g, "");
+      if (pasteData.length === 6) {
+        pasteData.split("").forEach((char, i) => { if (cmsOtpInputs[i]) cmsOtpInputs[i].value = char; });
+        cmsOtpInputs[5].focus();
+        verifyCmsBreakGlassTOTP();
+      }
+    });
+  });
+</script>
+</body>
+</html>
