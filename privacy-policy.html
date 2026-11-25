@@ -7,211 +7,195 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
   :root, [data-theme="dark"] {
-    --bg:        #060c13;
-    --surface:   #0c1826;
-    --border:    #1a293f;
-    --gold:      #c9a55c;
-    --text:      #f8fafc;
-    --muted:     #94a3b8;
+    --bg: #060c13;
+    --surface: #0c1826;
+    --border: #1a293f;
+    --text: #ffffff;
+    --text-muted: #ffffff;
+    --text-dim: rgba(255,255,255,0.75);
   }
   [data-theme="light"] {
-    --bg:        #e2e0d8;
-    --surface:   #eeece5;
-    --border:    #cbc8bc;
-    --gold:      #8a6210;
-    --text:      #1c1e21;
-    --muted:     #585e68;
+    --bg: #f4f4f2;
+    --surface: #ffffff;
+    --border: #d4d4d4;
+    --text: #000000;
+    --text-muted: #000000;
+    --text-dim: rgba(0,0,0,0.72);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    font-size: 14px;
-    line-height: 1.65;
-    padding: 36px 20px 64px;
-    transition: background 0.2s ease, color 0.2s ease;
-  }
-  .wrap {
-    max-width: 700px;
+    max-width: 740px;
     margin: 0 auto;
+    padding: 48px 24px 64px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+    transition: background 0.2s ease, color 0.2s ease;
+    -webkit-font-smoothing: antialiased;
   }
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding-bottom: 18px;
-    margin-bottom: 28px;
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-  }
-  .brand {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    color: var(--gold);
-  }
-  .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  a, button {
-    font-family: inherit;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--gold);
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-  }
-  a:hover, button:hover { text-decoration: underline; }
 
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
   h1 {
-    font-size: 26px;
+    font-size: 30px;
     font-weight: 700;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
+    color: var(--text);
     margin-bottom: 4px;
   }
   .sub {
-    font-size: 12.5px;
-    color: var(--muted);
-    margin-bottom: 24px;
+    color: var(--text-dim);
+    font-size: 13.5px;
+    font-weight: 500;
   }
-  .summary {
+  .theme-btn {
+    padding: 7px 13px;
+    border-radius: 999px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-    margin-bottom: 26px;
-    font-size: 13.5px;
-    color: var(--muted);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
   }
-  .summary strong { color: var(--text); }
+
+  .summary-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3.5px solid var(--text);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 28px;
+    font-size: 14px;
+    color: var(--text);
+  }
 
   h2 {
-    font-size: 15px;
+    font-size: 16.5px;
     font-weight: 700;
     color: var(--text);
-    margin: 24px 0 8px;
+    margin: 28px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
   }
-  p {
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-  ul {
-    margin: 0 0 14px 18px;
-    color: var(--muted);
-  }
-  li { margin-bottom: 6px; }
-  li strong { color: var(--text); font-weight: 600; }
-  code {
-    font-size: 12.5px;
-    color: var(--gold);
-  }
+  p { margin-bottom: 12px; font-size: 14px; color: var(--text-muted); }
+  ul { margin: 0 0 14px 20px; font-size: 14px; color: var(--text-muted); }
+  li { margin-bottom: 7px; }
+  li strong { color: var(--text); }
 
   .footer {
-    margin-top: 40px;
-    padding-top: 16px;
+    margin-top: 48px;
+    padding-top: 20px;
     border-top: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
-    font-size: 12px;
-    color: var(--muted);
+    gap: 12px;
   }
+  a { color: var(--text); text-decoration: underline; font-weight: 600; cursor: pointer; }
+  .nav-back-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-decoration: none;
+  }
+  .nav-back-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <header class="topbar">
-    <span class="brand">Simando Law</span>
-    <div class="nav-links">
-      <button onclick="toggleTheme()" id="theme-btn">Light Mode</button>
-      <a href="terms-of-service.html">Terms of Service</a>
-      <a href="login.html" id="btn-back-nav" onclick="handleSmartBack(event)">← Back to Sign In</a>
-    </div>
-  </header>
-
-  <h1>Privacy Policy</h1>
-  <p class="sub">Simando Law Case Management System · Effective 2026</p>
-
-  <div class="summary">
-    <strong>Summary:</strong> Simando Law collects only the data required for legal case management. Case narratives and docket metadata are encrypted client-side with AES-GCM 256. We never sell or share client or firm data.
+<div class="top-bar">
+  <div>
+    <h1>Privacy Policy</h1>
+    <p class="sub">Simando Law — Case Management System</p>
   </div>
-
-  <h2>1. Information We Collect</h2>
-  <ul>
-    <li><strong>Account Details:</strong> Name, designation, contact number, optional profile photo, bio description, and email address.</li>
-    <li><strong>Case Records:</strong> Case titles, docket numbers, filing dates, venues, involved parties, hearings, deadlines, and narratives.</li>
-    <li><strong>Documents &amp; Drafts:</strong> Uploaded PDFs, Word files, and linked Google Docs.</li>
-    <li><strong>Communications:</strong> Online presence status, firm chat messages, and schedule proposals.</li>
-  </ul>
-
-  <h2>2. Google OAuth Usage</h2>
-  <ul>
-    <li><strong>Google Drive &amp; Docs (<code>drive.file</code>):</strong> Used strictly to store case attachments, profile photos, and drafted legal Google Docs inside your authorized Drive folders.</li>
-    <li><strong>Google Calendar (<code>calendar.events</code>, <code>calendar.readonly</code>):</strong> Used strictly to sync case hearings and deadlines.</li>
-  </ul>
-
-  <h2>3. Security &amp; Confidentiality</h2>
-  <p>Sensitive case details are encrypted with AES-GCM 256 prior to cloud storage, protected by Two-Factor Authentication (2FA) and TLS transport security. Access is limited to the owning attorney, explicitly shared associates, and authorized administrators.</p>
-
-  <h2>4. Data Rights &amp; Retention</h2>
-  <p>Aligned with the Philippine Data Privacy Act (RA 10173), you retain full ownership of all entered data and may edit records, disconnect Google access in Settings, or request account deletion at any time.</p>
-
-  <h2>5. Contact</h2>
-  <p>Questions or requests may be directed to <a href="mailto:admin@simandolaw.com">admin@simandolaw.com</a>.</p>
-
-  <footer class="footer">
-    <span>Simando Law v5.4</span>
-    <a href="terms-of-service.html">Terms of Service →</a>
-  </footer>
+  <button type="button" class="theme-btn" id="theme-toggle-btn" onclick="togglePolicyTheme()">Light Mode</button>
 </div>
 
-<script>
-  function syncTheme() {
-    const t = localStorage.getItem('simando-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', t);
-    const btn = document.getElementById('theme-btn');
-    if (btn) btn.textContent = t === 'light' ? 'Dark Mode' : 'Light Mode';
-  }
-  window.toggleTheme = function() {
-    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-    localStorage.setItem('simando-theme', cur === 'light' ? 'dark' : 'light');
-    syncTheme();
-  };
-  syncTheme();
-</script>
+<div class="summary-box">
+  <strong>Summary:</strong> Simando Law respects attorney and client confidentiality. We collect only the information required to operate secure case tracking and document management, and we never sell or share firm data with third parties.
+</div>
+
+<h2>1. Information We Collect</h2>
+<p>To operate the Case Management System, we process the following categories of information:</p>
+<ul>
+  <li><strong>Account Credentials:</strong> Full name, professional title, contact number, practice description, and authorized email address.</li>
+  <li><strong>Case Records:</strong> Case titles, docket numbers, filing dates, court venues, parties involved, hearings, deadlines, and case narratives.</li>
+  <li><strong>Attached Documents:</strong> Legal filings and Google Docs drafts stored via your linked Google Drive account.</li>
+  <li><strong>Google Integration Data:</strong> OAuth access tokens and folder references when you authorize Google Drive, Docs, and Calendar.</li>
+</ul>
+
+<h2>2. Google User Data &amp; OAuth Scopes</h2>
+<p>When you connect your Google Account, Simando Law requests only least-privilege scopes:</p>
+<ul>
+  <li><strong>Google Drive &amp; Docs (<code>drive.file</code>):</strong> Used strictly to create firm case folders, upload attachments, draft pleadings in Google Docs, and store profile photos. We only access files created or opened by this application.</li>
+  <li><strong>Google Calendar (<code>calendar.events</code> &amp; <code>calendar.readonly</code>):</strong> Used strictly to display upcoming hearings on your dashboard and synchronize case deadlines.</li>
+</ul>
+
+<h2>3. Encryption, Storage &amp; Security</h2>
+<p>Sensitive case fields are encrypted client-side using AES-GCM 256 before being stored in Google Firebase Firestore. Uploaded files live directly inside your authorized Google Drive folders. Two-Factor Authentication (TOTP) and strict role-based rules protect account access.</p>
+
+<h2>4. Confidentiality &amp; Data Sharing</h2>
+<p>Consistent with legal ethics and attorney-client privilege, case files are visible only to the owning attorney and associates explicitly granted access via case sharing or accepted appearance proposals.</p>
+
+<h2>5. Retention &amp; Contact</h2>
+<p>You retain full ownership of all data entered into Simando Law. For privacy inquiries or deletion requests, contact <a href="mailto:admin@simandolaw.com">admin@simandolaw.com</a>.</p>
+
+<div class="footer">
+  <span>Last updated: 2026 · Simando Law v5.4</span>
+  <div style="display:flex;align-items:center;gap:16px">
+    <a href="terms-of-service.html">Terms of Service</a>
+    <a href="login.html" id="btn-back-nav" class="nav-back-link" onclick="handleSmartBack(event)">← Back to Sign In</a>
+  </div>
+</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+  function syncTheme() {
+    const t = localStorage.getItem("simando-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    const btn = document.getElementById("theme-toggle-btn");
+    if (btn) btn.textContent = t === "light" ? "Dark Mode" : "Light Mode";
+  }
+  window.togglePolicyTheme = function() {
+    const cur = document.documentElement.getAttribute("data-theme") || "dark";
+    localStorage.setItem("simando-theme", cur === "light" ? "dark" : "light");
+    syncTheme();
+  };
+  syncTheme();
+
   const _fbKeyChunks = ["QUl6YVN5", "RElEczIxRzJ3V3ktV2Q3Mndi", "LWlXTk1DVHkwX0tsQURv"];
   const _fbSenderChunks = ["NjI1OTU5", "NjA4ODE3"];
   const _fbAppIdHex = "MGM1NzFkOTRmNzIwNjU4ZTk3YTQ1MA==";
 
-  const firebaseConfig = {
+  const app = initializeApp({
     apiKey: _fbKeyChunks.map(c => atob(c)).join(""),
     authDomain: ["simando", "firebaseapp", "com"].join("."),
     projectId: ["si", "man", "do"].join(""),
     storageBucket: ["simando", "firebasestorage", "app"].join("."),
     messagingSenderId: _fbSenderChunks.map(c => atob(c)).join(""),
     appId: ["1", _fbSenderChunks.map(c => atob(c)).join(""), "web", atob(_fbAppIdHex)].join(":")
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+  });
 
   let isLoggedIn = false;
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(getAuth(app), (user) => {
     isLoggedIn = !!user;
     const btn = document.getElementById("btn-back-nav");
     if (btn) btn.textContent = isLoggedIn ? "← Back to Dashboard" : "← Back to Sign In";
