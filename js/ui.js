@@ -2,13 +2,14 @@
 //  SIMANDO LAW — UI CONTROLLER (PART 1 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
-// ── THEME INITIALIZATION & TOGGLE ────────────────────────────
+// ── THEME, ACCESSIBILITY & NOTIFICATION SOUND PREFERENCES ────
 function initTheme() {
   const saved = localStorage.getItem('simando-theme');
   if (saved) {
     document.documentElement.setAttribute('data-theme', saved);
     if (typeof updateThemeIcon === "function") updateThemeIcon(saved);
   }
+  initAccessibilityAndSounds();
 }
 
 function toggleTheme() {
@@ -27,9 +28,334 @@ function updateThemeIcon(theme) {
   });
 }
 
+function initAccessibilityAndSounds() {
+  try {
+    const scale = localStorage.getItem("simando_font_scale") || "default";
+    const hc = localStorage.getItem("simando_high_contrast") === "true";
+    const rm = localStorage.getItem("simando_reduce_motion") === "true";
+    document.documentElement.setAttribute("data-font-scale", scale);
+    document.documentElement.setAttribute("data-high-contrast", String(hc));
+    document.documentElement.setAttribute("data-reduce-motion", String(rm));
+
+    const scaleSel = document.getElementById("acc-font-scale");
+    const hcCb = document.getElementById("acc-high-contrast");
+    const rmCb = document.getElementById("acc-reduce-motion");
+    if (scaleSel) scaleSel.value = scale;
+    if (hcCb) hcCb.checked = hc;
+    if (rmCb) rmCb.checked = rm;
+
+    const notifSoundCb = document.getElementById("sound-notif-toggle");
+    const chatSoundCb = document.getElementById("sound-chat-toggle");
+    if (notifSoundCb) notifSoundCb.checked = localStorage.getItem("simando_sound_notif") !== "false";
+    if (chatSoundCb) chatSoundCb.checked = localStorage.getItem("simando_sound_chat") !== "false";
+  } catch (e) {}
+}
+
+window.setAccessibilityPref = function(key, val) {
+  try {
+    if (key === "fontScale") {
+      localStorage.setItem("simando_font_scale", val);
+      document.documentElement.setAttribute("data-font-scale", val);
+      showToast(`Text scale: ${val}`);
+    } else if (key === "highContrast") {
+      localStorage.setItem("simando_high_contrast", String(!!val));
+      document.documentElement.setAttribute("data-high-contrast", String(!!val));
+    } else if (key === "reduceMotion") {
+      localStorage.setItem("simando_reduce_motion", String(!!val));
+      document.documentElement.setAttribute("data-reduce-motion", String(!!val));
+    }
+  } catch (e) {}
+};
+
+window.setSoundPref = function(kind, enabled) {
+  try {
+    localStorage.setItem(kind === "chat" ? "simando_sound_chat" : "simando_sound_notif", String(!!enabled));
+    showToast(`${kind === "chat" ? "Chat" : "Alert"} sound ${enabled ? "enabled" : "muted"}`);
+  } catch (e) {}
+};
+
+window.toggleSettingsAccordion = function(btn) {
+  const acc = btn?.closest(".settings-accordion");
+  if (acc) acc.classList.toggle("is-open");
+};
+
 window.initTheme = initTheme;
 window.toggleTheme = toggleTheme;
 window.updateThemeIcon = updateThemeIcon;
+
+// ── TOP BAR POPOVERS: GOOGLE & ONLINE USERS ──────────────────
+window.closeAllTopPopovers = function() {
+  ["google-popover", "online-popover", "notif-dropdown"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+};
+
+window.toggleTopPopover = function(id, e) {
+  if (e) e.stopPropagation();
+  const el = document.getElementById(id);
+  if (!el) return;
+  const willOpen = el.classList.contains("hidden");
+  window.closeAllTopPopovers();
+  if (willOpen) {
+    el.classList.remove("hidden");
+    if (id === "google-popover") renderGoogleStatusPopover();
+    if (id === "online-popover") renderOnlineUsersPopover();
+  }
+};
+
+function renderGoogleStatusPopover() {
+  const connected = typeof hasValidToken === "function" && hasValidToken();
+  const dot = document.getElementById("google-status-dot");
+  const badgeEl = document.getElementById("google-popover-badge");
+  const driveSub = document.getElementById("gpop-drive-sub");
+  const driveState = document.getElementById("gpop-drive-state");
+  const docsState = document.getElementById("gpop-docs-state");
+  const calState = document.getElementById("gpop-cal-state");
+  const btn = document.getElementById("gpop-connect-btn");
+
+  if (dot) dot.className = `plain-dot ${connected ? "green" : "amber"}`;
+  if (badgeEl) {
+    badgeEl.className = `badge ${connected ? "badge-pass" : "badge-warn"}`;
+    badgeEl.textContent = connected ? "Connected" : "Action Needed";
+  }
+  if (driveSub) driveSub.textContent = connected ? "Scope: drive.file active" : "Not connected";
+  if (driveState) { driveState.textContent = connected ? "Active" : "Pending"; driveState.style.color = connected ? "var(--green)" : "var(--amber)"; }
+  if (docsState)  { docsState.textContent  = connected ? "Ready"  : "Standby"; docsState.style.color  = connected ? "var(--green)" : "var(--amber)"; }
+  if (calState)   { calState.textContent   = connected ? "Synced" : "Standby"; calState.style.color   = connected ? "var(--green)" : "var(--amber)"; }
+  if (btn) btn.innerHTML = connected ? `<i class="bi bi-arrow-clockwise"></i> Re-sync` : `<i class="bi bi-google"></i> Connect`;
+}
+window.renderGoogleStatusPopover = renderGoogleStatusPopover;
+
+window.connectOrOpenGoogleAction = async function() {
+  try {
+    showToast("Connecting Google Workspace...");
+    await promptDriveAuth(true);
+    renderGoogleStatusPopover();
+    if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
+    showToast("Google Drive, Docs & Calendar connected!");
+  } catch (err) {
+    showToast("Google connection failed: " + err.message, "error");
+  }
+};
+
+function renderOnlineUsersPopover() {
+  const list = Array.isArray(window.onlineUsers) ? window.onlineUsers : [];
+  const labelEl = document.getElementById("online-count-label");
+  const countEl = document.getElementById("online-popover-count");
+  const listEl = document.getElementById("online-users-list");
+
+  if (labelEl) labelEl.textContent = `Online (${list.length})`;
+  if (countEl) countEl.textContent = `${list.length} active`;
+  if (!listEl) return;
+
+  if (list.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-dim);font-size:12px">No active users detected.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = list.map(u => `
+    <div class="setting-row-item" style="margin:0;padding:8px 10px">
+      <div style="display:flex;align-items:center;gap:9px;min-width:0">
+        ${avatarDiv(u.name, u.avatarColor, 28, u.photoUrl)}
+        <div style="min-width:0">
+          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(u.name)} ${u.isMe ? '<span style="font-size:9px;color:var(--gold)">(You)</span>' : ''}</div>
+          <div style="font-size:10.5px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(u.role || 'Attorney')}</div>
+        </div>
+      </div>
+      <span class="plain-dot green" title="Online"></span>
+    </div>
+  `).join("");
+}
+window.renderOnlineUsersPopover = renderOnlineUsersPopover;
+
+// ── FLOATING LEGAL RESEARCH WIDGET ───────────────────────────
+window.toggleResearchWidget = function(e) {
+  if (e) e.stopPropagation();
+  const w = document.getElementById("research-widget");
+  if (w) w.classList.toggle("hidden");
+};
+
+window.searchSimilarCases = function() {
+  const inp = document.getElementById("research-query-inp");
+  const q = (inp?.value || "").trim();
+  if (!q) {
+    showToast("Enter keywords or case citation to search.", "error");
+    if (inp) inp.focus();
+    return;
+  }
+  window.open("https://scholar.google.com/scholar?q=" + encodeURIComponent(q), "_blank", "noopener,noreferrer");
+};
+
+// ── INTERNAL GOOGLE DOCS WORKSPACE CONTROLLER ────────────────
+let activeInternalDocId = null;
+
+window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
+  const modal = document.getElementById("gdoc-modal");
+  if (!modal) return;
+  activeInternalDocId = existingDocId || null;
+
+  const caseSel = document.getElementById("gdoc-case-select");
+  if (caseSel) {
+    const accessible = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
+    caseSel.innerHTML = `<option value="">— Standalone Firm Draft —</option>` +
+      accessible.map(c => `<option value="${c.id}" ${c.id === caseId ? "selected" : ""}>${escHtml(c.title)}</option>`).join("");
+  }
+
+  const titleInp = document.getElementById("gdoc-title-input");
+  const iframeBtn = document.getElementById("gdoc-open-iframe-btn");
+  const iframeWrap = document.getElementById("gdoc-iframe-wrap");
+  const canvasEl = document.getElementById("gdoc-canvas");
+
+  if (iframeWrap) iframeWrap.classList.add("hidden");
+  if (canvasEl) canvasEl.classList.remove("hidden");
+  if (iframeBtn) iframeBtn.style.display = activeInternalDocId ? "inline-flex" : "none";
+
+  const connected = typeof hasValidToken === "function" && hasValidToken();
+  const badgeEl = document.getElementById("gdoc-api-status-badge");
+  if (badgeEl) {
+    badgeEl.className = `badge ${connected ? "badge-pass" : "badge-warn"}`;
+    badgeEl.innerHTML = connected ? `<i class="bi bi-cloud-check"></i> Google Docs API Ready` : `<i class="bi bi-exclamation-triangle"></i> Connect Google First`;
+  }
+
+  if (activeInternalDocId && connected && typeof loadInternalGoogleDocContent === "function") {
+    loadInternalGoogleDocContent(activeInternalDocId).then(docData => {
+      if (titleInp) titleInp.value = docData.title;
+      if (canvasEl) canvasEl.innerText = docData.text;
+    }).catch(() => {});
+  } else if (titleInp && !existingDocId) {
+    const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
+    titleInp.value = targetCase ? `${targetCase.title} — Draft Pleading` : "Legal Memorandum Draft";
+  }
+
+  modal.classList.remove("hidden");
+};
+
+window.closeGoogleDocModal = function() {
+  const modal = document.getElementById("gdoc-modal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.execInternalDocFmt = function(cmd) {
+  document.execCommand(cmd, false, null);
+  document.getElementById("gdoc-canvas")?.focus();
+};
+
+window.insertInternalDocTemplate = function(type) {
+  const c = document.getElementById("gdoc-canvas");
+  if (!c) return;
+  if (type === "caption") {
+    c.innerHTML += `<p style="margin-top:12px"><strong>REPUBLIC OF THE PHILIPPINES</strong><br/>REGIONAL TRIAL COURT — BRANCH ___<br/>Case No. ____________</p>`;
+  } else if (type === "prayer") {
+    c.innerHTML += `<p style="margin-top:12px"><strong>WHEREFORE</strong>, premises considered, it is most respectfully prayed of this Honorable Court that this pleading be GRANTED. Other reliefs just and equitable are likewise prayed for.</p>`;
+  } else if (type === "jurat") {
+    c.innerHTML += `<p style="margin-top:12px"><strong>SUBSCRIBED AND SWORN</strong> to before me this ___ day of __________, 2026 in Naga City, Philippines, affiant exhibiting competent proof of identity.</p>`;
+  }
+  showToast("Inserted legal template block");
+};
+
+window.toggleInternalDocLiveFrame = function() {
+  if (!activeInternalDocId) return;
+  const wrap = document.getElementById("gdoc-iframe-wrap");
+  const canvas = document.getElementById("gdoc-canvas");
+  const frame = document.getElementById("gdoc-live-iframe");
+  if (!wrap || !canvas || !frame) return;
+
+  const showingFrame = !wrap.classList.contains("hidden");
+  if (showingFrame) {
+    wrap.classList.add("hidden");
+    canvas.classList.remove("hidden");
+  } else {
+    frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
+    canvas.classList.add("hidden");
+    wrap.classList.remove("hidden");
+  }
+};
+
+window.saveInternalGoogleDoc = async function(exportPdf = false) {
+  if (typeof hasValidToken !== "function" || !hasValidToken()) {
+    try { await promptDriveAuth(true); }
+    catch (e) { showToast("Connect Google Account first.", "error"); return; }
+  }
+
+  const title = (document.getElementById("gdoc-title-input")?.value || "").trim() || "Untitled Legal Draft";
+  const caseId = document.getElementById("gdoc-case-select")?.value || "";
+  const plainText = (document.getElementById("gdoc-canvas")?.innerText || "").trim();
+
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  let folderId = myProf?.driveFolderId || null;
+
+  const targetCase = caseId ? cases.find(c => c.id === caseId) : null;
+  if (targetCase && typeof getOrCreateCaseFolderHierarchy === "function") {
+    folderId = await getOrCreateCaseFolderHierarchy(targetCase.category || "Other", targetCase.type || "Other", targetCase.title || "Untitled", "Outbound", folderId || "root");
+  }
+
+  const saveBtn = document.getElementById("gdoc-save-btn");
+  const pdfBtn = document.getElementById("gdoc-pdf-btn");
+  if (saveBtn) saveBtn.disabled = true;
+  if (pdfBtn) pdfBtn.disabled = true;
+
+  try {
+    showToast(exportPdf ? "Compiling Google Doc & exporting PDF..." : "Saving to Google Docs...");
+    let docMeta = null;
+
+    if (activeInternalDocId) {
+      await updateInternalGoogleDocText(activeInternalDocId, plainText);
+      docMeta = { id: activeInternalDocId, name: title, webViewLink: `https://docs.google.com/document/d/${activeInternalDocId}/edit` };
+    } else {
+      docMeta = await createInternalGoogleDoc(title, plainText, folderId);
+      activeInternalDocId = docMeta.id;
+    }
+
+    const iframeBtn = document.getElementById("gdoc-open-iframe-btn");
+    if (iframeBtn) iframeBtn.style.display = "inline-flex";
+
+    let attachedEntry = {
+      name: `${title} (Google Doc)`,
+      size: "Google Doc",
+      date: new Date().toLocaleDateString(),
+      fileType: "Outbound",
+      version: "v1.0",
+      driveFileId: docMeta.id,
+      driveLink: docMeta.webViewLink || `https://docs.google.com/document/d/${docMeta.id}/edit`
+    };
+
+    if (exportPdf && typeof exportGoogleDocToPdf === "function") {
+      const pdfName = title.replace(/\.pdf$/i, "") + ".pdf";
+      const pdfMeta = await exportGoogleDocToPdf(docMeta.id, pdfName, folderId);
+      attachedEntry = {
+        name: pdfName,
+        size: pdfMeta.size || "PDF",
+        date: new Date().toLocaleDateString(),
+        fileType: "Outbound",
+        version: "v1.0",
+        driveFileId: pdfMeta.id,
+        driveLink: pdfMeta.webViewLink
+      };
+    }
+
+    if (targetCase) {
+      const updDocs = [...(targetCase.documents || []), attachedEntry];
+      await dbUpdateCase(targetCase.id, { documents: updDocs });
+      targetCase.documents = updDocs;
+      if (selCase && selCase.id === targetCase.id) {
+        selCase = { ...targetCase };
+        if (typeof renderCaseDetail === "function") renderCaseDetail();
+      }
+    }
+
+    if (currentView === "mydrive" && typeof loadExplorerFiles === "function") loadExplorerFiles();
+    showToast(exportPdf ? `Exported & attached "${attachedEntry.name}"!` : `Saved "${title}" to Google Docs!`);
+    if (exportPdf) closeGoogleDocModal();
+  } catch (err) {
+    console.error("saveInternalGoogleDoc error:", err);
+    showToast("Google Docs error: " + err.message, "error");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+    if (pdfBtn) pdfBtn.disabled = false;
+  }
+};
 
 // ── CAPSULE SIDEBAR SYNC, EDGE HANDLE & FLOATING TOOLTIPS ────
 function syncSidebarHandleUI() {
@@ -49,12 +375,10 @@ function syncSidebarHandleUI() {
 
 function initSidebarEnhancements() {
   syncSidebarHandleUI();
-
   if (typeof MutationObserver !== "undefined" && document.body) {
     const obs = new MutationObserver(() => syncSidebarHandleUI());
     obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
   }
-
   const sidebarEl = document.getElementById("sidebar");
   const tooltipEl = document.getElementById("capsule-tooltip");
   if (sidebarEl && tooltipEl) {
@@ -75,7 +399,6 @@ function initSidebarEnhancements() {
   }
 }
 
-// ── DISMISSIBLE HELPER BANNERS & ESCAPE KEY ──────────────────
 window.dismissBanner = function(btn, key) {
   const banner = btn?.closest(".helper-banner");
   if (banner) banner.classList.add("hidden");
@@ -92,14 +415,20 @@ function restoreDismissedBanners() {
   });
 }
 
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#top-hdr-actions")) window.closeAllTopPopovers();
+  if (!e.target.closest("#research-widget") && !e.target.closest("#research-fab-btn")) {
+    document.getElementById("research-widget")?.classList.add("hidden");
+  }
+});
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    const dd = document.getElementById("notif-dropdown");
-    if (dd) dd.classList.add("hidden");
-    const diag = document.getElementById("diagnostic-modal");
-    if (diag) diag.classList.add("hidden");
-    const dsm = document.getElementById("date-schedule-modal");
-    if (dsm) dsm.classList.add("hidden");
+    window.closeAllTopPopovers();
+    document.getElementById("research-widget")?.classList.add("hidden");
+    document.getElementById("diagnostic-modal")?.classList.add("hidden");
+    document.getElementById("date-schedule-modal")?.classList.add("hidden");
+    document.getElementById("gdoc-modal")?.classList.add("hidden");
     if (typeof closeAllSheets === "function") closeAllSheets();
   }
 });
@@ -107,30 +436,18 @@ document.addEventListener("keydown", (e) => {
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarEnhancements();
   restoreDismissedBanners();
+  initAccessibilityAndSounds();
 });
 
 // ── DOM HELPERS & ERROR CLEARING ─────────────────────────────
-function setElText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text;
-}
+function setElText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
+function setElVal(id, val)   { const el = document.getElementById(id); if (el) el.value = val; }
 window.setElText = setElText;
-
-function setElVal(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.value = val;
-}
-window.setElVal = setElVal;
+window.setElVal  = setElVal;
 
 function clearCaseErrors() {
-  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err", "cf-hearings-err"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.add("hidden");
-  });
-  ["cf-case-title", "cf-filed", "cf-narrative"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove("err");
-  });
+  ["cf-title-err", "cf-filed-err", "cf-parties-err", "cf-narrative-err", "cf-hearings-err"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+  ["cf-case-title", "cf-filed", "cf-narrative"].forEach(id => document.getElementById(id)?.classList.remove("err"));
 }
 window.clearCaseErrors = clearCaseErrors;
 
@@ -140,9 +457,7 @@ function generateRandomBase32(length = 16) {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   let result = "";
-  for (let i = 0; i < length; i++) {
-    result += alphabet[bytes[i] % 32];
-  }
+  for (let i = 0; i < length; i++) result += alphabet[bytes[i] % 32];
   return result;
 }
 window.generateRandomBase32 = generateRandomBase32;
@@ -162,76 +477,40 @@ window.generateBackupRecoveryCodes = generateBackupRecoveryCodes;
 function base32Decode(base32) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let cleaned = (base32 || "").toUpperCase().replace(/=+$/, "").replace(/\s+/g, "");
-  let bits = 0;
-  let value = 0;
-  let output = [];
-
+  let bits = 0, value = 0, output = [];
   for (let i = 0; i < cleaned.length; i++) {
     const idx = alphabet.indexOf(cleaned.charAt(i));
     if (idx === -1) continue;
-    value = (value << 5) | idx;
-    bits += 5;
-    if (bits >= 8) {
-      output.push((value >>> (bits - 8)) & 255);
-      bits -= 8;
-      value &= (1 << bits) - 1;
-    }
+    value = (value << 5) | idx; bits += 5;
+    if (bits >= 8) { output.push((value >>> (bits - 8)) & 255); bits -= 8; value &= (1 << bits) - 1; }
   }
   return new Uint8Array(output);
 }
 window.base32Decode = base32Decode;
 
 async function generateTOTPCode(secretBase32, timeStepOffset = 0) {
-  const keyBytes = base32Decode(secretBase32);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    keyBytes,
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"]
-  );
-
-  const epoch = Math.floor(Date.now() / 1000);
-  const timeStep = Math.floor(epoch / 30) + timeStepOffset;
-
+  const key = await crypto.subtle.importKey("raw", base32Decode(secretBase32), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const timeStep = Math.floor(Math.floor(Date.now() / 1000) / 30) + timeStepOffset;
   const buffer = new ArrayBuffer(8);
-  const view = new DataView(buffer);
-  view.setUint32(0, 0, false);
-  view.setUint32(4, timeStep, false);
-
-  const hmacResult = await crypto.subtle.sign("HMAC", key, buffer);
-  const hmacBytes = new Uint8Array(hmacResult);
-
+  new DataView(buffer).setUint32(4, timeStep, false);
+  const hmacBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, buffer));
   const offset = hmacBytes[hmacBytes.length - 1] & 0xf;
-  const binary =
-    ((hmacBytes[offset] & 0x7f) << 24) |
-    ((hmacBytes[offset + 1] & 0xff) << 16) |
-    ((hmacBytes[offset + 2] & 0xff) << 8) |
-    (hmacBytes[offset + 3] & 0xff);
-
-  const code = binary % 1000000;
-  return String(code).padStart(6, "0");
+  const binary = ((hmacBytes[offset] & 0x7f) << 24) | ((hmacBytes[offset + 1] & 0xff) << 16) | ((hmacBytes[offset + 2] & 0xff) << 8) | (hmacBytes[offset + 3] & 0xff);
+  return String(binary % 1000000).padStart(6, "0");
 }
 window.generateTOTPCode = generateTOTPCode;
 
 async function verifyClientTOTP(token, secretBase32) {
-  if (!token || !secretBase32) return false;
-  const cleanedToken = String(token).trim().replace(/\D/g, "");
-  if (cleanedToken.length !== 6) return false;
-
+  const cleanedToken = String(token || "").trim().replace(/\D/g, "");
+  if (cleanedToken.length !== 6 || !secretBase32) return false;
   for (const offset of [0, -1, 1, -2, 2, -3, 3]) {
-    try {
-      const valid = await generateTOTPCode(secretBase32, offset);
-      if (cleanedToken === valid) return true;
-    } catch (e) {
-      console.warn("TOTP calculation notice:", e);
-    }
+    try { if (cleanedToken === await generateTOTPCode(secretBase32, offset)) return true; } catch (e) {}
   }
   return false;
 }
 window.verifyClientTOTP = verifyClientTOTP;
 
-// ── ONBOARDING SETUP & 2FA / DRIVE MODAL CONTROLLER ───────────
+// ── ONBOARDING SETUP & 2FA / DRIVE MODAL CONTROLLER ──────────
 let onboardingGeneratedSecret = null;
 let onboardingGeneratedBackupCodes = [];
 let onboardingModalDismissedThisSession = false;
@@ -239,37 +518,23 @@ let _obCheckRetryCount = 0;
 
 window.checkOnboardingSecurityStatus = function() {
   if (onboardingModalDismissedThisSession) return;
-
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) {
-    if (_obCheckRetryCount < 15) {
-      _obCheckRetryCount++;
-      setTimeout(window.checkOnboardingSecurityStatus, 400);
-    }
+    if (_obCheckRetryCount < 15) { _obCheckRetryCount++; setTimeout(window.checkOnboardingSecurityStatus, 400); }
     return;
   }
-
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   if (!myProf) {
-    if (_obCheckRetryCount < 15) {
-      _obCheckRetryCount++;
-      setTimeout(window.checkOnboardingSecurityStatus, 400);
-    }
+    if (_obCheckRetryCount < 15) { _obCheckRetryCount++; setTimeout(window.checkOnboardingSecurityStatus, 400); }
     return;
   }
-
   const is2FaEnabled = !!myProf.twoFactorEnabled;
   const isDriveConnected = typeof hasValidToken === "function" ? hasValidToken() : false;
-
-  if (is2FaEnabled && isDriveConnected) {
-    dismissOnboardingModal();
-    return;
-  }
+  if (is2FaEnabled && isDriveConnected) { dismissOnboardingModal(); return; }
 
   const modal = document.getElementById("onboarding-modal");
   if (!modal) return;
-
   const card2Fa = document.getElementById("ob-card-2fa");
   const cardDrive = document.getElementById("ob-card-drive");
   const titleEl = document.getElementById("ob-modal-title");
@@ -282,12 +547,10 @@ window.checkOnboardingSecurityStatus = function() {
     if (cardDrive) cardDrive.style.display = "block";
     if (driveTitle) driveTitle.textContent = "Google Account & Drive Storage Required";
     if (titleEl) titleEl.textContent = "Google Account Required";
-    if (subEl) subEl.textContent = "Your Two-Factor Authentication is active, but a connected Google Account is required to manage cases, store client court documents, and synchronize deadlines.";
+    if (subEl) subEl.textContent = "Your Two-Factor Authentication is active, but a connected Google Account is required for case storage and deadline sync.";
     if (iconEl) iconEl.innerHTML = `<i class="bi bi-cloud-arrow-up-fill" style="color:var(--gold)"></i>`;
-
     updateOnboardingDriveStatus(false);
-    modal.classList.remove("hidden");
-    modal.style.display = "flex";
+    modal.classList.remove("hidden"); modal.style.display = "flex";
     return;
   }
 
@@ -296,13 +559,11 @@ window.checkOnboardingSecurityStatus = function() {
     if (cardDrive) cardDrive.style.display = "block";
     if (driveTitle) driveTitle.textContent = "2. Google Account & Drive Storage";
     if (titleEl) titleEl.textContent = "Account Security & Setup";
-    if (subEl) subEl.textContent = "To maintain strict attorney-client privilege and document storage, please complete the required security setup below.";
+    if (subEl) subEl.textContent = "Please complete the required security setup below.";
     if (iconEl) iconEl.innerHTML = `<i class="bi bi-shield-lock-fill" style="color:var(--gold)"></i>`;
-
     initOnboarding2FAQrCodes(myProf, u);
     updateOnboardingDriveStatus(isDriveConnected);
-    modal.classList.remove("hidden");
-    modal.style.display = "flex";
+    modal.classList.remove("hidden"); modal.style.display = "flex";
   }
 };
 
@@ -311,11 +572,8 @@ function initOnboarding2FAQrCodes(myProf, u) {
     const saved = sessionStorage.getItem("simando_temp_2fa_secret");
     if (saved) {
       onboardingGeneratedSecret = saved;
-      try {
-        onboardingGeneratedBackupCodes = JSON.parse(sessionStorage.getItem("simando_temp_2fa_backups") || "[]");
-      } catch (e) {
-        onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5);
-      }
+      try { onboardingGeneratedBackupCodes = JSON.parse(sessionStorage.getItem("simando_temp_2fa_backups") || "[]"); }
+      catch (e) { onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5); }
     } else {
       onboardingGeneratedSecret = generateRandomBase32(16);
       onboardingGeneratedBackupCodes = generateBackupRecoveryCodes(5);
@@ -326,7 +584,7 @@ function initOnboarding2FAQrCodes(myProf, u) {
 
   const keyDisplay = document.getElementById("ob-pairing-secret-key");
   if (keyDisplay) {
-    keyDisplay.innerHTML = `<span style="font-weight:700;color:var(--text)">KEY:</span> ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret} <button type="button" onclick="copyOnboardingSecretKey()" style="background:none;border:none;color:var(--gold);cursor:pointer;margin-left:6px;font-size:11px;font-weight:600;text-decoration:underline" title="Copy Key"><i class="bi bi-clipboard"></i> Copy</button>`;
+    keyDisplay.innerHTML = `<span style="font-weight:700;color:var(--text)">KEY:</span> ${onboardingGeneratedSecret.match(/.{1,4}/g)?.join(" ") || onboardingGeneratedSecret} <button type="button" onclick="copyOnboardingSecretKey()" style="color:var(--gold);margin-left:6px;font-size:11px;font-weight:600;text-decoration:underline"><i class="bi bi-clipboard"></i> Copy</button>`;
   }
 
   const userEmail = myProf?.email || u?.email || "attorney@simandolaw.com";
@@ -336,38 +594,19 @@ function initOnboarding2FAQrCodes(myProf, u) {
   if (pairingContainer) {
     pairingContainer.innerHTML = "";
     if (typeof QRCode !== "undefined") {
-      new QRCode(pairingContainer, {
-        text: otpAuthUrl,
-        width: 135,
-        height: 135,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
+      new QRCode(pairingContainer, { text: otpAuthUrl, width: 135, height: 135, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
       const extraCanvas = pairingContainer.querySelector("canvas");
       if (extraCanvas) extraCanvas.style.display = "none";
-    } else {
-      pairingContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(otpAuthUrl)}" alt="QR" style="border-radius:6px;width:135px;height:135px;display:block"/>`;
     }
   }
 
   const appLinkContainer = document.getElementById("ob-qr-applink-container");
   if (appLinkContainer) {
     appLinkContainer.innerHTML = "";
-    const appStoreUrl = "https://aka.ms/authapp";
     if (typeof QRCode !== "undefined") {
-      new QRCode(appLinkContainer, {
-        text: appStoreUrl,
-        width: 135,
-        height: 135,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
+      new QRCode(appLinkContainer, { text: "https://aka.ms/authapp", width: 135, height: 135, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
       const extraCanvas = appLinkContainer.querySelector("canvas");
       if (extraCanvas) extraCanvas.style.display = "none";
-    } else {
-      appLinkContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=135x135&data=${encodeURIComponent(appStoreUrl)}" alt="QR" style="border-radius:6px;width:135px;height:135px;display:block"/>`;
     }
   }
 
@@ -376,61 +615,28 @@ function initOnboarding2FAQrCodes(myProf, u) {
     otpInp.value = "";
     const cleanInp = otpInp.cloneNode(true);
     otpInp.parentNode.replaceChild(cleanInp, otpInp);
-
     cleanInp.addEventListener("input", async (e) => {
-      const cleaned = e.target.value.replace(/\D/g, "");
-      e.target.value = cleaned;
-      const statusMsg = document.getElementById("ob-otp-status-msg");
-
-      if (cleaned.length === 6) {
-        if (statusMsg) {
-          statusMsg.innerHTML = `<span style="color:var(--gold);font-size:12px;font-weight:600"><span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></span> Verifying code...</span>`;
-          statusMsg.style.display = "block";
-        }
-        await window.onboardingActivate2FA(cleaned);
-      } else if (statusMsg) {
-        statusMsg.style.display = "none";
-      }
-    });
-
-    cleanInp.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        window.onboardingActivate2FA();
-      }
+      e.target.value = e.target.value.replace(/\D/g, "");
+      if (e.target.value.length === 6) await window.onboardingActivate2FA(e.target.value);
     });
   }
 }
 
 window.copyOnboardingSecretKey = function() {
-  if (!onboardingGeneratedSecret) return;
-  navigator.clipboard.writeText(onboardingGeneratedSecret).then(() => {
-    showToast("Secret key copied to clipboard! Paste into Authenticator.");
-  }).catch(() => {
-    showToast("Key: " + onboardingGeneratedSecret);
-  });
+  if (onboardingGeneratedSecret) navigator.clipboard.writeText(onboardingGeneratedSecret).then(() => showToast("Secret key copied!"));
 };
 
 window.switchOnboardingQrType = function(type) {
   const isPairing = type === "pairing";
-  const tabPairing = document.getElementById("tab-ob-pairing-qr");
-  const tabApp = document.getElementById("tab-ob-app-qr");
-  const viewPairing = document.getElementById("ob-view-pairing-qr");
-  const viewApp = document.getElementById("ob-view-app-qr");
-
-  if (tabPairing) tabPairing.className = isPairing ? "ob-qr-tab-btn active" : "ob-qr-tab-btn";
-  if (tabApp) tabApp.className = !isPairing ? "ob-qr-tab-btn active" : "ob-qr-tab-btn";
-
-  if (viewPairing) viewPairing.style.display = isPairing ? "block" : "none";
-  if (viewApp) viewApp.style.display = !isPairing ? "block" : "none";
+  document.getElementById("tab-ob-pairing-qr").className = isPairing ? "ob-qr-tab-btn active" : "ob-qr-tab-btn";
+  document.getElementById("tab-ob-app-qr").className = !isPairing ? "ob-qr-tab-btn active" : "ob-qr-tab-btn";
+  document.getElementById("ob-view-pairing-qr").style.display = isPairing ? "block" : "none";
+  document.getElementById("ob-view-app-qr").style.display = !isPairing ? "block" : "none";
 };
 
 window.dismissOnboardingModal = function() {
   const modal = document.getElementById("onboarding-modal");
-  if (modal) {
-    modal.classList.add("hidden");
-    modal.style.display = "none";
-  }
+  if (modal) { modal.classList.add("hidden"); modal.style.display = "none"; }
   onboardingModalDismissedThisSession = true;
 };
 
@@ -438,279 +644,88 @@ function updateOnboardingDriveStatus(isConnected) {
   const tag = document.getElementById("ob-tag-drive");
   const btn = document.getElementById("btn-ob-connect-drive");
   const card = document.getElementById("ob-card-drive");
-
-  if (isConnected) {
-    if (tag) {
-      tag.className = "onboarding-status-tag active";
-      tag.innerHTML = `<i class="bi bi-check-circle-fill"></i> Connected`;
-    }
-    if (card) card.classList.add("completed");
-    if (btn) {
-      btn.className = "btn btn-success";
-      btn.innerHTML = `<i class="bi bi-check2"></i> Google Account Linked`;
-      btn.disabled = true;
-    }
-  } else {
-    if (tag) {
-      tag.className = "onboarding-status-tag pending";
-      tag.innerHTML = `<i class="bi bi-clock"></i> Action Needed`;
-    }
-    if (card) card.classList.remove("completed");
-    if (btn) {
-      btn.className = "btn btn-primary";
-      btn.innerHTML = `<i class="bi bi-google"></i> Connect Google Account`;
-      btn.disabled = false;
-    }
-  }
+  if (tag) { tag.className = isConnected ? "onboarding-status-tag active" : "onboarding-status-tag pending"; tag.innerHTML = isConnected ? `<i class="bi bi-check-circle-fill"></i> Connected` : `<i class="bi bi-clock"></i> Action Needed`; }
+  if (card) card.classList.toggle("completed", isConnected);
+  if (btn) { btn.className = isConnected ? "btn btn-success" : "btn btn-primary"; btn.innerHTML = isConnected ? `<i class="bi bi-check2"></i> Google Account Linked` : `<i class="bi bi-google"></i> Connect Google Account`; btn.disabled = isConnected; }
 }
 
 window.onboardingConnectDrive = async function() {
   const btn = document.getElementById("btn-ob-connect-drive");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Connecting Google OAuth...`;
-  }
-
+  if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
   try {
-    showToast("Opening Google Sign-In...");
     await promptDriveAuth(true);
-
-    showToast("Google Account connected successfully! ✅");
     updateOnboardingDriveStatus(true);
-
-    const u = window._currentUser || window._auth?.currentUser;
-    const userEmail = (u?.email || "").toLowerCase();
-    const myProf = u && profiles ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
-    if (myProf && !myProf.driveFolderId && typeof createDriveFolder === "function") {
-      try {
-        const folderId = await createDriveFolder(`Simando Law — ${myProf.name}`, DRIVE_FOLDER_ID || null);
-        if (folderId && typeof dbUpdateProfile === "function") {
-          await dbUpdateProfile(myProf.id, { driveFolderId: folderId });
-          myProf.driveFolderId = folderId;
-        }
-      } catch (e) { /* ignore */ }
-    }
-
+    renderGoogleStatusPopover();
     if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
-    if (typeof renderMyProfile === "function") renderMyProfile();
-
     checkOnboardingBothComplete();
   } catch (err) {
-    console.error("onboardingConnectDrive error:", err);
     showToast("Google connection failed: " + err.message, "error");
     updateOnboardingDriveStatus(false);
   }
 };
 
 window.onboardingActivate2FA = async function(manualCode) {
-  const codeInp = document.getElementById("ob-otp-input");
-  const code = (manualCode || codeInp?.value || "").trim().replace(/\D/g, "");
-  const btn = document.getElementById("btn-ob-activate-2fa");
-  let statusMsg = document.getElementById("ob-otp-status-msg");
+  const code = (manualCode || document.getElementById("ob-otp-input")?.value || "").trim().replace(/\D/g, "");
+  if (code.length !== 6) return showToast("Please enter all 6 digits.", "error");
+  if (!onboardingGeneratedSecret) onboardingGeneratedSecret = sessionStorage.getItem("simando_temp_2fa_secret") || generateRandomBase32(16);
 
-  if (!statusMsg && codeInp) {
-    statusMsg = document.createElement("div");
-    statusMsg.id = "ob-otp-status-msg";
-    statusMsg.style.cssText = "text-align:center;margin-top:6px;min-height:18px;";
-    codeInp.parentNode.appendChild(statusMsg);
-  }
+  if (!(await verifyClientTOTP(code, onboardingGeneratedSecret))) return showToast("Incorrect 6-digit code.", "error");
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  if (!myProf) return;
 
-  if (code.length !== 6) {
-    if (statusMsg) {
-      statusMsg.innerHTML = `<span style="color:var(--amber);font-size:11.5px">Please enter all 6 digits.</span>`;
-      statusMsg.style.display = "block";
-    } else {
-      showToast("Please enter all 6 digits from Microsoft Authenticator.", "error");
-    }
-    if (codeInp) codeInp.focus();
-    return;
-  }
-
-  if (!onboardingGeneratedSecret) {
-    onboardingGeneratedSecret = sessionStorage.getItem("simando_temp_2fa_secret") || generateRandomBase32(16);
-  }
-
-  if (statusMsg) {
-    statusMsg.innerHTML = `<span style="color:var(--gold);font-size:12px;font-weight:600"><span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px"></span> Verifying code...</span>`;
-    statusMsg.style.display = "block";
-  }
-
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner" style="width:14px;height:14px;border-top-color:#040810;display:inline-block;vertical-align:middle;margin-right:6px"></span> Verifying...`;
-  }
-
-  try {
-    const isValid = await verifyClientTOTP(code, onboardingGeneratedSecret);
-    if (!isValid) {
-      if (statusMsg) {
-        statusMsg.innerHTML = `<span style="color:var(--red);font-size:12px;font-weight:600"><i class="bi bi-x-circle"></i> Incorrect code. Please check Authenticator.</span>`;
-        statusMsg.style.display = "block";
-      }
-      showToast("Incorrect code. Check Authenticator and try again.", "error");
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
-      }
-      return;
-    }
-
-    if (statusMsg) {
-      statusMsg.innerHTML = `<span style="color:var(--green);font-size:12.5px;font-weight:700"><i class="bi bi-check-circle-fill"></i> Code confirmed! Activating 2FA...</span>`;
-      statusMsg.style.display = "block";
-    }
-
-    const u = window._currentUser || window._auth?.currentUser;
-    if (!u) throw new Error("User session expired. Please sign in again.");
-
-    const userEmail = (u.email || "").toLowerCase();
-    const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
-    if (!myProf) throw new Error("Profile record not found.");
-
-    showToast("Code confirmed! Activating 2FA...");
-
-    try {
-      const secRef = window._fbDoc(window._db, "profiles", myProf.id, "private", "security");
-      const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-      await setDoc(secRef, {
-        twoFactorEnabled: true,
-        twoFactorSecret: onboardingGeneratedSecret,
-        twoFactorBackupCodes: onboardingGeneratedBackupCodes
-      }, { merge: true });
-    } catch (subColErr) {
-      console.warn("Security subcollection notice:", subColErr);
-    }
-
-    await dbUpdateProfile(myProf.id, {
-      twoFactorEnabled: true,
-      twoFactorSecret: onboardingGeneratedSecret,
-      twoFactorBackupCodes: onboardingGeneratedBackupCodes
-    });
-
-    myProf.twoFactorEnabled = true;
-    myProf.twoFactorSecret = onboardingGeneratedSecret;
-    myProf.twoFactorBackupCodes = onboardingGeneratedBackupCodes;
-    sessionStorage.setItem("simando_2fa_verified", "true");
-
-    const card = document.getElementById("ob-card-2fa");
-    const tag = document.getElementById("ob-tag-2fa");
-    const content = document.getElementById("ob-content-2fa-body");
-
-    if (card) card.classList.add("completed");
-    if (tag) {
-      tag.className = "onboarding-status-tag active";
-      tag.innerHTML = `<i class="bi bi-check-circle-fill"></i> Activated`;
-    }
-    if (content) {
-      content.innerHTML = `
-        <div style="font-size:12.5px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:8px;padding:12px;background:var(--green-bg);border:1px solid rgba(52,211,153,0.3);border-radius:10px">
-          <i class="bi bi-shield-fill-check" style="font-size:18px"></i> 2FA Active: Protected by Microsoft Authenticator.
-        </div>
-      `;
-    }
-
-    showToast("Two-Factor Authentication is now active! 🛡️");
-    if (typeof renderMyProfile === "function") renderMyProfile();
-
-    checkOnboardingBothComplete();
-  } catch (err) {
-    console.error("onboardingActivate2FA error:", err);
-    if (statusMsg) {
-      statusMsg.innerHTML = `<span style="color:var(--red);font-size:11.5px">${err.message}</span>`;
-      statusMsg.style.display = "block";
-    }
-    showToast("Activation failed: " + err.message, "error");
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<i class="bi bi-shield-check"></i> Verify &amp; Activate 2FA`;
-    }
-  }
+  const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+  await setDoc(window._fbDoc(window._db, "profiles", myProf.id, "private", "security"), {
+    twoFactorEnabled: true, twoFactorSecret: onboardingGeneratedSecret, twoFactorBackupCodes: onboardingGeneratedBackupCodes
+  }, { merge: true }).catch(() => {});
+  await dbUpdateProfile(myProf.id, { twoFactorEnabled: true });
+  myProf.twoFactorEnabled = true;
+  sessionStorage.setItem("simando_2fa_verified", "true");
+  document.getElementById("ob-card-2fa")?.classList.add("completed");
+  showToast("Two-Factor Authentication is now active! 🛡️");
+  if (typeof renderSettingsView === "function") renderSettingsView();
+  checkOnboardingBothComplete();
 };
-window.onboardingActivate2FA = onboardingActivate2FA;
 
 function checkOnboardingBothComplete() {
   const u = window._currentUser || window._auth?.currentUser;
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
-  const is2Fa = !!myProf?.twoFactorEnabled;
-  const isDrive = typeof hasValidToken === "function" ? hasValidToken() : false;
-
-  if (is2Fa && isDrive) {
-    const titleEl = document.getElementById("ob-modal-title");
-    const subEl = document.getElementById("ob-modal-sub");
-    const iconEl = document.getElementById("ob-modal-icon");
-
-    if (titleEl) titleEl.textContent = "Setup Complete!";
-    if (subEl) subEl.textContent = "Security credentials and Google Drive are verified. Launching dashboard...";
-    if (iconEl) iconEl.innerHTML = `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>`;
-
-    setTimeout(() => {
-      dismissOnboardingModal();
-    }, 1200);
-  }
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  if (myProf?.twoFactorEnabled && hasValidToken()) setTimeout(dismissOnboardingModal, 1000);
 }
 
-// ── MULTI-DATE AVAILABILITY PICKER (STRICTLY PERSONAL) ────────
+// ── MULTI-DATE AVAILABILITY PICKER ───────────────────────────
 let selectedBusyDates = new Set();
 let modalCalYear = new Date().getFullYear();
 let modalCalMonth = new Date().getMonth();
 
 window.openBusyModal = function() {
   const u = window._currentUser || window._auth?.currentUser;
-  if (!u) {
-    if (typeof showToast === "function") showToast("Please wait for your account to load.", "error");
-    return;
-  }
-
-  let modal = document.getElementById("busy-modal");
+  if (!u) return showToast("Please wait for your account to load.", "error");
+  const modal = document.getElementById("busy-modal");
   if (!modal) return;
-
   selectedBusyDates.clear();
-  const now = new Date();
-  modalCalYear = now.getFullYear();
-  modalCalMonth = now.getMonth();
-
+  modalCalYear = new Date().getFullYear(); modalCalMonth = new Date().getMonth();
   renderModalCalendarUI();
   modal.classList.remove("hidden");
 };
-
-window.closeBusyModal = function() {
-  const modal = document.getElementById("busy-modal");
-  if (modal) modal.classList.add("hidden");
-  selectedBusyDates.clear();
-};
+window.closeBusyModal = function() { document.getElementById("busy-modal")?.classList.add("hidden"); selectedBusyDates.clear(); };
 
 function renderModalCalendarUI() {
   const modal = document.getElementById("busy-modal");
   if (!modal) return;
-
   modal.innerHTML = `
     <div class="modal-box" style="max-width: 500px; padding: 22px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
-        <div style="font-size:17px;font-weight:700;color:var(--gold-light);display:flex;align-items:center;gap:8px">
-          <i class="bi bi-calendar2-range-fill"></i> Set Personal Schedule
-        </div>
-        <button onclick="window.closeBusyModal()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer"><i class="bi bi-x-lg"></i></button>
+        <div style="font-size:17px;font-weight:700;color:var(--gold-light);display:flex;align-items:center;gap:8px"><i class="bi bi-calendar2-range-fill"></i> Set Personal Schedule</div>
+        <button onclick="window.closeBusyModal()" style="color:var(--text-dim);font-size:18px"><i class="bi bi-x-lg"></i></button>
       </div>
-
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
-        Click dates to toggle your schedule.<br>
-        <span style="color:var(--red)"><i class="bi bi-circle-fill" style="font-size:8px"></i> Red</span> = Out of Office / In Court. Click again to clear.
-      </div>
-
       <div style="display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px">
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('⚖️ In Court / Hearing')"><i class="bi bi-bank"></i> In Court</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🚫 Out of Office / Leave')"><i class="bi bi-slash-circle"></i> Out of Office</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('🤝 Client Meeting')"><i class="bi bi-people"></i> Consultation</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="setBusyPreset('📝 Hearing Preparation')"><i class="bi bi-pencil-square"></i> Preparation</button>
       </div>
-
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
-        <div>
-          <label class="field-label">Schedule Label / Activity *</label>
-          <input class="field-input" id="busy-title" value="In Court / Out of Office" autocomplete="off"/>
-        </div>
-
+        <div><label class="field-label">Schedule Label *</label><input class="field-input" id="busy-title" value="In Court / Out of Office"/></div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div style="font-size:13.5px;font-weight:700;color:var(--gold)" id="modal-cal-month-title">Month Year</div>
@@ -718,238 +733,147 @@ function renderModalCalendarUI() {
               <button type="button" class="btn btn-secondary btn-sm" onclick="window.prevModalCalMonth()"><i class="bi bi-chevron-left"></i></button>
               <button type="button" class="btn btn-secondary btn-sm" onclick="window.todayModalCalMonth()">Today</button>
               <button type="button" class="btn btn-secondary btn-sm" onclick="window.nextModalCalMonth()"><i class="bi bi-chevron-right"></i></button>
-              <button type="button" class="btn btn-secondary btn-sm" style="color:var(--amber)" onclick="window.resetBusySelection()" title="Reset selected dates"><i class="bi bi-arrow-counterclockwise"></i></button>
             </div>
           </div>
-
           <div class="cal-grid" id="modal-calendar-grid" style="display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px"></div>
-          <div id="modal-busy-chips-wrap" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);min-height:28px;align-items:center"></div>
+          <div id="modal-busy-chips-wrap" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)"></div>
         </div>
-
-        <div style="display:flex;align-items:center;gap:12px">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer">
-            <input type="checkbox" id="busy-all-day" checked onchange="window.toggleBusyTimeInputs(this.checked)" style="accent-color:var(--gold)"/> All Day Block
-          </label>
-        </div>
-
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="busy-all-day" checked onchange="window.toggleBusyTimeInputs(this.checked)" style="accent-color:var(--gold)"/> All Day Block</label>
         <div class="grid2" id="busy-time-container" style="display:none">
-          <div><label class="field-label">Start Time</label><input type="time" class="field-input" id="busy-start-time" value="08:30"/></div>
-          <div><label class="field-label">End Time</label><input type="time" class="field-input" id="busy-end-time" value="17:00"/></div>
+          <div><label class="field-label">Start</label><input type="time" class="field-input" id="busy-start-time" value="08:30"/></div>
+          <div><label class="field-label">End</label><input type="time" class="field-input" id="busy-end-time" value="17:00"/></div>
         </div>
-
-        <div>
-          <label class="field-label">Description / Venue</label>
-          <input class="field-input" id="busy-notes" placeholder="Enter schedule description or venue..."/>
-        </div>
+        <div><label class="field-label">Description / Venue</label><input class="field-input" id="busy-notes" placeholder="Enter venue or notes..."/></div>
       </div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:14px">
-        <span style="font-size:11px;color:var(--text-dim)">Saves to your private account</span>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" type="button" onclick="window.closeBusyModal()">Cancel</button>
-          <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="window.submitBusyDates()"><i class="bi bi-check2"></i> Save Schedule</button>
-        </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);padding-top:14px">
+        <button class="btn btn-ghost" type="button" onclick="window.closeBusyModal()">Cancel</button>
+        <button class="btn btn-primary" type="button" id="busy-submit-btn" onclick="window.submitBusyDates()"><i class="bi bi-check2"></i> Save Schedule</button>
       </div>
-    </div>
-  `;
-
+    </div>`;
   renderModalCalendarGrid();
 }
 
-window.setBusyPreset = function(text) {
-  const inp = document.getElementById("busy-title");
-  if (inp) inp.value = text;
-};
-
-window.toggleBusyTimeInputs = function(isAllDay) {
-  const container = document.getElementById("busy-time-container");
-  if (container) container.style.display = isAllDay ? "none" : "grid";
-};
-
-window.prevModalCalMonth = function() {
-  modalCalMonth--;
-  if (modalCalMonth < 0) { modalCalMonth = 11; modalCalYear--; }
-  renderModalCalendarGrid();
-};
-
-window.nextModalCalMonth = function() {
-  modalCalMonth++;
-  if (modalCalMonth > 11) { modalCalMonth = 0; modalCalYear++; }
-  renderModalCalendarGrid();
-};
-
-window.todayModalCalMonth = function() {
+window.setBusyPreset = (t) => { const inp = document.getElementById("busy-title"); if (inp) inp.value = t; };
+window.toggleBusyTimeInputs = (allDay) => { const el = document.getElementById("busy-time-container"); if (el) el.style.display = allDay ? "none" : "grid"; };
+window.prevModalCalMonth = () => { modalCalMonth--; if (modalCalMonth < 0) { modalCalMonth = 11; modalCalYear--; } renderModalCalendarGrid(); };
+window.nextModalCalMonth = () => { modalCalMonth++; if (modalCalMonth > 11) { modalCalMonth = 0; modalCalYear++; } renderModalCalendarGrid(); };
+window.todayModalCalMonth = () => { modalCalYear = new Date().getFullYear(); modalCalMonth = new Date().getMonth(); renderModalCalendarGrid(); };
+window.toggleBusyDateSelection = (dateStr) => {
   const now = new Date();
-  modalCalYear = now.getFullYear();
-  modalCalMonth = now.getMonth();
-  renderModalCalendarGrid();
-};
-
-window.resetBusySelection = function() {
-  selectedBusyDates.clear();
-  renderModalCalendarGrid();
-};
-
-window.toggleBusyDateSelection = function(dateStr) {
-  const now = new Date();
-  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  if (dateStr < localToday) {
-    if (typeof showToast === "function") showToast("Cannot mark past dates as unavailable.", "error");
-    return;
-  }
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (dateStr < todayStr) return showToast("Cannot mark past dates.", "error");
   if (selectedBusyDates.has(dateStr)) selectedBusyDates.delete(dateStr);
   else selectedBusyDates.add(dateStr);
   renderModalCalendarGrid();
 };
 
 function renderModalCalendarGrid() {
-  const titleEl = document.getElementById("modal-cal-month-title");
   const gridEl = document.getElementById("modal-calendar-grid");
-  const chipsWrap = document.getElementById("modal-busy-chips-wrap");
   if (!gridEl) return;
-
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  if (titleEl) titleEl.textContent = `${monthNames[modalCalMonth]} ${modalCalYear}`;
-
+  setElText("modal-cal-month-title", `${monthNames[modalCalMonth]} ${modalCalYear}`);
   const firstDay = new Date(modalCalYear, modalCalMonth, 1).getDay();
   const daysInMonth = new Date(modalCalYear, modalCalMonth + 1, 0).getDate();
-  const prevMonthDays = new Date(modalCalYear, modalCalMonth, 0).getDate();
   const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-  let html = `
-    <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div>
-    <div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
-  `;
-
-  for (let i = firstDay - 1; i >= 0; i--) {
-    html += `<div class="cal-day-cell other-month" style="min-height:36px;opacity:0.35;min-width:0;overflow:hidden"><span class="cal-day-num" style="white-space:nowrap">${prevMonthDays - i}</span></div>`;
-  }
-
+  let html = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => `<div class="cal-day-header">${d}</div>`).join("");
+  for (let i = 0; i < firstDay; i++) html += `<div class="cal-day-cell other-month" style="min-height:36px"></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
-    const fullDate = `${modalCalYear}-${String(modalCalMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const fullDate = `${modalCalYear}-${String(modalCalMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const isPast = fullDate < todayStr;
-    const isSelected = selectedBusyDates.has(fullDate);
-
-    let cellBg = "var(--surface)";
-    let borderColor = "var(--border)";
-    let numColor = "var(--text)";
-
-    if (isSelected) { cellBg = "var(--red-bg)"; borderColor = "var(--red)"; numColor = "var(--red)"; }
-    else if (isPast) { cellBg = "transparent"; numColor = "var(--text-dim)"; }
-
-    html += `
-      <div class="cal-day-cell ${isPast ? 'is-past' : ''}"
-           style="min-height:36px;padding:4px;background:${cellBg};border-color:${borderColor};cursor:${isPast ? 'not-allowed' : 'pointer'};min-width:0;overflow:hidden"
-           onclick="${isPast ? '' : `window.toggleBusyDateSelection('${fullDate}')`}">
-        <span class="cal-day-num" style="color:${numColor};font-size:11px;white-space:nowrap">${d}</span>
-        ${isSelected ? `<span style="font-size:8px;font-weight:700;color:var(--red);text-align:right">BUSY</span>` : ''}
-      </div>
-    `;
+    const isSel = selectedBusyDates.has(fullDate);
+    html += `<div class="cal-day-cell" style="min-height:36px;padding:4px;background:${isSel ? 'var(--red-bg)' : 'var(--surface)'};border-color:${isSel ? 'var(--red)' : 'var(--border)'};cursor:${isPast ? 'not-allowed' : 'pointer'}" onclick="${isPast ? '' : `window.toggleBusyDateSelection('${fullDate}')`}"><span style="font-size:11px;font-weight:700;color:${isSel ? 'var(--red)' : (isPast ? 'var(--text-dim)' : 'var(--text)')}">${d}</span></div>`;
   }
-
-  const rem = (7 - ((firstDay + daysInMonth) % 7)) % 7;
-  for (let i = 1; i <= rem; i++) {
-    html += `<div class="cal-day-cell other-month" style="min-height:36px;opacity:0.35;min-width:0;overflow:hidden"><span class="cal-day-num" style="white-space:nowrap">${i}</span></div>`;
-  }
-
   gridEl.innerHTML = html;
-
-  if (chipsWrap) {
-    if (selectedBusyDates.size === 0) {
-      chipsWrap.innerHTML = `<span style="font-size:11px;color:var(--text-dim);font-style:italic">Click calendar dates above to select</span>`;
-    } else {
-      const sorted = [...selectedBusyDates].sort();
-      chipsWrap.innerHTML = sorted.map(d => {
-        const parts = d.split("-");
-        const label = `${monthNames[parseInt(parts[1], 10) - 1].slice(0,3)} ${parseInt(parts[2], 10)}`;
-        return `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--red-bg);border:1px solid var(--red);color:var(--red);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">${label}<i class="bi bi-x" style="cursor:pointer" onclick="window.toggleBusyDateSelection('${d}')"></i></span>`;
-      }).join("");
-    }
-  }
 }
 
 window.submitBusyDates = async function() {
-  if (selectedBusyDates.size === 0) {
-    if (typeof showToast === "function") showToast("Please click at least one date on the calendar to mark as unavailable.", "error");
-    return;
-  }
-
+  if (selectedBusyDates.size === 0) return showToast("Select at least one date.", "error");
   const title = (document.getElementById("busy-title")?.value || "").trim() || "In Court / Out of Office";
   const desc = (document.getElementById("busy-notes")?.value || "").trim();
   const allDay = document.getElementById("busy-all-day")?.checked;
-  const startTime = document.getElementById("busy-start-time")?.value || "08:30";
-  const endTime = document.getElementById("busy-end-time")?.value || "17:00";
-  const timeStr = allDay ? "All Day" : `${startTime} - ${endTime}`;
-
+  const timeStr = allDay ? "All Day" : `${document.getElementById("busy-start-time")?.value || "08:30"} - ${document.getElementById("busy-end-time")?.value || "17:00"}`;
   const u = window._currentUser || window._auth?.currentUser;
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
 
-  const submitBtn = document.getElementById("busy-submit-btn");
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Saving..."; }
-
-  try {
-    if (typeof showToast === "function") showToast("Saving personal schedule...");
-    for (const date of selectedBusyDates) {
-      const busyData = {
-        title, date, time: timeStr, description: desc, type: "busy",
-        targetUid: u.uid, targetName: myProf?.name || u.displayName || u.email,
-        requesterUid: u.uid, requesterName: myProf?.name || u.displayName || u.email,
-        ownerUid: u.uid, status: "accepted"
-      };
-      if (typeof dbAddAppointment === "function") {
-        await dbAddAppointment(busyData);
-      } else {
-        busyData.id = "local_appt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
-        appointments.push(busyData);
-        window.appointments = appointments;
-      }
-    }
-    if (typeof showToast === "function") showToast(`Logged ${selectedBusyDates.size} date(s) to your personal schedule!`);
-    window.closeBusyModal();
-    if (typeof renderCalendarView === "function") renderCalendarView();
-    if (typeof renderDashboard === "function") renderDashboard();
-  } catch (err) {
-    console.error("submitBusyDates error:", err);
-    if (typeof showToast === "function") showToast("Failed to save schedule: " + err.message, "error");
-  } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<i class="bi bi-check2"></i> Save Schedule`; }
+  for (const date of selectedBusyDates) {
+    await dbAddAppointment({
+      title, date, time: timeStr, description: desc, type: "busy",
+      targetUid: u.uid, targetName: myProf?.name || u.email,
+      requesterUid: u.uid, requesterName: myProf?.name || u.email, ownerUid: u.uid, status: "accepted"
+    });
   }
+  showToast(`Saved ${selectedBusyDates.size} date(s)!`);
+  window.closeBusyModal();
+  renderCalendarView();
+  if (typeof renderDashboard === "function") renderDashboard();
 };
 
 window.deleteBusySlot = function(id) {
-  const a = appointments.find(x => x.id === id);
-  const title = a ? a.title : "this schedule entry";
   window.openConfirmModal({
-    icon: "bi-calendar-x-fill",
-    title: "Remove Schedule Entry?",
-    body: `Are you sure you want to remove <strong>"${escHtml(title)}"</strong> from your schedule? This action cannot be undone.`,
-    confirmText: "Remove Entry",
-    confirmStyle: "btn-danger",
+    icon: "bi-calendar-x-fill", title: "Remove Schedule Entry?",
+    body: "Remove this schedule entry permanently?",
+    confirmText: "Remove Entry", confirmStyle: "btn-danger",
     onConfirm: async () => {
-      try {
-        if (typeof dbDeleteAppointment === "function") await dbDeleteAppointment(id);
-        else { appointments = appointments.filter(x => x.id !== id); window.appointments = appointments; }
-        if (typeof showToast === "function") showToast("Schedule entry removed!");
-        if (typeof closeDateScheduleModal === "function") closeDateScheduleModal();
-        if (typeof renderCalendarView === "function") renderCalendarView();
-        if (typeof renderDashboard === "function") renderDashboard();
-      } catch (err) {
-        console.error("deleteBusySlot error:", err);
-        if (typeof showToast === "function") showToast("Failed to remove entry: " + err.message, "error");
-      }
+      await dbDeleteAppointment(id);
+      if (typeof closeDateScheduleModal === "function") closeDateScheduleModal();
+      renderCalendarView();
+      if (typeof renderDashboard === "function") renderDashboard();
+      showToast("Schedule entry removed!");
     }
   });
 };
 
-// ── CALENDAR MONTH VIEW + SELECTED DAY SIDE PANEL ────────────
+// ── CALENDAR MONTH VIEW + FIXED ATTORNEY PROFILE SELECTION ───
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 let selectedCalDateStr = (() => {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 })();
+
+function getCalendarFilteredData() {
+  const u = window._currentUser || window._auth?.currentUser;
+  const currentUid = u?.uid || "";
+  const userEmail = (u?.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
+  const isDeveloper = myProf && myProf.role === "developer";
+  const filterVal = document.getElementById("calendar-filter-select")?.value || "Everyone";
+
+  let filteredCases = cases.filter(c => c.dueDate || c.docDueDate || (Array.isArray(c.hearings) && c.hearings.length > 0) || (Array.isArray(c.deadlines) && c.deadlines.length > 0));
+  let filteredAppts = appointments.filter(a => a.status === "accepted");
+
+  if (isDeveloper) {
+    const devUids = profiles.filter(p => p.role === "developer" && p.ownerUid).map(p => p.ownerUid);
+    if (currentUid && !devUids.includes(currentUid)) devUids.push(currentUid);
+    if (filterVal === "Everyone") {
+      filteredCases = filteredCases.filter(c => devUids.includes(c.ownerUid));
+    } else {
+      const matchedProf = profiles.find(p => p.ownerUid === filterVal || p.id === filterVal);
+      filteredCases = filteredCases.filter(c => c.ownerUid === filterVal || (matchedProf && c.profileId === matchedProf.id));
+      filteredAppts = filteredAppts.filter(a => a.targetUid === filterVal || a.requesterUid === filterVal || a.ownerUid === filterVal);
+    }
+  } else if (filterVal !== "Everyone") {
+    const matchedProf = profiles.find(p => p.ownerUid === filterVal || p.id === filterVal);
+    const targetOwnerUid = matchedProf?.ownerUid || filterVal;
+    filteredCases = filteredCases.filter(c =>
+      c.ownerUid === targetOwnerUid ||
+      (matchedProf && c.profileId === matchedProf.id) ||
+      (Array.isArray(c.sharedWith) && c.sharedWith.includes(targetOwnerUid))
+    );
+    filteredAppts = filteredAppts.filter(a =>
+      a.targetUid === targetOwnerUid || a.requesterUid === targetOwnerUid || a.ownerUid === targetOwnerUid
+    );
+  } else {
+    filteredAppts = filteredAppts.filter(a => {
+      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
+      return creatorProf?.role !== "developer";
+    });
+  }
+
+  return { filteredCases, filteredAppts, currentUid, myProf, isDeveloper, filterVal };
+}
 
 function renderCalendarView() {
   const select = document.getElementById("calendar-filter-select");
@@ -958,41 +882,17 @@ function renderCalendarView() {
   const isDeveloper = myProf && myProf.role === "developer";
 
   if (select) {
-    if (isDeveloper) {
-      const devProfiles = profiles.filter(p => p.role === "developer");
-      let devOptionsHtml = `<option value="Everyone">All Developers (Sandbox Overview)</option>`;
-      devProfiles.forEach(p => { devOptionsHtml += `<option value="${p.ownerUid}">${p.name} (Developer Sandbox)</option>`; });
-      select.innerHTML = devOptionsHtml;
-      select.disabled = false;
-    } else {
-      select.disabled = false;
-      const curVal = select.value;
-      let optionsHtml = `<option value="Everyone">Everyone (Firm Overview)</option>`;
-      profiles.filter(p => p.role !== "developer").forEach(p => {
-        const designation = p.role ? ` (${p.role})` : "";
-        optionsHtml += `<option value="${p.ownerUid}">${p.name}${designation}</option>`;
-      });
-      select.innerHTML = optionsHtml;
-      select.value = curVal || "Everyone";
-    }
-  }
-
-  let legendBar = document.getElementById("calendar-legend-bar");
-  const calCard = document.getElementById("calendar-month-card");
-  if (!legendBar && calCard) {
-    legendBar = document.createElement("div");
-    legendBar.id = "calendar-legend-bar";
-    legendBar.style.cssText = "display:flex;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin-bottom:14px;flex-wrap:wrap;font-size:11.5px;";
-    calCard.parentNode.insertBefore(legendBar, calCard);
-  }
-  if (legendBar && !document.getElementById("mobile-shell")) {
-    legendBar.innerHTML = `
-      <span style="font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px"><i class="bi bi-info-circle" style="color:var(--gold)"></i> Legend:</span>
-      <span style="display:inline-flex;align-items:center;gap:4px;color:var(--gold-light)"><i class="bi bi-bank" style="color:var(--gold)"></i> Court Hearing</span>
-      <span style="display:inline-flex;align-items:center;gap:4px;color:var(--violet)"><i class="bi bi-file-earmark-text-fill" style="color:var(--violet)"></i> Pleading Deadline</span>
-      <span style="display:inline-flex;align-items:center;gap:4px;color:var(--red)"><i class="bi bi-slash-circle-fill" style="color:var(--red)"></i> Out of Office / In Court</span>
-      <span style="display:inline-flex;align-items:center;gap:4px;color:var(--green)"><i class="bi bi-people-fill" style="color:var(--green)"></i> Consultation</span>
-    `;
+    const curVal = select.value || "Everyone";
+    const pool = isDeveloper ? profiles.filter(p => p.role === "developer") : profiles.filter(p => p.role !== "developer");
+    let optionsHtml = `<option value="Everyone">${isDeveloper ? "All Developers (Sandbox Overview)" : "Everyone (Firm Overview)"}</option>`;
+    pool.forEach(p => {
+      const valKey = p.ownerUid || p.id;
+      const designation = p.role ? ` (${p.role})` : "";
+      optionsHtml += `<option value="${escHtml(valKey)}">${escHtml(p.name)}${escHtml(designation)}</option>`;
+    });
+    select.innerHTML = optionsHtml;
+    const stillExists = Array.from(select.options).some(o => o.value === curVal);
+    select.value = stillExists ? curVal : "Everyone";
   }
 
   renderMonthlyCalendarGrid();
@@ -1002,8 +902,7 @@ function prevCalMonth() { currentCalMonth--; if (currentCalMonth < 0) { currentC
 function nextCalMonth() { currentCalMonth++; if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderMonthlyCalendarGrid(); }
 function todayCalMonth() {
   const now = new Date();
-  currentCalYear = now.getFullYear();
-  currentCalMonth = now.getMonth();
+  currentCalYear = now.getFullYear(); currentCalMonth = now.getMonth();
   selectedCalDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   renderMonthlyCalendarGrid();
 }
@@ -1019,39 +918,18 @@ window.onCalendarDayClick = function(dateStr) {
 };
 
 function buildScheduleItemsForDate(dateStr) {
-  const u = window._currentUser || window._auth?.currentUser;
-  const currentUid = u?.uid || "";
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
-  const isDeveloper = myProf && myProf.role === "developer";
+  const { filteredCases, filteredAppts, currentUid, myProf, isDeveloper } = getCalendarFilteredData();
 
-  let dateCases = cases.filter(c =>
+  const dateCases = filteredCases.filter(c =>
     c.dueDate === dateStr || c.docDueDate === dateStr ||
     (Array.isArray(c.hearings) && c.hearings.some(h => h.date === dateStr)) ||
     (Array.isArray(c.deadlines) && c.deadlines.some(d => d.date === dateStr))
   );
-  let dateAppts = appointments.filter(a => a.date === dateStr && a.status === "accepted");
-
-  if (isDeveloper) {
-    const devUids = profiles.filter(p => p.role === "developer" && p.ownerUid).map(p => p.ownerUid);
-    if (currentUid && !devUids.includes(currentUid)) devUids.push(currentUid);
-    dateCases = dateCases.filter(c => devUids.includes(c.ownerUid));
-    dateAppts = dateAppts.filter(a => {
-      if (a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid) return true;
-      const targetProf = profiles.find(p => p.ownerUid === a.targetUid);
-      const reqProf = profiles.find(p => p.ownerUid === a.requesterUid);
-      return (targetProf?.role === "developer" || reqProf?.role === "developer");
-    });
-  } else {
-    dateAppts = dateAppts.filter(a => {
-      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
-      return creatorProf?.role !== "developer";
-    });
-  }
+  const dateAppts = filteredAppts.filter(a => a.date === dateStr);
 
   const allItems = [];
   dateCases.forEach(c => {
-    const p = profiles.find(x => x.id === c.profileId);
+    const p = profiles.find(x => x.id === c.profileId || (c.ownerUid && x.ownerUid === c.ownerUid));
     const specificHearing = Array.isArray(c.hearings) ? c.hearings.find(h => h.date === dateStr) : null;
     const specificDeadline = Array.isArray(c.deadlines) ? c.deadlines.find(d => d.date === dateStr) : null;
     const isOwner = c.ownerUid === currentUid;
@@ -1061,25 +939,24 @@ function buildScheduleItemsForDate(dateStr) {
       allItems.push({
         id: c.id, subId: specificHearing.id || "h_default", kind: "hearing", hasAccess,
         badgeColor: "var(--gold)", badgeBg: "var(--gold-dim)", badgeLabel: "Court Hearing",
-        title: hasAccess ? (specificHearing.purpose || c.title) : `Court Appearance (${p?.name || 'Associate Attorney'})`,
+        title: hasAccess ? (specificHearing.purpose || c.title) : `Court Appearance (${p?.name || 'Counsel'})`,
         time: specificHearing.time || "8:30 AM", venue: c.venue || "Courtroom / Venue N/A",
         attorneyName: p?.name || "Attorney", attorneyColor: p?.avatarColor || "#8a6210", photoUrl: p?.photoUrl || null,
         description: hasAccess ? (specificHearing.notes || specificHearing.purpose || c.narrative || "") : "Confidential attorney-client information.",
-        isOwner, canEditDesc: isOwner, isDeveloper
+        canEditDesc: isOwner, isDeveloper
       });
     }
 
     if (specificDeadline || c.docDueDate === dateStr) {
       const dSubtype = specificDeadline ? (specificDeadline.subtype || specificDeadline.title) : (c.docType || "Formal Pleading");
-      const dNotes = specificDeadline ? (specificDeadline.notes || "") : "";
       allItems.push({
         id: c.id, subId: specificDeadline?.id || "d_default", kind: "deadline", hasAccess,
         badgeColor: "var(--violet)", badgeBg: "var(--violet-bg)", badgeLabel: "Pleading Deadline",
-        title: hasAccess ? `${c.title} — ${dSubtype}` : `Filing Deadline (${p?.name || 'Associate Attorney'})`,
+        title: hasAccess ? `${c.title} — ${dSubtype}` : `Filing Deadline (${p?.name || 'Counsel'})`,
         time: "Filing Deadline", venue: c.venue || "Courtroom / Venue N/A",
         attorneyName: p?.name || "Attorney", attorneyColor: p?.avatarColor || "#4338ca", photoUrl: p?.photoUrl || null,
-        description: hasAccess ? dNotes : "Confidential attorney-client filing deadline.",
-        isOwner, canEditDesc: isOwner, isDeveloper
+        description: hasAccess ? (specificDeadline?.notes || "") : "Confidential attorney-client filing deadline.",
+        canEditDesc: isOwner, isDeveloper
       });
     }
   });
@@ -1093,8 +970,8 @@ function buildScheduleItemsForDate(dateStr) {
       badgeColor: isBusy ? "var(--red)" : "var(--green)", badgeBg: isBusy ? "var(--red-bg)" : "var(--green-bg)",
       badgeLabel: isBusy ? "Out of Office / Busy" : "Appointment",
       title: a.title, time: a.time || "All Day", venue: "",
-      attorneyName: a.targetName || (isDeveloper ? "Developer" : "Attorney"),
-      attorneyColor: targetProf?.avatarColor || (isDeveloper ? "var(--cyan)" : "#991b1b"), photoUrl: targetProf?.photoUrl || null,
+      attorneyName: targetProf?.name || a.targetName || "Attorney",
+      attorneyColor: targetProf?.avatarColor || "#991b1b", photoUrl: targetProf?.photoUrl || null,
       description: a.description || "", canDelete: isOwner, canEditDesc: isOwner, isDeveloper
     });
   });
@@ -1109,9 +986,7 @@ function renderCalendarDayPanel(dateStr) {
 
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const isToday = dateStr === todayStr;
-  const isPast = dateStr < todayStr;
-  heading.innerHTML = `${formatDate(dateStr)} ${isToday ? '<span class="badge" style="background:var(--gold-dim);color:var(--gold-light);margin-left:6px;font-size:10px">TODAY</span>' : (isPast ? '<span class="badge" style="background:var(--surface2);color:var(--text-dim);margin-left:6px;font-size:10px">PAST</span>' : '')}`;
+  heading.innerHTML = `${formatDate(dateStr)} ${dateStr === todayStr ? '<span class="badge" style="background:var(--gold-dim);color:var(--gold-light);margin-left:6px;font-size:10px">TODAY</span>' : ''}`;
 
   const allItems = buildScheduleItemsForDate(dateStr);
   if (allItems.length === 0) {
@@ -1119,7 +994,7 @@ function renderCalendarDayPanel(dateStr) {
       <div style="text-align:center;padding:32px 16px;background:var(--surface2);border-radius:12px;border:1px dashed var(--border-soft)">
         <i class="bi bi-calendar-check" style="font-size:28px;color:var(--text-dim)"></i>
         <div style="font-weight:700;margin-top:8px;color:var(--text)">No hearings or deadlines</div>
-        <div style="font-size:12.5px;color:var(--text-dim);margin-top:4px">${isPast ? "No past events recorded for this date." : "This date is currently open on the firm schedule."}</div>
+        <div style="font-size:12.5px;color:var(--text-dim);margin-top:4px">No scheduled entries match this date and filter.</div>
       </div>`;
     return;
   }
@@ -1154,48 +1029,14 @@ function renderMonthlyCalendarGrid() {
   const gridEl = document.getElementById("calendar-grid-container");
   if (!gridEl) return;
 
-  const isMobileShell = !!document.getElementById("mobile-shell");
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   if (titleEl) titleEl.textContent = `${monthNames[currentCalMonth]} ${currentCalYear}`;
 
-  const u = window._currentUser || window._auth?.currentUser;
-  const currentUid = u?.uid || "";
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === currentUid) || (p.email && p.email.toLowerCase() === userEmail));
-  const isDeveloper = myProf && myProf.role === "developer";
-  const filter = document.getElementById("calendar-filter-select")?.value || "Everyone";
-
-  let activeCases = cases.filter(c => c.dueDate || c.docDueDate || (Array.isArray(c.hearings) && c.hearings.length > 0) || (Array.isArray(c.deadlines) && c.deadlines.length > 0));
-  let activeAppts = appointments.filter(a => a.status === "accepted");
-
-  if (isDeveloper) {
-    const devUids = profiles.filter(p => p.role === "developer" && p.ownerUid).map(p => p.ownerUid);
-    if (currentUid && !devUids.includes(currentUid)) devUids.push(currentUid);
-    activeAppts = activeAppts.filter(a => {
-      if (a.targetUid === currentUid || a.requesterUid === currentUid || a.ownerUid === currentUid) return true;
-      const targetProf = profiles.find(p => p.ownerUid === a.targetUid);
-      const reqProf = profiles.find(p => p.ownerUid === a.requesterUid);
-      return (targetProf?.role === "developer" || reqProf?.role === "developer");
-    });
-    if (filter === "Everyone") activeCases = activeCases.filter(c => devUids.includes(c.ownerUid));
-    else {
-      activeCases = activeCases.filter(c => c.ownerUid === filter);
-      activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter || a.ownerUid === filter);
-    }
-  } else if (filter !== "Everyone") {
-    const matchedProf = profiles.find(p => p.ownerUid === filter);
-    activeCases = activeCases.filter(c => c.profileId === matchedProf?.id);
-    activeAppts = activeAppts.filter(a => a.targetUid === filter || a.requesterUid === filter);
-  } else {
-    activeAppts = activeAppts.filter(a => {
-      const creatorProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
-      return creatorProf?.role !== "developer";
-    });
-  }
-
+  const { filteredCases, filteredAppts, currentUid, myProf, isDeveloper } = getCalendarFilteredData();
   const eventsByDate = {};
-  activeCases.forEach(c => {
-    const p = profiles.find(x => x.id === c.profileId);
+
+  filteredCases.forEach(c => {
+    const p = profiles.find(x => x.id === c.profileId || (c.ownerUid && x.ownerUid === c.ownerUid));
     const hasAccess = c.ownerUid === currentUid || (Array.isArray(c.sharedWith) && c.sharedWith.includes(currentUid)) || (Array.isArray(c.allowedUids) && c.allowedUids.includes(currentUid)) || (myProf && myProf.role === "admin");
     const attorneyInitials = p ? initials(p.name) : "AT";
     const attorneyColor = p?.avatarColor || "#8a6210";
@@ -1203,9 +1044,6 @@ function renderMonthlyCalendarGrid() {
     if (c.docDueDate) {
       if (!eventsByDate[c.docDueDate]) eventsByDate[c.docDueDate] = [];
       eventsByDate[c.docDueDate].push({ id: c.id, type: "deadline", initials: attorneyInitials, avatarColor: attorneyColor, title: hasAccess ? (c.docType || c.title) : "Pleading Due" });
-    } else if (c.dueDate && (!Array.isArray(c.hearings) || !c.hearings.some(h => h.date === c.dueDate))) {
-      if (!eventsByDate[c.dueDate]) eventsByDate[c.dueDate] = [];
-      eventsByDate[c.dueDate].push({ id: c.id, type: "deadline", initials: attorneyInitials, avatarColor: attorneyColor, title: hasAccess ? c.title : "Pleading Due" });
     }
     if (Array.isArray(c.deadlines)) {
       c.deadlines.forEach(d => {
@@ -1225,35 +1063,30 @@ function renderMonthlyCalendarGrid() {
     }
   });
 
-  activeAppts.forEach(a => {
+  filteredAppts.forEach(a => {
     if (!eventsByDate[a.date]) eventsByDate[a.date] = [];
     const isBusy = a.type === "busy";
     const targetProf = profiles.find(p => p.ownerUid === (a.targetUid || a.requesterUid || a.ownerUid));
     eventsByDate[a.date].push({
       id: a.id, type: isBusy ? "busy" : "appt",
-      initials: targetProf ? initials(targetProf.name) : (isDeveloper ? "DV" : "AT"),
-      avatarColor: targetProf?.avatarColor || (isDeveloper ? "var(--cyan)" : "#991b1b"),
+      initials: targetProf ? initials(targetProf.name) : "AT",
+      avatarColor: targetProf?.avatarColor || "#991b1b",
       title: a.title || (isBusy ? "Out of Office" : "Meeting")
     });
   });
 
-  const firstDayObj = new Date(currentCalYear, currentCalMonth, 1);
-  const startingDayOfWeek = firstDayObj.getDay();
+  const startingDayOfWeek = new Date(currentCalYear, currentCalMonth, 1).getDay();
   const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
   const prevMonthDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const hasDayPanel = !!document.getElementById("cal-day-panel");
 
-  gridEl.style.cssText = isMobileShell
-    ? "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:4px;width:100%;box-sizing:border-box;"
-    : "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:6px;width:100%;box-sizing:border-box;";
-
-  const dayHeaders = isMobileShell ? ["S","M","T","W","T","F","S"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  let html = dayHeaders.map(dh => `<div class="cal-day-header">${dh}</div>`).join("");
+  gridEl.style.cssText = "display:grid !important;grid-template-columns:repeat(7, minmax(0, 1fr)) !important;gap:6px;width:100%;box-sizing:border-box;";
+  let html = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(dh => `<div class="cal-day-header">${dh}</div>`).join("");
 
   for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span>${isMobileShell ? '<div class="cal-dots-row"></div>' : ''}</div>`;
+    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${prevMonthDays - i}</span></div>`;
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -1263,650 +1096,228 @@ function renderMonthlyCalendarGrid() {
     const isSelected = hasDayPanel && fullDateStr === selectedCalDateStr;
     const dayEvents = eventsByDate[fullDateStr] || [];
 
-    if (isMobileShell) {
-      const dots = dayEvents.slice(0, 3).map(ev => {
-        const dotCol = ev.type === "deadline" ? "var(--violet)"
-          : (ev.type === "busy" ? "var(--red)"
-          : (ev.type === "appt" ? "var(--green)" : "var(--gold)"));
-        return `<span class="cal-dot" style="background:${dotCol}"></span>`;
-      }).join("");
-
-      html += `
-        <button class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}" onclick="onCalendarDayClick('${fullDateStr}')">
-          <span class="cal-day-num">${day}</span>
-          <div class="cal-dots-row">${dots}</div>
-        </button>`;
-    } else {
-      let eventsMarkup = "";
-      if (dayEvents.length > 0) {
-        const topTwo = dayEvents.slice(0, 2);
-        const remainingCount = dayEvents.length - 2;
-        eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
-        topTwo.forEach(ev => {
-          let bgStyle = "background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border);";
-          let iconMarkup = `<i class="bi bi-bank" style="font-size:8.5px;flex-shrink:0"></i>`;
-          if (ev.type === "deadline") { bgStyle = "background:var(--violet-bg);color:var(--violet);border:1px solid rgba(129,140,248,0.3);"; iconMarkup = `<i class="bi bi-file-earmark-text-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-          else if (ev.type === "busy") { bgStyle = "background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.3);"; iconMarkup = `<i class="bi bi-slash-circle-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-          else if (ev.type === "appt") { bgStyle = "background:var(--green-bg);color:var(--green);border:1px solid rgba(52,211,153,0.3);"; iconMarkup = `<i class="bi bi-people-fill" style="font-size:8.5px;flex-shrink:0"></i>`; }
-          eventsMarkup += `
-            <div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;min-width:0;${bgStyle}" title="${escHtml(ev.title)}">
-              <span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span>
-              ${iconMarkup}
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">${escHtml(ev.title)}</span>
-            </div>`;
-        });
-        if (remainingCount > 0) {
-          eventsMarkup += `<div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:var(--surface3);border:1px solid var(--border);padding:1px 4px;border-radius:3px;text-align:center;margin-top:1px;white-space:nowrap">+${remainingCount} more</div>`;
-        }
-        eventsMarkup += `</div>`;
-      }
-
-      const todayTag = isToday ? `<span style="font-size:8.5px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:0.5px;flex-shrink:0">TODAY</span>` : "";
-
-      html += `
-        <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}"
-             onclick="onCalendarDayClick('${fullDateStr}')"
-             title="${isToday ? "Today's Schedule" : isPast ? "Past Date (View Only)" : "Click to view schedule"}">
-          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;min-width:0">
-            <span class="cal-day-num">${day}</span>
-            ${todayTag}
-          </div>
-          ${eventsMarkup}
-        </div>
-      `;
+    let eventsMarkup = "";
+    if (dayEvents.length > 0) {
+      eventsMarkup = `<div style="display:flex;flex-direction:column;gap:3px;margin-top:4px;overflow:hidden;width:100%;min-width:0">`;
+      dayEvents.slice(0, 2).forEach(ev => {
+        let bgStyle = "background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border);";
+        if (ev.type === "deadline") bgStyle = "background:var(--violet-bg);color:var(--violet);border:1px solid rgba(129,140,248,0.3);";
+        else if (ev.type === "busy") bgStyle = "background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.3);";
+        else if (ev.type === "appt") bgStyle = "background:var(--green-bg);color:var(--green);border:1px solid rgba(52,211,153,0.3);";
+        eventsMarkup += `<div style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;${bgStyle}" title="${escHtml(ev.title)}"><span style="width:13px;height:13px;border-radius:50%;background:${ev.avatarColor};font-size:7px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${ev.initials}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escHtml(ev.title)}</span></div>`;
+      });
+      if (dayEvents.length > 2) eventsMarkup += `<div style="font-size:8.5px;font-weight:700;color:var(--gold-light);background:var(--surface3);padding:1px 4px;border-radius:3px;text-align:center">+${dayEvents.length - 2} more</div>`;
+      eventsMarkup += `</div>`;
     }
+
+    html += `
+      <div class="cal-day-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${isPast ? 'is-past' : ''}" onclick="onCalendarDayClick('${fullDateStr}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+          <span class="cal-day-num">${day}</span>
+          ${isToday ? `<span style="font-size:8.5px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:1px 4px;border-radius:3px">TODAY</span>` : ""}
+        </div>
+        ${eventsMarkup}
+      </div>`;
   }
 
   const rem = (7 - ((startingDayOfWeek + daysInMonth) % 7)) % 7;
-  for (let i = 1; i <= rem; i++) {
-    html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span>${isMobileShell ? '<div class="cal-dots-row"></div>' : ''}</div>`;
-  }
+  for (let i = 1; i <= rem; i++) html += `<div class="cal-day-cell other-month"><span class="cal-day-num">${i}</span></div>`;
 
   gridEl.innerHTML = html;
   if (hasDayPanel) renderCalendarDayPanel(selectedCalDateStr);
 }
 window.renderMonthlyCalendarGrid = renderMonthlyCalendarGrid;
 
-// ── DATE SCHEDULE POPUP MODAL ────────────────────────────────
 window.openDateScheduleModal = function(dateStr) {
   const modal = document.getElementById("date-schedule-modal");
-  const titleEl = document.getElementById("dsm-title");
   const listEl = document.getElementById("dsm-events-list");
   if (!modal || !listEl) return;
-
-  const formattedDate = formatDate(dateStr);
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const isPast = dateStr < todayStr;
-  const isToday = dateStr === todayStr;
-
-  let headerBadge = "";
-  if (isToday) headerBadge = ` <span style="font-size:10px;background:var(--gold-solid);color:#060c13;font-weight:800;padding:2px 6px;border-radius:4px">TODAY</span>`;
-  else if (isPast) headerBadge = ` <span style="font-size:10px;background:var(--surface3);color:var(--text-dim);font-weight:600;padding:2px 6px;border-radius:4px">PAST DATE</span>`;
-
-  if (titleEl) titleEl.innerHTML = `<i class="bi bi-calendar3" style="color:var(--gold);margin-right:6px"></i> Schedule for ${formattedDate}${headerBadge}`;
-
+  setElText("dsm-title", `Schedule for ${formatDate(dateStr)}`);
   const allItems = buildScheduleItemsForDate(dateStr);
-  if (allItems.length === 0) {
-    listEl.innerHTML = `
-      <div class="empty-state" style="padding:28px 14px">
-        <div class="empty-state-icon" style="font-size:32px;margin-bottom:8px;color:var(--gold)"><i class="bi bi-calendar-x"></i></div>
-        <div style="font-size:13px;color:var(--text-muted)">${isPast ? "No past events recorded for this date." : "No hearings or schedule blocks on this date."}</div>
-      </div>`;
-  } else {
-    listEl.innerHTML = allItems.map(item => {
-      let actionMarkup = "";
-      if (item.kind === "hearing" || item.kind === "deadline") {
-        actionMarkup = item.hasAccess
-          ? `<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="window.closeDateScheduleModal(); openCase('${item.id}')">Open Case File <i class="bi bi-arrow-right"></i></button></div>`
-          : `<div style="margin-top:8px;font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px"><i class="bi bi-lock-fill" style="color:var(--amber)"></i> Case restricted. Only authorized attorneys may view full case files.</div>`;
-      } else if (item.canDelete) {
-        actionMarkup = `<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-ghost btn-sm" style="color:var(--red);padding:2px 6px" onclick="window.deleteBusySlot('${item.id}')"><i class="bi bi-trash3"></i> Remove</button></div>`;
-      }
-
-      let descriptionBlock = "";
-      if (item.canEditDesc) {
-        descriptionBlock = `
-          <div style="margin-top:10px;background:var(--surface3);border:1px solid var(--border);border-radius:9px;padding:10px 12px">
-            <label style="font-size:11px;text-transform:uppercase;color:var(--gold-light);font-weight:700;display:flex;align-items:center;gap:5px;margin-bottom:6px"><i class="bi bi-card-text"></i> Description:</label>
-            <textarea id="dsm-desc-${item.id}-${item.subId || ''}" class="field-input" style="font-size:12.5px;min-height:56px;padding:8px 10px;resize:vertical" placeholder="Enter schedule description...">${escHtml(item.description || "")}</textarea>
-            <div style="display:flex;justify-content:flex-end;margin-top:8px">
-              <button class="btn btn-primary btn-sm" type="button" onclick="saveEventInlineDescription('${item.kind}', '${item.id}', '${dateStr}', '${item.subId || ''}')" style="font-size:11.5px;padding:4px 12px"><i class="bi bi-check2"></i> Save Description</button>
-            </div>
-          </div>`;
-      } else if (item.description) {
-        descriptionBlock = `
-          <div style="margin-top:10px;background:var(--surface3);border:1px solid var(--border);border-radius:9px;padding:10px 12px">
-            <div style="font-size:10.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:4px">Description:</div>
-            <div style="font-size:12.5px;color:var(--text);line-height:1.5;white-space:pre-wrap">${escHtml(item.description)}</div>
-          </div>`;
-      }
-
-      return `
-        <div style="background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:12px;padding:14px 16px;margin-bottom:12px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <span style="font-size:10.5px;font-weight:700;color:${item.badgeColor};background:${item.badgeBg};padding:2px 8px;border-radius:4px">${item.badgeLabel}</span>
-            <span style="font-size:11.5px;color:var(--gold-light);font-weight:700"><i class="bi bi-clock"></i> ${item.time}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            ${avatarDiv(item.attorneyName, item.attorneyColor, 32, item.photoUrl)}
-            <div>
-              <div style="font-size:14px;font-weight:700;color:var(--text)">${escHtml(item.title)}</div>
-              <div style="font-size:11.5px;color:var(--text-muted)"><strong>${item.isDeveloper ? 'Developer' : 'Counsel'}:</strong> ${escHtml(item.attorneyName)}</div>
-            </div>
-          </div>
-          ${item.venue ? `<div style="font-size:11.5px;color:var(--text-dim);margin-bottom:4px"><i class="bi bi-geo-alt-fill" style="color:var(--gold)"></i> ${escHtml(item.venue)}</div>` : ''}
-          ${descriptionBlock}
-          ${actionMarkup}
-        </div>`;
-    }).join("");
-  }
+  listEl.innerHTML = allItems.length === 0
+    ? `<div class="empty-state" style="padding:28px"><div style="font-size:13px;color:var(--text-muted)">No events recorded for this date.</div></div>`
+    : allItems.map(item => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${item.badgeColor};border-radius:12px;padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span class="badge" style="background:${item.badgeBg};color:${item.badgeColor}">${item.badgeLabel}</span>
+          <span style="font-size:11.5px;color:var(--gold-light);font-weight:700">${item.time}</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">${escHtml(item.title)}</div>
+        <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(item.attorneyName)}</div>
+        ${item.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px">${escHtml(item.description)}</div>` : ''}
+      </div>`).join("");
   modal.classList.remove("hidden");
 };
+window.closeDateScheduleModal = () => document.getElementById("date-schedule-modal")?.classList.add("hidden");
 
-window.closeDateScheduleModal = function() {
-  const modal = document.getElementById("date-schedule-modal");
-  if (modal) modal.classList.add("hidden");
-};
-
-window.saveEventInlineDescription = async function(kind, id, dateStr, subId) {
-  const descEl = document.getElementById(`dsm-desc-${id}-${subId || ''}`) || document.getElementById(`dsm-desc-${id}`);
-  if (!descEl) return;
-  const newDesc = descEl.value.trim();
-  const u = window._currentUser || window._auth?.currentUser;
-  const currentUid = u?.uid || "";
-
-  try {
-    if (kind === "hearing" || kind === "case") {
-      const c = cases.find(x => x.id === id);
-      if (!c) throw new Error("Case file not found.");
-      if (c.ownerUid !== currentUid) { showToast("You can only edit descriptions on your own cases.", "error"); return; }
-      if (typeof showToast === "function") showToast("Saving description...");
-      if (Array.isArray(c.hearings) && c.hearings.length > 0) {
-        const hIdx = c.hearings.findIndex(h => h.id === subId || h.date === dateStr);
-        if (hIdx >= 0) c.hearings[hIdx].notes = newDesc;
-        else c.hearings.push({ id: "h_" + Date.now(), date: dateStr, time: "08:30", purpose: "Court Appearance", notes: newDesc });
-        await dbUpdateCase(c.id, { hearings: c.hearings });
-      } else {
-        await dbUpdateCase(c.id, { narrative: newDesc });
-      }
-    } else if (kind === "deadline") {
-      const c = cases.find(x => x.id === id);
-      if (!c) throw new Error("Case file not found.");
-      if (c.ownerUid !== currentUid) { showToast("You can only edit descriptions on your own cases.", "error"); return; }
-      if (typeof showToast === "function") showToast("Saving deadline description...");
-      if (Array.isArray(c.deadlines) && c.deadlines.length > 0) {
-        const dIdx = c.deadlines.findIndex(d => d.id === subId || d.date === dateStr);
-        if (dIdx >= 0) c.deadlines[dIdx].notes = newDesc;
-        await dbUpdateCase(c.id, { deadlines: c.deadlines });
-      }
-    } else if (kind === "appt" || kind === "busy") {
-      const a = appointments.find(x => x.id === id);
-      if (!a) throw new Error("Appointment not found.");
-      const isOwner = a.ownerUid === currentUid || a.requesterUid === currentUid || a.targetUid === currentUid;
-      if (!isOwner) { showToast("You can only edit descriptions on your own schedule.", "error"); return; }
-      if (typeof showToast === "function") showToast("Saving schedule description...");
-      await dbUpdateAppointment(id, { description: newDesc });
-    }
-    if (typeof showToast === "function") showToast("Description saved!");
-    if (typeof renderCalendarView === "function") renderCalendarView();
-  } catch (err) {
-    console.error("saveEventInlineDescription error:", err);
-    if (typeof showToast === "function") showToast("Failed to save description: " + err.message, "error");
-  }
-};
-
-// ── SYSTEM HEALTH & DIAGNOSTIC ENGINE ─────────────────────────
-let systemHealthStatus = "healthy";
-
+// ── SYSTEM HEALTH & DIAGNOSTICS ──────────────────────────────
 window.openDiagnosticModal = function() {
-  const modal = document.getElementById("diagnostic-modal");
-  if (!modal) return;
-  modal.classList.remove("hidden");
+  document.getElementById("diagnostic-modal")?.classList.remove("hidden");
   updateWorkspaceStatus(true);
 };
-
-window.closeDiagnosticModal = function() {
-  const modal = document.getElementById("diagnostic-modal");
-  if (modal) modal.classList.add("hidden");
-};
+window.closeDiagnosticModal = () => document.getElementById("diagnostic-modal")?.classList.add("hidden");
 
 async function updateWorkspaceStatus(manualRun = false) {
-  const netBadge = document.getElementById("diag-network-badge");
-  const netSub = document.getElementById("diag-network-sub");
-  const dbBadge = document.getElementById("diag-db-badge");
-  const dbSub = document.getElementById("diag-db-sub");
-  const driveBadge = document.getElementById("diag-drive-badge");
-  const driveSub = document.getElementById("diag-drive-sub");
   const dot = document.getElementById("status-indicator-dot");
   const txt = document.getElementById("status-indicator-text");
-  const isMobileShell = !!document.getElementById("mobile-shell");
-
   const isNetworkOk = navigator.onLine;
   const isDbOk = !localMode && !!window._db && dbReady;
   const isDriveOk = typeof hasValidToken === "function" ? hasValidToken() : false;
 
-  const u = window._currentUser || window._auth?.currentUser;
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
-  const hasDriveFolder = !!(myProf && myProf.driveFolderId);
-
-  if (netBadge && netSub) {
-    netBadge.className = isNetworkOk ? "badge badge-pass" : "badge badge-fail";
-    netBadge.innerHTML = isNetworkOk ? `<i class="bi bi-wifi" style="color:var(--green)"></i> Online` : `<i class="bi bi-wifi-off" style="color:var(--red)"></i> Offline`;
-    netSub.textContent = isNetworkOk ? "Active internet connection detected" : "No network connection. Offline changes won't sync.";
-  }
-  if (dbBadge && dbSub) {
-    if (isDbOk) {
-      dbBadge.className = "badge badge-pass";
-      dbBadge.innerHTML = `<i class="bi bi-database-check" style="color:var(--green)"></i> Connected`;
-      dbSub.textContent = "Firestore real-time listeners synchronized (Long Polling)";
-    } else if (localMode) {
-      dbBadge.className = "badge badge-warn";
-      dbBadge.innerHTML = `<i class="bi bi-hdd-network" style="color:var(--amber)"></i> Memory Mode`;
-      dbSub.textContent = "Running in memory. Data will not persist on refresh.";
-    } else {
-      dbBadge.className = "badge badge-fail";
-      dbBadge.innerHTML = `<i class="bi bi-arrow-repeat"></i> Connecting...`;
-      dbSub.textContent = "Waiting for cloud database handshake.";
-    }
-  }
-  if (driveBadge && driveSub) {
-    if (isDriveOk && hasDriveFolder) {
-      driveBadge.className = "badge badge-pass";
-      driveBadge.innerHTML = `<i class="bi bi-cloud-check-fill" style="color:var(--green)"></i> Linked`;
-      driveSub.textContent = "OAuth active · Dedicated firm storage folder verified";
-    } else if (isDriveOk && !hasDriveFolder) {
-      driveBadge.className = "badge badge-warn";
-      driveBadge.innerHTML = `<i class="bi bi-folder-x" style="color:var(--amber)"></i> No Folder`;
-      driveSub.textContent = "Drive connected but no root case folder created yet.";
-    } else {
-      driveBadge.className = "badge badge-warn";
-      driveBadge.innerHTML = `<i class="bi bi-cloud-slash" style="color:var(--amber)"></i> Not Connected`;
-      driveSub.textContent = "Connect Google Account under My Settings to enable filing & docs.";
-    }
-  }
-
   if (!isNetworkOk || (!isDbOk && !localMode)) {
-    systemHealthStatus = "danger";
     if (dot) dot.className = "status-dot danger";
-    if (txt) { txt.textContent = isMobileShell ? "Offline" : "System Disconnected"; txt.style.color = "var(--red)"; }
-  } else if (!isDriveOk || localMode || !hasDriveFolder) {
-    systemHealthStatus = "warning";
+    if (txt) { txt.textContent = "System Disconnected"; txt.style.color = "var(--red)"; }
+  } else if (!isDriveOk || localMode) {
     if (dot) dot.className = "status-dot warning";
-    if (txt) { txt.textContent = isMobileShell ? "Sync" : (!isDriveOk ? "Connect Drive" : "Memory Mode"); txt.style.color = "var(--amber)"; }
+    if (txt) { txt.textContent = !isDriveOk ? "Connect Drive" : "Memory Mode"; txt.style.color = "var(--amber)"; }
   } else {
-    systemHealthStatus = "healthy";
     if (dot) dot.className = "status-dot healthy";
-    if (txt) { txt.textContent = isMobileShell ? "OK" : "Workspace Active"; txt.style.color = "var(--green)"; }
+    if (txt) { txt.textContent = "Workspace Active"; txt.style.color = "var(--green)"; }
   }
 
-  if (manualRun && typeof showToast === "function") {
-    showToast(`Health check complete: ${systemHealthStatus === "healthy" ? "All systems healthy" : "Issues detected"}`, systemHealthStatus === "healthy" ? "success" : "error");
-  }
+  renderGoogleStatusPopover();
+  if (manualRun && typeof showToast === "function") showToast("Health check complete");
 }
 window.updateWorkspaceStatus = updateWorkspaceStatus;
 
-if (!window._healthIntervalId) {
-  window._healthIntervalId = setInterval(() => {
-    if (document.visibilityState === "visible") updateWorkspaceStatus(false);
-  }, 25000);
-}
-window.addEventListener("online", () => updateWorkspaceStatus(false));
-window.addEventListener("offline", () => updateWorkspaceStatus(false));
-
-// ── UNIVERSAL CONFIRMATION DIALOG ─────────────────────────────
+// ── UNIVERSAL CONFIRMATION & NAVIGATION ──────────────────────
 let pendingActionConfirmCallback = null;
-
 window.openConfirmModal = function({ icon = "bi-shield-check", title = "Confirm Action", body = "Are you sure?", confirmText = "Confirm", cancelText = "Keep", confirmStyle = "btn-primary", onConfirm = null }) {
   const modal = document.getElementById("universal-confirm-modal");
-  const iconEl = document.getElementById("ucm-icon");
-  const titleEl = document.getElementById("ucm-title");
-  const bodyEl = document.getElementById("ucm-body");
-  const btn = document.getElementById("ucm-confirm-btn");
   if (!modal) return;
-
-  if (iconEl) iconEl.innerHTML = `<i class="bi ${icon.startsWith("bi-") ? icon : "bi-shield-check"}" style="color:var(--gold)"></i>`;
-  if (titleEl) titleEl.textContent = title;
-  if (bodyEl) bodyEl.innerHTML = body;
-  if (btn) { btn.textContent = confirmText; btn.className = `btn ${confirmStyle}`; }
-  modal.querySelectorAll('button[onclick="closeConfirmModal()"]').forEach(cb => { cb.textContent = cancelText || "Keep"; });
-
+  document.getElementById("ucm-icon").innerHTML = `<i class="bi ${icon}" style="color:var(--gold)"></i>`;
+  setElText("ucm-title", title);
+  document.getElementById("ucm-body").innerHTML = body;
+  const btn = document.getElementById("ucm-confirm-btn");
+  btn.textContent = confirmText; btn.className = `btn ${confirmStyle}`;
   pendingActionConfirmCallback = onConfirm;
   modal.classList.remove("hidden");
 };
-
-window.closeConfirmModal = function() {
-  const modal = document.getElementById("universal-confirm-modal");
-  if (modal) modal.classList.add("hidden");
-  pendingActionConfirmCallback = null;
-};
+window.closeConfirmModal = () => { document.getElementById("universal-confirm-modal")?.classList.add("hidden"); pendingActionConfirmCallback = null; };
 
 document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("ucm-confirm-btn");
-  if (btn) {
-    btn.addEventListener("click", () => {
-      const cb = pendingActionConfirmCallback;
-      window.closeConfirmModal();
-      if (typeof cb === "function") cb();
-    });
-  }
+  document.getElementById("ucm-confirm-btn")?.addEventListener("click", () => {
+    const cb = pendingActionConfirmCallback;
+    window.closeConfirmModal();
+    if (typeof cb === "function") cb();
+  });
 });
 
-// ── NAVIGATION, MOBILE SHELL HELPERS, PAGE HEADERS & DISCARD ──
 let pendingNavigationDestination = null;
-let _isSubmittingCase = false;
 let caseDetailOrigin = "allcases";
-let lastMobileListView = "dashboard";
 
 const DESKTOP_PAGE_META = {
   dashboard:     ["Law Office Dashboard", "Quick overview of your cases, hearings, and deadlines"],
   calendar:      ["Firm Schedule & Court Calendar", "View upcoming hearings, pleading deadlines, and attorney availability"],
-  mydrive:       ["Firm Drive — Case Files & Folders", "Direct, secure access to your system Google Drive folders"],
+  mydrive:       ["Firm Drive — Case Files & Folders", "Direct, secure access to your system Google Drive folders & Docs"],
   profiles:      ["Office Attorneys", "Directory of partners and associates in the firm"],
-  profileDetail: ["Attorney Profile", "Assigned caseload and contact details"],
+  profileDetail: ["Attorney Profile", "Assigned caseload, practice bio, and contact details"],
   profileForm:   ["Attorney Profile Setup", "Create or edit attorney profile information"],
   allcases:      ["All Cases", "Search, filter, and open any case record"],
   caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
-  myprofile:     ["My Settings & Security", "Manage your profile, Google Drive link, 2FA, and login password"]
-};
-
-const MOBILE_PAGE_META = {
-  dashboard:     ["SIMANDO LAW", "Law Office Dashboard"],
-  calendar:      ["Schedule", "Court Hearings & Deadlines"],
-  mydrive:       ["Firm Drive", "Case Files & Folders"],
-  profiles:      ["Attorneys", "Partners & Associates"],
-  profileDetail: ["Attorney Profile", "Caseload & Contact Details"],
-  profileForm:   ["Attorney Setup", "Create or Edit Profile"],
-  allcases:      ["All Cases", "Search & Filter Dockets"],
-  caseDetail:    ["Case Details", "Summary, Hearings & Files"],
-  caseForm:      ["Add / Edit Case", "Steps 1–4 · Create Docket"],
-  myprofile:     ["My Settings", "Profile, Drive & 2FA"]
-};
-
-window.openSheet = function(id) {
-  closeAllSheets();
-  document.getElementById("notif-dropdown")?.classList.add("hidden");
-  document.getElementById(id)?.classList.remove("hidden");
-};
-
-window.closeAllSheets = function() {
-  document.querySelectorAll(".sheet-backdrop").forEach(s => s.classList.add("hidden"));
-};
-
-window.switchDashSegment = function(seg) {
-  document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
-  document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
-  document.getElementById("dash-panel-cases")?.classList.toggle("hidden", seg !== "cases");
-  document.getElementById("dash-calendar-card")?.classList.toggle("hidden", seg !== "schedule");
-};
-
-window.toggleFiltersDrawer = function() {
-  const drawer = document.getElementById("ac-filters-drawer");
-  const btn = document.getElementById("toggle-filters-btn");
-  if (!drawer) return;
-  const hidden = drawer.classList.toggle("hidden");
-  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
-};
-
-window.goBackMobile = function() {
-  if (currentView === "caseForm") {
-    window.handleCaseCancelOrExit();
-  } else if (currentView === "caseDetail") {
-    window.handleCaseDetailBack();
-  } else if (currentView === "profileDetail" || currentView === "profileForm") {
-    navTo("profiles");
-  } else {
-    navTo(lastMobileListView || "dashboard");
-  }
+  myprofile:     ["Profile Settings", "Manage your display name, contact number, profile photo, and practice bio"],
+  settings:      ["Settings", "Accessibility, notification sounds, security credentials, and firm policies"]
 };
 
 function hasUnsavedCaseChanges() {
-  if (_isSubmittingCase || window._isSubmittingCase) return false;
-  if (currentView !== "caseForm") return false;
+  if (window._isSubmittingCase || currentView !== "caseForm") return false;
   const title = (document.getElementById("cf-case-title")?.value || "").trim();
   const narrative = (document.getElementById("cf-narrative")?.value || "").trim();
-  const caseNumber = (document.getElementById("cf-case-number")?.value || "").trim();
-  const newDeadlineDate = (document.getElementById("cf-new-deadline-date")?.value || "").trim();
-  const newDeadlineSubtype = (document.getElementById("cf-new-deadline-subtype")?.value || "").trim();
-  const hasDocs = Array.isArray(pendingDocs) && pendingDocs.length > 0;
-  const hasHearings = Array.isArray(window.cfHearings) && window.cfHearings.length > 0;
-  const hasDeadlines = Array.isArray(window.cfDeadlines) && window.cfDeadlines.length > 0;
-  return Boolean(title || narrative || caseNumber || newDeadlineDate || newDeadlineSubtype || hasDocs || hasHearings || hasDeadlines);
+  return Boolean(title || narrative || (Array.isArray(pendingDocs) && pendingDocs.length > 0));
 }
 window.hasUnsavedCaseChanges = hasUnsavedCaseChanges;
+window.promptDiscardCase = (dest) => { pendingNavigationDestination = dest; document.getElementById("discard-case-modal")?.classList.remove("hidden"); };
+window.cancelDiscardCase = () => { pendingNavigationDestination = null; document.getElementById("discard-case-modal")?.classList.add("hidden"); };
+window.confirmDiscardCase = () => { const t = pendingNavigationDestination || "allcases"; pendingNavigationDestination = null; document.getElementById("discard-case-modal")?.classList.add("hidden"); executeNavigation(t); };
+window.handleCaseCancelOrExit = () => hasUnsavedCaseChanges() ? window.promptDiscardCase("allcases") : executeNavigation("allcases");
+window.handleCaseDetailBack = () => caseDetailOrigin === "profileDetail" && selProfile ? (showView("profileDetail"), renderProfileDetail()) : navTo(caseDetailOrigin === "dashboard" ? "dashboard" : "allcases");
 
-window.promptDiscardCase = function(destination) {
-  pendingNavigationDestination = destination;
-  const modal = document.getElementById("discard-case-modal");
-  if (modal) modal.classList.remove("hidden");
-};
-window.cancelDiscardCase = function() {
-  pendingNavigationDestination = null;
-  const modal = document.getElementById("discard-case-modal");
-  if (modal) modal.classList.add("hidden");
-};
-window.confirmDiscardCase = function() {
-  const target = pendingNavigationDestination || caseFormOrigin || "allcases";
-  pendingNavigationDestination = null;
-  const modal = document.getElementById("discard-case-modal");
-  if (modal) modal.classList.add("hidden");
-  resetCaseFormFields();
-  executeNavigation(target);
-};
-window.handleCaseCancelOrExit = function() {
-  if (hasUnsavedCaseChanges()) window.promptDiscardCase(caseFormOrigin || "allcases");
-  else { resetCaseFormFields(); executeNavigation(caseFormOrigin || "allcases"); }
-};
-window.handleCaseDetailBack = function() {
-  if (caseDetailOrigin === "profileDetail" && selProfile) {
-    showView("profileDetail");
-    renderProfileDetail();
-  } else if (caseDetailOrigin === "dashboard") {
-    navTo("dashboard");
-  } else {
-    navTo("allcases");
-  }
-};
-
-function resetCaseFormFields() {
-  setElVal("cf-case-title", ""); setElVal("cf-narrative", ""); setElVal("cf-filed", "");
-  setElVal("cf-due", ""); setElVal("cf-case-number", ""); setElVal("cf-doc-type", "");
-  setElVal("cf-type-input", ""); setElVal("cf-new-deadline-date", "");
-  setElVal("cf-new-deadline-subtype", ""); setElVal("cf-new-deadline-notes", "");
-  if (typeof pendingDocs !== "undefined") pendingDocs = [];
-  if (typeof window.cfHearings !== "undefined") window.cfHearings = [];
-  if (typeof window.cfDeadlines !== "undefined") window.cfDeadlines = [];
-  if (typeof window.cfPetitioners !== "undefined") window.cfPetitioners = [];
-  if (typeof window.cfRespondents !== "undefined") window.cfRespondents = [];
-  clearCaseErrors();
-}
-
-window.addEventListener("beforeunload", (e) => {
-  if (hasUnsavedCaseChanges()) {
-    e.preventDefault();
-    e.returnValue = "You have unsaved case changes. Are you sure you want to leave?";
-    return e.returnValue;
-  }
-});
-
-function isValidMobile(num) {
-  if (!num) return true;
-  return String(num).replace(/\D/g, "").length === 11;
-}
+function isValidMobile(num) { return !num || String(num).replace(/\D/g, "").length === 11; }
+function isValidEmail(email) { return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim()); }
 window.isValidMobile = isValidMobile;
-
-function isValidEmail(email) {
-  return /^[^\s@]+@(gmail\.com|outlook\.com|yahoo\.com)$/i.test(String(email || "").trim());
-}
-window.isValidEmail = isValidEmail;
+window.isValidEmail  = isValidEmail;
 
 function initPasswordStrengthChecker() {
   const passInput = document.getElementById("setting-password");
   const reqContainer = document.getElementById("password-requirements");
   if (!passInput || !reqContainer) return;
-
   const reqs = {
-    length: { el: document.getElementById("req-length"), test: (val) => val.length >= 6 },
-    upper: { el: document.getElementById("req-upper"), test: (val) => /[A-Z]/.test(val) },
-    number: { el: document.getElementById("req-number"), test: (val) => /\d/.test(val) },
-    special: { el: document.getElementById("req-special"), test: (val) => /[^A-Za-z0-9]/.test(val) }
+    length: { el: document.getElementById("req-length"), test: v => v.length >= 6 },
+    upper:  { el: document.getElementById("req-upper"),  test: v => /[A-Z]/.test(v) },
+    number: { el: document.getElementById("req-number"), test: v => /\d/.test(v) },
+    special:{ el: document.getElementById("req-special"),test: v => /[^A-Za-z0-9]/.test(v) }
   };
-
-  passInput.addEventListener("focus", () => { reqContainer.style.display = "block"; });
   passInput.addEventListener("input", () => {
     const val = passInput.value;
-    if (!val) { reqContainer.style.display = "none"; return; }
-    reqContainer.style.display = "block";
-    for (const key in reqs) {
-      const rule = reqs[key];
-      const passed = rule.test(val);
-      if (rule.el) {
-        const icon = rule.el.querySelector(".req-icon");
-        rule.el.style.color = passed ? "var(--green)" : "var(--text-dim)";
-        if (icon) icon.innerHTML = passed
-          ? `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>`
-          : `<i class="bi bi-x-circle" style="color:var(--red)"></i>`;
+    reqContainer.style.display = val ? "block" : "none";
+    for (const k in reqs) {
+      const ok = reqs[k].test(val);
+      if (reqs[k].el) {
+        reqs[k].el.style.color = ok ? "var(--green)" : "var(--text-dim)";
+        const ic = reqs[k].el.querySelector(".req-icon");
+        if (ic) ic.innerHTML = ok ? `<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>` : `<i class="bi bi-x-circle" style="color:var(--red)"></i>`;
       }
     }
   });
-  passInput.addEventListener("blur", () => { if (!passInput.value) reqContainer.style.display = "none"; });
 }
 window.initPasswordStrengthChecker = initPasswordStrengthChecker;
 
 function showView(name) {
-  const chatPanel = document.getElementById("chat-panel");
-  if (chatPanel && !chatPanel.classList.contains("hidden")) chatPanel.classList.add("hidden");
-  const notifDropdown = document.getElementById("notif-dropdown");
-  if (notifDropdown && !notifDropdown.classList.contains("hidden")) notifDropdown.classList.add("hidden");
-  if (typeof closeAllSheets === "function") closeAllSheets();
-
-  if (!["caseDetail", "caseForm", "profileDetail", "profileForm"].includes(name)) {
-    lastMobileListView = name;
-  }
+  document.getElementById("chat-panel")?.classList.add("hidden");
+  document.body.classList.remove("chat-open");
+  window.closeAllTopPopovers();
 
   document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
-  const el = document.getElementById("view-" + name);
-  if (el) el.classList.remove("hidden");
+  document.getElementById("view-" + name)?.classList.remove("hidden");
   currentView = name;
 
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".mobile-nav-item").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".bnav-btn").forEach(b => b.classList.remove("active"));
-
-  let primaryNavKey = name;
-  if (name === "caseDetail" || name === "caseForm" || name === "allcases") primaryNavKey = "allcases";
-  else if (name === "profileDetail" || name === "profileForm" || name === "profiles") primaryNavKey = "profiles";
-  else if (name === "myprofile") primaryNavKey = "myprofile";
-
-  const btn = document.querySelector(`.nav-btn[data-nav="${primaryNavKey}"]`);
-  if (btn) btn.classList.add("active");
-  const mBtn = document.querySelector(`.mobile-nav-item[data-nav="${primaryNavKey}"]`);
-  if (mBtn) mBtn.classList.add("active");
-
-  const bottomKey = (name === "caseDetail") ? "allcases"
-    : (["mydrive", "profiles", "profileDetail", "profileForm", "myprofile"].includes(name) ? "more" : name);
-  const bBtn = document.querySelector(`.bnav-btn[data-nav="${bottomKey}"]`);
-  if (bBtn) bBtn.classList.add("active");
-
-  document.querySelectorAll(".menu-row[data-menu]").forEach(r => {
-    r.classList.toggle("active", r.getAttribute("data-menu") === name);
-  });
-
-  const showBack = ["caseDetail", "caseForm", "profileDetail", "profileForm"].includes(name);
-  document.getElementById("topbar-back-btn")?.classList.toggle("hidden", !showBack);
-  document.getElementById("topbar-crest")?.classList.toggle("hidden", showBack);
-
-  document.getElementById("bottom-nav-wrap")?.classList.toggle("hidden", name === "caseForm" || name === "profileForm");
-  document.getElementById("mobile-form-bar")?.classList.toggle("hidden", name !== "caseForm");
+  let key = name;
+  if (name === "caseDetail" || name === "caseForm") key = "allcases";
+  else if (name === "profileDetail" || name === "profileForm") key = "profiles";
+  document.querySelector(`.nav-btn[data-nav="${key}"]`)?.classList.add("active");
 
   const meta = DESKTOP_PAGE_META[name];
   if (meta) {
-    const tEl = document.getElementById("main-page-title");
-    const sEl = document.getElementById("main-page-sub");
-    if (tEl) tEl.textContent = meta[0];
-    if (sEl) sEl.textContent = meta[1];
-  }
-
-  const mMeta = MOBILE_PAGE_META[name];
-  if (mMeta) {
-    const mtEl = document.getElementById("mobile-page-title");
-    const msEl = document.getElementById("mobile-page-sub");
-    if (mtEl) mtEl.textContent = mMeta[0];
-    if (msEl) msEl.textContent = mMeta[1];
-  }
-
-  if (document.getElementById("mobile-shell")) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setElText("main-page-title", meta[0]);
+    setElText("main-page-sub", meta[1]);
   }
 }
 
 function navTo(view) {
-  if (currentView === "caseForm" && view !== "caseForm" && hasUnsavedCaseChanges()) {
-    window.promptDiscardCase(view);
-    return;
-  }
+  if (currentView === "caseForm" && view !== "caseForm" && hasUnsavedCaseChanges()) return window.promptDiscardCase(view);
   executeNavigation(view);
 }
 
 function executeNavigation(view) {
-  const chatPanel = document.getElementById("chat-panel");
-  if (chatPanel && !chatPanel.classList.contains("hidden")) chatPanel.classList.add("hidden");
-
-  const pd = document.getElementById("pd-search");
-  const ac = document.getElementById("ac-search");
-  if (pd) pd.value = "";
-  if (ac) ac.value = "";
-  ["pd-status","pd-category","pd-type","ac-status","ac-category","ac-type"].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = "All";
-  });
-  ["pd-sort","ac-sort"].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = "asc";
-  });
   showView(view);
-  if (view === "dashboard") renderDashboard();
-  if (view === "profiles")  renderProfiles();
-  if (view === "allcases")  { currentAllCasesPage = 1; renderAllCases(); }
-  if (view === "myprofile") renderMyProfile();
-  if (view === "calendar")  renderCalendarView();
+  if (view === "dashboard")     renderDashboard();
+  if (view === "profiles")      renderProfiles();
+  if (view === "allcases")      { if (typeof currentAllCasesPage !== "undefined") currentAllCasesPage = 1; renderAllCases(); }
+  if (view === "myprofile")     renderMyProfile();
+  if (view === "settings" && typeof renderSettingsView === "function") renderSettingsView();
+  if (view === "calendar")      renderCalendarView();
   if (view === "notifications") renderNotificationsView();
-  if (view === "mydrive") initDriveExplorer();
+  if (view === "mydrive")       initDriveExplorer();
 }
 
-window.quickFilterCases = function(status) {
-  navTo("allcases");
-  if (typeof setAllCasesStatusTab === "function") setAllCasesStatusTab(status);
-};
-
+window.quickFilterCases = (status) => { navTo("allcases"); if (typeof setAllCasesStatusTab === "function") setAllCasesStatusTab(status); };
 window.showView = showView;
 window.navTo = navTo;
-window.executeNavigation = executeNavigation;
-// ═══════════════════════════════════════════════════════════════
+window.executeNavigation = executeNavigation;// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
-// ── DASHBOARD & COMPACT ACTIVE CASES (5 DESKTOP / 4 MOBILE) ──
+// ── DASHBOARD & COMPACT ACTIVE CASES ─────────────────────────
 let currentDashPage = 1;
 let dashCasesFilter = "all";
+const dashPageSize = 5;
 
-function getDashPageSize() {
-  return document.getElementById("mobile-shell") ? 4 : 5;
-}
-
-window.changeDashPage = function(delta) {
-  currentDashPage += delta;
-  renderDashboard();
-};
-
-window.setDashCasesFilter = function(kind) {
-  dashCasesFilter = kind;
-  currentDashPage = 1;
-  renderDashboard();
-};
+window.changeDashPage = function(delta) { currentDashPage += delta; renderDashboard(); };
+window.setDashCasesFilter = function(kind) { dashCasesFilter = kind; currentDashPage = 1; renderDashboard(); };
 
 function renderDashboard() {
-  const isMobileShell = !!document.getElementById("mobile-shell");
   const todayDateEl = document.getElementById("today-date");
   if (todayDateEl) {
     todayDateEl.textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -1931,7 +1342,6 @@ function renderDashboard() {
     `;
   }
 
-  const dashPageSize = getDashPageSize();
   const listToDisplay = dashCasesFilter === "all" ? baseList : baseList.filter(c => c.status === dashCasesFilter);
   const total = listToDisplay.length;
   const totalPages = Math.max(1, Math.ceil(total / dashPageSize));
@@ -1942,11 +1352,6 @@ function renderDashboard() {
   const pagedCases = listToDisplay.slice(startIdx, startIdx + dashPageSize);
 
   const dcEl = document.getElementById("dash-cases");
-  const pageInfoEl = document.getElementById("dash-page-info");
-  const pageNumEl = document.getElementById("dash-page-num");
-  const prevBtn = document.getElementById("dash-btn-prev");
-  const nextBtn = document.getElementById("dash-btn-next");
-
   if (dcEl) {
     dcEl.innerHTML = pagedCases.length === 0
       ? '<div class="empty-state" style="padding:36px 16px"><div class="empty-state-icon" style="color:var(--gold);font-size:32px"><i class="bi bi-folder2-open"></i></div><div>No active cases match this filter.</div></div>'
@@ -1964,7 +1369,7 @@ function renderDashboard() {
 
         return `
           <button class="case-item" onclick="openCase('${c.id}')">
-            ${p ? avatarDiv(p.name, p.avatarColor, isMobileShell ? 34 : 30, p.photoUrl) : ""}
+            ${p ? avatarDiv(p.name, p.avatarColor, 30, p.photoUrl) : ""}
             <div style="flex:1;min-width:0">
               <div style="font-weight:700;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.title)}</div>
               <div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.category || "Case")} · ${escHtml(p?.name || c.type || "Litigation")}</div>
@@ -1977,14 +1382,18 @@ function renderDashboard() {
       }).join("");
   }
 
-  if (pageInfoEl) pageInfoEl.textContent = total === 0 ? "Showing 0 cases" : (isMobileShell ? `${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}` : `Showing ${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}`);
-  if (pageNumEl) pageNumEl.textContent = isMobileShell ? `${currentDashPage}/${totalPages}` : `Page ${currentDashPage} of ${totalPages}`;
+  setElText("dash-page-info", total === 0 ? "Showing 0 cases" : `Showing ${startIdx + 1}–${Math.min(startIdx + dashPageSize, total)} of ${total}`);
+  setElText("dash-page-num", `Page ${currentDashPage} of ${totalPages}`);
+  const prevBtn = document.getElementById("dash-btn-prev");
+  const nextBtn = document.getElementById("dash-btn-next");
   if (prevBtn) prevBtn.disabled = currentDashPage <= 1;
   if (nextBtn) nextBtn.disabled = currentDashPage >= totalPages;
 
   renderDashProfiles();
   renderQuickAccess();
   if (typeof renderDashboardCalendarAgenda === "function") renderDashboardCalendarAgenda();
+  if (typeof renderOnlineUsersPopover === "function") renderOnlineUsersPopover();
+  if (typeof renderGoogleStatusPopover === "function") renderGoogleStatusPopover();
   if (typeof checkOnboardingSecurityStatus === "function") checkOnboardingSecurityStatus();
 }
 window.renderDashboard = renderDashboard;
@@ -1992,32 +1401,21 @@ window.renderDashboard = renderDashboard;
 function renderDashProfiles() {
   const el = document.getElementById("dash-profiles");
   if (!el) return;
-  const countBadge = document.getElementById("dash-roster-count-badge");
-  const searchInp = document.getElementById("dash-profile-search");
-  const q = (searchInp?.value || "").toLowerCase().trim();
   const u = window._currentUser || window._auth?.currentUser;
   const userEmail = (u?.email || "").toLowerCase();
   const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
   const isDeveloper = myProf && myProf.role === "developer";
-
-  let visible = isDeveloper ? profiles.filter(p => p.role === "developer") : profiles.filter(p => p.role !== "developer");
-  if (q) visible = visible.filter(p => (p.name || "").toLowerCase().includes(q) || (p.role || "").toLowerCase().includes(q));
-  if (countBadge) countBadge.textContent = isDeveloper ? `${visible.length} Sandbox Dev` : `${visible.length} Counsel`;
-
-  if (visible.length === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:24px 10px;color:var(--text-muted);font-size:12px">No attorneys found.</div>`;
-    return;
-  }
+  const visible = isDeveloper ? profiles.filter(p => p.role === "developer") : profiles.filter(p => p.role !== "developer");
   const userCases = getAccessibleCases();
+
   el.innerHTML = visible.map(p => {
     const caseCount = userCases.filter(c => c.profileId === p.id).length;
-    const isMe = p.ownerUid === u?.uid || (p.email && p.email.toLowerCase() === userEmail);
     return `
       <div class="dash-roster-item" onclick="openProfile('${p.id}')">
         ${avatarDiv(p.name, p.avatarColor, 32, p.photoUrl)}
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)} ${isMe ? '<span style="font-size:9px;color:var(--gold)">YOU</span>' : ''}</div>
-          <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.role || 'Attorney')}</div>
+          <div style="font-weight:700;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escHtml(p.role || 'Attorney')}</div>
         </div>
         <span class="badge" style="background:var(--surface3);color:var(--text-dim);font-size:10px">${caseCount} case${caseCount !== 1 ? 's' : ''}</span>
       </div>`;
@@ -2025,7 +1423,7 @@ function renderDashProfiles() {
 }
 window.renderDashProfiles = renderDashProfiles;
 
-// ── PROFILES VIEW MODES & DIRECTORY ──────────────────────────
+// ── PROFILES DIRECTORY (SHOWS DESCRIPTION / BIO) ─────────────
 let profilesViewMode = localStorage.getItem("simando-profiles-view") || "tile";
 
 window.setProfilesViewMode = function(mode) {
@@ -2043,14 +1441,12 @@ window.setProfilesViewMode = function(mode) {
 function renderProfiles() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
-  const isMobileShell = !!document.getElementById("mobile-shell");
   const userEmail = (u.email || "").toLowerCase();
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
   const isDeveloper = myProf && myProf.role === "developer";
   const visibleProfiles = isDeveloper ? profiles.filter(p => p.role === "developer") : profiles.filter(p => p.role !== "developer");
 
-  const countEl = document.getElementById("profiles-count");
-  if (countEl) countEl.textContent = isDeveloper ? `${visibleProfiles.length} developer profile(s)` : `${visibleProfiles.length} attorney${visibleProfiles.length !== 1 ? "s" : ""}`;
+  setElText("profiles-count", isDeveloper ? `${visibleProfiles.length} developer profile(s)` : `${visibleProfiles.length} attorney${visibleProfiles.length !== 1 ? "s" : ""}`);
 
   const el = document.getElementById("profiles-grid");
   if (!el) return;
@@ -2065,7 +1461,6 @@ function renderProfiles() {
     el.style.display = "flex"; el.style.flexDirection = "column"; el.style.gap = "8px";
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
-      const ongoing = pc.filter(c => c.status === "On-going").length;
       const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail);
       return `
         <div class="profile-list-row" onclick="openProfile('${p.id}')" style="${isMe ? 'border-color:var(--gold-border)' : ''}">
@@ -2074,19 +1469,19 @@ function renderProfiles() {
             <div style="min-width:0">
               <div style="font-weight:700;font-size:14.5px;color:var(--text)">${escHtml(p.name)} ${isMe ? '<span style="font-size:9.5px;color:var(--gold);background:var(--gold-dim);padding:1px 5px;border-radius:4px;margin-left:6px">YOU</span>' : ""}</div>
               <div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role || "Attorney")} · ${escHtml(p.email || "No email")}</div>
+              ${p.description ? `<div style="font-size:11.5px;color:var(--text-dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.description)}</div>` : ""}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
             <span style="font-size:12px;color:var(--text-dim)">${pc.length} case${pc.length !== 1 ? 's' : ''}</span>
-            ${ongoing > 0 && !isMobileShell ? badge(ongoing + " active", statusColor("On-going")) : ""}
             <span style="font-size:14px;color:var(--gold)"><i class="bi bi-arrow-right"></i></span>
           </div>
         </div>`;
     }).join("");
   } else {
     el.style.display = "grid";
-    el.style.gridTemplateColumns = isMobileShell ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))";
-    el.style.gap = isMobileShell ? "10px" : "18px";
+    el.style.gridTemplateColumns = "repeat(auto-fill, minmax(280px, 1fr))";
+    el.style.gap = "18px";
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const ongoing = pc.filter(c => c.status === "On-going").length;
@@ -2100,6 +1495,7 @@ function renderProfiles() {
               <div style="font-size:13px;color:var(--text-muted)">${escHtml(p.role || "Attorney")}</div>
             </div>
           </div>
+          ${p.description ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.45">${escHtml(p.description)}</div>` : ""}
           <hr class="divider"/>
           ${p.email ? `<div style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.email)}</div>` : ""}
           ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
@@ -2136,10 +1532,9 @@ window.openShareCaseModal = function() {
         <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:11px;color:var(--text-muted)">${escHtml(p.email)}</div></div>
       </label>`).join("");
 
-  const modal = document.getElementById("share-modal");
-  if (modal) modal.classList.remove("hidden");
+  document.getElementById("share-modal")?.classList.remove("hidden");
 };
-window.closeShareModal = function() { const m = document.getElementById("share-modal"); if (m) m.classList.add("hidden"); };
+window.closeShareModal = () => document.getElementById("share-modal")?.classList.add("hidden");
 
 async function saveShareSettings() {
   if (!selCase) return;
@@ -2155,7 +1550,6 @@ async function saveShareSettings() {
     closeShareModal();
     showToast("Case shared successfully!");
   } catch (err) {
-    console.error("saveShareSettings error:", err);
     showToast("Failed to share case: " + err.message, "error");
   }
 }
@@ -2176,7 +1570,7 @@ function renderProfileDetail() {
     : `<span style="font-size:12px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Files Protected</span>`;
 
   const actionButtons = isOwner
-    ? `<button class="btn btn-secondary btn-sm" onclick="navTo('myprofile')"><i class="bi bi-pencil-square"></i> Edit Profile</button><button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-circle"></i> Add Case</button>`
+    ? `<button class="btn btn-secondary btn-sm" onclick="navTo('myprofile')"><i class="bi bi-pencil-square"></i> Profile Settings</button><button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-circle"></i> Add Case</button>`
     : `<button class="btn btn-primary btn-sm" onclick="openAppointmentModal('${p.id}')"><i class="bi bi-calendar-plus"></i> Request Schedule</button>`;
 
   const headerCard = document.getElementById("profile-header-card");
@@ -2186,6 +1580,7 @@ function renderProfileDetail() {
       <div style="flex:1">
         <div style="font-size:22px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div>
         <div style="font-size:13.5px;color:var(--text-muted);margin-top:2px">${escHtml(p.role || "Attorney")}</div>
+        ${p.description ? `<div style="font-size:12.5px;color:var(--text-muted);margin-top:8px;line-height:1.5">${escHtml(p.description)}</div>` : ""}
         <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;align-items:center">
           ${p.email ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.email)}</span>` : ""}
           ${p.contact ? `<span style="font-size:12px;color:var(--text-muted)"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:4px"></i>${escHtml(p.contact)}</span>` : ""}
@@ -2207,11 +1602,11 @@ function renderProfileDetail() {
       statsEl.style.display = "grid";
       const docs = pc.reduce((a, c) => a + (c.documents?.length || 0), 0);
       statsEl.innerHTML = [
-        ["Accessible Cases", pc.length, "var(--violet)"],
-        ["Active", pc.filter(c => c.status === "On-going").length, "var(--amber)"],
-        ["Resolved", pc.filter(c => c.status === "Completed").length, "var(--green)"],
-        ["Documents", docs, "var(--gold)"]
-      ].map(([l, n, c]) => `<div class="stat-card" style="--accent:${c};padding:16px 18px"><div class="stat-number" style="color:${c};font-size:32px">${n}</div><div class="stat-label">${l}</div></div>`).join("");
+        ["Accessible Cases", pc.length],
+        ["Active", pc.filter(c => c.status === "On-going").length],
+        ["Resolved", pc.filter(c => c.status === "Completed").length],
+        ["Documents", docs]
+      ].map(([l, n]) => `<div class="stat-card" style="padding:16px 18px"><div class="stat-number" style="font-size:32px">${n}</div><div class="stat-label">${l}</div></div>`).join("");
     }
     updateAllFilterDropdowns();
     renderProfileCases();
@@ -2233,57 +1628,39 @@ function renderProfileCases() {
   const sort = document.getElementById("pd-sort")?.value || "asc";
 
   const pc = getAccessibleCases().filter(c => c.profileId === p.id);
-  let filtered = sortCasesByDue(pc.filter(c =>
+  const filtered = sortCasesByDue(pc.filter(c =>
     (c.title.toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (c.caseNumber || "").toLowerCase().includes(q)) &&
     (status === "All" || c.status === status) && (category === "All" || c.category === category) && (type === "All" || c.type === type)
   ), sort);
 
   const el = document.getElementById("profile-cases-list");
   if (!el) return;
-  if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your filters.</div></div>`;
-    return;
-  }
-  el.innerHTML = filtered.map(c => `
-    <div class="case-row" onclick="openCase('${c.id}')">
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(c.type || "Litigation")} · ${escHtml(c.venue || "No Venue")}</div>
-        <div style="font-size:12.5px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">${badge(c.status, statusColor(c.status))}${dueBadge(c.dueDate || c.docDueDate)}</div>
-    </div>`).join("");
+  el.innerHTML = filtered.length === 0
+    ? `<div class="empty-state"><div class="empty-state-icon" style="color:var(--gold)"><i class="bi bi-search"></i></div><div>No cases match your filters.</div></div>`
+    : filtered.map(c => `
+      <div class="case-row" onclick="openCase('${c.id}')">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px">${escHtml(c.title)}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(c.type || "Litigation")} · ${escHtml(c.venue || "No Venue")}</div>
+          <div style="font-size:12.5px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">${badge(c.status, statusColor(c.status))}${dueBadge(c.dueDate || c.docDueDate)}</div>
+      </div>`).join("");
 }
 window.renderProfileCases = renderProfileCases;
 
-// ── ALL CASES VIEW (QUICK STATUS TABS + 10 PER PAGE) ─────────
+// ── ALL CASES VIEW ───────────────────────────────────────────
 let currentAllCasesPage = 1;
 const allCasesPageSize = 10;
 
-window.changeAllCasesPage = function(delta) { currentAllCasesPage += delta; renderAllCases(); };
-window.goToAllCasesPage = function(pageNum) { currentAllCasesPage = pageNum; renderAllCases(); };
-
-window.setAllCasesStatusTab = function(status) {
-  const sel = document.getElementById("ac-status");
-  if (sel) sel.value = status;
-  currentAllCasesPage = 1;
-  renderAllCases();
-};
-
-window.resetAllCaseFilters = function() {
-  setElVal("ac-search", "");
-  setElVal("ac-category", "All");
-  setElVal("ac-status", "All");
-  setElVal("ac-type", "All");
-  setElVal("ac-sort", "asc");
-  currentAllCasesPage = 1;
-  renderAllCases();
-};
+window.changeAllCasesPage = (delta) => { currentAllCasesPage += delta; renderAllCases(); };
+window.goToAllCasesPage = (pageNum) => { currentAllCasesPage = pageNum; renderAllCases(); };
+window.setAllCasesStatusTab = (status) => { setElVal("ac-status", status); currentAllCasesPage = 1; renderAllCases(); };
+window.resetAllCaseFilters = () => { setElVal("ac-search", ""); setElVal("ac-category", "All"); setElVal("ac-status", "All"); setElVal("ac-type", "All"); setElVal("ac-sort", "asc"); currentAllCasesPage = 1; renderAllCases(); };
 
 function renderAllCasesStatusTabs(accessible, activeStatus) {
   const tabsEl = document.getElementById("ac-status-tabs");
   if (!tabsEl) return;
-  const isMobileShell = !!document.getElementById("mobile-shell");
   const counts = {
     All: accessible.length,
     "On-going": accessible.filter(c => c.status === "On-going").length,
@@ -2291,13 +1668,12 @@ function renderAllCasesStatusTabs(accessible, activeStatus) {
     Completed: accessible.filter(c => c.status === "Completed").length
   };
   tabsEl.innerHTML = Object.entries(counts).map(([k, n]) => `
-    <button class="pill-tab ${activeStatus === k ? 'active' : ''}" onclick="setAllCasesStatusTab('${k}')">${k === 'All' ? (isMobileShell ? 'All' : 'All Cases') : k} (${n})</button>
+    <button class="pill-tab ${activeStatus === k ? 'active' : ''}" onclick="setAllCasesStatusTab('${k}')">${k === 'All' ? 'All Cases' : k} (${n})</button>
   `).join("");
 }
 
 function renderAllCases() {
   updateAllFilterDropdowns();
-  const isMobileShell = !!document.getElementById("mobile-shell");
   const q = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
@@ -2307,7 +1683,7 @@ function renderAllCases() {
   const accessible = getAccessibleCases();
   renderAllCasesStatusTabs(accessible, status);
 
-  let filtered = sortCasesByDue(accessible.filter(c => {
+  const filtered = sortCasesByDue(accessible.filter(c => {
     const p = profiles.find(x => x.id === c.profileId);
     const matchesQ = !q || (c.title || "").toLowerCase().includes(q) || (p?.name || "").toLowerCase().includes(q) || (c.parties || "").toLowerCase().includes(q) || (c.caseNumber || "").toLowerCase().includes(q);
     return matchesQ && (status === "All" || c.status === status) && (category === "All" || c.category === category) && (type === "All" || c.type === type);
@@ -2324,10 +1700,6 @@ function renderAllCases() {
   const pagedCases = filtered.slice(startIdx, startIdx + allCasesPageSize);
 
   const el = document.getElementById("all-cases-list");
-  const pageInfoEl = document.getElementById("allcases-page-info");
-  const buttonsWrap = document.getElementById("allcases-page-buttons");
-  const prevBtn = document.getElementById("allcases-btn-prev");
-  const nextBtn = document.getElementById("allcases-btn-next");
   const paginationBar = document.getElementById("allcases-pagination-bar");
   if (!el) return;
 
@@ -2338,23 +1710,8 @@ function renderAllCases() {
   }
 
   if (paginationBar) paginationBar.style.display = "flex";
-
   el.innerHTML = pagedCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
-    if (isMobileShell) {
-      return `<button class="case-row" onclick="openCase('${c.id}')">
-        ${p ? avatarDiv(p.name, p.avatarColor, 38, p.photoUrl) : ""}
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:13.5px;color:var(--text);line-height:1.25;margin-bottom:2px">${escHtml(c.title)}</div>
-          <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(p?.name || "")}</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
-            ${badge(c.status, statusColor(c.status))}
-            ${dueBadge(c.dueDate || c.docDueDate)}
-          </div>
-        </div>
-        <i class="bi bi-chevron-right" style="color:var(--text-dim);flex-shrink:0"></i>
-      </button>`;
-    }
     return `<div class="case-row" onclick="openCase('${c.id}')">
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
@@ -2366,9 +1723,12 @@ function renderAllCases() {
     </div>`;
   }).join("");
 
-  if (pageInfoEl) pageInfoEl.textContent = isMobileShell ? `${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total}` : `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`;
+  setElText("allcases-page-info", `Showing ${startIdx + 1}–${Math.min(startIdx + allCasesPageSize, total)} of ${total} cases`);
+  const prevBtn = document.getElementById("allcases-btn-prev");
+  const nextBtn = document.getElementById("allcases-btn-next");
   if (prevBtn) prevBtn.disabled = currentAllCasesPage <= 1;
   if (nextBtn) nextBtn.disabled = currentAllCasesPage >= totalPages;
+  const buttonsWrap = document.getElementById("allcases-page-buttons");
   if (buttonsWrap) {
     let btnsHtml = "";
     for (let p = 1; p <= totalPages; p++) btnsHtml += `<button class="page-btn ${p === currentAllCasesPage ? 'active' : ''}" onclick="goToAllCasesPage(${p})">${p}</button>`;
@@ -2377,7 +1737,7 @@ function renderAllCases() {
 }
 window.renderAllCases = renderAllCases;
 
-// ── CASE DETAIL ──────────────────────────────────────────────
+// ── CASE DETAIL (INCLUDES INTERNAL GOOGLE DOC ACTION) ─────────
 function renderCaseDetail() {
   const c = selCase;
   if (!c) return;
@@ -2392,8 +1752,13 @@ function renderCaseDetail() {
   const canEdit = isOwner || isGroupAdmin || isShared;
 
   let actionButtons = "";
-  if (canEdit) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit Case</button>`;
-  if (isOwner || isGroupAdmin) actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share</button><button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
+  if (canEdit) {
+    actionButtons += `<button class="btn btn-primary btn-sm" onclick="openGoogleDocModal('${c.id}')"><i class="bi bi-file-earmark-richtext"></i> New Google Doc</button>`;
+    actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit Case</button>`;
+  }
+  if (isOwner || isGroupAdmin) {
+    actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share</button><button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
+  }
   if (isShared && !isOwner && !isGroupAdmin) actionButtons += `<span class="badge" style="background:var(--green-bg);color:var(--green);padding:6px 12px"><i class="bi bi-shield-check"></i> Shared Associate</span>`;
 
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
@@ -2428,29 +1793,18 @@ function renderCaseDetail() {
   if (hearingsEl) {
     const hearingsList = Array.isArray(c.hearings) ? c.hearings : [];
     const deadlinesList = Array.isArray(c.deadlines) ? c.deadlines : [];
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const sortedHearings = [...hearingsList].sort((a, b) => new Date(a.date) - new Date(b.date));
     const sortedDeadlines = [...deadlinesList].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const todayStr = new Date().toISOString().split("T")[0];
 
     let hHtml = `<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px"><i class="bi bi-calendar-event" style="color:var(--gold)"></i> Schedule &amp; Timelines</div>`;
     hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-bank" style="color:var(--green)"></i> Court Hearings (${sortedHearings.length})</div>`;
     hHtml += sortedHearings.length === 0 ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No court appearances on record.</div>`
-      : `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">` + sortedHearings.map(h => {
-        const isPast = h.date < todayStr;
-        return `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${isPast ? 'var(--text-dim)' : 'var(--green)'};border-radius:8px"><div style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)} ${h.time ? '· ' + h.time : ''}</div><div style="font-size:12px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">"${escHtml(h.notes)}"</div>` : ''}</div>`;
-      }).join("") + `</div>`;
+      : `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">` + sortedHearings.map(h => `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${h.date < todayStr ? 'var(--text-dim)' : 'var(--green)'};border-radius:8px"><div style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)} ${h.time ? '· ' + h.time : ''}</div><div style="font-size:12px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">"${escHtml(h.notes)}"</div>` : ''}</div>`).join("") + `</div>`;
 
-    const hasLegacyDue = Boolean(c.docDueDate) && !sortedDeadlines.some(d => d.date === c.docDueDate);
-    const totalDeadlinesCount = sortedDeadlines.length + (hasLegacyDue ? 1 : 0);
-    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document Deadlines (${totalDeadlinesCount})</div>`;
-    if (totalDeadlinesCount === 0) hHtml += `<div style="font-size:12px;color:var(--text-muted)">No filing deadlines logged.</div>`;
-    else {
-      hHtml += `<div style="display:flex;flex-direction:column;gap:8px">`;
-      if (hasLegacyDue) hHtml += `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px"><div style="font-weight:700;font-size:12.5px">${formatDate(c.docDueDate)}</div><div style="font-size:12px;color:var(--gold-light)">${escHtml(c.docType || 'Formal Pleading')}</div></div>`;
-      sortedDeadlines.forEach(d => { hHtml += `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px"><div style="font-weight:700;font-size:12.5px">${formatDate(d.date)}</div><div style="font-size:12px;color:var(--gold-light)">${escHtml(d.subtype || d.title || 'Pleading')}</div>${d.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">"${escHtml(d.notes)}"</div>` : ''}</div>`; });
-      hHtml += `</div>`;
-    }
+    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document Deadlines (${sortedDeadlines.length})</div>`;
+    hHtml += sortedDeadlines.length === 0 ? `<div style="font-size:12px;color:var(--text-muted)">No filing deadlines logged.</div>`
+      : `<div style="display:flex;flex-direction:column;gap:8px">` + sortedDeadlines.map(d => `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px"><div style="font-weight:700;font-size:12.5px">${formatDate(d.date)}</div><div style="font-size:12px;color:var(--gold-light)">${escHtml(d.subtype || d.title || 'Pleading')}</div>${d.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">"${escHtml(d.notes)}"</div>` : ''}</div>`).join("") + `</div>`;
     hearingsEl.innerHTML = hHtml;
   }
 
@@ -2524,8 +1878,7 @@ function renderQuickAccess() {
   const ql = document.getElementById("quick-list");
   if (!qa || !ql) return;
   const u = window._currentUser || window._auth?.currentUser;
-  const userEmail = (u?.email || "").toLowerCase();
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail)) : null;
+  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   const visible = (myProf && myProf.role === "developer") ? profiles.filter(p => p.role === "developer") : profiles.filter(p => p.role !== "developer");
   if (visible.length === 0) { qa.style.display = "none"; return; }
   qa.style.display = "block";
@@ -2540,15 +1893,10 @@ window.openCase = openCase;
 function renderSidebarUser() {
   const chip = document.getElementById("sidebar-user-chip");
   const adminSection = document.getElementById("admin-sidebar-section");
-  const mobileAdminCard = document.getElementById("mobile-admin-portal-card");
-  const mobileWelcome = document.getElementById("mobile-welcome-name");
-  const isMobileShell = !!document.getElementById("mobile-shell");
-
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) {
     if (chip) chip.style.display = "none";
     if (adminSection) adminSection.style.display = "none";
-    if (mobileAdminCard) mobileAdminCard.style.display = "none";
     return;
   }
 
@@ -2557,34 +1905,20 @@ function renderSidebarUser() {
   const displayName = myProf?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
   const displayRole = myProf?.role || "Attorney";
 
-  if (mobileWelcome) mobileWelcome.textContent = `Hello, ${displayName}`;
-
   if (chip) {
-    if (isMobileShell) {
-      chip.innerHTML = `
-        ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 40, myProf?.photoUrl || u.photoURL || null)}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
-          <div style="font-size:11.5px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)} · Tap for Settings</div>
-        </div>
-        <i class="bi bi-chevron-right" style="color:var(--text-dim)"></i>`;
-    } else {
-      chip.innerHTML = `
-        ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 30, myProf?.photoUrl || u.photoURL || null)}
-        <div class="user-meta" style="min-width:0;flex:1">
-          <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
-          <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)}</div>
-        </div>`;
-    }
+    chip.innerHTML = `
+      ${avatarDiv(displayName, myProf?.avatarColor || "#c9a84c", 30, myProf?.photoUrl || u.photoURL || null)}
+      <div class="user-meta" style="min-width:0;flex:1">
+        <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayName)}</div>
+        <div style="font-size:10px;color:var(--gold);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(displayRole)}</div>
+      </div>`;
     chip.style.display = "flex";
-    chip.setAttribute("data-tooltip", `${displayName} · My Settings`);
+    chip.setAttribute("data-tooltip", `${displayName} · Profile Settings`);
   }
 
   const isAdmin = (myProf && myProf.role === "admin") || (typeof ADMIN_EMAILS !== "undefined" && ADMIN_EMAILS.some(e => e.toLowerCase() === userEmail));
   const isDev = myProf && myProf.role === "developer";
-  const hasAdminAccess = isAdmin || isDev;
-  if (adminSection) adminSection.style.display = hasAdminAccess ? "block" : "none";
-  if (mobileAdminCard) mobileAdminCard.style.display = hasAdminAccess ? "block" : "none";
+  if (adminSection) adminSection.style.display = (isAdmin || isDev) ? "block" : "none";
 }
 window.renderSidebarUser = renderSidebarUser;
 
@@ -2646,7 +1980,7 @@ window.updateAllFilterDropdowns = updateAllFilterDropdowns;
 window.refreshFilterTypes = refreshFilterTypes;
 window.onFilterCategoryChange = onFilterCategoryChange;
 
-// ── PERSONAL SETTINGS ────────────────────────────────────────
+// ── SEPARATED PROFILE SETTINGS (Name, Number, Pfp, Description) ──
 let settingsPhotoDataUrl = null;
 
 function renderMyProfile() {
@@ -2659,15 +1993,26 @@ function renderMyProfile() {
   setElVal("setting-name", myProf.name || "");
   setElVal("setting-role", myProf.role || "Attorney");
   setElVal("setting-contact", myProf.contact || "");
-  setElVal("setting-email", u.email || "");
-  setElVal("setting-password", "");
-  setElVal("setting-current-password", "");
-  const reauthEl = document.getElementById("setting-reauth-panel");
-  if (reauthEl) reauthEl.style.display = "none";
+  setElVal("setting-description", myProf.description || "");
 
   settingsPhotoDataUrl = myProf.photoUrl || null;
   if (settingsPhotoDataUrl) showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
   else resetSettingsPhotoUpload();
+}
+window.renderMyProfile = renderMyProfile;
+
+// ── SETTINGS ACCORDIONS (Accessibility, Sounds, Security & Update Credentials) ──
+function renderSettingsView() {
+  initAccessibilityAndSounds();
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u) return;
+  const userEmail = (u.email || "").toLowerCase();
+  const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === userEmail));
+
+  setElVal("setting-email", u.email || "");
+  setElVal("setting-password", "");
+  setElVal("setting-confirm-password", "");
+  setElVal("setting-current-password", "");
 
   const statusEl = document.getElementById("settings-drive-status");
   const btn = document.getElementById("settings-connect-drive-btn");
@@ -2683,7 +2028,7 @@ function renderMyProfile() {
     } else {
       statusEl.className = "drive-status-chip disconnected";
       statusEl.innerHTML = `<i class="bi bi-circle-fill" style="color:var(--amber)"></i> Not Connected`;
-      btnText.textContent = "Connect Google Drive"; btn.classList.remove("connected"); btn.disabled = false;
+      btnText.textContent = "Connect Google Account"; btn.classList.remove("connected"); btn.disabled = false;
       if (disconnectBtn) disconnectBtn.classList.add("hidden");
     }
   }
@@ -2691,7 +2036,7 @@ function renderMyProfile() {
   const tfaBadge = document.getElementById("setting-2fa-status-badge");
   const tfaBtn = document.getElementById("setting-2fa-action-btn");
   const tfaBackupWrap = document.getElementById("setting-2fa-backup-wrap");
-  if (tfaBadge && tfaBtn) {
+  if (tfaBadge && tfaBtn && myProf) {
     if (myProf.twoFactorEnabled) {
       tfaBadge.className = "badge"; tfaBadge.style.background = "var(--green-bg)"; tfaBadge.style.color = "var(--green)";
       tfaBadge.innerHTML = `<i class="bi bi-shield-check"></i> 2FA Active`;
@@ -2707,7 +2052,7 @@ function renderMyProfile() {
     }
   }
 }
-window.renderMyProfile = renderMyProfile;
+window.renderSettingsView = renderSettingsView;
 
 async function connectDriveFromSettings() {
   const btn = document.getElementById("settings-connect-drive-btn");
@@ -2717,7 +2062,7 @@ async function connectDriveFromSettings() {
   try {
     await promptDriveAuth(true);
     showToast("Google Drive connected successfully!");
-    renderMyProfile(); updateWorkspaceStatus(false);
+    renderSettingsView(); updateWorkspaceStatus(false);
     const u = window._currentUser || window._auth?.currentUser;
     const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
     if (myProf && !myProf.driveFolderId) {
@@ -2729,7 +2074,7 @@ async function connectDriveFromSettings() {
       }
     }
   } catch (err) {
-    if (btnText) btnText.textContent = "Connect Google Drive";
+    if (btnText) btnText.textContent = "Connect Google Account";
     btn.disabled = false;
     showToast("Drive connection failed: " + err.message, "error");
   }
@@ -2744,7 +2089,7 @@ function showSettingsPhotoPreview(url, name, role) {
   if (wrap) wrap.style.display = "flex";
   if (img) img.src = url;
   setElText("setting-name-preview", name || "Attorney Name");
-  setElText("setting-role-preview", role || "Role");
+  setElText("setting-role-preview", role || "Attorney");
 }
 function resetSettingsPhotoUpload() {
   const dz = document.getElementById("setting-photo-dropzone");
@@ -2773,14 +2118,18 @@ async function saveUserSettings() {
   if (!u) return;
   const myProf = profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
   if (!myProf) return;
+
   const name = (document.getElementById("setting-name")?.value || "").trim();
-  const role = (document.getElementById("setting-role")?.value || "").trim();
   const contact = (document.getElementById("setting-contact")?.value || "").trim();
-  if (!name || !role) { showToast("Display Name and Role are required.", "error"); return; }
+  const description = (document.getElementById("setting-description")?.value || "").trim();
+  const role = (document.getElementById("setting-role")?.value || myProf.role || "Attorney").trim();
+
+  if (!name) { showToast("Display Name is required.", "error"); return; }
   if (contact && !isValidMobile(contact)) { showToast("Contact number must be exactly 11 digits.", "error"); return; }
-  const upd = { name, role, contact };
+
+  const upd = { name, contact, description, role };
   try {
-    showToast("Saving settings...");
+    showToast("Saving profile settings...");
     if (settingsPhotoDataUrl && settingsPhotoDataUrl.startsWith("data:") && hasValidToken()) {
       if (myProf.photoFileId) await deleteDriveFile(myProf.photoFileId).catch(() => {});
       const { fileId, thumbnailUrl } = await uploadProfilePhotoToDrive(settingsPhotoDataUrl, myProf.driveFolderId || null, name);
@@ -2795,40 +2144,53 @@ async function saveUserSettings() {
     showToast("Profile settings updated!");
     renderMyProfile(); renderSidebarUser(); updateWorkspaceStatus(false);
   } catch (err) {
-    showToast("Failed to save settings: " + err.message, "error");
+    showToast("Failed to save profile settings: " + err.message, "error");
   }
 }
 
+// ── FIXED UPDATE CREDENTIALS (ALWAYS-VISIBLE CURRENT PASSWORD + CONFIRM) ──
 async function saveSecuritySettings() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
+
+  const currentPass = document.getElementById("setting-current-password")?.value || "";
   const email = (document.getElementById("setting-email")?.value || "").trim();
   const pass = document.getElementById("setting-password")?.value || "";
-  const currentPass = document.getElementById("setting-current-password")?.value || "";
-  if (email === u.email && !pass) { showToast("No security modifications requested."); return; }
-  if (email && !isValidEmail(email)) { showToast("Email must be @gmail.com, @outlook.com, or @yahoo.com.", "error"); return; }
-  if (pass && pass.length < 6) { showToast("Password must be at least 6 characters.", "error"); return; }
+  const confirmPass = document.getElementById("setting-confirm-password")?.value || "";
 
-  const reauthPanel = document.getElementById("setting-reauth-panel");
-  if (reauthPanel && reauthPanel.style.display === "none") {
-    reauthPanel.style.display = "block";
-    showToast("Enter your current password to verify identity.", "error");
+  if (!email) { showToast("Sign-In Email is required.", "error"); return; }
+  if (!isValidEmail(email)) { showToast("Email must be @gmail.com, @outlook.com, or @yahoo.com.", "error"); return; }
+
+  const emailChanged = email.toLowerCase() !== (u.email || "").toLowerCase();
+  if (!emailChanged && !pass) { showToast("No email or password changes entered."); return; }
+
+  if (pass) {
+    if (pass.length < 6) { showToast("New password must be at least 6 characters.", "error"); return; }
+    if (confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
+  }
+
+  if (!currentPass) {
+    showToast("Enter your Current Password to verify identity before updating credentials.", "error");
+    document.getElementById("setting-current-password")?.focus();
     return;
   }
-  if (!currentPass) { showToast("Please enter your current password to proceed.", "error"); return; }
+
   try {
     showToast("Verifying credentials...");
     await window._fbReauth(u, window._fbEmailCred(u.email, currentPass));
-    if (email !== u.email) {
+    if (emailChanged) {
       await window._fbUpdateEmail(u, email);
-      const myProf = profiles.find(p => p.ownerUid === u.uid);
+      const myProf = profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase()));
       if (myProf) await dbUpdateProfile(myProf.id, { email });
     }
     if (pass) await window._fbUpdatePassword(u, pass);
     showToast("Credentials updated successfully!");
-    if (reauthPanel) reauthPanel.style.display = "none";
+    setElVal("setting-current-password", "");
+    setElVal("setting-password", "");
+    setElVal("setting-confirm-password", "");
+    document.getElementById("password-requirements").style.display = "none";
   } catch (err) {
-    showToast("Verification failed: " + err.message, "error");
+    showToast("Credential update failed: " + err.message, "error");
   }
 }
 window.saveUserSettings = saveUserSettings;
@@ -2842,7 +2204,7 @@ async function handleLogout() {
       await window._fbSignOut(window._auth);
       window.location.replace("login.html");
     }
-  } catch (err) { console.error("Signout error:", err); }
+  } catch (err) {}
 }
 window.handleLogout = handleLogout;
 
@@ -2857,14 +2219,8 @@ function parseGoogleDateTime(isoString) {
     const dateObj = new Date(y, m - 1, d);
     return { dateStr: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: "All Day", dateObj, isAllDay: true };
   }
-  const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
-  if (!match) {
-    const d = new Date(isoString);
-    return { dateStr: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }), dateObj: d, isAllDay: false };
-  }
-  const dateObj = new Date(+match[1], +match[2] - 1, +match[3], +match[4], +match[5]);
-  const hh = +match[4];
-  return { dateStr: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: `${hh % 12 || 12}:${match[5]} ${hh >= 12 ? "PM" : "AM"}`, dateObj, isAllDay: false };
+  const d = new Date(isoString);
+  return { dateStr: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), timeStr: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }), dateObj: d, isAllDay: false };
 }
 
 window.openCalendarEventModal = function(index) {
@@ -2873,44 +2229,27 @@ window.openCalendarEventModal = function(index) {
   const modal = document.getElementById("calendar-event-modal");
   if (!modal) return;
   const parsedStart = parseGoogleDateTime(ev.start.dateTime || ev.start.date);
-  const parsedEnd = parseGoogleDateTime(ev.end?.dateTime || ev.end?.date);
-  let timeString = parsedStart.dateStr + (parsedStart.isAllDay ? " (All Day)" : ` · ${parsedStart.timeStr}`);
-  if (!parsedStart.isAllDay && ev.end && !parsedEnd.isAllDay) timeString += ` - ${parsedEnd.timeStr}`;
-
-  document.getElementById("cem-title").innerHTML = `<i class="bi bi-calendar-event" style="color:var(--gold);margin-right:6px"></i> ${escHtml(ev.summary || "No Title")}`;
-  document.getElementById("cem-time").textContent = timeString;
-  document.getElementById("cem-location").textContent = ev.location || "No venue specified";
-  document.getElementById("cem-desc").textContent = ev.description || "No description provided.";
+  setElText("cem-title", ev.summary || "No Title");
+  setElText("cem-time", parsedStart.dateStr + (parsedStart.isAllDay ? " (All Day)" : ` · ${parsedStart.timeStr}`));
+  setElText("cem-location", ev.location || "No venue specified");
+  setElText("cem-desc", ev.description || "No description provided.");
   const linkEl = document.getElementById("cem-link");
   if (linkEl) { linkEl.href = ev.htmlLink || "#"; linkEl.style.display = ev.htmlLink ? "inline-flex" : "none"; }
   modal.classList.remove("hidden");
 };
-window.closeCalendarModal = function() { const m = document.getElementById("calendar-event-modal"); if (m) m.classList.add("hidden"); };
+window.closeCalendarModal = () => document.getElementById("calendar-event-modal")?.classList.add("hidden");
 
-// ── COMPACT DASHBOARD SCHEDULE (5 DESKTOP / 4 MOBILE) ────────
+// ── DASHBOARD UPCOMING SCHEDULE ──────────────────────────────
 let activeDashboardAgendaFilter = "all";
 let dashSchedulePage = 1;
+const dashSchedulePageSize = 5;
 
-function getDashSchedulePageSize() {
-  return document.getElementById("mobile-shell") ? 4 : 5;
-}
-
-window.filterDashboardAgenda = function(type) {
-  activeDashboardAgendaFilter = type;
-  dashSchedulePage = 1;
-  renderDashboardCalendarAgenda();
-};
-window.changeDashSchedulePage = function(delta) {
-  dashSchedulePage += delta;
-  renderDashboardCalendarAgenda();
-};
+window.filterDashboardAgenda = (type) => { activeDashboardAgendaFilter = type; dashSchedulePage = 1; renderDashboardCalendarAgenda(); };
+window.changeDashSchedulePage = (delta) => { dashSchedulePage += delta; renderDashboardCalendarAgenda(); };
 
 async function renderDashboardCalendarAgenda() {
   const card = document.getElementById("dash-calendar-card");
   if (!card) return;
-  const isMobileShell = !!document.getElementById("mobile-shell");
-  const dashSchedulePageSize = getDashSchedulePageSize();
-
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const accessibleCases = typeof getAccessibleCases === "function" ? getAccessibleCases() : (cases || []);
@@ -2918,20 +2257,12 @@ async function renderDashboardCalendarAgenda() {
   const agendaItems = [];
 
   accessibleCases.forEach(c => {
-    const hearings = Array.isArray(c.hearings) ? c.hearings : [];
-    hearings.forEach(h => {
+    (c.hearings || []).forEach(h => {
       if (h.date && h.date >= todayStr) agendaItems.push({ id: c.id, type: "hearing", date: h.date, time: h.time || "08:30 AM", title: h.purpose || "Court Hearing", sub: `${c.title} · ${c.venue || "Courtroom"}`, isCase: true, caseId: c.id });
     });
-    if (c.dueDate && c.dueDate >= todayStr && !hearings.some(h => h.date === c.dueDate)) {
-      agendaItems.push({ id: c.id, type: "hearing", date: c.dueDate, time: "08:30 AM", title: "Scheduled Court Appearance", sub: `${c.title} · ${c.venue || "Courtroom"}`, isCase: true, caseId: c.id });
-    }
-    const deadlines = Array.isArray(c.deadlines) ? c.deadlines : [];
-    deadlines.forEach(d => {
+    (c.deadlines || []).forEach(d => {
       if (d.date && d.date >= todayStr) agendaItems.push({ id: c.id, type: "deadline", date: d.date, time: "Filing Deadline", title: d.subtype || d.title || "Formal Pleading", sub: c.title, isCase: true, caseId: c.id });
     });
-    if (c.docDueDate && c.docDueDate >= todayStr && !deadlines.some(d => d.date === c.docDueDate)) {
-      agendaItems.push({ id: c.id, type: "deadline", date: c.docDueDate, time: "Filing Deadline", title: c.docType || "Pleading Due", sub: c.title, isCase: true, caseId: c.id });
-    }
   });
 
   acceptedAppts.forEach(a => {
@@ -2954,7 +2285,6 @@ async function renderDashboardCalendarAgenda() {
   }
 
   agendaItems.sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : (a.time || "").localeCompare(b.time || ""));
-
   const totalHearings = agendaItems.filter(i => i.type === "hearing").length;
   const totalDeadlines = agendaItems.filter(i => i.type === "deadline").length;
   const filtered = activeDashboardAgendaFilter === "all" ? agendaItems : agendaItems.filter(i => i.type === activeDashboardAgendaFilter);
@@ -2986,33 +2316,28 @@ async function renderDashboardCalendarAgenda() {
             <div style="font-size:13.5px;font-weight:800;line-height:1.15">${dObj.getDate()}</div>
           </div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:10.5px;font-weight:700;color:${labelColor};line-height:1.2">${kindLabel}</div>
-            <div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25">${escHtml(item.title)}</div>
-            <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${escHtml(item.sub)}</div>
+            <div style="font-size:10.5px;font-weight:700;color:${labelColor}">${kindLabel}</div>
+            <div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.title)}</div>
+            <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.sub)}</div>
           </div>
         </button>`;
     }).join("");
 
   const endIdx = Math.min(startIdx + dashSchedulePageSize, total);
   card.innerHTML = `
-    <div class="${isMobileShell ? 'card-hdr' : 'dash-panel-header'}">
-      <div class="card-title" style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Upcoming Schedule</div>
-      <button class="btn btn-secondary btn-sm" onclick="navTo('calendar')">${isMobileShell ? 'Calendar →' : 'Full Calendar →'}</button>
+    <div class="dash-panel-header">
+      <div style="font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Upcoming Schedule</div>
+      <button class="btn btn-secondary btn-sm" onclick="navTo('calendar')">Full Calendar →</button>
     </div>
-    <div class="${isMobileShell ? 'pills-scroll' : 'dash-panel-pills'}">
+    <div class="dash-panel-pills">
       <button class="pill-tab ${activeDashboardAgendaFilter === 'all' ? 'active' : ''}" onclick="filterDashboardAgenda('all')">All (${agendaItems.length})</button>
-      <button class="pill-tab ${activeDashboardAgendaFilter === 'hearing' ? 'active' : ''}" onclick="filterDashboardAgenda('hearing')">${isMobileShell ? 'Hearings' : 'Court Hearings'} (${totalHearings})</button>
+      <button class="pill-tab ${activeDashboardAgendaFilter === 'hearing' ? 'active' : ''}" onclick="filterDashboardAgenda('hearing')">Court Hearings (${totalHearings})</button>
       <button class="pill-tab ${activeDashboardAgendaFilter === 'deadline' ? 'active' : ''}" onclick="filterDashboardAgenda('deadline')">Deadlines (${totalDeadlines})</button>
     </div>
-    <div class="${isMobileShell ? '' : 'dash-panel-list'}">${rowsHtml}</div>
-    <div class="pager-bar pagination-bar">
-      <span>${total ? (isMobileShell ? `${startIdx + 1}–${endIdx} of ${total}` : `Showing ${startIdx + 1}–${endIdx} of ${total}`) : '0 items'}</span>
-      ${totalPages > 1 ? `
-        <div class="pager-controls pagination-controls">
-          <button class="page-btn" onclick="changeDashSchedulePage(-1)" ${dashSchedulePage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button>
-          <span style="padding:0 6px;font-weight:600;color:var(--text)">${isMobileShell ? `${dashSchedulePage}/${totalPages}` : `Page ${dashSchedulePage} of ${totalPages}`}</span>
-          <button class="page-btn" onclick="changeDashSchedulePage(1)" ${dashSchedulePage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button>
-        </div>` : `<span>All items shown</span>`}
+    <div class="dash-panel-list">${rowsHtml}</div>
+    <div class="pagination-bar">
+      <span>${total ? `Showing ${startIdx + 1}–${endIdx} of ${total}` : '0 items'}</span>
+      ${totalPages > 1 ? `<div class="pagination-controls"><button class="page-btn" onclick="changeDashSchedulePage(-1)" ${dashSchedulePage <= 1 ? 'disabled' : ''}><i class="bi bi-chevron-left"></i></button><span style="padding:0 6px;font-weight:600">Page ${dashSchedulePage} of ${totalPages}</span><button class="page-btn" onclick="changeDashSchedulePage(1)" ${dashSchedulePage >= totalPages ? 'disabled' : ''}><i class="bi bi-chevron-right"></i></button></div>` : `<span>All items shown</span>`}
     </div>`;
 }
 window.renderDashboardCalendarAgenda = renderDashboardCalendarAgenda;
@@ -3020,26 +2345,20 @@ window.fetchAndRenderGoogleCalendarEvents = renderDashboardCalendarAgenda;
 
 // ── NOTIFICATIONS CENTER ─────────────────────────────────────
 let currentNotifFilter = "all";
-window.filterNotifications = function(cat) { currentNotifFilter = cat; renderNotificationsView(); };
+window.filterNotifications = (cat) => { currentNotifFilter = cat; renderNotificationsView(); };
 
 window.toggleNotifDropdown = function() {
   const dropdown = document.getElementById("notif-dropdown");
   if (!dropdown) return;
   const willOpen = dropdown.classList.contains("hidden");
-  if (willOpen && typeof closeAllSheets === "function") closeAllSheets();
-  dropdown.classList.toggle("hidden");
+  window.closeAllTopPopovers();
   if (willOpen) {
-    const chatPanel = document.getElementById("chat-panel");
-    if (chatPanel && !chatPanel.classList.contains("hidden")) chatPanel.classList.add("hidden");
+    dropdown.classList.remove("hidden");
+    document.getElementById("chat-panel")?.classList.add("hidden");
+    document.body.classList.remove("chat-open");
     renderNotificationsView();
   }
 };
-
-document.addEventListener("click", (e) => {
-  const container = document.getElementById("top-hdr-actions");
-  const dropdown = document.getElementById("notif-dropdown");
-  if (container && dropdown && !container.contains(e.target)) dropdown.classList.add("hidden");
-});
 
 function updateNotificationBadge() {
   const badgeEl = document.getElementById("global-notif-badge");
@@ -3052,15 +2371,14 @@ window.updateNotificationBadge = updateNotificationBadge;
 
 window.handleNotifClick = async function(notifId, type, relatedId, fromUid, fromName) {
   if (notifId) markNotificationRead(notifId);
-  const dropdown = document.getElementById("notif-dropdown");
-  if (dropdown) dropdown.classList.add("hidden");
+  document.getElementById("notif-dropdown")?.classList.add("hidden");
   if ((type === "case_due" || type === "case_share") && relatedId) openCase(relatedId);
   else if (type === "appointment_request") {
     const notif = notifications.find(n => n.id === notifId);
     window.openProposalReviewModal(notif?.caseId || relatedId, notif?.relatedId || relatedId, notifId, false, "");
   } else if ((type === "availability_request" || type === "availability_confirmed") && window._chat) {
-    if (typeof window._chat.toggleDock === "function") window._chat.toggleDock();
-    if (fromUid && typeof window._chat.openConversation === "function") window._chat.openConversation(fromUid, fromName || "Attorney", false);
+    window._chat.toggleDock();
+    if (fromUid) window._chat.openConversation(fromUid, fromName || "Attorney", false);
   }
 };
 
@@ -3079,32 +2397,21 @@ function renderNotificationsView() {
       <button onclick="event.stopPropagation();filterNotifications('appt')" class="pill-tab ${currentNotifFilter==='appt'?'active':''}" style="justify-content:center">Proposals</button>
     </div>`;
 
-  if (filtered.length === 0) {
-    listEl.innerHTML = tabsHtml + `<div class="empty-state" style="padding:20px"><div style="font-size:12px">No notifications found.</div></div>`;
-    return;
-  }
-
-  listEl.innerHTML = tabsHtml + filtered.map(n => {
-    const isUnread = n.status === "unread";
-    const borderAccent = n.severity === "critical" ? "var(--red)" : (n.severity === "warning" ? "var(--amber)" : (isUnread ? "var(--gold)" : "var(--border)"));
-    return `
-      <div class="doc-item" onclick="handleNotifClick('${n.id}','${n.type}','${n.relatedId}','${n.fromUid}','${escHtml(n.fromName)}')" style="border-left:3.5px solid ${borderAccent};cursor:pointer;padding:10px 12px;font-size:12px">
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;color:var(--text)">${escHtml(n.title)}</div>
-          <div style="font-size:11.5px;color:var(--text-muted)">${escHtml(n.message)}</div>
-        </div>
-        ${isUnread ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();markNotificationRead('${n.id}')">Read</button>` : ""}
-      </div>`;
-  }).join("");
+  if (filtered.length === 0) { listEl.innerHTML = tabsHtml + `<div class="empty-state" style="padding:20px"><div style="font-size:12px">No notifications found.</div></div>`; return; }
+  listEl.innerHTML = tabsHtml + filtered.map(n => `
+    <div class="doc-item" onclick="handleNotifClick('${n.id}','${n.type}','${n.relatedId}','${n.fromUid}','${escHtml(n.fromName)}')" style="border-left:3.5px solid ${n.status==='unread'?'var(--gold)':'var(--border)'};cursor:pointer;padding:10px 12px;font-size:12px">
+      <div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--text)">${escHtml(n.title)}</div><div style="font-size:11.5px;color:var(--text-muted)">${escHtml(n.message)}</div></div>
+      ${n.status==='unread' ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();markNotificationRead('${n.id}')">Read</button>` : ""}
+    </div>`).join("");
 }
 window.renderNotificationsView = renderNotificationsView;
 
-window.markNotificationRead = async function(id) {
+window.markNotificationRead = async (id) => {
   const notif = notifications.find(n => n.id === id);
   if (notif) { notif.status = "read"; updateNotificationBadge(); renderNotificationsView(); }
   await dbUpdateNotification(id, { status: "read" }).catch(() => {});
 };
-window.markAllNotificationsAsRead = async function() {
+window.markAllNotificationsAsRead = async () => {
   notifications.forEach(n => { n.status = "read"; });
   updateNotificationBadge(); renderNotificationsView();
   for (const n of notifications) await dbUpdateNotification(n.id, { status: "read" }).catch(() => {});
@@ -3126,7 +2433,7 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   if (!targetCase && caseId && window._db && typeof window._fbGetDoc === "function") {
     try {
       const snap = await window._fbGetDoc(window._fbDoc(window._db, "cases", caseId));
-      if (snap && snap.exists()) targetCase = typeof decryptCaseRecordFromFirestore === "function" ? await decryptCaseRecordFromFirestore({ id: snap.id, ...snap.data() }) : { id: snap.id, ...snap.data() };
+      if (snap?.exists()) targetCase = await decryptCaseRecordFromFirestore({ id: snap.id, ...snap.data() });
     } catch (e) {}
   }
 
@@ -3148,60 +2455,51 @@ window.openProposalReviewModal = async function(caseId, apptId, notifId, isGroup
   }
   modal.classList.remove("hidden");
 };
-window.closeProposalReviewModal = function() { const m = document.getElementById("proposal-review-modal"); if (m) m.classList.add("hidden"); };
-
-window.acceptProposalFromDossier = async function() {
-  const { caseId, apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
-  if (apptId && typeof dbUpdateAppointment === "function") await dbUpdateAppointment(apptId, { status: "accepted" }).catch(() => {});
-  if (notifId && typeof dbUpdateNotification === "function") await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" }).catch(() => {});
-  if (window._chat && msgId) await window._chat.respondAvailCard(msgId, isGroup, channelId, "accepted");
-  closeProposalReviewModal();
-  renderAllCases(); renderDashboard();
-};
-window.declineProposalFromDossier = async function() {
+window.closeProposalReviewModal = () => document.getElementById("proposal-review-modal")?.classList.add("hidden");
+window.acceptProposalFromDossier = async () => {
   const { apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
-  if (apptId && typeof dbUpdateAppointment === "function") await dbUpdateAppointment(apptId, { status: "declined" }).catch(() => {});
-  if (notifId && typeof dbUpdateNotification === "function") await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" }).catch(() => {});
+  if (apptId) await dbUpdateAppointment(apptId, { status: "accepted" }).catch(() => {});
+  if (notifId) await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" }).catch(() => {});
+  if (window._chat && msgId) await window._chat.respondAvailCard(msgId, isGroup, channelId, "accepted");
+  closeProposalReviewModal(); renderAllCases(); renderDashboard();
+};
+window.declineProposalFromDossier = async () => {
+  const { apptId, notifId, msgId, isGroup, channelId } = currentDossierContext;
+  if (apptId) await dbUpdateAppointment(apptId, { status: "declined" }).catch(() => {});
+  if (notifId) await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" }).catch(() => {});
   if (window._chat && msgId) await window._chat.respondAvailCard(msgId, isGroup, channelId, "declined");
   closeProposalReviewModal();
 };
-window.promptCancelAppearanceFromDossier = function() { closeProposalReviewModal(); };
 
 let targetApptProfile = null, apptAmPm = "AM", apptPurposeType = "present_hearing";
 window.openAppointmentModal = function(profileId) {
   const p = profiles.find(x => x.id === profileId || x.ownerUid === profileId) || selProfile;
   if (!p) return;
   targetApptProfile = p;
-  const avEl = document.getElementById("appt-recipient-avatar");
-  if (avEl) avEl.innerHTML = avatarDiv(p.name, p.avatarColor, 36, p.photoUrl);
+  document.getElementById("appt-recipient-avatar").innerHTML = avatarDiv(p.name, p.avatarColor, 36, p.photoUrl);
   setElText("appt-recipient-name", p.name);
   setElText("appt-recipient-role", p.role || "Associate Counsel");
-  const caseSel = document.getElementById("appt-case-select");
-  if (caseSel) {
-    const accessible = getAccessibleCases();
-    caseSel.innerHTML = `<option value="">— Select an active docket file (${accessible.length}) —</option>` + accessible.map(c => `<option value="${c.id}">${escHtml(c.title)}</option>`).join("");
-  }
+  const accessible = getAccessibleCases();
+  document.getElementById("appt-case-select").innerHTML = `<option value="">— Select an active docket file (${accessible.length}) —</option>` + accessible.map(c => `<option value="${c.id}">${escHtml(c.title)}</option>`).join("");
   document.getElementById("appointment-modal")?.classList.remove("hidden");
 };
-window.closeAppointmentModal = function() { document.getElementById("appointment-modal")?.classList.add("hidden"); targetApptProfile = null; };
-window.setApptPurpose = function(btn, type) { apptPurposeType = type; document.querySelectorAll("#appt-purpose-chips button").forEach(b => b.classList.remove("active")); btn.classList.add("active"); };
-window.onApptCaseSelectChange = function(caseId) { const c = getAccessibleCases().find(x => x.id === caseId); if (c) setElVal("appt-venue", c.venue || ""); };
-window.onApptHearingStageSync = function() {};
-window.setApptAmPm = function(val) { apptAmPm = val; };
-window.submitAppointmentRequest = async function() {
+window.closeAppointmentModal = () => { document.getElementById("appointment-modal")?.classList.add("hidden"); targetApptProfile = null; };
+window.setApptPurpose = (btn, type) => { apptPurposeType = type; document.querySelectorAll("#appt-purpose-chips button").forEach(b => b.classList.remove("active")); btn.classList.add("active"); };
+window.onApptCaseSelectChange = (caseId) => { const c = getAccessibleCases().find(x => x.id === caseId); if (c) setElVal("appt-venue", c.venue || ""); };
+window.onApptHearingStageSync = () => {};
+window.setApptAmPm = (val) => { apptAmPm = val; };
+window.submitAppointmentRequest = async () => {
   const date = document.getElementById("appt-date")?.value;
   const time = document.getElementById("appt-custom-time")?.value || "08:30";
-  if (!date) { showToast("Please pick a date.", "error"); return; }
+  if (!date) return showToast("Please pick a date.", "error");
   const u = window._currentUser || window._auth?.currentUser;
   if (!u || !targetApptProfile) return;
   await dbAddAppointment({ title: "Case Appearance Request", date, time: `${time} ${apptAmPm}`, venue: document.getElementById("appt-venue")?.value || "", description: document.getElementById("appt-desc")?.value || "", requesterUid: u.uid, targetUid: targetApptProfile.ownerUid || targetApptProfile.id, ownerUid: u.uid, status: "pending" });
   showToast("Schedule proposal sent!");
   closeAppointmentModal();
 };
-window.acceptAppointmentRequest = async function(notifId, apptId) { await dbUpdateAppointment(apptId, { status: "accepted" }); await dbUpdateNotification(notifId, { appointmentStatus: "accepted", status: "read" }); renderNotificationsView(); };
-window.declineAppointmentRequest = async function(notifId, apptId) { await dbUpdateAppointment(apptId, { status: "declined" }); await dbUpdateNotification(notifId, { appointmentStatus: "declined", status: "read" }); renderNotificationsView(); };
 
-// ── CASE FORM SELECTS & DRIVE EXPLORER ───────────────────────
+// ── CASE FORM SELECTS & DRIVE EXPLORER (SUPPORTS GOOGLE DOCS) ──
 function populateCaseSelects(isEdit = false) {
   const catSel = document.getElementById("cf-category");
   const statusSel = document.getElementById("cf-status");
@@ -3230,7 +2528,7 @@ window.loadExplorerFiles = async function() {
   renderExplorerBreadcrumbs();
   if (nativeBtn) nativeBtn.href = (currentExplorerFolderId && currentExplorerFolderId !== "root") ? `https://drive.google.com/drive/folders/${currentExplorerFolderId}` : "https://drive.google.com";
   if (!hasValidToken()) {
-    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:28px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div><div style="font-size:13px;font-weight:600;margin-top:6px">Google Drive Not Connected</div><div style="font-size:11.5px;margin-top:4px">Connect Google Drive in My Settings to browse case files.</div></div>`;
+    listEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:28px;color:var(--gold)"><i class="bi bi-cloud-slash"></i></div><div style="font-size:13px;font-weight:600;margin-top:6px">Google Drive Not Connected</div><div style="font-size:11.5px;margin-top:4px">Connect Google Account in Settings or the top Google button.</div></div>`;
     if (emptyEl) emptyEl.classList.add("hidden");
     return;
   }
@@ -3243,8 +2541,13 @@ window.loadExplorerFiles = async function() {
     if (emptyEl) emptyEl.classList.add("hidden");
     listEl.innerHTML = files.map(f => {
       const isFolder = f.mimeType === "application/vnd.google-apps.folder";
-      const icon = isFolder ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>` : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`;
-      const action = isFolder ? `onclick="navigateIntoFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')"` : `onclick="window.open('${f.webViewLink}','_blank')"`;
+      const isGDoc   = f.mimeType === "application/vnd.google-apps.document";
+      const icon = isFolder
+        ? `<i class="bi bi-folder-fill" style="color:var(--gold);font-size:32px"></i>`
+        : (isGDoc ? `<i class="bi bi-file-earmark-richtext-fill" style="color:var(--gold);font-size:32px"></i>` : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`);
+      const action = isFolder
+        ? `onclick="navigateIntoFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')"`
+        : (isGDoc ? `onclick="openGoogleDocModal('', '${f.id}')"` : `onclick="window.open('${f.webViewLink}','_blank')"`);
       return `<div style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer"><div ${action}><div style="margin-bottom:8px">${icon}</div><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.name)}</div></div><button onclick="event.stopPropagation();adminDeleteDriveExplorerFile('${f.id}','${f.name.replace(/'/g,"\\'")}')" style="position:absolute;top:6px;right:6px;color:var(--red);font-size:13px"><i class="bi bi-trash3"></i></button></div>`;
     }).join("");
   } catch (err) {
@@ -3252,25 +2555,22 @@ window.loadExplorerFiles = async function() {
   }
 };
 
-window.adminDeleteDriveExplorerFile = function(fileId, fileName) {
+window.adminDeleteDriveExplorerFile = (fileId, fileName) => {
   window.openConfirmModal({ icon: "bi-trash3", title: "Delete from Firm Drive?", body: `Delete <strong>"${escHtml(fileName)}"</strong> from Google Drive?`, confirmText: "Delete", confirmStyle: "btn-danger", onConfirm: async () => { await deleteDriveFile(fileId); loadExplorerFiles(); } });
 };
-window.navigateIntoFolder = function(id, name) { explorerBreadcrumbs.push({ id, name }); currentExplorerFolderId = id; loadExplorerFiles(); };
-window.navigateBreadcrumb = function(index) { explorerBreadcrumbs = explorerBreadcrumbs.slice(0, index + 1); currentExplorerFolderId = explorerBreadcrumbs[index].id; loadExplorerFiles(); };
+window.navigateIntoFolder = (id, name) => { explorerBreadcrumbs.push({ id, name }); currentExplorerFolderId = id; loadExplorerFiles(); };
+window.navigateBreadcrumb = (index) => { explorerBreadcrumbs = explorerBreadcrumbs.slice(0, index + 1); currentExplorerFolderId = explorerBreadcrumbs[index].id; loadExplorerFiles(); };
 function renderExplorerBreadcrumbs() {
   const el = document.getElementById("mydrive-breadcrumbs");
-  if (!el) return;
-  el.innerHTML = explorerBreadcrumbs.map((b, i) => i === explorerBreadcrumbs.length - 1 ? `<span style="color:var(--gold)"><i class="bi bi-folder-fill"></i> ${escHtml(b.name)}</span>` : `<span onclick="navigateBreadcrumb(${i})" style="cursor:pointer;text-decoration:underline">${escHtml(b.name)}</span> / `).join("");
+  if (el) el.innerHTML = explorerBreadcrumbs.map((b, i) => i === explorerBreadcrumbs.length - 1 ? `<span style="color:var(--gold)"><i class="bi bi-folder-fill"></i> ${escHtml(b.name)}</span>` : `<span onclick="navigateBreadcrumb(${i})" style="cursor:pointer;text-decoration:underline">${escHtml(b.name)}</span> / `).join("");
 }
-window.openMyDriveFolder = function() {
-  const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
-  if (myProf?.driveFolderId) window.open(`https://drive.google.com/drive/folders/${myProf.driveFolderId}`, "_blank");
-  else showToast("No Drive folder linked yet.", "error");
-};
 
 window.openFilePreview = function(doc) {
   if (!doc) return;
+  if (doc.driveFileId && ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document"))) {
+    openGoogleDocModal(selCase?.id || "", doc.driveFileId);
+    return;
+  }
   if (doc.driveLink) { window.open(doc.driveLink, "_blank"); return; }
   if (doc._localTempId && typeof pendingLocalFiles !== "undefined" && pendingLocalFiles[doc._localTempId]) {
     window.open(URL.createObjectURL(pendingLocalFiles[doc._localTempId]), "_blank");
@@ -3278,11 +2578,13 @@ window.openFilePreview = function(doc) {
   }
   showToast("File link not found.", "error");
 };
-window.closeFilePreview = function() { const m = document.getElementById("file-preview-modal"); if (m) m.style.display = "none"; };
+window.closeFilePreview = () => { const m = document.getElementById("file-preview-modal"); if (m) m.style.display = "none"; };
 
 window.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
     if (typeof renderSidebarUser === "function") renderSidebarUser();
+    if (typeof renderGoogleStatusPopover === "function") renderGoogleStatusPopover();
+    if (typeof renderOnlineUsersPopover === "function") renderOnlineUsersPopover();
     if (typeof checkOnboardingSecurityStatus === "function") checkOnboardingSecurityStatus();
   }, 300);
 });
