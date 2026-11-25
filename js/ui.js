@@ -466,7 +466,7 @@ function updateGdocCaseBindingUI() {
     } else {
       savedInd.textContent = targetCase
         ? `Will save into "${targetCase.title}" Drive folder & case files`
-        : "Not yet created in Google Docs";
+        : "Select a case above or click Create & Open Google Doc";
     }
   }
 
@@ -620,7 +620,7 @@ window.launchLiveGoogleDocForCase = async function() {
   }
 };
 
-window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
+window.openGoogleDocModal = async function(caseId = "", existingDocId = null) {
   const modal = document.getElementById("gdoc-modal");
   if (!modal) return;
   activeInternalDocId = existingDocId || null;
@@ -653,6 +653,9 @@ window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
         if (canvasEl && docData.text) canvasEl.innerText = docData.text;
       }).catch(() => {});
     }
+    updateGdocCaseBindingUI();
+    switchGdocEditorMode("live");
+    modal.classList.remove("hidden");
   } else {
     if (frame) frame.src = "about:blank";
     if (titleInp) {
@@ -661,11 +664,15 @@ window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
     if (canvasEl) {
       canvasEl.innerText = buildGdocTemplateText("pleading", targetCase);
     }
-  }
+    updateGdocCaseBindingUI();
+    switchGdocEditorMode("live");
+    modal.classList.remove("hidden");
 
-  updateGdocCaseBindingUI();
-  switchGdocEditorMode("live");
-  modal.classList.remove("hidden");
+    // If opened directly from a specific case & Google is connected, launch real Google Docs immediately!
+    if (targetCase && connected) {
+      await launchLiveGoogleDocForCase();
+    }
+  }
 };
 
 window.closeGoogleDocModal = function() {
@@ -860,6 +867,7 @@ document.addEventListener("keydown", (e) => {
     document.getElementById("diagnostic-modal")?.classList.add("hidden");
     document.getElementById("date-schedule-modal")?.classList.add("hidden");
     document.getElementById("gdoc-modal")?.classList.add("hidden");
+    closeFilePreview();
     if (typeof closeAllSheets === "function") closeAllSheets();
   }
 });
@@ -2470,11 +2478,14 @@ function renderCaseDetail() {
   } else {
     docsHtml += docs.map((doc, idx) => `
       <div class="doc-item">
-        <div>
+        <div style="min-width:0;flex:1">
           <span onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' style="cursor:pointer;color:var(--gold);font-weight:600;text-decoration:underline">${escHtml(doc.name)}</span>
           <div style="font-size:11.5px;color:var(--text-dim)">${doc.size} · ${doc.date} ${doc.fileType ? '· ' + doc.fileType : ''}</div>
         </div>
-        ${canEdit ? `<button style="color:var(--red);font-size:15px" onclick="removeDocFromCase(${idx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <button type="button" class="btn btn-secondary btn-sm" onclick='openFilePreview(${JSON.stringify(doc).replace(/'/g, "&#39;")})' title="View inside system"><i class="bi bi-eye"></i> View</button>
+          ${canEdit ? `<button style="color:var(--red);font-size:15px;padding:4px" onclick="removeDocFromCase(${idx})" title="Delete File"><i class="bi bi-trash3-fill"></i></button>` : ""}
+        </div>
       </div>`).join("");
   }
   const docsEl = document.getElementById("cd-docs");
@@ -3206,7 +3217,7 @@ window.loadExplorerFiles = async function() {
         : (isGDoc ? `<i class="bi bi-file-earmark-richtext-fill" style="color:var(--gold);font-size:32px"></i>` : `<i class="bi bi-file-earmark-text-fill" style="color:var(--gold);font-size:32px"></i>`);
       const action = isFolder
         ? `onclick="navigateIntoFolder('${f.id}','${f.name.replace(/'/g,"\\'")}')"`
-        : (isGDoc ? `onclick="openGoogleDocModal('', '${f.id}')"` : `onclick="window.open('${f.webViewLink}','_blank')"`);
+        : (isGDoc ? `onclick="openGoogleDocModal('', '${f.id}')"` : `onclick='openFilePreview(${JSON.stringify({ name: f.name, driveFileId: f.id, driveLink: f.webViewLink }).replace(/'/g,"&#39;")})'`);
       return `<div style="position:relative;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 10px;text-align:center;cursor:pointer"><div ${action}><div style="margin-bottom:8px">${icon}</div><div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.name)}</div></div><button onclick="event.stopPropagation();adminDeleteDriveExplorerFile('${f.id}','${f.name.replace(/'/g,"\\'")}')" style="position:absolute;top:6px;right:6px;color:var(--red);font-size:13px"><i class="bi bi-trash3"></i></button></div>`;
     }).join("");
   } catch (err) {
@@ -3235,20 +3246,166 @@ function renderExplorerBreadcrumbs() {
   if (el) el.innerHTML = explorerBreadcrumbs.map((b, i) => i === explorerBreadcrumbs.length - 1 ? `<span style="color:var(--gold)"><i class="bi bi-folder-fill"></i> ${escHtml(b.name)}</span>` : `<span onclick="navigateBreadcrumb(${i})" style="cursor:pointer;text-decoration:underline">${escHtml(b.name)}</span> / `).join("");
 }
 
-window.openFilePreview = function(doc) {
+// ═══════════════════════════════════════════════════════════════
+//  IN-APP FILE PREVIEW MODAL + EDIT IN REAL GOOGLE DOCS
+// ═══════════════════════════════════════════════════════════════
+let _previewingDoc = null;
+let _previewBlobUrl = null;
+
+function renderBlobInsidePreviewModal(blob, fileName) {
+  const bodyEl = document.getElementById("fpm-body");
+  const dlEl   = document.getElementById("fpm-download");
+  if (!bodyEl) return;
+
+  if (_previewBlobUrl) {
+    try { URL.revokeObjectURL(_previewBlobUrl); } catch (e) {}
+    _previewBlobUrl = null;
+  }
+
+  _previewBlobUrl = URL.createObjectURL(blob);
+  if (dlEl) {
+    dlEl.href = _previewBlobUrl;
+    dlEl.download = fileName || "document";
+    dlEl.style.display = "inline-flex";
+  }
+
+  const lower = (fileName || "").toLowerCase();
+  const mime = (blob.type || "").toLowerCase();
+
+  if (mime.includes("pdf") || lower.endsWith(".pdf")) {
+    bodyEl.innerHTML = `<iframe src="${_previewBlobUrl}#toolbar=1" style="width:100%;max-width:1050px;height:100%;border:none;border-radius:10px;background:#fff"></iframe>`;
+  } else if (mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(lower)) {
+    bodyEl.innerHTML = `<img src="${_previewBlobUrl}" alt="${escHtml(fileName)}" style="max-width:95%;max-height:95%;object-fit:contain;border-radius:10px;box-shadow:var(--shadow)"/>`;
+  } else if (mime.startsWith("text/") || /\.(txt|md|csv|json)$/i.test(lower)) {
+    blob.text().then(txt => {
+      bodyEl.innerHTML = `<pre style="width:100%;max-width:860px;max-height:100%;overflow:auto;background:var(--surface);color:var(--text);padding:24px;border-radius:12px;border:1px solid var(--border);white-space:pre-wrap;font-family:inherit;font-size:13.5px;line-height:1.65">${escHtml(txt)}</pre>`;
+    });
+  } else if (_previewingDoc?.driveFileId) {
+    bodyEl.innerHTML = `<iframe src="https://drive.google.com/file/d/${_previewingDoc.driveFileId}/preview" style="width:100%;max-width:1050px;height:100%;border:none;border-radius:10px;background:#fff"></iframe>`;
+  } else {
+    bodyEl.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:32px;background:var(--surface);border-radius:14px;border:1px solid var(--border)">
+      <div style="font-size:32px;color:var(--gold);margin-bottom:8px"><i class="bi bi-file-earmark-text"></i></div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">${escHtml(fileName)}</div>
+      <div style="font-size:12.5px;margin-bottom:14px">Click <strong>Edit in Google Docs</strong> above to convert and edit this document inside the system, or download it.</div>
+    </div>`;
+  }
+}
+
+window.openFilePreview = async function(doc) {
   if (!doc) return;
   if (doc.driveFileId && ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document"))) {
-    openGoogleDocModal(selCase?.id || "", doc.driveFileId);
-    return;
+    if (typeof openGoogleDocModal === "function") {
+      openGoogleDocModal(selCase?.id || "", doc.driveFileId);
+      return;
+    }
   }
-  if (doc.driveLink) { window.open(doc.driveLink, "_blank"); return; }
+
+  const modal  = document.getElementById("file-preview-modal");
+  const titleEl = document.getElementById("fpm-title");
+  const bodyEl = document.getElementById("fpm-body");
+  const dlEl   = document.getElementById("fpm-download");
+  const editBtn = document.getElementById("fpm-edit-btn");
+
+  if (!modal || !bodyEl) return;
+
+  _previewingDoc = doc;
+  if (titleEl) titleEl.textContent = doc.name || "Document Preview";
+  if (editBtn) editBtn.style.display = document.getElementById("gdoc-modal") ? "inline-flex" : "none";
+  if (dlEl) {
+    dlEl.href = doc.driveLink || "#";
+    dlEl.download = doc.name || "document";
+  }
+
+  modal.style.display = "flex";
+
+  // 1. Local unsynced file
   if (doc._localTempId && typeof pendingLocalFiles !== "undefined" && pendingLocalFiles[doc._localTempId]) {
-    window.open(URL.createObjectURL(pendingLocalFiles[doc._localTempId]), "_blank");
+    renderBlobInsidePreviewModal(pendingLocalFiles[doc._localTempId], doc.name);
     return;
   }
-  showToast("File link not found.", "error");
+
+  // 2. Drive file — fetch bytes via OAuth token so it renders cleanly inside the system!
+  if (doc.driveFileId) {
+    if (typeof hasValidToken === "function" && hasValidToken() && typeof fetchDriveFileBlob === "function") {
+      bodyEl.innerHTML = `<div style="text-align:center;color:var(--text)"><span class="spinner"></span><div style="margin-top:12px;font-size:13px;color:var(--text-muted)">Loading file inside Simando Law…</div></div>`;
+      try {
+        const blob = await fetchDriveFileBlob(doc.driveFileId, doc.name);
+        renderBlobInsidePreviewModal(blob, doc.name);
+        return;
+      } catch (err) {
+        console.warn("Blob preview fallback to Drive preview iframe:", err.message);
+      }
+    }
+    bodyEl.innerHTML = `<iframe src="https://drive.google.com/file/d/${doc.driveFileId}/preview" style="width:100%;max-width:1050px;height:100%;border:none;border-radius:10px;background:#fff"></iframe>`;
+    return;
+  }
+
+  bodyEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px">File preview unavailable.</div>`;
 };
-window.closeFilePreview = () => { const m = document.getElementById("file-preview-modal"); if (m) m.style.display = "none"; };
+
+window.editPreviewedFileInGoogleDocs = async function() {
+  const doc = _previewingDoc;
+  if (!doc) return;
+
+  if (typeof hasValidToken !== "function" || !hasValidToken()) {
+    try { await promptDriveAuth(true); }
+    catch (e) { showToast("Connect Google Account to edit in Google Docs.", "error"); return; }
+  }
+
+  const editBtn = document.getElementById("fpm-edit-btn");
+  if (editBtn) { editBtn.disabled = true; editBtn.textContent = "Converting..."; }
+
+  try {
+    const targetCaseId = selCase?.id || "";
+    const { folderId, targetCase } = await resolveGdocTargetFolder(targetCaseId);
+    const localFile = (doc._localTempId && typeof pendingLocalFiles !== "undefined") ? pendingLocalFiles[doc._localTempId] : null;
+    const source = doc.driveFileId || localFile;
+
+    if (!source) {
+      throw new Error("No editable source found for this file.");
+    }
+
+    const convertedMeta = await convertFileToGoogleDoc(source, doc.name, folderId);
+    cachedDriveGoogleDocs = null;
+
+    if (targetCase) {
+      const baseName = (doc.name || "Document").replace(/\.[^/.]+$/, "");
+      await attachDocEntryToSpecificCase(targetCase, {
+        name: `${baseName} (Google Doc)`,
+        size: "Google Doc",
+        date: new Date().toLocaleDateString(),
+        fileType: doc.fileType || "Outbound",
+        version: "v1.0",
+        driveFileId: convertedMeta.id,
+        driveLink: convertedMeta.webViewLink || `https://docs.google.com/document/d/${convertedMeta.id}/edit`
+      });
+    }
+
+    closeFilePreview();
+    openGoogleDocModal(targetCaseId, convertedMeta.id);
+    showToast(targetCase ? `Opened in Google Docs & saved to "${targetCase.title}"!` : "Opened in Google Docs!");
+  } catch (err) {
+    console.error("editPreviewedFileInGoogleDocs error:", err);
+    showToast("Could not open in Google Docs: " + err.message, "error");
+  } finally {
+    if (editBtn) {
+      editBtn.disabled = false;
+      editBtn.innerHTML = `<i class="bi bi-pencil-square"></i> Edit in Google Docs`;
+    }
+  }
+};
+
+window.closeFilePreview = () => {
+  const m = document.getElementById("file-preview-modal");
+  const bodyEl = document.getElementById("fpm-body");
+  if (m) m.style.display = "none";
+  if (bodyEl) bodyEl.innerHTML = "";
+  if (_previewBlobUrl) {
+    try { URL.revokeObjectURL(_previewBlobUrl); } catch (e) {}
+    _previewBlobUrl = null;
+  }
+  _previewingDoc = null;
+};
 
 window.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
