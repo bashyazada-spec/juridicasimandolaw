@@ -133,6 +133,9 @@ window.connectOrOpenGoogleAction = async function() {
     await promptDriveAuth(true);
     renderGoogleStatusPopover();
     if (typeof updateWorkspaceStatus === "function") updateWorkspaceStatus(false);
+    if (currentView === "allcases" && allCasesActiveTab === "docs") {
+      loadAllCasesGoogleDocs(true);
+    }
     showToast("Google Drive, Docs & Calendar connected!");
   } catch (err) {
     showToast("Google connection failed: " + err.message, "error");
@@ -340,6 +343,7 @@ function initResearchWidgetDrag() {
 
 // ── INTERNAL GOOGLE DOCS WORKSPACE CONTROLLER ────────────────
 let activeInternalDocId = null;
+let cachedDriveGoogleDocs = null;
 
 window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
   const modal = document.getElementById("gdoc-modal");
@@ -458,6 +462,8 @@ window.saveInternalGoogleDoc = async function(exportPdf = false) {
       activeInternalDocId = docMeta.id;
     }
 
+    cachedDriveGoogleDocs = null;
+
     const iframeBtn = document.getElementById("gdoc-open-iframe-btn");
     if (iframeBtn) iframeBtn.style.display = "inline-flex";
 
@@ -496,6 +502,10 @@ window.saveInternalGoogleDoc = async function(exportPdf = false) {
     }
 
     if (currentView === "mydrive" && typeof loadExplorerFiles === "function") loadExplorerFiles();
+    if (currentView === "allcases") {
+      renderAllCases();
+      if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(true);
+    }
     showToast(exportPdf ? `Exported & attached "${attachedEntry.name}"!` : `Saved "${title}" to Google Docs!`);
     if (exportPdf) closeGoogleDocModal();
   } catch (err) {
@@ -1370,7 +1380,7 @@ const DESKTOP_PAGE_META = {
   profiles:      ["Office Attorneys", "Directory of partners and associates in the firm"],
   profileDetail: ["Attorney Profile", "Assigned caseload, practice bio, and contact details"],
   profileForm:   ["Attorney Profile Setup", "Create or edit attorney profile information"],
-  allcases:      ["All Cases", "Search, filter, and open any case record"],
+  allcases:      ["All Cases & Google Docs", "Search, filter, manage cases, and create or edit Google Docs"],
   caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["Profile Settings", "Manage your display name, contact number, profile photo, and practice bio"],
@@ -1451,7 +1461,11 @@ function executeNavigation(view) {
   showView(view);
   if (view === "dashboard")     renderDashboard();
   if (view === "profiles")      renderProfiles();
-  if (view === "allcases")      { if (typeof currentAllCasesPage !== "undefined") currentAllCasesPage = 1; renderAllCases(); }
+  if (view === "allcases") {
+    if (typeof currentAllCasesPage !== "undefined") currentAllCasesPage = 1;
+    renderAllCases();
+    if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(false);
+  }
   if (view === "myprofile")     renderMyProfile();
   if (view === "settings" && typeof renderSettingsView === "function") renderSettingsView();
   if (view === "calendar")      renderCalendarView();
@@ -1459,10 +1473,15 @@ function executeNavigation(view) {
   if (view === "mydrive")       initDriveExplorer();
 }
 
-window.quickFilterCases = (status) => { navTo("allcases"); if (typeof setAllCasesStatusTab === "function") setAllCasesStatusTab(status); };
+window.quickFilterCases = (status) => {
+  if (typeof switchAllCasesTab === "function") switchAllCasesTab("cases");
+  navTo("allcases");
+  if (typeof setAllCasesStatusTab === "function") setAllCasesStatusTab(status);
+};
 window.showView = showView;
 window.navTo = navTo;
 window.executeNavigation = executeNavigation;
+
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
@@ -1565,7 +1584,6 @@ function renderDashProfiles() {
   const isDeveloper = myProf && myProf.role === "developer";
   const isSuperDev = myProf && myProf.role === "superdev";
 
-  // Stealth rule: superdev is only visible if current user is superdev
   let visible = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : (isSuperDev ? profiles : profiles.filter(p => p.role !== "developer" && p.role !== "superdev"));
@@ -1610,7 +1628,6 @@ function renderProfiles() {
   const isDeveloper = myProf && myProf.role === "developer";
   const isSuperDev = myProf && myProf.role === "superdev";
 
-  // Stealth rule: superdev accounts are never shown to admin or attorney or regular dev users
   const visibleProfiles = isDeveloper
     ? profiles.filter(p => p.role === "developer")
     : (isSuperDev ? profiles : profiles.filter(p => p.role !== "developer" && p.role !== "superdev"));
@@ -1822,14 +1839,185 @@ function renderProfileCases() {
 }
 window.renderProfileCases = renderProfileCases;
 
-// ── ALL CASES VIEW ───────────────────────────────────────────
+// ── ALL CASES & COMBINED GOOGLE DOCS VIEW ─────────────────────
 let currentAllCasesPage = 1;
 const allCasesPageSize = 10;
+let allCasesActiveTab = "cases"; // "cases" | "docs"
 
 window.changeAllCasesPage = (delta) => { currentAllCasesPage += delta; renderAllCases(); };
 window.goToAllCasesPage = (pageNum) => { currentAllCasesPage = pageNum; renderAllCases(); };
 window.setAllCasesStatusTab = (status) => { setElVal("ac-status", status); currentAllCasesPage = 1; renderAllCases(); };
 window.resetAllCaseFilters = () => { setElVal("ac-search", ""); setElVal("ac-category", "All"); setElVal("ac-status", "All"); setElVal("ac-type", "All"); setElVal("ac-sort", "asc"); currentAllCasesPage = 1; renderAllCases(); };
+
+window.switchAllCasesTab = function(tab) {
+  allCasesActiveTab = tab === "docs" ? "docs" : "cases";
+  const casesBtn = document.getElementById("ac-mode-cases-btn");
+  const docsBtn  = document.getElementById("ac-mode-docs-btn");
+  if (casesBtn) casesBtn.classList.toggle("active", allCasesActiveTab === "cases");
+  if (docsBtn)  docsBtn.classList.toggle("active", allCasesActiveTab === "docs");
+
+  document.getElementById("ac-cases-controls")?.classList.toggle("hidden", allCasesActiveTab !== "cases");
+  document.getElementById("ac-cases-body")?.classList.toggle("hidden", allCasesActiveTab !== "cases");
+  document.getElementById("ac-docs-controls")?.classList.toggle("hidden", allCasesActiveTab !== "docs");
+  document.getElementById("ac-docs-body")?.classList.toggle("hidden", allCasesActiveTab !== "docs");
+
+  if (allCasesActiveTab === "docs") {
+    loadAllCasesGoogleDocs(false);
+  } else {
+    renderAllCases();
+  }
+};
+
+function populateAllCasesDocsFilter() {
+  const sel = document.getElementById("ac-docs-case-filter");
+  if (!sel) return;
+  const cur = sel.value || "All";
+  const accessible = getAccessibleCases();
+  sel.innerHTML = `<option value="All">All Cases &amp; Standalone Drafts</option>` +
+    `<option value="__standalone__">Standalone Drive Google Docs</option>` +
+    accessible.map(c => `<option value="${c.id}">${escHtml(c.title)}</option>`).join("");
+  const exists = Array.from(sel.options).some(o => o.value === cur);
+  sel.value = exists ? cur : "All";
+}
+
+async function loadAllCasesGoogleDocs(forceSync = false) {
+  populateAllCasesDocsFilter();
+  const listEl = document.getElementById("ac-docs-list");
+  if (!listEl) return;
+
+  if (typeof hasValidToken === "function" && hasValidToken() && (forceSync || cachedDriveGoogleDocs === null)) {
+    listEl.innerHTML = `<div class="card" style="text-align:center;padding:36px"><span class="spinner"></span><div style="font-size:12.5px;color:var(--text-muted);margin-top:10px">Syncing Google Docs from Drive…</div></div>`;
+    try {
+      const q = encodeURIComponent("mimeType='application/vnd.google-apps.document' and trashed=false");
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime,webViewLink)&orderBy=modifiedTime desc&pageSize=50`, {
+        headers: { Authorization: "Bearer " + accessToken }
+      });
+      if (res.ok) {
+        cachedDriveGoogleDocs = (await res.json()).files || [];
+      } else {
+        cachedDriveGoogleDocs = [];
+      }
+    } catch (e) {
+      cachedDriveGoogleDocs = [];
+    }
+  }
+
+  renderAllCasesGoogleDocs();
+}
+window.loadAllCasesGoogleDocs = loadAllCasesGoogleDocs;
+
+function renderAllCasesGoogleDocs() {
+  const listEl = document.getElementById("ac-docs-list");
+  if (!listEl) return;
+
+  const q = (document.getElementById("ac-docs-search")?.value || "").toLowerCase().trim();
+  const caseFilter = document.getElementById("ac-docs-case-filter")?.value || "All";
+  const accessible = getAccessibleCases();
+
+  const mergedMap = new Map();
+
+  // 1. Case-linked Google Docs (and editable drafts stored on cases)
+  accessible.forEach(c => {
+    (c.documents || []).forEach(doc => {
+      const isGDoc = !!(doc.driveFileId && ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document")));
+      if (!isGDoc) return;
+      mergedMap.set(doc.driveFileId, {
+        id: doc.driveFileId,
+        name: (doc.name || "Untitled Google Doc").replace(/\s*\(Google Doc\)$/i, ""),
+        webViewLink: doc.driveLink || `https://docs.google.com/document/d/${doc.driveFileId}/edit`,
+        date: doc.date || "",
+        caseId: c.id,
+        caseTitle: c.title,
+        caseNumber: c.caseNumber || "",
+        fileType: doc.fileType || "Outbound"
+      });
+    });
+  });
+
+  // 2. Live Google Docs from user's Drive
+  if (Array.isArray(cachedDriveGoogleDocs)) {
+    cachedDriveGoogleDocs.forEach(f => {
+      if (mergedMap.has(f.id)) {
+        const existing = mergedMap.get(f.id);
+        if (!existing.date && f.modifiedTime) existing.date = new Date(f.modifiedTime).toLocaleDateString();
+        if (!existing.webViewLink && f.webViewLink) existing.webViewLink = f.webViewLink;
+      } else {
+        mergedMap.set(f.id, {
+          id: f.id,
+          name: f.name || "Untitled Google Doc",
+          webViewLink: f.webViewLink || `https://docs.google.com/document/d/${f.id}/edit`,
+          date: f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString() : "",
+          caseId: "",
+          caseTitle: "",
+          caseNumber: "",
+          fileType: "Drive"
+        });
+      }
+    });
+  }
+
+  let items = Array.from(mergedMap.values()).filter(item => {
+    const matchCase = caseFilter === "All"
+      || (caseFilter === "__standalone__" && !item.caseId)
+      || item.caseId === caseFilter;
+    const matchQ = !q
+      || (item.name || "").toLowerCase().includes(q)
+      || (item.caseTitle || "").toLowerCase().includes(q)
+      || (item.caseNumber || "").toLowerCase().includes(q);
+    return matchCase && matchQ;
+  });
+
+  if (allCasesActiveTab === "docs") {
+    setElText("allcases-count", `${items.length} Google Doc${items.length !== 1 ? "s" : ""} found`);
+  }
+
+  const isConnected = typeof hasValidToken === "function" && hasValidToken();
+
+  if (items.length === 0) {
+    listEl.innerHTML = `
+      <div class="card" style="text-align:center;padding:40px 20px">
+        <div style="font-size:34px;color:var(--gold);margin-bottom:10px"><i class="bi bi-file-earmark-richtext"></i></div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px">${isConnected ? "No Google Docs match your filter" : "Connect Google Account to View All Drive Docs"}</div>
+        <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:16px">Create a new Google Doc directly inside a case docket or as a standalone firm draft.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          ${!isConnected ? `<button type="button" class="btn btn-secondary btn-sm" onclick="connectOrOpenGoogleAction()"><i class="bi bi-google"></i> Connect Google Account</button>` : ""}
+          <button type="button" class="btn btn-primary btn-sm" onclick="openGoogleDocModal('${caseFilter !== 'All' && caseFilter !== '__standalone__' ? caseFilter : ''}')"><i class="bi bi-file-earmark-plus"></i> New Google Doc</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = `
+    <div class="ac-docs-grid">
+      ${items.map(item => `
+        <div class="ac-doc-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0">
+              <div style="width:36px;height:36px;border-radius:9px;background:var(--gold-dim);border:1px solid var(--gold-border);display:grid;place-items:center;color:var(--gold);font-size:17px;flex-shrink:0">
+                <i class="bi bi-file-earmark-richtext-fill"></i>
+              </div>
+              <div style="min-width:0">
+                <div style="font-weight:700;font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(item.name)}">${escHtml(item.name)}</div>
+                <div style="font-size:11px;color:var(--text-dim)">${item.date ? `Updated ${escHtml(item.date)}` : "Google Doc"}</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            ${item.caseId
+              ? `<span class="badge" style="background:var(--gold-dim);color:var(--gold-light)"><i class="bi bi-briefcase"></i> ${escHtml(item.caseTitle)}</span>`
+              : `<span class="badge" style="background:var(--surface3);color:var(--text-dim)"><i class="bi bi-google"></i> Standalone Draft</span>`
+            }
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px;border-top:1px solid var(--border)">
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1" onclick="openGoogleDocModal('${escHtml(item.caseId)}', '${escHtml(item.id)}')"><i class="bi bi-pencil-square"></i> Edit Doc</button>
+            ${item.caseId ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openCase('${escHtml(item.caseId)}')" title="Open linked case"><i class="bi bi-folder2-open"></i> Case</button>` : ""}
+            <a href="${escHtml(item.webViewLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Open in Google Docs"><i class="bi bi-box-arrow-up-right"></i></a>
+          </div>
+        </div>
+      `).join("")}
+    </div>`;
+}
+window.renderAllCasesGoogleDocs = renderAllCasesGoogleDocs;
 
 function renderAllCasesStatusTabs(accessible, activeStatus) {
   const tabsEl = document.getElementById("ac-status-tabs");
@@ -1847,6 +2035,13 @@ function renderAllCasesStatusTabs(accessible, activeStatus) {
 
 function renderAllCases() {
   updateAllFilterDropdowns();
+  populateAllCasesDocsFilter();
+
+  if (allCasesActiveTab === "docs") {
+    renderAllCasesGoogleDocs();
+    return;
+  }
+
   const q = (document.getElementById("ac-search")?.value || "").toLowerCase().trim();
   const status = document.getElementById("ac-status")?.value || "All";
   const category = document.getElementById("ac-category")?.value || "All";
@@ -1883,8 +2078,15 @@ function renderAllCases() {
   }
 
   if (paginationBar) paginationBar.style.display = "flex";
+  const hasGDocModal = !!document.getElementById("gdoc-modal");
+
   el.innerHTML = pagedCases.map(c => {
     const p = profiles.find(x => x.id === c.profileId);
+    const docsCount = Array.isArray(c.documents) ? c.documents.length : 0;
+    const gDocBtn = hasGDocModal
+      ? `<button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openGoogleDocModal('${c.id}')" title="Draft or attach Google Doc to this case"><i class="bi bi-file-earmark-richtext"></i> Doc${docsCount ? ` (${docsCount})` : ""}</button>`
+      : "";
+
     return `<div class="case-row" onclick="openCase('${c.id}')">
       ${p ? avatarDiv(p.name, p.avatarColor, 40, p.photoUrl) : ""}
       <div style="flex:1;min-width:0">
@@ -1892,7 +2094,10 @@ function renderAllCases() {
         <div style="font-size:12px;color:var(--text-muted)">${escHtml(c.category || "Case")} · ${escHtml(p?.name || "")} · ${escHtml(c.type || "Litigation")} · ${escHtml(c.venue || "No Venue")}</div>
         <div style="font-size:12.5px;color:var(--text-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(c.parties || "")}</div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">${badge(c.status, statusColor(c.status))}${dueBadge(c.dueDate || c.docDueDate)}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        ${gDocBtn}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">${badge(c.status, statusColor(c.status))}${dueBadge(c.dueDate || c.docDueDate)}</div>
+      </div>
     </div>`;
   }).join("");
 
@@ -1983,7 +2188,7 @@ function renderCaseDetail() {
 
   const docs = c.documents || [];
   let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files &amp; Google Docs</div>
     ${canEdit ? `<div style="display:inline-flex;align-items:center;gap:8px"><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> In</label><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold)"/> Out</label><button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload</button></div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected</span>`}
   </div>`;
   if (docs.length === 0) {
@@ -2039,6 +2244,7 @@ async function removeDocFromCase(idx) {
       const updDocs = docs.filter((_, i) => i !== idx);
       await dbUpdateCase(selCase.id, { documents: updDocs });
       selCase = { ...selCase, documents: updDocs };
+      cachedDriveGoogleDocs = null;
       renderCaseDetail();
       showToast("Document deleted successfully!");
     }
@@ -2735,7 +2941,18 @@ window.loadExplorerFiles = async function() {
 };
 
 window.adminDeleteDriveExplorerFile = (fileId, fileName) => {
-  window.openConfirmModal({ icon: "bi-trash3", title: "Delete from Firm Drive?", body: `Delete <strong>"${escHtml(fileName)}"</strong> from Google Drive?`, confirmText: "Delete", confirmStyle: "btn-danger", onConfirm: async () => { await deleteDriveFile(fileId); loadExplorerFiles(); } });
+  window.openConfirmModal({
+    icon: "bi-trash3",
+    title: "Delete from Firm Drive?",
+    body: `Delete <strong>"${escHtml(fileName)}"</strong> from Google Drive?`,
+    confirmText: "Delete",
+    confirmStyle: "btn-danger",
+    onConfirm: async () => {
+      await deleteDriveFile(fileId);
+      cachedDriveGoogleDocs = null;
+      loadExplorerFiles();
+    }
+  });
 };
 window.navigateIntoFolder = (id, name) => { explorerBreadcrumbs.push({ id, name }); currentExplorerFolderId = id; loadExplorerFiles(); };
 window.navigateBreadcrumb = (index) => { explorerBreadcrumbs = explorerBreadcrumbs.slice(0, index + 1); currentExplorerFolderId = explorerBreadcrumbs[index].id; loadExplorerFiles(); };
