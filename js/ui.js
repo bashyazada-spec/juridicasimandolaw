@@ -341,9 +341,284 @@ function initResearchWidgetDrag() {
   handle.addEventListener("pointercancel", stopDrag);
 }
 
-// ── INTERNAL GOOGLE DOCS WORKSPACE CONTROLLER ────────────────
+// ═══════════════════════════════════════════════════════════════
+//  REAL GOOGLE DOCS + LEGAL DRAFT WORKSPACE (SAVED TO SPECIFIC CASE)
+// ═══════════════════════════════════════════════════════════════
 let activeInternalDocId = null;
+let activeGdocMode = "live"; // "live" | "draft"
 let cachedDriveGoogleDocs = null;
+
+function buildGdocTemplateText(templateKey, targetCase) {
+  const court = targetCase?.venue || "REGIONAL TRIAL COURT — NAGA CITY";
+  const docket = targetCase?.caseNumber || "Case No. ____________";
+  const parties = targetCase?.parties || "PETITIONER / PLAINTIFF vs. RESPONDENT / DEFENDANT";
+  const title = targetCase?.title || "LEGAL PLEADING";
+
+  if (templateKey === "blank") return "";
+  if (templateKey === "memo") {
+    return [
+      "SIMANDO LAW FIRM — LEGAL MEMORANDUM",
+      `RE: ${title} (${docket})`,
+      `COURT / VENUE: ${court}`,
+      `PARTIES: ${parties}`,
+      "",
+      "I. STATEMENT OF FACTS",
+      targetCase?.narrative || "State the material facts of the case here...",
+      "",
+      "II. ISSUES PRESENTED",
+      "1. ",
+      "",
+      "III. LEGAL ANALYSIS & JURISPRUDENCE",
+      "",
+      "IV. CONCLUSION & RECOMMENDED STRATEGY",
+      ""
+    ].join("\n");
+  }
+  if (templateKey === "demand") {
+    return [
+      new Date().toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }),
+      "",
+      "FORMAL LETTER OF DEMAND",
+      `RE: ${title} (${docket})`,
+      "",
+      "Dear Sir/Madam:",
+      "",
+      "We write on behalf of our client regarding the above-captioned matter.",
+      targetCase?.narrative ? `Background: ${targetCase.narrative}` : "",
+      "",
+      "Accordingly, formal demand is hereby made upon you to comply within fifteen (15) days from receipt hereof; otherwise, we shall be constrained to pursue appropriate legal remedies.",
+      "",
+      "Very truly yours,",
+      "SIMANDO LAW FIRM"
+    ].join("\n");
+  }
+  if (templateKey === "affidavit") {
+    return [
+      "REPUBLIC OF THE PHILIPPINES )",
+      "CITY OF NAGA                ) S.S.",
+      "",
+      "JUDICIAL AFFIDAVIT",
+      `RE: ${title} (${docket})`,
+      `COURT: ${court}`,
+      "",
+      "I, ________________________, of legal age, Filipino, and residing at ________________________, after having been duly sworn in accordance with law, hereby depose and state:",
+      "",
+      "Q1: Please state your name, age, and personal circumstances.",
+      "A1: ",
+      "",
+      "IN WITNESS WHEREOF, I have hereunto set my hand this ___ day of __________, 2026 in Naga City, Philippines."
+    ].join("\n");
+  }
+
+  return [
+    "REPUBLIC OF THE PHILIPPINES",
+    court.toUpperCase(),
+    "FIFTH JUDICIAL REGION",
+    "",
+    parties,
+    `${docket}`,
+    "x-----------------------------------------x",
+    "",
+    title.toUpperCase(),
+    "",
+    "COMES NOW the undersigned counsel, and unto this Honorable Court most respectfully states that:",
+    "",
+    targetCase?.narrative || "1. ...",
+    "",
+    "WHEREFORE, premises considered, it is most respectfully prayed of this Honorable Court that the foregoing be GRANTED. Other reliefs just and equitable are likewise prayed for.",
+    "",
+    "Respectfully submitted.",
+    "Naga City, Philippines."
+  ].join("\n");
+}
+
+function updateGdocCaseBindingUI() {
+  const caseId = document.getElementById("gdoc-case-select")?.value || "";
+  const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
+  const folderBadge = document.getElementById("gdoc-case-folder-badge");
+  const savedInd = document.getElementById("gdoc-saved-indicator");
+  const popoutLink = document.getElementById("gdoc-popout-link");
+  const bannerPopout = document.getElementById("gdoc-banner-popout");
+  const liveLaunch = document.getElementById("gdoc-live-launch");
+  const iframeWrap = document.getElementById("gdoc-iframe-wrap");
+
+  if (folderBadge) {
+    folderBadge.innerHTML = targetCase
+      ? `<i class="bi bi-folder-check"></i> Case: ${escHtml(targetCase.title)}`
+      : `<i class="bi bi-folder2"></i> Standalone Firm Draft`;
+  }
+
+  const gdocUrl = activeInternalDocId ? `https://docs.google.com/document/d/${activeInternalDocId}/edit` : "#";
+
+  if (popoutLink) {
+    popoutLink.href = gdocUrl;
+    popoutLink.classList.toggle("hidden", !activeInternalDocId);
+  }
+  if (bannerPopout) {
+    bannerPopout.href = gdocUrl;
+  }
+
+  if (savedInd) {
+    if (activeInternalDocId) {
+      savedInd.innerHTML = targetCase
+        ? `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Linked &amp; saved to "${escHtml(targetCase.title)}"</span>`
+        : `<span style="color:var(--green);font-weight:600"><i class="bi bi-check-circle-fill"></i> Saved in Google Docs</span>`;
+    } else {
+      savedInd.textContent = targetCase
+        ? `Will save into "${targetCase.title}" Drive folder & case files`
+        : "Not yet created in Google Docs";
+    }
+  }
+
+  if (liveLaunch && iframeWrap) {
+    if (activeInternalDocId) {
+      liveLaunch.classList.add("hidden");
+      iframeWrap.classList.remove("hidden");
+    } else {
+      liveLaunch.classList.remove("hidden");
+      iframeWrap.classList.add("hidden");
+    }
+  }
+}
+
+window.onGdocCaseSelectionChange = function() {
+  updateGdocCaseBindingUI();
+  const titleInp = document.getElementById("gdoc-title-input");
+  const caseId = document.getElementById("gdoc-case-select")?.value || "";
+  const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
+  if (!activeInternalDocId && titleInp && targetCase) {
+    if (!titleInp.value || titleInp.value === "Legal Memorandum Draft" || titleInp.value.endsWith("— Draft Pleading")) {
+      titleInp.value = `${targetCase.title} — Draft Pleading`;
+    }
+  }
+};
+
+window.switchGdocEditorMode = async function(mode) {
+  activeGdocMode = mode === "draft" ? "draft" : "live";
+  document.getElementById("gdoc-tab-live")?.classList.toggle("active", activeGdocMode === "live");
+  document.getElementById("gdoc-tab-draft")?.classList.toggle("active", activeGdocMode === "draft");
+  document.getElementById("gdoc-live-pane")?.classList.toggle("hidden", activeGdocMode !== "live");
+  document.getElementById("gdoc-draft-pane")?.classList.toggle("hidden", activeGdocMode !== "draft");
+
+  if (activeGdocMode === "draft" && activeInternalDocId && typeof hasValidToken === "function" && hasValidToken() && typeof loadInternalGoogleDocContent === "function") {
+    try {
+      const docData = await loadInternalGoogleDocContent(activeInternalDocId);
+      const canvasEl = document.getElementById("gdoc-canvas");
+      if (canvasEl && docData.text) canvasEl.innerText = docData.text;
+    } catch (e) {}
+  }
+};
+
+window.reloadLiveGoogleDocFrame = function() {
+  if (!activeInternalDocId) return;
+  const frame = document.getElementById("gdoc-live-iframe");
+  if (frame) {
+    frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true&t=${Date.now()}`;
+  }
+};
+
+async function resolveGdocTargetFolder(caseId) {
+  const u = window._currentUser || window._auth?.currentUser;
+  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
+  let folderId = myProf?.driveFolderId || null;
+
+  if (!folderId && myProf && typeof setupProfileDriveFolder === "function" && typeof hasValidToken === "function" && hasValidToken()) {
+    folderId = await setupProfileDriveFolder(myProf);
+  }
+
+  const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
+  if (targetCase && typeof getOrCreateCaseFolderHierarchy === "function") {
+    folderId = await getOrCreateCaseFolderHierarchy(
+      targetCase.category || "Other",
+      targetCase.type || "Other",
+      targetCase.title || "Untitled",
+      "Outbound",
+      folderId || "root"
+    );
+  }
+  return { folderId, targetCase };
+}
+
+async function attachDocEntryToSpecificCase(targetCase, entry) {
+  if (!targetCase) return;
+  const existingDocs = Array.isArray(targetCase.documents) ? [...targetCase.documents] : [];
+  const idx = entry.driveFileId
+    ? existingDocs.findIndex(d => d.driveFileId === entry.driveFileId)
+    : -1;
+
+  if (idx >= 0) {
+    existingDocs[idx] = { ...existingDocs[idx], ...entry };
+  } else {
+    existingDocs.push(entry);
+  }
+
+  await dbUpdateCase(targetCase.id, { documents: existingDocs });
+  targetCase.documents = existingDocs;
+  if (selCase && selCase.id === targetCase.id) {
+    selCase = { ...targetCase };
+    if (typeof renderCaseDetail === "function") renderCaseDetail();
+  }
+}
+
+window.launchLiveGoogleDocForCase = async function() {
+  if (typeof hasValidToken !== "function" || !hasValidToken()) {
+    try { await promptDriveAuth(true); }
+    catch (e) { showToast("Connect Google Account first.", "error"); return; }
+  }
+
+  const launchBtn = document.getElementById("gdoc-launch-btn");
+  if (launchBtn) { launchBtn.disabled = true; launchBtn.textContent = "Creating Google Doc..."; }
+
+  try {
+    const title = (document.getElementById("gdoc-title-input")?.value || "").trim() || "Untitled Legal Draft";
+    const caseId = document.getElementById("gdoc-case-select")?.value || "";
+    const templateKey = document.getElementById("gdoc-template-select")?.value || "pleading";
+
+    const { folderId, targetCase } = await resolveGdocTargetFolder(caseId);
+    const initialText = buildGdocTemplateText(templateKey, targetCase);
+
+    showToast(targetCase ? `Creating Google Doc inside "${targetCase.title}"...` : "Creating Google Doc...");
+    const docMeta = await createInternalGoogleDoc(title, initialText, folderId);
+    activeInternalDocId = docMeta.id;
+    cachedDriveGoogleDocs = null;
+
+    if (targetCase) {
+      await attachDocEntryToSpecificCase(targetCase, {
+        name: `${title} (Google Doc)`,
+        size: "Google Doc",
+        date: new Date().toLocaleDateString(),
+        fileType: "Outbound",
+        version: "v1.0",
+        driveFileId: docMeta.id,
+        driveLink: docMeta.webViewLink || `https://docs.google.com/document/d/${docMeta.id}/edit`
+      });
+    }
+
+    const canvasEl = document.getElementById("gdoc-canvas");
+    if (canvasEl && initialText) canvasEl.innerText = initialText;
+
+    const frame = document.getElementById("gdoc-live-iframe");
+    if (frame) frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
+
+    updateGdocCaseBindingUI();
+    renderGoogleStatusPopover();
+    if (currentView === "mydrive" && typeof loadExplorerFiles === "function") loadExplorerFiles();
+    if (currentView === "allcases") {
+      renderAllCases();
+      if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(true);
+    }
+
+    showToast(targetCase ? `Google Doc created & saved to "${targetCase.title}"!` : "Google Doc created!");
+  } catch (err) {
+    console.error("launchLiveGoogleDocForCase error:", err);
+    showToast("Failed to create Google Doc: " + err.message, "error");
+  } finally {
+    if (launchBtn) {
+      launchBtn.disabled = false;
+      launchBtn.innerHTML = `<i class="bi bi-google"></i> Create &amp; Open Google Doc`;
+    }
+  }
+};
 
 window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
   const modal = document.getElementById("gdoc-modal");
@@ -358,31 +633,38 @@ window.openGoogleDocModal = function(caseId = "", existingDocId = null) {
   }
 
   const titleInp = document.getElementById("gdoc-title-input");
-  const iframeBtn = document.getElementById("gdoc-open-iframe-btn");
-  const iframeWrap = document.getElementById("gdoc-iframe-wrap");
   const canvasEl = document.getElementById("gdoc-canvas");
-
-  if (iframeWrap) iframeWrap.classList.add("hidden");
-  if (canvasEl) canvasEl.classList.remove("hidden");
-  if (iframeBtn) iframeBtn.style.display = activeInternalDocId ? "inline-flex" : "none";
+  const frame = document.getElementById("gdoc-live-iframe");
 
   const connected = typeof hasValidToken === "function" && hasValidToken();
   const badgeEl = document.getElementById("gdoc-api-status-badge");
   if (badgeEl) {
     badgeEl.className = `badge ${connected ? "badge-pass" : "badge-warn"}`;
-    badgeEl.innerHTML = connected ? `<i class="bi bi-cloud-check"></i> Google Docs API Ready` : `<i class="bi bi-exclamation-triangle"></i> Connect Google First`;
+    badgeEl.innerHTML = connected ? `<i class="bi bi-cloud-check"></i> Google Docs Ready` : `<i class="bi bi-exclamation-triangle"></i> Connect Google First`;
   }
 
-  if (activeInternalDocId && connected && typeof loadInternalGoogleDocContent === "function") {
-    loadInternalGoogleDocContent(activeInternalDocId).then(docData => {
-      if (titleInp) titleInp.value = docData.title;
-      if (canvasEl) canvasEl.innerText = docData.text;
-    }).catch(() => {});
-  } else if (titleInp && !existingDocId) {
-    const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
-    titleInp.value = targetCase ? `${targetCase.title} — Draft Pleading` : "Legal Memorandum Draft";
+  const targetCase = caseId ? (cases || []).find(c => c.id === caseId) : null;
+
+  if (activeInternalDocId) {
+    if (frame) frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
+    if (connected && typeof loadInternalGoogleDocContent === "function") {
+      loadInternalGoogleDocContent(activeInternalDocId).then(docData => {
+        if (titleInp) titleInp.value = docData.title;
+        if (canvasEl && docData.text) canvasEl.innerText = docData.text;
+      }).catch(() => {});
+    }
+  } else {
+    if (frame) frame.src = "about:blank";
+    if (titleInp) {
+      titleInp.value = targetCase ? `${targetCase.title} — Draft Pleading` : "Legal Memorandum Draft";
+    }
+    if (canvasEl) {
+      canvasEl.innerText = buildGdocTemplateText("pleading", targetCase);
+    }
   }
 
+  updateGdocCaseBindingUI();
+  switchGdocEditorMode("live");
   modal.classList.remove("hidden");
 };
 
@@ -390,40 +672,32 @@ window.closeGoogleDocModal = function() {
   document.getElementById("gdoc-modal")?.classList.add("hidden");
 };
 
-window.execInternalDocFmt = function(cmd) {
-  document.execCommand(cmd, false, null);
+window.execInternalDocFmt = function(cmd, val = null) {
+  document.execCommand(cmd, false, val);
   document.getElementById("gdoc-canvas")?.focus();
 };
 
 window.insertInternalDocTemplate = function(type) {
   const c = document.getElementById("gdoc-canvas");
   if (!c) return;
+  const caseId = document.getElementById("gdoc-case-select")?.value || "";
+  const targetCase = caseId ? (cases || []).find(x => x.id === caseId) : null;
+  const court = escHtml(targetCase?.venue || "REGIONAL TRIAL COURT — BRANCH ___");
+  const docket = escHtml(targetCase?.caseNumber || "Case No. ____________");
+  const parties = escHtml(targetCase?.parties || "PETITIONER / PLAINTIFF vs. RESPONDENT / DEFENDANT");
+
   if (type === "caption") {
-    c.innerHTML += `<p style="margin-top:12px"><strong>REPUBLIC OF THE PHILIPPINES</strong><br/>REGIONAL TRIAL COURT — BRANCH ___<br/>Case No. ____________</p>`;
+    c.innerHTML += `<p style="margin-top:12px"><strong>REPUBLIC OF THE PHILIPPINES</strong><br/>${court}<br/>${docket}<br/>${parties}</p>`;
   } else if (type === "prayer") {
     c.innerHTML += `<p style="margin-top:12px"><strong>WHEREFORE</strong>, premises considered, it is most respectfully prayed of this Honorable Court that this pleading be GRANTED. Other reliefs just and equitable are likewise prayed for.</p>`;
   } else if (type === "jurat") {
     c.innerHTML += `<p style="margin-top:12px"><strong>SUBSCRIBED AND SWORN</strong> to before me this ___ day of __________, 2026 in Naga City, Philippines, affiant exhibiting competent proof of identity.</p>`;
+  } else if (type === "notice") {
+    c.innerHTML += `<p style="margin-top:12px"><strong>NOTICE OF HEARING</strong><br/>THE CLERK OF COURT, ${court}:<br/>Please submit the foregoing motion for the consideration and approval of this Honorable Court on __________ at 8:30 A.M.</p>`;
+  } else if (type === "service") {
+    c.innerHTML += `<p style="margin-top:12px"><strong>EXPLANATION &amp; PROOF OF SERVICE</strong><br/>Copy furnished opposing counsel via registered mail / personal service due to distance and lack of messengerial personnel.</p>`;
   }
   showToast("Inserted legal template block");
-};
-
-window.toggleInternalDocLiveFrame = function() {
-  if (!activeInternalDocId) return;
-  const wrap = document.getElementById("gdoc-iframe-wrap");
-  const canvas = document.getElementById("gdoc-canvas");
-  const frame = document.getElementById("gdoc-live-iframe");
-  if (!wrap || !canvas || !frame) return;
-
-  const showingFrame = !wrap.classList.contains("hidden");
-  if (showingFrame) {
-    wrap.classList.add("hidden");
-    canvas.classList.remove("hidden");
-  } else {
-    frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
-    canvas.classList.add("hidden");
-    wrap.classList.remove("hidden");
-  }
 };
 
 window.saveInternalGoogleDoc = async function(exportPdf = false) {
@@ -436,51 +710,55 @@ window.saveInternalGoogleDoc = async function(exportPdf = false) {
   const caseId = document.getElementById("gdoc-case-select")?.value || "";
   const plainText = (document.getElementById("gdoc-canvas")?.innerText || "").trim();
 
-  const u = window._currentUser || window._auth?.currentUser;
-  const myProf = u ? profiles.find(p => p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
-  let folderId = myProf?.driveFolderId || null;
-
-  const targetCase = caseId ? cases.find(c => c.id === caseId) : null;
-  if (targetCase && typeof getOrCreateCaseFolderHierarchy === "function") {
-    folderId = await getOrCreateCaseFolderHierarchy(targetCase.category || "Other", targetCase.type || "Other", targetCase.title || "Untitled", "Outbound", folderId || "root");
-  }
-
   const saveBtn = document.getElementById("gdoc-save-btn");
   const pdfBtn = document.getElementById("gdoc-pdf-btn");
   if (saveBtn) saveBtn.disabled = true;
   if (pdfBtn) pdfBtn.disabled = true;
 
   try {
-    showToast(exportPdf ? "Compiling Google Doc & exporting PDF..." : "Saving to Google Docs...");
+    const { folderId, targetCase } = await resolveGdocTargetFolder(caseId);
+    showToast(exportPdf ? "Compiling Google Doc & exporting PDF to case..." : "Saving & linking Google Doc to case...");
     let docMeta = null;
 
     if (activeInternalDocId) {
-      await updateInternalGoogleDocText(activeInternalDocId, plainText);
+      if (typeof renameDriveFile === "function") {
+        await renameDriveFile(activeInternalDocId, title).catch(() => {});
+      }
+      if (activeGdocMode === "draft") {
+        await updateInternalGoogleDocText(activeInternalDocId, plainText);
+      }
+      if (targetCase && folderId && typeof moveDriveFileToFolder === "function") {
+        await moveDriveFileToFolder(activeInternalDocId, folderId);
+      }
       docMeta = { id: activeInternalDocId, name: title, webViewLink: `https://docs.google.com/document/d/${activeInternalDocId}/edit` };
     } else {
-      docMeta = await createInternalGoogleDoc(title, plainText, folderId);
+      const initialContent = activeGdocMode === "draft"
+        ? plainText
+        : buildGdocTemplateText(document.getElementById("gdoc-template-select")?.value || "pleading", targetCase);
+      docMeta = await createInternalGoogleDoc(title, initialContent, folderId);
       activeInternalDocId = docMeta.id;
+      const frame = document.getElementById("gdoc-live-iframe");
+      if (frame) frame.src = `https://docs.google.com/document/d/${activeInternalDocId}/edit?embedded=true`;
     }
 
     cachedDriveGoogleDocs = null;
 
-    const iframeBtn = document.getElementById("gdoc-open-iframe-btn");
-    if (iframeBtn) iframeBtn.style.display = "inline-flex";
-
-    let attachedEntry = {
-      name: `${title} (Google Doc)`,
-      size: "Google Doc",
-      date: new Date().toLocaleDateString(),
-      fileType: "Outbound",
-      version: "v1.0",
-      driveFileId: docMeta.id,
-      driveLink: docMeta.webViewLink || `https://docs.google.com/document/d/${docMeta.id}/edit`
-    };
+    if (targetCase) {
+      await attachDocEntryToSpecificCase(targetCase, {
+        name: `${title} (Google Doc)`,
+        size: "Google Doc",
+        date: new Date().toLocaleDateString(),
+        fileType: "Outbound",
+        version: "v1.0",
+        driveFileId: docMeta.id,
+        driveLink: docMeta.webViewLink || `https://docs.google.com/document/d/${docMeta.id}/edit`
+      });
+    }
 
     if (exportPdf && typeof exportGoogleDocToPdf === "function") {
       const pdfName = title.replace(/\.pdf$/i, "") + ".pdf";
       const pdfMeta = await exportGoogleDocToPdf(docMeta.id, pdfName, folderId);
-      attachedEntry = {
+      const pdfEntry = {
         name: pdfName,
         size: pdfMeta.size || "PDF",
         date: new Date().toLocaleDateString(),
@@ -489,24 +767,20 @@ window.saveInternalGoogleDoc = async function(exportPdf = false) {
         driveFileId: pdfMeta.id,
         driveLink: pdfMeta.webViewLink
       };
-    }
-
-    if (targetCase) {
-      const updDocs = [...(targetCase.documents || []), attachedEntry];
-      await dbUpdateCase(targetCase.id, { documents: updDocs });
-      targetCase.documents = updDocs;
-      if (selCase && selCase.id === targetCase.id) {
-        selCase = { ...targetCase };
-        if (typeof renderCaseDetail === "function") renderCaseDetail();
+      if (targetCase) {
+        await attachDocEntryToSpecificCase(targetCase, pdfEntry);
       }
+      showToast(targetCase ? `Exported & saved "${pdfName}" to "${targetCase.title}"!` : `Exported "${pdfName}" to Drive!`);
+    } else {
+      showToast(targetCase ? `Saved "${title}" to "${targetCase.title}"!` : `Saved "${title}" to Google Docs!`);
     }
 
+    updateGdocCaseBindingUI();
     if (currentView === "mydrive" && typeof loadExplorerFiles === "function") loadExplorerFiles();
     if (currentView === "allcases") {
       renderAllCases();
       if (allCasesActiveTab === "docs") loadAllCasesGoogleDocs(true);
     }
-    showToast(exportPdf ? `Exported & attached "${attachedEntry.name}"!` : `Saved "${title}" to Google Docs!`);
     if (exportPdf) closeGoogleDocModal();
   } catch (err) {
     console.error("saveInternalGoogleDoc error:", err);
@@ -1916,7 +2190,7 @@ function renderAllCasesGoogleDocs() {
 
   const mergedMap = new Map();
 
-  // 1. Case-linked Google Docs (and editable drafts stored on cases)
+  // 1. Case-linked Google Docs
   accessible.forEach(c => {
     (c.documents || []).forEach(doc => {
       const isGDoc = !!(doc.driveFileId && ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document")));
@@ -2009,9 +2283,9 @@ function renderAllCasesGoogleDocs() {
             }
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px;border-top:1px solid var(--border)">
-            <button type="button" class="btn btn-primary btn-sm" style="flex:1" onclick="openGoogleDocModal('${escHtml(item.caseId)}', '${escHtml(item.id)}')"><i class="bi bi-pencil-square"></i> Edit Doc</button>
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1" onclick="openGoogleDocModal('${escHtml(item.caseId)}', '${escHtml(item.id)}')"><i class="bi bi-pencil-square"></i> Open Doc</button>
             ${item.caseId ? `<button type="button" class="btn btn-secondary btn-sm" onclick="openCase('${escHtml(item.caseId)}')" title="Open linked case"><i class="bi bi-folder2-open"></i> Case</button>` : ""}
-            <a href="${escHtml(item.webViewLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Open in Google Docs"><i class="bi bi-box-arrow-up-right"></i></a>
+            <a href="${escHtml(item.webViewLink)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="Open in Google Docs tab"><i class="bi bi-box-arrow-up-right"></i></a>
           </div>
         </div>
       `).join("")}
