@@ -54,19 +54,13 @@
   }
 
   /* ── Plain Solid Dots (NO glowing shadow or pulse) ── */
-  .status-pill {
-    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600;
-    cursor: pointer; transition: background 0.15s; user-select: none; line-height: 1;
-  }
-  .status-pill:hover { background: var(--surface3); }
-  .status-dot, .plain-dot {
+  .plain-dot {
     width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block;
     box-shadow: none !important; animation: none !important;
   }
-  .status-dot.healthy, .plain-dot.green { background: var(--green); }
-  .status-dot.warning, .plain-dot.amber { background: var(--amber); }
-  .status-dot.danger,  .plain-dot.red   { background: var(--red); }
+  .plain-dot.green { background: var(--green); }
+  .plain-dot.amber { background: var(--amber); }
+  .plain-dot.red   { background: var(--red); }
 
   /* ── Top Utility Popovers (Google & Online Users) ── */
   .top-popover {
@@ -149,7 +143,7 @@
   .research-site-btn {
     display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px;
     background: var(--surface2); border: 1px solid var(--border); text-align: left; font-size: 12px; font-weight: 600;
-    transition: border-color 0.15s, background 0.15s;
+    color: var(--text); cursor: pointer; transition: border-color 0.15s, background 0.15s;
   }
   .research-site-btn:hover { border-color: var(--gold-border); background: var(--surface3); }
   .research-site-btn i { color: var(--gold); font-size: 14px; flex-shrink: 0; }
@@ -635,8 +629,8 @@
   </div>
 </div>
 
-<!-- Floating Legal Research Widget (Bottom-Right Ergonomic Dock) -->
-<button class="research-fab" id="research-fab-btn" type="button" onclick="toggleResearchWidget(event)" title="Open Legal Research &amp; Similar Cases">
+<!-- Floating Legal Research Widget (Bottom-Right Ergonomic Dock — Opens Floating Windows, NOT Tabs) -->
+<button class="research-fab" id="research-fab-btn" type="button" onclick="toggleResearchWidget(event)" title="Open Legal Research Floating Window">
   <i class="bi bi-compass-fill"></i>
   <span>Case Research</span>
 </button>
@@ -649,16 +643,16 @@
   <div style="padding:12px">
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <input id="research-query-inp" class="field-input" style="padding:7px 10px;font-size:12px" placeholder="Search jurisprudence / similar cases…" onkeydown="if(event.key==='Enter')searchSimilarCases()"/>
-      <button type="button" class="btn btn-primary btn-sm" onclick="searchSimilarCases()" title="Search Google Scholar Case Law"><i class="bi bi-search"></i></button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="searchSimilarCases()" title="Open Search in Floating Window"><i class="bi bi-search"></i></button>
     </div>
-    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;letter-spacing:0.6px">Quick Jurisprudence Redirects</div>
+    <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;letter-spacing:0.6px">Open in Floating Window</div>
     <div class="research-site-grid">
-      <a href="https://elibrary.judiciary.gov.ph/" target="_blank" rel="noopener noreferrer" class="research-site-btn"><i class="bi bi-bank2"></i><span>SC E-Library</span></a>
-      <a href="https://lawphil.net/" target="_blank" rel="noopener noreferrer" class="research-site-btn"><i class="bi bi-book-half"></i><span>LawPhil Project</span></a>
-      <a href="https://www.chanrobles.com/" target="_blank" rel="noopener noreferrer" class="research-site-btn"><i class="bi bi-journal-text"></i><span>ChanRobles</span></a>
-      <a href="https://sc.judiciary.gov.ph/decisions/" target="_blank" rel="noopener noreferrer" class="research-site-btn"><i class="bi bi-scales"></i><span>SC Decisions</span></a>
-      <a href="https://scholar.google.com/" target="_blank" rel="noopener noreferrer" class="research-site-btn"><i class="bi bi-mortarboard-fill"></i><span>Google Scholar</span></a>
-      <a href="https://www.officialgazette.gov.ph/" target="_blank" rel="noopener noreferrer" class="research-site-btn"><i class="bi bi-award-fill"></i><span>Official Gazette</span></a>
+      <button type="button" onclick="openResearchFloatingWindow('https://elibrary.judiciary.gov.ph/', 'SC E-Library')" class="research-site-btn"><i class="bi bi-bank2"></i><span>SC E-Library</span></button>
+      <button type="button" onclick="openResearchFloatingWindow('https://lawphil.net/', 'LawPhil Project')" class="research-site-btn"><i class="bi bi-book-half"></i><span>LawPhil Project</span></button>
+      <button type="button" onclick="openResearchFloatingWindow('https://www.chanrobles.com/', 'ChanRobles')" class="research-site-btn"><i class="bi bi-journal-text"></i><span>ChanRobles</span></button>
+      <button type="button" onclick="openResearchFloatingWindow('https://sc.judiciary.gov.ph/decisions/', 'SC Decisions')" class="research-site-btn"><i class="bi bi-scales"></i><span>SC Decisions</span></button>
+      <button type="button" onclick="openResearchFloatingWindow('https://scholar.google.com/', 'Google Scholar')" class="research-site-btn"><i class="bi bi-mortarboard-fill"></i><span>Google Scholar</span></button>
+      <button type="button" onclick="openResearchFloatingWindow('https://www.officialgazette.gov.ph/', 'Official Gazette')" class="research-site-btn"><i class="bi bi-award-fill"></i><span>Official Gazette</span></button>
     </div>
   </div>
 </div>
@@ -755,7 +749,7 @@
   <!-- ══════ MAIN CONTENT ══════ -->
   <main id="main">
 
-    <!-- Labeled Top Header Bar -->
+    <!-- Labeled Top Header Bar (Diagnostic Button Removed) -->
     <div class="top-utility-bar">
       <div>
         <h1 class="page-title" id="main-page-title">Law Office Dashboard</h1>
@@ -839,17 +833,6 @@
               <div id="notifications-list" style="overflow-y:auto;max-height:350px;padding:10px"></div>
             </div>
           </div>
-
-          <div class="top-capsule-divider"></div>
-
-          <div class="status-pill" onclick="openDiagnosticModal()" title="View System Health &amp; Diagnostics">
-            <span class="status-dot healthy" id="status-indicator-dot"></span>
-            <span id="status-indicator-text" style="color:var(--green)">Workspace Active</span>
-          </div>
-        </div>
-
-        <div class="top-action-slot" id="slot-allcases-action" style="display:none">
-          <button class="btn btn-primary btn-sm" onclick="openAddCase()"><i class="bi bi-plus-circle-fill"></i> New Case</button>
         </div>
 
         <div class="top-action-slot" id="slot-profiles-action" style="display:none">
@@ -1507,10 +1490,8 @@
   const _origShowView = window.showView;
   window.showView = function(viewName) {
     if (typeof _origShowView === "function") _origShowView(viewName);
-    const allcasesSlot = document.getElementById("slot-allcases-action");
     const profilesSlot = document.getElementById("slot-profiles-action");
     const mydriveSlot  = document.getElementById("slot-mydrive-action");
-    if (allcasesSlot) allcasesSlot.style.display = (viewName === "allcases") ? "flex" : "none";
     if (profilesSlot) profilesSlot.style.display = (viewName === "profiles") ? "flex" : "none";
     if (mydriveSlot)  mydriveSlot.style.display  = (viewName === "mydrive")  ? "flex" : "none";
   };
