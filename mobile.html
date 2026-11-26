@@ -73,39 +73,6 @@
   .tag-highlight-gold { background: var(--gold-dim) !important; border: 1px solid var(--gold-border) !important; color: var(--gold-light) !important; font-weight: 700 !important; }
   .highlight-date-badge { background: var(--gold-dim); border: 1px solid var(--gold-border); color: var(--gold-light); font-weight: 700; font-size: 10.5px; padding: 2px 7px; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; }
   .file-item-gated.blurred { filter: blur(3.5px); user-select: none; pointer-events: none; opacity: 0.55; }
-
-  /* Mobile Fullscreen Chat Panel Override */
-  .chat-panel {
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
-    max-width: var(--app-max-w) !important;
-    height: 100dvh !important;
-    margin: 0 auto !important;
-    border-radius: 0 !important;
-    border: none !important;
-    z-index: 99999 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    box-shadow: none !important;
-  }
-  .chat-panel.hidden { display: none !important; }
-
-  /* Mobile Accordion Settings Styling */
-  .settings-accordion-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-  .settings-accordion { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-  .settings-accordion.is-open { border-color: var(--gold-border); }
-  .settings-acc-hdr { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px; text-align: left; background: transparent; color: var(--text); cursor: pointer; }
-  .settings-acc-title-wrap { display: flex; align-items: center; gap: 9px; min-width: 0; }
-  .settings-acc-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border-soft); display: grid; place-items: center; color: var(--gold); font-size: 14px; flex-shrink: 0; }
-  .settings-acc-title { font-size: 13.5px; font-weight: 700; color: var(--text); }
-  .settings-acc-sub { font-size: 11px; color: var(--text-dim); }
-  .settings-acc-chevron { color: var(--text-dim); font-size: 12px; transition: transform 0.2s; flex-shrink: 0; }
-  .settings-accordion.is-open .settings-acc-chevron { transform: rotate(180deg); color: var(--gold); }
-  .settings-acc-body { display: none; padding: 14px; border-top: 1px solid var(--border); }
-  .settings-accordion.is-open .settings-acc-body { display: block; }
-  .setting-row-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-  .setting-row-item:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -399,7 +366,7 @@
 <div id="date-schedule-modal" class="modal-overlay hidden" style="z-index: 10006;" onclick="if(event.target===this)closeDateScheduleModal()">
   <div class="modal-box" style="padding: 18px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
-      <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:gap:6px" id="dsm-title"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Schedule Details</div>
+      <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px" id="dsm-title"><i class="bi bi-calendar3" style="color:var(--gold)"></i> Schedule Details</div>
       <button onclick="closeDateScheduleModal()" style="font-size:18px;color:var(--text-muted)"><i class="bi bi-x-lg"></i></button>
     </div>
     <div id="dsm-events-list" style="max-height:360px;overflow-y:auto"></div>
@@ -541,19 +508,15 @@
   </div>
 </div>
 
-<!-- Internal In-App File Preview Modal (With Edit in Google Docs button) -->
-<div id="file-preview-modal" style="display:none;position:fixed;inset:0;z-index:10011;background:rgba(6,12,19,0.92);align-items:center;justify-content:center;flex-direction:column" onclick="if(event.target===this)closeFilePreview()">
-  <div style="position:absolute;top:0;left:0;right:0;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--gold-border);gap:8px">
-    <div id="fpm-title" style="font-size:13px;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-    <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-      <button type="button" id="fpm-edit-btn" class="btn btn-primary btn-sm" onclick="editPreviewedFileInGoogleDocs()" style="padding:5px 9px;font-size:11px">
-        <i class="bi bi-pencil-square"></i> Edit
-      </button>
-      <a id="fpm-download" download class="btn btn-secondary btn-sm" style="padding:5px 9px"><i class="bi bi-download"></i></a>
-      <button type="button" onclick="closeFilePreview()" class="btn btn-ghost btn-sm" style="font-size:18px;padding:4px 6px"><i class="bi bi-x-lg"></i></button>
+<div id="file-preview-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:center;justify-content:space-between;flex-direction:column">
+  <div style="position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.5)">
+    <div id="fpm-title" style="font-size:14px;font-weight:600;color:#fff;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a id="fpm-download" download style="font-size:12px;color:#c9a84c;padding:6px 14px;border:1px solid #c9a84c;border-radius:6px;font-weight:600"><i class="bi bi-download"></i> Download</a>
+      <button onclick="closeFilePreview()" style="color:#fff;font-size:22px"><i class="bi bi-x-lg"></i></button>
     </div>
   </div>
-  <div id="fpm-body" style="margin-top:52px;width:100%;height:calc(100vh - 52px);overflow:auto;display:flex;align-items:center;justify-content:center;padding:8px"></div>
+  <div id="fpm-body" style="margin-top:56px;width:100%;height:calc(100vh - 56px);overflow:auto;display:flex;align-items:center;justify-content:center"></div>
 </div>
 
 <div id="calendar-event-modal" class="modal-overlay hidden" style="z-index: 10001;" onclick="if(event.target===this)closeCalendarModal()">
@@ -574,7 +537,7 @@
 <!-- ══════ MOBILE SHELL CONTAINER ══════ -->
 <div id="mobile-shell">
 
-  <!-- Sticky Mobile App Topbar (NO "OK" BUTTON) -->
+  <!-- Sticky Mobile App Topbar -->
   <header class="mobile-topbar">
     <div class="topbar-left">
       <button id="topbar-back-btn" class="topbar-back-btn hidden" onclick="goBackMobile()" aria-label="Go back">
@@ -1081,8 +1044,8 @@
                 </div>
                 <input type="file" id="setting-photo-input" accept="image/*" style="display:none" onchange="handleSettingsPhotoUpload(event)"/>
                 <div id="setting-photo-preview-wrap" style="display:none;align-items:center;gap:12px;margin-top:8px;padding:10px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-                  <img id="setting-photo-preview-img" src="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>
-                  <div style="flex:1;min-width:0"><div id="setting-name-preview" style="font-size:13.5px;font-weight:700">Name</div><div id="setting-role-preview" style="font-size:11px;color:var(--text-dim)">Role</div></div>
+                  <img id="setting-photo-preview-img" src="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>
+                  <div style="flex:1;min-width:0"><div id="setting-name-preview" style="font-size:13px;font-weight:700">Name</div><div id="setting-role-preview" style="font-size:11px;color:var(--text-dim)">Role</div></div>
                   <button type="button" onclick="removeSettingsPhoto()" class="btn btn-ghost btn-sm"><i class="bi bi-x-circle"></i> Remove</button>
                 </div>
               </div>
@@ -1091,12 +1054,12 @@
             <div><label class="field-label" id="lbl-setting-role">Title / Position *</label><input class="field-input" id="setting-role" placeholder="e.g. Managing Partner"/></div>
             <div><label class="field-label">Mobile Number (11 digits)</label><input class="field-input" id="setting-contact" type="tel" maxlength="11" inputmode="numeric" placeholder="09XXXXXXXXX"/></div>
             <div><label class="field-label">Description / Practice Bio</label><textarea class="field-input" id="setting-description" rows="3" placeholder="Describe your practice areas..."></textarea></div>
-            <button class="btn btn-primary" onclick="saveUserSettings()"><i class="bi bi-check2"></i> Save Profile Settings</button>
+            <button class="btn btn-primary" onclick="saveUserSettings()"><i class="bi bi-check2"></i> Save Profile Changes</button>
           </div>
         </div>
       </div>
 
-      <!-- ── 8B. SETTINGS (BOXED ACCORDIONS) ── -->
+      <!-- ── 8B. SETTINGS (BOXED ACCORDIONS WITH THEME SWATCHES) ── -->
       <div id="view-settings" class="view hidden">
         <div class="card mb-12" id="mobile-admin-portal-card" style="display:none;background:var(--gold-dim);border:1.5px solid var(--gold)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1281,7 +1244,7 @@
                 <div class="form-stack">
                   <div><label class="field-label">Current Password *</label><input type="password" class="field-input" id="setting-current-password" placeholder="Current password"/></div>
                   <div><label class="field-label">Sign-In Email *</label><input class="field-input" id="setting-email" placeholder="attorney@gmail.com" type="email"/></div>
-                  <div><label class="field-label">New Password (leave blank to keep current)</label><input type="password" class="field-input" id="setting-password" placeholder="••••••••"/></div>
+                  <div><label class="field-label">New Password</label><input type="password" class="field-input" id="setting-password" placeholder="••••••••"/></div>
                   <div><label class="field-label">Confirm New Password</label><input type="password" class="field-input" id="setting-confirm-password" placeholder="Re-enter password"/></div>
                   <div style="display:flex;gap:8px;margin-top:4px">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="openDiagnosticModal()"><i class="bi bi-activity"></i> Sync Check</button>
