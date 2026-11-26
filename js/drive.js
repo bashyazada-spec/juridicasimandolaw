@@ -5,6 +5,7 @@ let pendingDriveAuthResolve = null;
 let pendingDriveAuthReject  = null;
 let driveInitAttempts = 0;
 const MAX_DRIVE_INIT_ATTEMPTS = 10;
+const DRIVE_TOKEN_VERSION = 2; // v2 requires full drive scope for shared case editing
 
 // ── User-Scoped Token Persistence ────────────────────────────
 function getActiveUserUid() {
@@ -17,8 +18,8 @@ function restoreTokenForUser(uid) {
   try {
     const saved = localStorage.getItem(`gDriveToken_${targetUid}`);
     if (saved) {
-      const { token, expiresAt } = JSON.parse(saved);
-      if (token && expiresAt && Date.now() < expiresAt - 60000) {
+      const { token, expiresAt, scopeVersion } = JSON.parse(saved);
+      if (token && scopeVersion === DRIVE_TOKEN_VERSION && expiresAt && Date.now() < expiresAt - 60000) {
         accessToken    = token;
         tokenExpiresAt = expiresAt;
         return true;
@@ -34,7 +35,10 @@ function persistTokenForUser(token, expiresIn, uid) {
   accessToken = token;
   if (targetUid) {
     try {
-      localStorage.setItem(`gDriveToken_${targetUid}`, JSON.stringify({ token, expiresAt: tokenExpiresAt }));
+      localStorage.setItem(
+        `gDriveToken_${targetUid}`,
+        JSON.stringify({ token, expiresAt: tokenExpiresAt, scopeVersion: DRIVE_TOKEN_VERSION })
+      );
     } catch (e) {}
   }
 }
@@ -97,7 +101,7 @@ function initGoogleDrive() {
   try {
     gTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
-      scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
+      scope: "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly",
       callback: (response) => {
         if (response.access_token) {
           persistTokenForUser(response.access_token, response.expires_in, getActiveUserUid());
@@ -186,12 +190,36 @@ window.connectDriveDirectly = async function() {
   }
 };
 
+// ── Anyone-With-The-Link Share Helper ────────────────────────
+async function ensureDriveAnyoneShare(fileId, role = "writer") {
+  if (!fileId || !hasValidToken()) return false;
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        role,
+        type: "anyone",
+        allowFileDiscovery: false
+      })
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("ensureDriveAnyoneShare notice:", err.message);
+    return false;
+  }
+}
+window.ensureDriveAnyoneShare = ensureDriveAnyoneShare;
+
 // ── Folder Management ────────────────────────────────────────
 async function createDriveFolder(name, parentId = null) {
   const metadata = { name, mimeType: "application/vnd.google-apps.folder" };
   if (parentId && parentId !== "root") metadata.parents = [parentId];
 
-  const res = await fetch("https://www.googleapis.com/drive/v3/files", {
+  let res = await fetch("https://www.googleapis.com/drive/v3/files", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(metadata)
@@ -199,18 +227,25 @@ async function createDriveFolder(name, parentId = null) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    if ((res.status === 404 || err.error?.code === 404) && parentId) {
+    if ((res.status === 404 || res.status === 403 || err.error?.code === 404) && parentId) {
       delete metadata.parents;
-      const retryRes = await fetch("https://www.googleapis.com/drive/v3/files", {
+      res = await fetch("https://www.googleapis.com/drive/v3/files", {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(metadata)
       });
-      if (retryRes.ok) return (await retryRes.json()).id;
+      if (res.ok) {
+        const folderId = (await res.json()).id;
+        await ensureDriveAnyoneShare(folderId, "writer");
+        return folderId;
+      }
     }
     throw new Error(err.error?.message || "Failed to create Drive folder");
   }
-  return (await res.json()).id;
+
+  const folderId = (await res.json()).id;
+  await ensureDriveAnyoneShare(folderId, "writer");
+  return folderId;
 }
 
 async function setupProfileDriveFolder(profile) {
@@ -224,7 +259,10 @@ async function setupProfileDriveFolder(profile) {
       });
       if (checkRes.ok) {
         const checkData = await checkRes.json();
-        if (!checkData.trashed) return profile.driveFolderId;
+        if (!checkData.trashed) {
+          await ensureDriveAnyoneShare(profile.driveFolderId, "writer");
+          return profile.driveFolderId;
+        }
       }
     } catch (e) {}
   }
@@ -241,17 +279,19 @@ async function setupProfileDriveFolder(profile) {
   }
 }
 
-async function shareDriveFolderWithAssociate(folderId, associateEmail) {
-  if (!folderId || !associateEmail || !hasValidToken()) return false;
+async function shareDriveFolderWithAssociate(fileOrFolderId, associateEmail) {
+  if (!fileOrFolderId || !hasValidToken()) return false;
+  const anyoneOk = await ensureDriveAnyoneShare(fileOrFolderId, "writer");
+  if (!associateEmail) return anyoneOk;
   try {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}/permissions?sendNotificationEmail=false`, {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileOrFolderId}/permissions?sendNotificationEmail=false&supportsAllDrives=true`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ role: "writer", type: "user", emailAddress: associateEmail })
     });
-    return res.ok;
+    return res.ok || anyoneOk;
   } catch (err) {
-    return false;
+    return anyoneOk;
   }
 }
 window.shareDriveFolderWithAssociate = shareDriveFolderWithAssociate;
@@ -272,7 +312,7 @@ function guessMimeFromFilename(name = "") {
 
 async function fetchDriveFileBlob(driveFileId, fileName = "") {
   if (!hasValidToken() || !driveFileId) throw new Error("Google Drive not connected.");
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`, {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media&supportsAllDrives=true`, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
   if (!res.ok) {
@@ -297,11 +337,20 @@ async function createInternalGoogleDoc(docTitle, initialPlainText = "", targetFo
     metadata.parents = [targetFolderId];
   }
 
-  const createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink", {
+  let createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(metadata)
   });
+
+  if (!createRes.ok && metadata.parents && (createRes.status === 403 || createRes.status === 404)) {
+    delete metadata.parents;
+    createRes = await fetch("https://www.googleapis.com/drive/v3/files?fields=id,name,webViewLink", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(metadata)
+    });
+  }
 
   if (!createRes.ok) {
     const err = await createRes.json().catch(() => ({}));
@@ -309,6 +358,7 @@ async function createInternalGoogleDoc(docTitle, initialPlainText = "", targetFo
   }
 
   const docMeta = await createRes.json();
+  await ensureDriveAnyoneShare(docMeta.id, "writer");
 
   if (initialPlainText && initialPlainText.trim()) {
     await updateInternalGoogleDocText(docMeta.id, initialPlainText);
@@ -319,20 +369,24 @@ window.createInternalGoogleDoc = createInternalGoogleDoc;
 
 async function renameDriveFile(fileId, newName) {
   if (!hasValidToken() || !fileId || !newName) return null;
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,webViewLink`, {
-    method: "PATCH",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ name: newName.trim() })
-  });
-  if (!res.ok) return null;
-  return await res.json();
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,webViewLink&supportsAllDrives=true`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim() })
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
 }
 window.renameDriveFile = renameDriveFile;
 
 async function moveDriveFileToFolder(fileId, targetFolderId) {
   if (!hasValidToken() || !fileId || !targetFolderId || targetFolderId === "root") return null;
   try {
-    const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`, {
+    const getRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents&supportsAllDrives=true`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     if (!getRes.ok) return null;
@@ -340,7 +394,7 @@ async function moveDriveFileToFolder(fileId, targetFolderId) {
     const prevParents = Array.isArray(data.parents) ? data.parents.join(",") : "";
     if (Array.isArray(data.parents) && data.parents.includes(targetFolderId)) return true;
 
-    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${encodeURIComponent(targetFolderId)}${prevParents ? `&removeParents=${encodeURIComponent(prevParents)}` : ""}&fields=id,parents,webViewLink`;
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${encodeURIComponent(targetFolderId)}${prevParents ? `&removeParents=${encodeURIComponent(prevParents)}` : ""}&fields=id,parents,webViewLink&supportsAllDrives=true`;
     const patchRes = await fetch(url, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${accessToken}` }
@@ -432,12 +486,26 @@ async function convertFileToGoogleDoc(fileOrDriveFileId, docTitle, targetFolderI
     };
     if (folder) copyMeta.parents = [folder];
 
-    const copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileOrDriveFileId}/copy?fields=id,name,webViewLink`, {
+    let copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileOrDriveFileId}/copy?fields=id,name,webViewLink&supportsAllDrives=true`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(copyMeta)
     });
-    if (copyRes.ok) return await copyRes.json();
+
+    if (!copyRes.ok && copyMeta.parents && (copyRes.status === 403 || copyRes.status === 404)) {
+      delete copyMeta.parents;
+      copyRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileOrDriveFileId}/copy?fields=id,name,webViewLink&supportsAllDrives=true`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(copyMeta)
+      });
+    }
+
+    if (copyRes.ok) {
+      const copied = await copyRes.json();
+      await ensureDriveAnyoneShare(copied.id, "writer");
+      return copied;
+    }
 
     let extractedText = "";
     try {
@@ -460,7 +528,7 @@ window.convertFileToGoogleDoc = convertFileToGoogleDoc;
 
 async function updateDriveFileContent(driveFileId, newBlob, newName = null) {
   if (!hasValidToken() || !driveFileId) throw new Error("Google Drive access token expired.");
-  const url = `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media&fields=id,name,size,webViewLink`;
+  const url = `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media&fields=id,name,size,webViewLink&supportsAllDrives=true`;
   const res = await fetch(url, {
     method: "PATCH",
     headers: {
@@ -477,9 +545,10 @@ async function updateDriveFileContent(driveFileId, newBlob, newName = null) {
 
   const updatedMeta = await res.json();
   if (newName && newName !== updatedMeta.name) {
-    await renameDriveFile(driveFileId, newName).catch(() => {});
+    await renameDriveFile(driveFileId, newName);
     updatedMeta.name = newName;
   }
+  await ensureDriveAnyoneShare(driveFileId, "writer");
   return updatedMeta;
 }
 window.updateDriveFileContent = updateDriveFileContent;
@@ -488,14 +557,32 @@ async function exportGoogleDocToPdf(docId, pdfName, targetFolderId, existingDriv
   if (!hasValidToken()) throw new Error("Google Drive access token expired.");
   showToast("Compiling revisions directly into PDF...");
 
-  const exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`, {
+  let exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`, {
     headers: { Authorization: `Bearer ${accessToken}` }
   });
-  if (!exportRes.ok) throw new Error("Failed to export Google Doc to PDF layout.");
+
+  // If 401/403 (e.g., old drive.file token or expired grant), re-prompt with full Drive scope and retry once
+  if (exportRes.status === 401 || exportRes.status === 403) {
+    try {
+      await promptDriveAuth(true);
+      exportRes = await fetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+    } catch (_) {}
+  }
+
+  if (!exportRes.ok) {
+    const errBody = await exportRes.json().catch(() => ({}));
+    if (exportRes.status === 403) {
+      throw new Error("Permission denied on this Google Doc. Ask the case owner to re-share the case or set the doc to 'Anyone with the link'.");
+    }
+    throw new Error(errBody.error?.message || "Failed to export Google Doc to PDF layout.");
+  }
 
   const pdfBlob = await exportRes.blob();
+  await ensureDriveAnyoneShare(docId, "writer");
 
-  // If a PDF already exists on this case, REPLACE ITS CONTENT directly in Google Drive!
+  // If a PDF already exists on this case, try to replace its content directly in Google Drive
   if (existingDrivePdfId) {
     try {
       const updatedMeta = await updateDriveFileContent(existingDrivePdfId, pdfBlob, pdfName);
@@ -507,7 +594,7 @@ async function exportGoogleDocToPdf(docId, pdfName, targetFolderId, existingDriv
         id: existingDrivePdfId
       };
     } catch (err) {
-      console.warn("Direct PDF replacement failed, uploading fresh copy:", err.message);
+      console.warn("Direct PDF replacement failed, uploading new shared PDF copy:", err.message);
     }
   }
 
@@ -515,6 +602,9 @@ async function exportGoogleDocToPdf(docId, pdfName, targetFolderId, existingDriv
   pdfFile._isConvertedPdf = true;
 
   const uploadedMeta = await uploadSingleFileToDrive(pdfFile, targetFolderId);
+  if (!uploadedMeta) {
+    throw new Error("Failed to upload compiled PDF to Google Drive.");
+  }
   return {
     ...uploadedMeta,
     name: pdfName,
@@ -633,7 +723,11 @@ async function uploadSingleFileToDrive(file, folderId) {
     });
   }
 
-  if (res.ok) return await res.json();
+  if (res.ok) {
+    const meta = await res.json();
+    await ensureDriveAnyoneShare(meta.id, "writer");
+    return meta;
+  }
   const err = await res.json().catch(() => ({}));
   showToast(res.status === 401 ? "Drive session expired. Auto-refreshing..." : `Upload warning: ${err.error?.message || "Saved locally"}`, "error");
   return null;
@@ -766,7 +860,10 @@ async function getOrCreateFolderInParent(folderName, parentFolderId) {
     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (res.ok) {
       const data = await res.json();
-      if (data.files?.length > 0) return data.files[0].id;
+      if (data.files?.length > 0) {
+        await ensureDriveAnyoneShare(data.files[0].id, "writer");
+        return data.files[0].id;
+      }
     }
     return await createDriveFolder(folderName, pid);
   } catch (err) {
@@ -837,17 +934,13 @@ async function uploadProfilePhotoToDrive(dataUrl, folderId, profileName) {
   if (!res.ok) throw new Error("Photo upload failed");
   const { id: fileId } = await res.json();
 
-  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ role: "reader", type: "anyone" })
-  });
+  await ensureDriveAnyoneShare(fileId, "reader");
   return { fileId, thumbnailUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w200` };
 }
 
 async function deleteDriveFile(driveFileId) {
   if (!driveFileId || !hasValidToken()) return;
-  try { await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }); } catch (err) {}
+  try { await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }); } catch (err) {}
 }
 
 async function createOrUpdateCalendarEvent(caseData) {
