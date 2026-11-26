@@ -255,7 +255,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   outline-offset: 2px;
 }
 
-/* ── MOBILE SHELL CONTAINER (Centered 440px on large screens, edge-to-edge on phones) ── */
+/* ── MOBILE SHELL CONTAINER ── */
 #mobile-shell {
   max-width: var(--app-max-w);
   min-height: 100vh;
@@ -410,7 +410,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--green);
 }
 
-/* Legacy top-bar & bottom-nav compatibility (used by tablet.html & admin-mobile.html) */
+/* Legacy top-bar & bottom-nav compatibility (used by admin-mobile.html) */
 .mobile-top-bar {
   display: flex;
   align-items: center;
@@ -477,7 +477,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .mobile-nav-item-icon { font-size: 18px; line-height: 1; }
 
 /* ═══════════════════════════════════════════════════════════════
-   THEME & DESIGN PREVIEW CARDS (MOBILE SETTINGS)
+   THEME PREVIEW CARDS (MOBILE SETTINGS)
    ═══════════════════════════════════════════════════════════════ */
 .theme-preview-grid {
   display: grid;
@@ -513,7 +513,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .theme-swatch-card.active .theme-active-check { display: inline-flex; }
 
 /* ═══════════════════════════════════════════════════════════════
-   DASHBOARD WIDGETS (2x2 QUICK ACTIONS, 3-COL KPI, SEGMENTED BAR)
+   DASHBOARD WIDGETS
    ═══════════════════════════════════════════════════════════════ */
 .welcome-strip { margin-bottom: 12px; }
 .welcome-name { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
@@ -1118,11 +1118,28 @@ input[type="date"], input[type="time"] { color-scheme: dark; }
 .menu-row:active, .menu-row.active { background: var(--gold-dim); color: var(--gold-light); }
 .menu-row.danger, .menu-row.danger i { color: var(--red); }
 
-/* ── SIDEBAR/MENU THEME SWITCH (HIDDEN VISUALLY, RETAINED IN ENGINE) ── */
-.theme-switch,
+/* Theme Switch */
+.theme-switch { position: relative; cursor: pointer; user-select: none; }
 .theme-switch-track {
-  display: none !important;
+  width: 50px; height: 26px; border-radius: 13px;
+  background: linear-gradient(135deg, #0a1520 0%, #162030 100%);
+  border: 1px solid var(--gold-border);
+  position: relative; display: flex; align-items: center;
 }
+[data-theme="light"] .theme-switch-track,
+[data-theme="gray"]  .theme-switch-track,
+[data-theme="white"] .theme-switch-track { background: var(--surface3); }
+.theme-switch-icon { position: absolute; font-size: 11px; z-index: 2; }
+.theme-switch-moon { right: 7px; opacity: 1; }
+.theme-switch-sun { left: 7px; opacity: 0; }
+.theme-switch.is-light .theme-switch-moon { opacity: 0; }
+.theme-switch.is-light .theme-switch-sun { opacity: 1; }
+.theme-switch-thumb {
+  position: absolute; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(145deg, #e5c787, #c9a55c);
+  transition: transform 0.25s ease; z-index: 3;
+}
+.theme-switch.is-light .theme-switch-thumb { transform: translateX(24px); }
 
 /* Drive Integration Buttons & Onboarding Cards */
 .gdrive-btn {
@@ -1171,14 +1188,14 @@ input[type="date"], input[type="time"] { color-scheme: dark; }
   align-items: center !important;
   justify-content: center !important;
   z-index: 10000 !important;
-  padding: 16px !important;
+  padding: 14px !important;
   overflow-y: auto !important;
 }
 .modal-box {
   background: var(--surface) !important;
   border: 1px solid var(--border-soft) !important;
   border-radius: var(--radius-xl) !important;
-  padding: 20px !important;
+  padding: 18px !important;
   max-width: var(--app-max-w) !important;
   width: 100% !important;
   max-height: 88dvh !important;
