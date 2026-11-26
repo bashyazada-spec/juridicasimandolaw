@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — REWORKED ULTRA-MINIMAL CHAT DOCK & CONVERSATIONS
-//  Vertical Recent Chats List · Theme-Matched · No Glowing Dots
+//  Vertical Recent Chats List · Theme-Matched · Responsive Mobile Fullscreen
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -383,7 +383,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  RECENT CONVERSATIONS LIST (NO GLOWING DOTS)
+  //  RECENT CONVERSATIONS LIST
   // ═══════════════════════════════════════════════════════════
   function formatMsgPreview(msg, isGroup) {
     if (!msg) return "Start conversation…";
@@ -899,6 +899,8 @@
         min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 5px;
       }
       .chat-badge.hidden { display: none; }
+      
+      /* Desktop Dock Style */
       .chat-panel {
         position: fixed !important; bottom: 24px !important; right: 24px !important;
         width: 376px !important; max-width: calc(100vw - 24px) !important; height: 520px !important;
@@ -907,6 +909,29 @@
         z-index: 99998 !important; box-shadow: var(--shadow) !important; overflow: hidden !important;
       }
       .chat-panel.hidden { display: none !important; }
+
+      /* Mobile & Small Tablet Fullscreen Override */
+      @media (max-width: 680px) {
+        .chat-panel {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          height: 100dvh !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          box-shadow: none !important;
+          z-index: 99999 !important;
+        }
+        .chat-header {
+          padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+        }
+        .chat-input-row {
+          padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+        }
+      }
+
       .chat-header {
         display: flex; align-items: center; justify-content: space-between;
         padding: 13px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-shrink: 0; cursor: pointer;
