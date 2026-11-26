@@ -900,7 +900,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-color: var(--gold-border);
 }
 
-.case-item, .case-row {
+/* Dashboard compact items */
+.case-item {
   display: flex;
   align-items: center;
   gap: 11px;
@@ -913,6 +914,55 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-align: left;
   cursor: pointer;
 }
+.case-item > :nth-last-child(2) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+}
+.case-item > :last-child {
+  flex-shrink: 0;
+  max-width: 115px;
+}
+
+/* All-Cases & Profile-Cases cards: 2-row responsive mobile card layout */
+.case-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 11px;
+  padding: 13px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.case-row > :nth-last-child(2) {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.case-row > :last-child {
+  flex: 1 0 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding-top: 9px;
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
+}
+.case-row > :last-child > div:last-child {
+  margin-left: auto;
+  align-items: flex-end !important;
+  text-align: right;
+}
+
 .case-item:last-child, .case-row:last-child { margin-bottom: 0; }
 .case-item:active, .case-row:active { background: var(--surface3); border-color: var(--gold-border); }
 
@@ -934,6 +984,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 12px 14px;
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -950,6 +1001,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .doc-item {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   background: var(--surface2);
@@ -957,7 +1009,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 8px;
-  gap: 10px;
+  gap: 8px 10px;
+}
+.doc-item > div:first-child {
+  flex: 1 1 190px;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .upload-area {
