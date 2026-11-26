@@ -1,32 +1,83 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 1 OF 2)
+//  5 Color Themes · 4 Sidebar Designs · Accessibility & Sound Engine
 // ═══════════════════════════════════════════════════════════════
 
-// ── THEME, ACCESSIBILITY & NOTIFICATION SOUND PREFERENCES ────
+// ── THEME, DESIGNS, ACCESSIBILITY & SOUND PREFERENCES ─────────
 function initTheme() {
-  const saved = localStorage.getItem('simando-theme');
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-    if (typeof updateThemeIcon === "function") updateThemeIcon(saved);
-  }
+  const savedTheme = localStorage.getItem('simando-theme') || 'dark';
+  const savedSidebar = localStorage.getItem('simando-sidebar-design') || 'capsule';
+  
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  document.documentElement.setAttribute('data-sidebar', savedSidebar);
+
+  updateThemeIcon(savedTheme);
+  syncThemeUIHighlights(savedTheme, savedSidebar);
   initAccessibilityAndSounds();
 }
 
+function setColorTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('simando-theme', theme);
+  updateThemeIcon(theme);
+  syncThemeUIHighlights(theme, null);
+  
+  const labels = {
+    dark: "Dark Navy",
+    black: "Midnight Black",
+    light: "Warm Stone",
+    gray: "Slate Gray",
+    white: "Pure White"
+  };
+  showToast(`Applied theme: ${labels[theme] || theme}`);
+}
+window.setColorTheme = setColorTheme;
+
+function setSidebarDesign(design) {
+  document.documentElement.setAttribute('data-sidebar', design);
+  localStorage.setItem('simando-sidebar-design', design);
+  syncThemeUIHighlights(null, design);
+
+  const labels = {
+    capsule: "Floating Capsule",
+    docked: "Docked Full-Height",
+    glass: "Frosted Glass",
+    card: "Architectural Card"
+  };
+  showToast(`Sidebar design: ${labels[design] || design}`);
+}
+window.setSidebarDesign = setSidebarDesign;
+
 function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme');
-  const next = current === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('simando-theme', next);
-  updateThemeIcon(next);
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = (current === 'light' || current === 'white') ? 'dark' : 'light';
+  setColorTheme(next);
 }
 
 function updateThemeIcon(theme) {
+  const isLightTheme = (theme === 'light' || theme === 'white' || theme === 'gray');
   document.querySelectorAll('.theme-switch').forEach(sw => {
     sw.setAttribute('data-theme-active', theme);
-    if (theme === 'light') sw.classList.add('is-light');
+    if (isLightTheme) sw.classList.add('is-light');
     else sw.classList.remove('is-light');
   });
 }
+
+function syncThemeUIHighlights(activeTheme, activeSidebar) {
+  const curTheme = activeTheme || document.documentElement.getAttribute('data-theme') || 'dark';
+  const curSidebar = activeSidebar || document.documentElement.getAttribute('data-sidebar') || 'capsule';
+
+  document.querySelectorAll('.theme-swatch-card').forEach(card => {
+    const choice = card.getAttribute('data-theme-choice');
+    card.classList.toggle('active', choice === curTheme);
+  });
+
+  document.querySelectorAll('.sidebar-preview-card').forEach(card => {
+    const choice = card.getAttribute('data-sidebar-choice');
+    card.classList.toggle('active', choice === curSidebar);
+  });
+}
+window.syncThemeUIHighlights = syncThemeUIHighlights;
 
 function initAccessibilityAndSounds() {
   try {
@@ -173,7 +224,7 @@ function renderOnlineUsersPopover() {
 window.renderOnlineUsersPopover = renderOnlineUsersPopover;
 
 // ═══════════════════════════════════════════════════════════════
-//  INTERNAL CASE RESEARCH WIDGET + CUSTOM SAVED LINKS ENGINE
+//  INTERNAL CASE RESEARCH WIDGET (DESKTOP & TABLET ONLY)
 // ═══════════════════════════════════════════════════════════════
 let activeResearchTab = "similar";
 let currentResearchWebUrl = "https://lawphil.net/";
@@ -2102,7 +2153,7 @@ const DESKTOP_PAGE_META = {
   caseDetail:    ["Case File Details", "Full summary, hearing schedule, activity logs, and attached PDFs"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["Profile Settings", "Manage your display name, contact number, profile photo, and practice bio"],
-  settings:      ["Settings", "Accessibility, notification sounds, security credentials, and firm policies"]
+  settings:      ["Settings", "Theme & designs, accessibility, sounds, security, and firm policies"]
 };
 
 function hasUnsavedCaseChanges() {
@@ -2217,7 +2268,7 @@ window.showView = showView;
 window.navTo = navTo;
 window.executeNavigation = executeNavigation;
 
-// Mobile UI Helpers (safe when not on mobile)
+// Mobile UI Helpers
 window.switchDashSegment = function(seg) {
   document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
   document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
@@ -2242,6 +2293,7 @@ window.goBackMobile = function() {
   else navTo("dashboard");
 };// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
+//  Dashboard, All Cases + Drive Explorer, Boxed Accordions, Sync
 // ═══════════════════════════════════════════════════════════════
 
 // ── DASHBOARD & COMPACT ACTIVE CASES ─────────────────────────
@@ -3078,7 +3130,7 @@ function renderAllCases() {
 window.renderAllCases = renderAllCases;
 
 // ═══════════════════════════════════════════════════════════════
-//  ENHANCED CASE DETAIL RENDERER (BOXED LEFT FIELDS + ACCORDIONS + PAGER)
+//  ENHANCED CASE DETAIL RENDERER (BOXED PROPERTIES + ACCORDIONS)
 // ═══════════════════════════════════════════════════════════════
 let cdHistoryCurrentPage = 1;
 const CD_HISTORY_PAGE_SIZE = 5;
@@ -3195,7 +3247,7 @@ function renderCaseDetail() {
     } else chip.style.display = "none";
   }
 
-  // Left Column: Distinct Boxed Case Properties with Larger Typography
+  // Left Column: Boxed Properties
   const infoEl = document.getElementById("cd-info");
   if (infoEl) {
     infoEl.innerHTML = `
@@ -3302,11 +3354,11 @@ function renderCaseDetail() {
   const docsEl = document.getElementById("cd-docs");
   if (docsEl) docsEl.innerHTML = docsHtml;
 
-  // Accordion 3: Document Edit History & Activity Logs (5 per page, starts closed)
+  // Accordion 3: Document Edit History & Activity Logs (5 per page)
   cdHistoryCurrentPage = 1;
   renderCaseHistoryPagination();
 
-  // Accordion 4: Update Status (starts closed)
+  // Accordion 4: Update Status
   const statusPanelEl = document.getElementById("cd-status-panel");
   if (statusPanelEl) {
     statusPanelEl.innerHTML = canEdit
@@ -3596,6 +3648,8 @@ window.renderMyProfile = renderMyProfile;
 // ── SETTINGS ACCORDIONS (Accessibility, Sounds, Security & Update Credentials) ──
 function renderSettingsView() {
   initAccessibilityAndSounds();
+  syncThemeUIHighlights(null, null);
+
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
   const userEmail = (u.email || "").toLowerCase();
@@ -4380,5 +4434,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (typeof renderOnlineUsersPopover === "function") renderOnlineUsersPopover();
     if (typeof renderResearchSitesStrip === "function") renderResearchSitesStrip();
     if (typeof checkOnboardingSecurityStatus === "function") checkOnboardingSecurityStatus();
+    if (typeof syncThemeUIHighlights === "function") syncThemeUIHighlights(null, null);
   }, 300);
 });
