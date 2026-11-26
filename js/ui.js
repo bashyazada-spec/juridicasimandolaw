@@ -4229,5 +4229,3 @@ window.addEventListener("DOMContentLoaded", () => {
     if (typeof checkOnboardingSecurityStatus === "function") checkOnboardingSecurityStatus();
   }, 300);
 });
-```
---- END OF FILE js/ui.js (PART 2 OF 2) ---
