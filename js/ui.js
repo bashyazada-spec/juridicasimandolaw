@@ -173,11 +173,144 @@ function renderOnlineUsersPopover() {
 window.renderOnlineUsersPopover = renderOnlineUsersPopover;
 
 // ═══════════════════════════════════════════════════════════════
-//  INTERNAL PERSISTENT MOVABLE CASE RESEARCH WIDGET
+//  INTERNAL CASE RESEARCH WIDGET + CUSTOM SAVED LINKS ENGINE
 // ═══════════════════════════════════════════════════════════════
 let activeResearchTab = "similar";
 let currentResearchWebUrl = "https://lawphil.net/";
 window.activeResearchTab = activeResearchTab;
+
+const DEFAULT_RESEARCH_SITES = [
+  { id: "lawphil", name: "LawPhil", url: "https://lawphil.net/", icon: "bi-book-half", builtIn: true },
+  { id: "chanrobles", name: "ChanRobles", url: "https://www.chanrobles.com/", icon: "bi-journal-text", builtIn: true },
+  { id: "scelib", name: "SC E-Library", url: "https://elibrary.judiciary.gov.ph/", icon: "bi-bank2", builtIn: true },
+  { id: "scdec", name: "SC Decisions", url: "https://sc.judiciary.gov.ph/decisions/", icon: "bi-scales", builtIn: true },
+  { id: "gazette", name: "Gazette", url: "https://www.officialgazette.gov.ph/", icon: "bi-award-fill", builtIn: true },
+  { id: "scholar", name: "Scholar", url: "https://scholar.google.com/", icon: "bi-mortarboard-fill", builtIn: true }
+];
+
+const FRAME_BLOCKED_DOMAINS = [
+  "officialgazette.gov.ph",
+  "elibrary.judiciary.gov.ph",
+  "sc.judiciary.gov.ph",
+  "scholar.google.com"
+];
+
+function getCustomResearchLinks() {
+  try {
+    const raw = localStorage.getItem("simando_custom_research_links");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCustomResearchLinks(links) {
+  try {
+    localStorage.setItem("simando_custom_research_links", JSON.stringify(links));
+  } catch (e) {}
+}
+
+function isFrameBlockedSite(url) {
+  if (typeof RESEARCH_PROXY_URL === "string" && RESEARCH_PROXY_URL.trim()) return false;
+  return FRAME_BLOCKED_DOMAINS.some(d => String(url || "").toLowerCase().includes(d));
+}
+
+function toEmbeddableUrl(url) {
+  if (typeof RESEARCH_PROXY_URL === "string" && RESEARCH_PROXY_URL.trim()) {
+    return RESEARCH_PROXY_URL.replace(/\/+$/, "") + "/?url=" + encodeURIComponent(url);
+  }
+  return url;
+}
+
+window.renderResearchSitesStrip = function() {
+  const strip = document.getElementById("research-sites-strip");
+  if (!strip) return;
+
+  const custom = getCustomResearchLinks();
+  const allSites = [...DEFAULT_RESEARCH_SITES, ...custom];
+
+  let html = allSites.map(site => {
+    const isActive = (site.url.replace(/\/+$/, "").toLowerCase() === currentResearchWebUrl.replace(/\/+$/, "").toLowerCase());
+    const isCustom = !site.builtIn;
+    const iconClass = site.icon || (isCustom ? "bi-bookmark-star-fill" : "bi-globe");
+
+    return `
+      <div class="research-site-chip ${isActive ? 'active' : ''}" onclick="loadInternalResearchSite('${site.url.replace(/'/g, "\\'")}', this)" title="${escHtml(site.url)}">
+        <i class="bi ${iconClass}"></i>
+        <span>${escHtml(site.name)}</span>
+        ${isCustom ? `<span class="research-chip-del" onclick="event.stopPropagation();deleteCustomResearchLink('${site.id}')" title="Delete custom link">×</span>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  html += `
+    <button type="button" class="research-add-chip" onclick="toggleAddResearchLinkBar(true)" title="Add your own legal research link">
+      <i class="bi bi-plus-lg"></i> Add Link
+    </button>
+  `;
+
+  strip.innerHTML = html;
+};
+
+window.toggleAddResearchLinkBar = function(show) {
+  const bar = document.getElementById("research-add-link-bar");
+  if (!bar) return;
+  const willShow = (show !== undefined) ? show : bar.classList.contains("hidden");
+  bar.classList.toggle("hidden", !willShow);
+  if (willShow) {
+    setTimeout(() => document.getElementById("research-add-name")?.focus(), 50);
+  } else {
+    const nameInp = document.getElementById("research-add-name");
+    const urlInp = document.getElementById("research-add-url");
+    if (nameInp) nameInp.value = "";
+    if (urlInp) urlInp.value = "";
+  }
+};
+
+window.addCustomResearchLink = function() {
+  const nameInp = document.getElementById("research-add-name");
+  const urlInp = document.getElementById("research-add-url");
+  const name = (nameInp?.value || "").trim();
+  let url = (urlInp?.value || "").trim();
+
+  if (!name || !url) {
+    showToast("Please enter both a label and a website URL.", "error");
+    return;
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
+  }
+
+  const custom = getCustomResearchLinks();
+  const newLink = {
+    id: "cres_" + Date.now(),
+    name,
+    url,
+    icon: "bi-bookmark-star-fill",
+    builtIn: false
+  };
+
+  custom.push(newLink);
+  saveCustomResearchLinks(custom);
+
+  toggleAddResearchLinkBar(false);
+  renderResearchSitesStrip();
+  loadInternalResearchSite(url, null);
+  showToast(`Added "${name}" to Case Research! ✅`);
+};
+
+window.deleteCustomResearchLink = function(linkId) {
+  let custom = getCustomResearchLinks();
+  const match = custom.find(x => x.id === linkId);
+  custom = custom.filter(x => x.id !== linkId);
+  saveCustomResearchLinks(custom);
+  renderResearchSitesStrip();
+  if (match && currentResearchWebUrl === match.url) {
+    loadInternalResearchSite(DEFAULT_RESEARCH_SITES[0].url, null);
+  }
+  showToast("Removed saved link.");
+};
 
 window.toggleResearchWidget = function(e) {
   if (e) e.stopPropagation();
@@ -187,6 +320,7 @@ window.toggleResearchWidget = function(e) {
   if (isHidden) {
     w.classList.remove("hidden");
     renderInternalSimilarCases();
+    renderResearchSitesStrip();
   } else {
     w.classList.add("hidden");
   }
@@ -215,26 +349,56 @@ window.switchResearchTab = function(tab) {
   if (tab === "similar") {
     renderInternalSimilarCases();
   } else {
-    const frame = document.getElementById("research-internal-frame");
-    if (frame && (!frame.src || frame.src === "about:blank")) {
-      frame.src = currentResearchWebUrl;
+    renderResearchSitesStrip();
+    loadInternalResearchSite(currentResearchWebUrl, null);
+  }
+};
+
+window.loadInternalResearchSite = function(url, chipEl) {
+  currentResearchWebUrl = url;
+  renderResearchSitesStrip();
+  setElText("research-current-url", url);
+
+  const frame = document.getElementById("research-internal-frame");
+  const blockedCard = document.getElementById("research-blocked-card");
+
+  if (isFrameBlockedSite(url)) {
+    if (frame) {
+      frame.classList.add("hidden");
+      frame.src = "about:blank";
+    }
+    if (blockedCard) {
+      blockedCard.classList.remove("hidden");
+      let host = url;
+      try { host = new URL(url).hostname.replace(/^www\./, ""); } catch (e) {}
+      setElText("research-blocked-title", `${host} blocks inline embedding`);
+    }
+  } else {
+    if (blockedCard) blockedCard.classList.add("hidden");
+    if (frame) {
+      frame.classList.remove("hidden");
+      frame.src = toEmbeddableUrl(url);
     }
   }
 };
 
-window.loadInternalResearchSite = function(url, chipBtn) {
-  currentResearchWebUrl = url;
-  document.querySelectorAll(".research-site-chip").forEach(b => b.classList.remove("active"));
-  if (chipBtn) chipBtn.classList.add("active");
-  setElText("research-current-url", url);
+window.forceEmbedResearchFrame = function() {
   const frame = document.getElementById("research-internal-frame");
-  if (frame) frame.src = url;
+  const blockedCard = document.getElementById("research-blocked-card");
+  if (blockedCard) blockedCard.classList.add("hidden");
+  if (frame) {
+    frame.classList.remove("hidden");
+    frame.src = toEmbeddableUrl(currentResearchWebUrl);
+  }
 };
 
-window.popOutCurrentResearchUrl = function() {
-  const w = Math.min(1080, Math.max(820, Math.round(window.screen.availWidth * 0.72)));
-  const h = Math.min(780, Math.max(600, Math.round(window.screen.availHeight * 0.80)));
-  window.open(currentResearchWebUrl, "SimandoLegalResearchPopout", `popup=yes,width=${w},height=${h},resizable=yes,scrollbars=yes`);
+window.popOutCurrentResearchUrl = function(overrideUrl = null) {
+  const target = overrideUrl || currentResearchWebUrl;
+  const w = Math.min(940, Math.max(640, Math.round(window.screen.availWidth * 0.48)));
+  const h = Math.min(840, Math.max(620, Math.round(window.screen.availHeight * 0.86)));
+  const left = Math.max(0, window.screen.availWidth - w - 18);
+  const top  = 40;
+  window.open(target, "SimandoLegalResearchPopout", `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`);
 };
 
 function renderInternalSimilarCases() {
@@ -295,8 +459,35 @@ window.searchSimilarCases = function() {
     renderInternalSimilarCases();
     return;
   }
-  const url = q ? ("https://www.chanrobles.com/search.html?q=" + encodeURIComponent(q)) : currentResearchWebUrl;
-  loadInternalResearchSite(url, null);
+  if (!q) {
+    loadInternalResearchSite(currentResearchWebUrl, null);
+    return;
+  }
+
+  let searchUrl = currentResearchWebUrl;
+  const cur = currentResearchWebUrl.toLowerCase();
+  if (cur.includes("chanrobles.com"))           searchUrl = "https://www.chanrobles.com/search.html?q=" + encodeURIComponent(q);
+  else if (cur.includes("lawphil.net"))         searchUrl = "https://www.google.com/search?q=" + encodeURIComponent("site:lawphil.net " + q);
+  else if (cur.includes("officialgazette.gov")) searchUrl = "https://www.officialgazette.gov.ph/?s=" + encodeURIComponent(q);
+  else if (cur.includes("sc.judiciary.gov"))    searchUrl = "https://sc.judiciary.gov.ph/?s=" + encodeURIComponent(q);
+  else if (cur.includes("elibrary.judiciary"))  searchUrl = "https://www.google.com/search?q=" + encodeURIComponent("site:elibrary.judiciary.gov.ph " + q);
+  else if (cur.includes("scholar.google.com"))  searchUrl = "https://scholar.google.com/scholar?q=" + encodeURIComponent(q);
+  else {
+    try {
+      const u = new URL(currentResearchWebUrl);
+      searchUrl = `https://www.google.com/search?q=${encodeURIComponent(`site:${u.hostname} ${q}`)}`;
+    } catch (e) {
+      searchUrl = "https://www.google.com/search?q=" + encodeURIComponent(q);
+    }
+  }
+
+  if (isFrameBlockedSite(searchUrl) || searchUrl.includes("google.com/search")) {
+    currentResearchWebUrl = searchUrl;
+    setElText("research-current-url", searchUrl);
+    popOutCurrentResearchUrl(searchUrl);
+  } else {
+    loadInternalResearchSite(searchUrl, null);
+  }
 };
 
 function initResearchWidgetDrag() {
@@ -308,7 +499,7 @@ function initResearchWidgetDrag() {
   let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
   handle.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("button")) return;
+    if (e.target.closest("button") || e.target.closest("input")) return;
     dragging = true;
     const rect = widget.getBoundingClientRect();
     widget.style.left = rect.left + "px";
@@ -593,11 +784,11 @@ window.wizardNext = async function() {
 //  REAL GOOGLE DOCS + LEGAL DRAFT WORKSPACE + SINGLE-PDF REPLACE
 // ═══════════════════════════════════════════════════════════════
 let activeInternalDocId = null;
-let activeGdocMode = "live"; // "live" | "draft"
+let activeGdocMode = "live";
 let activeGdocFlow = "Outbound";
-let activeEditingPdfContext = null; // { caseId, docIndex, drivePdfId, originalName, version, fileType }
+let activeEditingPdfContext = null;
 let docIsDirty = false;
-let pendingDiscardTarget = null; // "gdoc" | "pdf"
+let pendingDiscardTarget = null;
 let cachedDriveGoogleDocs = null;
 
 window.markDocDirty = function() {
@@ -1590,7 +1781,7 @@ window.deleteBusySlot = function(id) {
   });
 };
 
-// ── CALENDAR MONTH VIEW + ATTORNEY FILTER + STEALTH ──────────
+// ── CALENDAR MONTH VIEW + FIXED ATTORNEY FILTER + STEALTH ────
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 let selectedCalDateStr = (() => {
@@ -1988,7 +2179,7 @@ const DESKTOP_PAGE_META = {
   profileDetail: ["Attorney Profile", "Assigned caseload, practice bio, and contact details"],
   profileForm:   ["Attorney Profile Setup", "Create or edit attorney profile information"],
   allcases:      ["All Cases & Google Docs", "Search, filter, manage cases, and explore sorted document folders"],
-  caseDetail:    ["Case File Details", "Full summary, hearing schedule, activity logs, and attached PDFs"],
+  caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["Profile Settings", "Manage your display name, contact number, profile photo, and practice bio"],
   settings:      ["Settings", "Accessibility, notification sounds, security credentials, and firm policies"]
@@ -2046,33 +2237,16 @@ function showView(name) {
   document.getElementById("view-" + name)?.classList.remove("hidden");
   currentView = name;
 
-  document.querySelectorAll(".nav-btn, .bnav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
   let key = name;
   if (name === "caseDetail" || name === "caseForm") key = "allcases";
   else if (name === "profileDetail" || name === "profileForm") key = "profiles";
   document.querySelector(`.nav-btn[data-nav="${key}"]`)?.classList.add("active");
-  document.querySelector(`.bnav-btn[data-nav="${key}"]`)?.classList.add("active");
-
-  const mobileFormBar = document.getElementById("mobile-form-bar");
-  const bottomNavWrap = document.getElementById("bottom-nav-wrap");
-  if (mobileFormBar) mobileFormBar.classList.toggle("hidden", name !== "caseForm");
-  if (bottomNavWrap) bottomNavWrap.classList.toggle("hidden", name === "caseForm");
-
-  const topbarBackBtn = document.getElementById("topbar-back-btn");
-  const topbarCrest   = document.getElementById("topbar-crest");
-  const subViews = ["caseDetail", "caseForm", "profileDetail", "profileForm"];
-  if (topbarBackBtn && topbarCrest) {
-    const isSub = subViews.includes(name);
-    topbarBackBtn.classList.toggle("hidden", !isSub);
-    topbarCrest.classList.toggle("hidden", isSub);
-  }
 
   const meta = DESKTOP_PAGE_META[name];
   if (meta) {
     setElText("main-page-title", meta[0]);
     setElText("main-page-sub", meta[1]);
-    setElText("mobile-page-title", meta[0]);
-    setElText("mobile-page-sub", meta[1]);
   }
 }
 
@@ -2105,31 +2279,6 @@ window.quickFilterCases = (status) => {
 window.showView = showView;
 window.navTo = navTo;
 window.executeNavigation = executeNavigation;
-
-// Mobile UI Helpers (safe when not on mobile)
-window.switchDashSegment = function(seg) {
-  document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
-  document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
-  document.getElementById("dash-panel-cases")?.classList.toggle("hidden", seg !== "cases");
-  document.getElementById("dash-calendar-card")?.classList.toggle("hidden", seg !== "schedule");
-};
-window.toggleFiltersDrawer = function() {
-  const drawer = document.getElementById("ac-filters-drawer");
-  const btn = document.getElementById("toggle-filters-btn");
-  if (!drawer) return;
-  const hidden = drawer.classList.toggle("hidden");
-  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
-};
-window.openSheet = function(id) { document.getElementById(id)?.classList.remove("hidden"); };
-window.closeAllSheets = function() {
-  document.querySelectorAll(".sheet-backdrop").forEach(s => s.classList.add("hidden"));
-};
-window.goBackMobile = function() {
-  if (currentView === "caseForm") handleCaseCancelOrExit();
-  else if (currentView === "caseDetail") handleCaseDetailBack();
-  else if (currentView === "profileDetail" || currentView === "profileForm") navTo("profiles");
-  else navTo("dashboard");
-};
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
@@ -2139,13 +2288,26 @@ let currentDashPage = 1;
 let dashCasesFilter = "all";
 const dashPageSize = 5;
 
-window.changeDashPage = function(delta) { currentDashPage += delta; renderDashboard(); };
-window.setDashCasesFilter = function(kind) { dashCasesFilter = kind; currentDashPage = 1; renderDashboard(); };
+window.changeDashPage = function(delta) {
+  currentDashPage += delta;
+  renderDashboard();
+};
+
+window.setDashCasesFilter = function(kind) {
+  dashCasesFilter = kind;
+  currentDashPage = 1;
+  renderDashboard();
+};
 
 function renderDashboard() {
   const todayDateEl = document.getElementById("today-date");
   if (todayDateEl) {
-    todayDateEl.textContent = new Date().toLocaleDateString("en-PH", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    todayDateEl.textContent = new Date().toLocaleDateString("en-PH", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
   }
 
   const userCases = getAccessibleCases();
@@ -2292,7 +2454,9 @@ function renderProfiles() {
   }
 
   if (profilesViewMode === "list") {
-    el.style.display = "flex"; el.style.flexDirection = "column"; el.style.gap = "8px";
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+    el.style.gap = "8px";
     el.innerHTML = visibleProfiles.map(p => {
       const pc = userCases.filter(c => c.profileId === p.id);
       const isMe = p.ownerUid === u.uid || (p.email && p.email.toLowerCase() === userEmail);
@@ -2332,7 +2496,7 @@ function renderProfiles() {
           ${p.description ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;line-height:1.45">${escHtml(p.description)}</div>` : ""}
           <hr class="divider"/>
           ${p.email ? `<div style="font-size:12px;color:var(--text-muted)"><i class="bi bi-envelope-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.email)}</div>` : ""}
-          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
+          ${p.contact ? `<div style="font-size:12px;color:var(--text-muted)"><i class="bi bi-telephone-fill" style="color:var(--gold);margin-right:6px"></i>${escHtml(p.contact)}</div>` : ""}
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
             <span style="font-size:12.5px;color:var(--text-dim)">${pc.length} Case${pc.length !== 1 ? 's' : ''}</span>
             ${ongoing > 0 ? badge(ongoing + " active", statusColor("On-going")) : ""}
@@ -2343,7 +2507,7 @@ function renderProfiles() {
 }
 window.renderProfiles = renderProfiles;
 
-// ── CASE SHARING SYSTEM (WITH AUDIT LOGGING & DRIVE PERMISSION) ──
+// ── CASE SHARING SYSTEM (STEALTH HIDES SUPERDEV FROM ASSOCIATES) ──
 window.openShareCaseModal = function() {
   if (!selCase) return;
   const listEl = document.getElementById("share-modal-list");
@@ -2377,7 +2541,9 @@ window.closeShareModal = () => document.getElementById("share-modal")?.classList
 async function saveShareSettings() {
   if (!selCase) return;
   const selectedUids = [];
-  document.querySelectorAll('input[name="share-associate-checkbox"]').forEach(cb => { if (cb.checked) selectedUids.push(cb.value); });
+  document.querySelectorAll('input[name="share-associate-checkbox"]').forEach(cb => {
+    if (cb.checked) selectedUids.push(cb.value);
+  });
   const ownerUid = selCase.ownerUid || window._currentUser.uid;
   const allowedUids = Array.from(new Set([ownerUid, ...selectedUids]));
 
@@ -2396,7 +2562,9 @@ async function saveShareSettings() {
   try {
     showToast("Updating share settings...");
     if (typeof dbUpdateCase === "function") await dbUpdateCase(selCase.id, { sharedWith: selectedUids, allowedUids, logs: existingLogs });
-    selCase.sharedWith = selectedUids; selCase.allowedUids = allowedUids; selCase.logs = existingLogs;
+    selCase.sharedWith = selectedUids;
+    selCase.allowedUids = allowedUids;
+    selCase.logs = existingLogs;
 
     if (typeof shareDriveFolderWithAssociate === "function" && typeof hasValidToken === "function" && hasValidToken()) {
       for (const uid of selectedUids) {
@@ -2518,7 +2686,7 @@ window.renderProfileCases = renderProfileCases;
 // ═══════════════════════════════════════════════════════════════
 let currentAllCasesPage = 1;
 const allCasesPageSize = 10;
-let allCasesActiveTab = "cases"; // "cases" | "docs"
+let allCasesActiveTab = "cases";
 let driveNavState = { level: "root", category: null, type: null, caseId: null, flow: null };
 
 window.changeAllCasesPage = (delta) => { currentAllCasesPage += delta; renderAllCases(); };
@@ -2528,11 +2696,8 @@ window.resetAllCaseFilters = () => { setElVal("ac-search", ""); setElVal("ac-cat
 
 window.switchAllCasesTab = function(tab) {
   allCasesActiveTab = tab === "docs" ? "docs" : "cases";
-  const casesBtn = document.getElementById("ac-mode-cases-btn");
-  const docsBtn  = document.getElementById("ac-mode-docs-btn");
-  if (casesBtn) casesBtn.classList.toggle("active", allCasesActiveTab === "cases");
-  if (docsBtn)  docsBtn.classList.toggle("active", allCasesActiveTab === "docs");
-
+  document.getElementById("ac-mode-cases-btn")?.classList.toggle("active", allCasesActiveTab === "cases");
+  document.getElementById("ac-mode-docs-btn")?.classList.toggle("active", allCasesActiveTab === "docs");
   document.getElementById("ac-cases-controls")?.classList.toggle("hidden", allCasesActiveTab !== "cases");
   document.getElementById("ac-cases-body")?.classList.toggle("hidden", allCasesActiveTab !== "cases");
   document.getElementById("ac-docs-controls")?.classList.toggle("hidden", allCasesActiveTab !== "docs");
@@ -3253,9 +3418,8 @@ function refreshFilterTypes(prefix) {
   const typeSel = document.getElementById(prefix + "-type");
   if (!catSel || !typeSel) return;
   const selectedCat = catSel.value; const curType = typeSel.value;
-  const fromGlobal = (selectedCat === "All" ? globalCaseTypes : globalCaseTypes.filter(t => t.category === selectedCat)).map(t => t.name);
-  const fromCases = (selectedCat === "All" ? getAccessibleCases() : getAccessibleCases().filter(c => c.category === selectedCat)).map(c => c.type).filter(Boolean);
-  const distinctTypes = [...new Set([...fromGlobal, ...fromCases])].sort();
+  const filteredTypes = selectedCat === "All" ? globalCaseTypes.map(t => t.name) : globalCaseTypes.filter(t => t.category === selectedCat).map(t => t.name);
+  const distinctTypes = [...new Set(filteredTypes)].sort();
   typeSel.innerHTML = `<option value="All">All Types</option>` + distinctTypes.map(t => `<option value="${t}">${t}</option>`).join("");
   typeSel.value = distinctTypes.includes(curType) ? curType : "All";
 }
@@ -3287,8 +3451,6 @@ function renderMyProfile() {
   settingsPhotoDataUrl = myProf.photoUrl || null;
   if (settingsPhotoDataUrl) showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
   else resetSettingsPhotoUpload();
-
-  if (document.getElementById("settings-drive-status")) renderSettingsView();
 }
 window.renderMyProfile = renderMyProfile;
 
@@ -3439,6 +3601,7 @@ async function saveUserSettings() {
   }
 }
 
+// ── FIXED UPDATE CREDENTIALS (ALWAYS-VISIBLE CURRENT PASSWORD + CONFIRM) ──
 async function saveSecuritySettings() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
@@ -3446,8 +3609,7 @@ async function saveSecuritySettings() {
   const currentPass = document.getElementById("setting-current-password")?.value || "";
   const email = (document.getElementById("setting-email")?.value || "").trim();
   const pass = document.getElementById("setting-password")?.value || "";
-  const confirmPassEl = document.getElementById("setting-confirm-password");
-  const confirmPass = confirmPassEl ? confirmPassEl.value : pass;
+  const confirmPass = document.getElementById("setting-confirm-password")?.value || "";
 
   if (!email) { showToast("Sign-In Email is required.", "error"); return; }
   if (!isValidEmail(email)) { showToast("Email must be @gmail.com, @outlook.com, or @yahoo.com.", "error"); return; }
@@ -3457,12 +3619,10 @@ async function saveSecuritySettings() {
 
   if (pass) {
     if (pass.length < 6) { showToast("New password must be at least 6 characters.", "error"); return; }
-    if (confirmPassEl && confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
+    if (confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
   }
 
   if (!currentPass) {
-    const reauthPanel = document.getElementById("setting-reauth-panel");
-    if (reauthPanel) reauthPanel.style.display = "block";
     showToast("Enter your Current Password to verify identity before updating credentials.", "error");
     document.getElementById("setting-current-password")?.focus();
     return;
@@ -3481,8 +3641,7 @@ async function saveSecuritySettings() {
     setElVal("setting-current-password", "");
     setElVal("setting-password", "");
     setElVal("setting-confirm-password", "");
-    const reqEl = document.getElementById("password-requirements");
-    if (reqEl) reqEl.style.display = "none";
+    document.getElementById("password-requirements").style.display = "none";
   } catch (err) {
     showToast("Credential update failed: " + err.message, "error");
   }
@@ -3994,7 +4153,10 @@ window.editPreviewedFileInGoogleDocs = async function() {
   }
 
   const editBtn = document.getElementById("fpm-edit-btn");
-  if (editBtn) { editBtn.disabled = true; editBtn.textContent = "Converting..."; }
+  if (editBtn) {
+    editBtn.disabled = true;
+    editBtn.textContent = "Converting...";
+  }
 
   try {
     const targetCaseId = selCase?.id || "";
@@ -4063,6 +4225,9 @@ window.addEventListener("DOMContentLoaded", () => {
     if (typeof renderSidebarUser === "function") renderSidebarUser();
     if (typeof renderGoogleStatusPopover === "function") renderGoogleStatusPopover();
     if (typeof renderOnlineUsersPopover === "function") renderOnlineUsersPopover();
+    if (typeof renderResearchSitesStrip === "function") renderResearchSitesStrip();
     if (typeof checkOnboardingSecurityStatus === "function") checkOnboardingSecurityStatus();
   }, 300);
 });
+```
+--- END OF FILE js/ui.js (PART 2 OF 2) ---
