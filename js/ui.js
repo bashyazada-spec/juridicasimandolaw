@@ -1343,7 +1343,13 @@ function restoreDismissedBanners() {
 }
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest("#top-hdr-actions")) window.closeAllTopPopovers();
+  if (
+    !e.target.closest("#top-hdr-actions") &&
+    !e.target.closest(".topbar-actions") &&
+    !e.target.closest("#notif-dropdown")
+  ) {
+    window.closeAllTopPopovers();
+  }
 });
 
 document.addEventListener("keydown", (e) => {
@@ -1618,9 +1624,7 @@ function checkOnboardingBothComplete() {
   const u = window._currentUser || window._auth?.currentUser;
   const myProf = u ? profiles.find(p => (p.ownerUid && p.ownerUid === u.uid) || (p.email && p.email.toLowerCase() === (u.email || "").toLowerCase())) : null;
   if (myProf?.twoFactorEnabled && hasValidToken()) setTimeout(dismissOnboardingModal, 1000);
-}
-
-// ── MULTI-DATE AVAILABILITY PICKER ───────────────────────────
+}// ── MULTI-DATE AVAILABILITY PICKER ───────────────────────────
 let selectedBusyDates = new Set();
 let modalCalYear = new Date().getFullYear();
 let modalCalMonth = new Date().getMonth();
@@ -2291,7 +2295,9 @@ window.goBackMobile = function() {
   else if (currentView === "caseDetail") handleCaseDetailBack();
   else if (currentView === "profileDetail" || currentView === "profileForm") navTo("profiles");
   else navTo("dashboard");
-};// ═══════════════════════════════════════════════════════════════
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 //  Dashboard, All Cases + Drive Explorer, Boxed Accordions, Sync
 // ═══════════════════════════════════════════════════════════════
@@ -3444,7 +3450,6 @@ window.editCaseDocInGoogleDocs = async function(caseId, docIndex) {
     const sourceId = doc.driveFileId || doc.editableGdocId;
     const convertedMeta = await convertFileToGoogleDoc(sourceId, doc.name, folderId);
 
-    // Save the shared editableGdocId on the document entry so co-editors use the same shared Google Doc
     doc.editableGdocId = convertedMeta.id;
     await dbUpdateCase(targetCase.id, { documents: targetCase.documents }).catch(() => {});
 
@@ -3996,7 +4001,8 @@ window.fetchAndRenderGoogleCalendarEvents = renderDashboardCalendarAgenda;
 let currentNotifFilter = "all";
 window.filterNotifications = (cat) => { currentNotifFilter = cat; renderNotificationsView(); };
 
-window.toggleNotifDropdown = function() {
+window.toggleNotifDropdown = function(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
   const dropdown = document.getElementById("notif-dropdown");
   if (!dropdown) return;
   const willOpen = dropdown.classList.contains("hidden");
