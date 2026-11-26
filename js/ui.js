@@ -2241,7 +2241,7 @@ window.goBackMobile = function() {
   else if (currentView === "profileDetail" || currentView === "profileForm") navTo("profiles");
   else navTo("dashboard");
 };
-// ═══════════════════════════════════════════════════════════════
+/ ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
@@ -2469,6 +2469,25 @@ function renderProfiles() {
 }
 window.renderProfiles = renderProfiles;
 
+// ── AUTO-UPGRADE CASE DOCUMENTS TO "ANYONE WITH THE LINK" ─────
+const _upgradedCaseShareSet = new Set();
+
+async function ensureCaseDocsAnyoneShare(c) {
+  if (!c || !Array.isArray(c.documents) || c.documents.length === 0) return;
+  if (typeof hasValidToken !== "function" || !hasValidToken()) return;
+  if (typeof ensureDriveAnyoneShare !== "function") return;
+
+  const u = window._currentUser || window._auth?.currentUser;
+  if (!u || (c.ownerUid && c.ownerUid !== u.uid)) return;
+  if (_upgradedCaseShareSet.has(c.id)) return;
+  _upgradedCaseShareSet.add(c.id);
+
+  for (const d of c.documents) {
+    if (d.driveFileId) await ensureDriveAnyoneShare(d.driveFileId, "writer").catch(() => {});
+    if (d.editableGdocId) await ensureDriveAnyoneShare(d.editableGdocId, "writer").catch(() => {});
+  }
+}
+
 // ── CASE SHARING SYSTEM (WITH AUDIT LOGGING & DRIVE PERMISSION) ──
 window.openShareCaseModal = function() {
   if (!selCase) return;
@@ -2528,12 +2547,19 @@ async function saveShareSettings() {
     selCase.allowedUids = allowedUids;
     selCase.logs = existingLogs;
 
-    if (typeof shareDriveFolderWithAssociate === "function" && typeof hasValidToken === "function" && hasValidToken()) {
-      for (const uid of selectedUids) {
-        const assoc = profiles.find(p => p.ownerUid === uid);
-        if (assoc?.email && Array.isArray(selCase.documents)) {
-          for (const d of selCase.documents) {
-            if (d.driveFileId) await shareDriveFolderWithAssociate(d.driveFileId, assoc.email).catch(() => {});
+    if (typeof hasValidToken === "function" && hasValidToken() && Array.isArray(selCase.documents)) {
+      for (const d of selCase.documents) {
+        if (typeof ensureDriveAnyoneShare === "function") {
+          if (d.driveFileId) await ensureDriveAnyoneShare(d.driveFileId, "writer").catch(() => {});
+          if (d.editableGdocId) await ensureDriveAnyoneShare(d.editableGdocId, "writer").catch(() => {});
+        }
+        if (typeof shareDriveFolderWithAssociate === "function") {
+          for (const uid of selectedUids) {
+            const assoc = profiles.find(p => p.ownerUid === uid);
+            if (assoc?.email) {
+              if (d.driveFileId) await shareDriveFolderWithAssociate(d.driveFileId, assoc.email).catch(() => {});
+              if (d.editableGdocId) await shareDriveFolderWithAssociate(d.editableGdocId, assoc.email).catch(() => {});
+            }
           }
         }
       }
@@ -2542,7 +2568,7 @@ async function saveShareSettings() {
     if (typeof dbLogAuditAction === "function") dbLogAuditAction("CASE_SHARED", { caseId: selCase.id, sharedWith: selectedUids });
     closeShareModal();
     renderCaseDetail();
-    showToast("Case shared successfully!");
+    showToast("Case & files shared with Anyone-with-link access!");
   } catch (err) {
     showToast("Failed to share case: " + err.message, "error");
   }
@@ -3299,6 +3325,21 @@ window.openCaseDocPreview = function(idx) {
   openFilePreview(selCase.documents[idx], idx);
 };
 
+async function verifyDriveFileEditable(fileId) {
+  if (!fileId || typeof hasValidToken !== "function" || !hasValidToken()) return false;
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,capabilities/canEdit&supportsAllDrives=true`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data?.capabilities?.canEdit !== false;
+  } catch (e) {
+    return false;
+  }
+}
+
 window.editCaseDocInGoogleDocs = async function(caseId, docIndex) {
   const targetCase = (cases || []).find(c => c.id === caseId) || selCase;
   if (!targetCase || !Array.isArray(targetCase.documents) || !targetCase.documents[docIndex]) return;
@@ -3321,26 +3362,41 @@ window.editCaseDocInGoogleDocs = async function(caseId, docIndex) {
   };
 
   if (doc.editableGdocId) {
-    await openGoogleDocModal(targetCase.id, doc.editableGdocId, {
-      flow: doc.fileType || "Outbound",
-      title: cleanTitle,
-      editingPdfContext: editingCtx
-    });
-    return;
+    if (typeof ensureDriveAnyoneShare === "function") {
+      await ensureDriveAnyoneShare(doc.editableGdocId, "writer").catch(() => {});
+    }
+    const canEditExisting = await verifyDriveFileEditable(doc.editableGdocId);
+    if (canEditExisting) {
+      await openGoogleDocModal(targetCase.id, doc.editableGdocId, {
+        flow: doc.fileType || "Outbound",
+        title: cleanTitle,
+        editingPdfContext: editingCtx
+      });
+      return;
+    }
   }
 
   if ((doc.name || "").includes("(Google Doc)") || (doc.driveLink || "").includes("docs.google.com/document")) {
-    await openGoogleDocModal(targetCase.id, doc.driveFileId, {
-      flow: doc.fileType || "Outbound",
-      title: cleanTitle,
-      editingPdfContext: editingCtx
-    });
-    return;
+    const canEditNative = await verifyDriveFileEditable(doc.driveFileId);
+    if (canEditNative) {
+      await openGoogleDocModal(targetCase.id, doc.driveFileId, {
+        flow: doc.fileType || "Outbound",
+        title: cleanTitle,
+        editingPdfContext: editingCtx
+      });
+      return;
+    }
   }
 
   try {
     const { folderId } = await resolveGdocTargetFolder(targetCase.id, doc.fileType || "Outbound");
-    const convertedMeta = await convertFileToGoogleDoc(doc.driveFileId, doc.name, folderId);
+    const sourceId = doc.driveFileId || doc.editableGdocId;
+    const convertedMeta = await convertFileToGoogleDoc(sourceId, doc.name, folderId);
+
+    // Save the shared editableGdocId on the document entry so co-editors use the same shared Google Doc
+    doc.editableGdocId = convertedMeta.id;
+    await dbUpdateCase(targetCase.id, { documents: targetCase.documents }).catch(() => {});
+
     await openGoogleDocModal(targetCase.id, convertedMeta.id, {
       flow: doc.fileType || "Outbound",
       title: cleanTitle,
@@ -3419,6 +3475,7 @@ function openCase(id) {
   document.getElementById("cd-acc-status")?.classList.remove("is-open");
   showView("caseDetail");
   renderCaseDetail();
+  ensureCaseDocsAnyoneShare(selCase);
 }
 window.openProfile = openProfile;
 window.openCase = openCase;
@@ -4255,9 +4312,22 @@ window.editPreviewedFileInGoogleDocs = async function() {
 
     const cleanTitle = (doc.name || "Document").replace(/\.[^/.]+$/, "").replace(/\s*\(Google Doc\)$/i, "");
     let gdocId = doc.editableGdocId || null;
+
+    if (gdocId && typeof source === "string") {
+      if (typeof ensureDriveAnyoneShare === "function") {
+        await ensureDriveAnyoneShare(gdocId, "writer").catch(() => {});
+      }
+      const editableOk = await verifyDriveFileEditable(gdocId);
+      if (!editableOk) gdocId = null;
+    }
+
     if (!gdocId) {
-      const convertedMeta = await convertFileToGoogleDoc(source, doc.name, folderId);
+      const convertedMeta = await convertFileToGoogleDoc(doc.driveFileId || localFile, doc.name, folderId);
       gdocId = convertedMeta.id;
+      if (targetCase && _previewingDocIndex >= 0 && targetCase.documents?.[_previewingDocIndex]) {
+        targetCase.documents[_previewingDocIndex].editableGdocId = gdocId;
+        await dbUpdateCase(targetCase.id, { documents: targetCase.documents }).catch(() => {});
+      }
     }
 
     const idx = (_previewingDocIndex >= 0)
