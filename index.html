@@ -230,43 +230,28 @@
     flex: 1;
   }
 
-  /* ── Embedded Google Docs Workspace Modal ── */
+  /* Minimal Embedded Google Docs Modal */
   .gdoc-editor-shell {
     max-width: 1140px; width: 100%; height: 92vh; background: var(--surface); border: 1px solid var(--gold-border);
     border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column;
   }
-  .gdoc-case-bar {
+  .gdoc-hdr-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 12px 18px; background: var(--surface); border-bottom: 1px solid var(--border);
+  }
+  .gdoc-hdr-left {
+    display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px; flex-wrap: wrap;
+  }
+  .gdoc-hdr-right {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+  }
+  .gdoc-status-strip {
     display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-    padding: 9px 18px; background: var(--surface2); border-bottom: 1px solid var(--border); font-size: 12px;
-  }
-  .gdoc-mode-tabs {
-    display: inline-flex; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 2px; gap: 3px;
-  }
-  .gdoc-mode-tab {
-    padding: 5px 11px; border-radius: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-muted);
-    display: inline-flex; align-items: center; gap: 5px;
-  }
-  .gdoc-mode-tab.active {
-    background: var(--gold-dim); color: var(--gold-light); border: 1px solid var(--gold-border);
-  }
-  .gdoc-toolbar {
-    display: flex; align-items: center; gap: 5px; padding: 8px 16px; background: var(--surface2);
-    border-bottom: 1px solid var(--border); flex-wrap: wrap;
-  }
-  .gdoc-tool { padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-  .gdoc-tool:hover { border-color: var(--gold); color: var(--gold); }
-  .gdoc-tool-select {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-    color: var(--text); font-size: 11.5px; font-weight: 600; padding: 4px 8px; outline: none;
-  }
-  .gdoc-page-canvas {
-    margin: 18px auto; width: 92%; max-width: 740px; min-height: 440px;
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 36px 44px; color: var(--text); font-size: 13.5px; line-height: 1.7; outline: none;
+    padding: 6px 18px; background: var(--surface2); border-bottom: 1px solid var(--border);
+    font-size: 11.5px; color: var(--text-dim);
   }
 
-  /* ── All Cases + Sorted Drive Explorer ── */
+  /* All Cases + Sorted Drive Explorer */
   .allcases-mode-switch {
     display: inline-flex;
     background: var(--surface2);
@@ -292,7 +277,7 @@
     border: 1px solid var(--gold-border);
   }
 
-  /* ── Drive-Style Sorted Folder Tiles ── */
+  /* Drive-Style Sorted Folder Tiles */
   .folder-tile-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -325,7 +310,7 @@
     font-size: 32px;
   }
 
-  /* ── Document Edit History Logs & Co-Editing Presence ── */
+  /* Document Edit History Logs & Co-Editing Presence */
   .history-entry {
     display: flex; align-items: flex-start; gap: 10px;
     padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border);
@@ -337,7 +322,7 @@
     background: rgba(52,211,153,0.14); color: var(--green); border: 1px solid rgba(52,211,153,0.35);
   }
 
-  /* ── 4-Step New Google Doc Wizard ── */
+  /* 4-Step New Google Doc Wizard */
   .wizard-step-chip {
     padding: 6px 12px; border-radius: 8px; background: var(--surface2);
     border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--text-dim);
@@ -380,56 +365,48 @@
   <i class="bi bi-exclamation-triangle-fill" style="color:var(--amber);margin-right:6px"></i> <strong>Firebase not connected.</strong> Data is stored in memory only and will be lost on refresh.
 </div>
 
-<!-- Real Google Docs Workspace Modal (Live Embedded Editor & Specific Case Binding) -->
+<!-- Minimal Clean Google Docs Workspace Modal -->
 <div id="gdoc-modal" class="modal-overlay hidden" style="z-index: 10012;" onclick="if(event.target===this)attemptCloseGdocModal()">
   <div class="gdoc-editor-shell">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:240px">
-        <i class="bi bi-file-earmark-richtext-fill" style="color:var(--gold);font-size:20px"></i>
-        <input id="gdoc-title-input" class="field-input" style="max-width:300px;padding:6px 10px;font-weight:700" placeholder="Document Title" value="Legal Memorandum Draft" oninput="markDocDirty()"/>
-        <span class="badge" id="gdoc-api-status-badge" style="background:var(--green-bg);color:var(--green)"><i class="bi bi-cloud-check"></i> Google Docs</span>
+    <div class="gdoc-hdr-bar">
+      <div class="gdoc-hdr-left">
+        <i class="bi bi-file-earmark-richtext-fill" style="color:var(--gold);font-size:20px;flex-shrink:0"></i>
+        <input id="gdoc-title-input" class="field-input" style="max-width:280px;padding:6px 11px;font-weight:700" placeholder="Document Title" value="Legal Memorandum Draft" oninput="markDocDirty()"/>
+        <span id="gdoc-case-folder-badge" class="badge" style="background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border)">
+          <i class="bi bi-folder-check"></i> Case File
+        </span>
         <span class="badge" id="gdoc-flow-badge" style="background:var(--violet-bg);color:var(--violet)">Outbound</span>
       </div>
 
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <select class="field-input" id="gdoc-case-select" onchange="onGdocCaseSelectionChange()" style="width:auto;max-width:250px;padding:6px 10px;font-size:12px" title="Select which specific case this Google Doc belongs to">
-          <option value="">— Standalone Firm Draft —</option>
-        </select>
-        <button type="button" class="btn btn-primary btn-sm" id="gdoc-save-btn" onclick="saveAndReplaceCasePdf(false)" title="Save changes and replace existing case PDF directly"><i class="bi bi-file-earmark-pdf-fill"></i> Save &amp; Replace PDF</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="gdoc-pdf-btn" onclick="saveAndReplaceCasePdf(true)" title="Export a new standalone PDF copy"><i class="bi bi-cloud-arrow-up"></i> Export Copy</button>
-        <button type="button" onclick="attemptCloseGdocModal()" style="color:var(--text-dim);font-size:18px;padding:4px" title="Close"><i class="bi bi-x-lg"></i></button>
-      </div>
-    </div>
-
-    <!-- Case Binding & Mode Switcher Bar -->
-    <div class="gdoc-case-bar">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
-        <span id="gdoc-case-folder-badge" class="badge" style="background:var(--gold-dim);color:var(--gold-light);border:1px solid var(--gold-border)">
-          <i class="bi bi-folder-check"></i> Standalone Firm Draft
-        </span>
-        <span id="gdoc-saved-indicator" style="font-size:11.5px;color:var(--text-dim)">Not yet created in Google Docs</span>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div class="gdoc-mode-tabs">
-          <button type="button" class="gdoc-mode-tab active" id="gdoc-tab-live" onclick="switchGdocEditorMode('live')"><i class="bi bi-google"></i> Live Google Docs</button>
-          <button type="button" class="gdoc-mode-tab" id="gdoc-tab-draft" onclick="switchGdocEditorMode('draft')"><i class="bi bi-file-earmark-text"></i> Legal Draft Pad</button>
-        </div>
-        <a id="gdoc-popout-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm hidden" title="Open full Google Docs in a new tab">
-          <i class="bi bi-box-arrow-up-right"></i> Open in Google Docs
+      <div class="gdoc-hdr-right">
+        <button type="button" id="gdoc-reload-btn" class="btn btn-ghost btn-sm hidden" onclick="reloadLiveGoogleDocFrame()" title="Reload Google Docs Editor">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <a id="gdoc-popout-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm hidden" title="Open in Google Docs">
+          <i class="bi bi-box-arrow-up-right"></i> Open in Docs
         </a>
+        <button type="button" class="btn btn-primary btn-sm" id="gdoc-save-btn" onclick="saveAndReplaceCasePdf(false)" title="Save changes and replace existing case PDF directly">
+          <i class="bi bi-file-earmark-pdf-fill"></i> Save &amp; Replace PDF
+        </button>
+        <button type="button" onclick="attemptCloseGdocModal()" style="color:var(--text-dim);font-size:18px;padding:4px 6px" title="Close">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Mode 1: Live Google Docs Editor -->
+    <div class="gdoc-status-strip">
+      <span id="gdoc-saved-indicator">Ready</span>
+      <span id="gdoc-api-status-badge" style="font-weight:600;color:var(--green)"><i class="bi bi-cloud-check"></i> Google Docs Ready</span>
+    </div>
+
     <div id="gdoc-live-pane" style="flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)">
       <div id="gdoc-live-launch" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;gap:14px">
         <div style="width:62px;height:62px;border-radius:16px;background:var(--gold-dim);border:1px solid var(--gold-border);display:grid;place-items:center;font-size:28px;color:var(--gold)">
           <i class="bi bi-file-earmark-richtext-fill"></i>
         </div>
-        <div style="font-size:18px;font-weight:700;color:var(--text)">Create Real Google Doc for Selected Case</div>
-        <div style="font-size:13px;color:var(--text-muted);max-width:480px;line-height:1.55">
-          Creates a full Google Doc inside the selected case's Drive folder, binds it to this docket, and opens the live embedded Google Docs editor.
+        <div style="font-size:18px;font-weight:700;color:var(--text)">Create Google Doc</div>
+        <div style="font-size:13px;color:var(--text-muted);max-width:440px;line-height:1.55">
+          Opens a live Google Doc inside this case's folder. Press <strong>Save &amp; Replace PDF</strong> when done.
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;width:100%;max-width:460px">
           <select id="gdoc-template-select" class="field-input" style="flex:1;min-width:210px">
@@ -440,38 +417,13 @@
             <option value="blank">Blank Google Document</option>
           </select>
           <button type="button" class="btn btn-primary" id="gdoc-launch-btn" onclick="launchLiveGoogleDocForCase()">
-            <i class="bi bi-google"></i> Create &amp; Open Google Doc
+            <i class="bi bi-google"></i> Create &amp; Open
           </button>
         </div>
       </div>
 
       <div id="gdoc-iframe-wrap" class="hidden" style="flex:1;min-height:0;display:flex;flex-direction:column">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11.5px;color:var(--text-muted)">
-          <span><i class="bi bi-shield-check" style="color:var(--green);margin-right:5px"></i>Live Google Docs · Saving converts and replaces original PDF</span>
-          <div style="display:flex;gap:10px;align-items:center">
-            <button type="button" class="btn btn-ghost btn-sm" onclick="reloadLiveGoogleDocFrame()" style="padding:3px 8px;font-size:11px"><i class="bi bi-arrow-clockwise"></i> Reload Editor</button>
-            <a id="gdoc-banner-popout" href="#" target="_blank" rel="noopener noreferrer" style="color:var(--gold);font-weight:700;text-decoration:underline;font-size:11.5px">Open in Google Docs tab <i class="bi bi-box-arrow-up-right"></i></a>
-          </div>
-        </div>
         <iframe id="gdoc-live-iframe" src="about:blank" style="width:100%;flex:1;border:none;background:#fff" allow="clipboard-read; clipboard-write"></iframe>
-      </div>
-    </div>
-
-    <!-- Mode 2: Legal Draft Pad -->
-    <div id="gdoc-draft-pane" class="hidden" style="flex:1;min-height:0;display:flex;flex-direction:column">
-      <div class="gdoc-toolbar">
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('bold')"><strong>B</strong></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('italic')"><em>I</em></button>
-        <button type="button" class="gdoc-tool" onclick="execInternalDocFmt('underline')"><u>U</u></button>
-        <span style="width:1px;height:18px;background:var(--border-soft);margin:0 2px"></span>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('caption')"><i class="bi bi-bank"></i> Caption</button>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('prayer')"><i class="bi bi-paragraph"></i> Prayer</button>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('jurat')"><i class="bi bi-pen"></i> Jurat</button>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('notice')"><i class="bi bi-bell"></i> Notice</button>
-        <button type="button" class="gdoc-tool" onclick="insertInternalDocTemplate('service')"><i class="bi bi-envelope-check"></i> Service</button>
-      </div>
-      <div style="flex:1;overflow-y:auto;background:var(--bg)">
-        <div id="gdoc-canvas" class="gdoc-page-canvas" contenteditable="true" oninput="markDocDirty()"></div>
       </div>
     </div>
   </div>
@@ -933,10 +885,8 @@
   </div>
 
   <div id="research-view-web" class="research-body-area hidden">
-    <!-- Preset + User-Saved Custom Links Strip -->
     <div class="research-sites-strip" id="research-sites-strip"></div>
 
-    <!-- Inline "+ Add Link" Bar -->
     <div id="research-add-link-bar" class="research-add-bar hidden">
       <input type="text" id="research-add-name" class="field-input" placeholder="Site label (e.g. Respicio)" style="flex:0.9;min-width:110px;padding:5px 9px;font-size:11.5px"/>
       <input type="url" id="research-add-url" class="field-input" placeholder="https://example.com" style="flex:1.4;min-width:150px;padding:5px 9px;font-size:11.5px" onkeydown="if(event.key==='Enter')addCustomResearchLink()"/>
@@ -949,7 +899,6 @@
       <button type="button" onclick="popOutCurrentResearchUrl()" style="color:var(--gold);font-weight:600;white-space:nowrap" title="Open in side-by-side reader window"><i class="bi bi-box-arrow-up-right"></i> Pop-out</button>
     </div>
 
-    <!-- Clean Fallback Card for Sites with X-Frame-Options -->
     <div id="research-blocked-card" class="hidden" style="flex:1;padding:24px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;background:var(--bg)">
       <div style="width:54px;height:54px;border-radius:14px;background:var(--gold-dim);border:1px solid var(--gold-border);display:grid;place-items:center;font-size:24px;color:var(--gold)">
         <i class="bi bi-shield-lock-fill"></i>
