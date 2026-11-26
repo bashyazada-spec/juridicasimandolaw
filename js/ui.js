@@ -1781,7 +1781,7 @@ window.deleteBusySlot = function(id) {
   });
 };
 
-// ── CALENDAR MONTH VIEW + FIXED ATTORNEY FILTER + STEALTH ────
+// ── CALENDAR MONTH VIEW + ATTORNEY FILTER + STEALTH ──────────
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 let selectedCalDateStr = (() => {
@@ -2179,7 +2179,7 @@ const DESKTOP_PAGE_META = {
   profileDetail: ["Attorney Profile", "Assigned caseload, practice bio, and contact details"],
   profileForm:   ["Attorney Profile Setup", "Create or edit attorney profile information"],
   allcases:      ["All Cases & Google Docs", "Search, filter, manage cases, and explore sorted document folders"],
-  caseDetail:    ["Case File Details", "Full summary, hearing schedule, and attached documents"],
+  caseDetail:    ["Case File Details", "Full summary, hearing schedule, activity logs, and attached PDFs"],
   caseForm:      ["Add / Edit Case", "Follow the 4 steps below to save your case record"],
   myprofile:     ["Profile Settings", "Manage your display name, contact number, profile photo, and practice bio"],
   settings:      ["Settings", "Accessibility, notification sounds, security credentials, and firm policies"]
@@ -2237,16 +2237,33 @@ function showView(name) {
   document.getElementById("view-" + name)?.classList.remove("hidden");
   currentView = name;
 
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-btn, .bnav-btn").forEach(b => b.classList.remove("active"));
   let key = name;
   if (name === "caseDetail" || name === "caseForm") key = "allcases";
   else if (name === "profileDetail" || name === "profileForm") key = "profiles";
   document.querySelector(`.nav-btn[data-nav="${key}"]`)?.classList.add("active");
+  document.querySelector(`.bnav-btn[data-nav="${key}"]`)?.classList.add("active");
+
+  const mobileFormBar = document.getElementById("mobile-form-bar");
+  const bottomNavWrap = document.getElementById("bottom-nav-wrap");
+  if (mobileFormBar) mobileFormBar.classList.toggle("hidden", name !== "caseForm");
+  if (bottomNavWrap) bottomNavWrap.classList.toggle("hidden", name === "caseForm");
+
+  const topbarBackBtn = document.getElementById("topbar-back-btn");
+  const topbarCrest   = document.getElementById("topbar-crest");
+  const subViews = ["caseDetail", "caseForm", "profileDetail", "profileForm"];
+  if (topbarBackBtn && topbarCrest) {
+    const isSub = subViews.includes(name);
+    topbarBackBtn.classList.toggle("hidden", !isSub);
+    topbarCrest.classList.toggle("hidden", isSub);
+  }
 
   const meta = DESKTOP_PAGE_META[name];
   if (meta) {
     setElText("main-page-title", meta[0]);
     setElText("main-page-sub", meta[1]);
+    setElText("mobile-page-title", meta[0]);
+    setElText("mobile-page-sub", meta[1]);
   }
 }
 
@@ -2279,6 +2296,31 @@ window.quickFilterCases = (status) => {
 window.showView = showView;
 window.navTo = navTo;
 window.executeNavigation = executeNavigation;
+
+// Mobile UI Helpers (safe when not on mobile)
+window.switchDashSegment = function(seg) {
+  document.getElementById("seg-btn-cases")?.classList.toggle("active", seg === "cases");
+  document.getElementById("seg-btn-schedule")?.classList.toggle("active", seg === "schedule");
+  document.getElementById("dash-panel-cases")?.classList.toggle("hidden", seg !== "cases");
+  document.getElementById("dash-calendar-card")?.classList.toggle("hidden", seg !== "schedule");
+};
+window.toggleFiltersDrawer = function() {
+  const drawer = document.getElementById("ac-filters-drawer");
+  const btn = document.getElementById("toggle-filters-btn");
+  if (!drawer) return;
+  const hidden = drawer.classList.toggle("hidden");
+  if (btn) btn.setAttribute("aria-expanded", String(!hidden));
+};
+window.openSheet = function(id) { document.getElementById(id)?.classList.remove("hidden"); };
+window.closeAllSheets = function() {
+  document.querySelectorAll(".sheet-backdrop").forEach(s => s.classList.add("hidden"));
+};
+window.goBackMobile = function() {
+  if (currentView === "caseForm") handleCaseCancelOrExit();
+  else if (currentView === "caseDetail") handleCaseDetailBack();
+  else if (currentView === "profileDetail" || currentView === "profileForm") navTo("profiles");
+  else navTo("dashboard");
+};
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
@@ -2507,7 +2549,7 @@ function renderProfiles() {
 }
 window.renderProfiles = renderProfiles;
 
-// ── CASE SHARING SYSTEM (STEALTH HIDES SUPERDEV FROM ASSOCIATES) ──
+// ── CASE SHARING SYSTEM (WITH AUDIT LOGGING & DRIVE PERMISSION) ──
 window.openShareCaseModal = function() {
   if (!selCase) return;
   const listEl = document.getElementById("share-modal-list");
@@ -3090,7 +3132,73 @@ function renderAllCases() {
 }
 window.renderAllCases = renderAllCases;
 
-// ── CASE DETAIL (SINGLE PDF VIEW/EDIT + ACTIVITY LOGS) ───────
+// ═══════════════════════════════════════════════════════════════
+//  ENHANCED CASE DETAIL RENDERER (BOXED LEFT FIELDS + ACCORDIONS + PAGER)
+// ═══════════════════════════════════════════════════════════════
+let cdHistoryCurrentPage = 1;
+const CD_HISTORY_PAGE_SIZE = 5;
+
+window.toggleCdAccordion = function(accId) {
+  const acc = document.getElementById(accId);
+  if (acc) acc.classList.toggle("is-open");
+};
+
+window.changeCdHistoryPage = function(delta) {
+  cdHistoryCurrentPage += delta;
+  renderCaseHistoryPagination();
+};
+
+function renderCaseHistoryPagination() {
+  const c = selCase;
+  const historyContainer = document.getElementById("cd-history-card");
+  const logBadge = document.getElementById("cd-log-badge");
+  if (!c || !historyContainer) return;
+
+  const logs = Array.isArray(c.logs) ? c.logs : [];
+  if (logBadge) logBadge.textContent = `${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}`;
+
+  if (logs.length === 0) {
+    historyContainer.innerHTML = `<div style="font-size:13px;color:var(--text-dim);text-align:center;padding:14px 0">No edit or sharing logs recorded yet.</div>`;
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(logs.length / CD_HISTORY_PAGE_SIZE));
+  if (cdHistoryCurrentPage > totalPages) cdHistoryCurrentPage = totalPages;
+  if (cdHistoryCurrentPage < 1) cdHistoryCurrentPage = 1;
+
+  const start = (cdHistoryCurrentPage - 1) * CD_HISTORY_PAGE_SIZE;
+  const paged = logs.slice(start, start + CD_HISTORY_PAGE_SIZE);
+
+  let html = paged.map(l => `
+    <div class="history-entry">
+      <span class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10.5px">${escHtml(l.version || "—")}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px;color:var(--text)">${escHtml(l.action)}</div>
+        <div style="font-size:11.5px;color:var(--text-dim);margin-top:2px">by <strong>${escHtml(l.user || "Counsel")}</strong> · ${escHtml(l.time || "")}</div>
+      </div>
+    </div>
+  `).join("");
+
+  if (totalPages > 1) {
+    html += `
+      <div class="cd-history-pager">
+        <span>Showing ${start + 1}–${Math.min(start + CD_HISTORY_PAGE_SIZE, logs.length)} of ${logs.length}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="changeCdHistoryPage(-1)" ${cdHistoryCurrentPage <= 1 ? 'disabled' : ''}>
+            <i class="bi bi-chevron-left"></i> Prev
+          </button>
+          <span style="font-weight:700;color:var(--text)">Page ${cdHistoryCurrentPage} of ${totalPages}</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="changeCdHistoryPage(1)" ${cdHistoryCurrentPage >= totalPages ? 'disabled' : ''}>
+            Next <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  historyContainer.innerHTML = html;
+}
+
 function renderCaseDetail() {
   const c = selCase;
   if (!c) return;
@@ -3108,14 +3216,28 @@ function renderCaseDetail() {
   let actionButtons = "";
   if (canEdit) {
     if (document.getElementById("gdoc-modal")) {
-      actionButtons += `<button class="btn btn-primary btn-sm" onclick="openNewDocWizardForCase('${c.id}')"><i class="bi bi-file-earmark-richtext"></i> New Google Doc</button>`;
+      actionButtons += `
+        <button class="btn btn-primary btn-cd-action" onclick="openNewDocWizardForCase('${c.id}')" title="Draft or attach a real Google Doc to this docket">
+          <i class="bi bi-file-earmark-richtext"></i> New Google Doc
+        </button>`;
     }
-    actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openEditCase()"><i class="bi bi-pencil-square"></i> Edit Case</button>`;
+    actionButtons += `
+      <button class="btn btn-secondary btn-cd-action" onclick="openEditCase()" title="Edit docket fields, hearings, or parties">
+        <i class="bi bi-pencil-square"></i> Edit Case
+      </button>`;
   }
   if (isOwner || isGroupAdmin) {
-    actionButtons += `<button class="btn btn-secondary btn-sm" onclick="openShareCaseModal()"><i class="bi bi-people"></i> Share${sharedCount ? ` (${sharedCount})` : ""}</button><button class="btn btn-danger btn-sm" onclick="confirmDeleteCase()"><i class="bi bi-trash3"></i> Delete</button>`;
+    actionButtons += `
+      <button class="btn btn-secondary btn-cd-action" onclick="openShareCaseModal()" title="Share case access with other firm attorneys">
+        <i class="bi bi-people"></i> Share${sharedCount ? ` (${sharedCount})` : ""}
+      </button>
+      <button class="btn btn-danger btn-cd-action" onclick="confirmDeleteCase()" title="Permanently delete this case">
+        <i class="bi bi-trash3"></i> Delete
+      </button>`;
   }
-  if (isShared && !isOwner && !isGroupAdmin) actionButtons += `<span class="badge" style="background:var(--green-bg);color:var(--green);padding:6px 12px"><i class="bi bi-shield-check"></i> Shared Associate</span>`;
+  if (isShared && !isOwner && !isGroupAdmin) {
+    actionButtons += `<span class="badge" style="background:var(--green-bg);color:var(--green);padding:7px 14px;font-size:12px"><i class="bi bi-shield-check"></i> Shared Associate</span>`;
+  }
 
   const wrapEl = document.getElementById("cd-action-buttons-wrap");
   if (wrapEl) wrapEl.innerHTML = actionButtons;
@@ -3123,28 +3245,57 @@ function renderCaseDetail() {
   const chip = document.getElementById("cd-profile-chip");
   if (chip) {
     if (p) {
-      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 28, p.photoUrl)}<div><div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role === 'superdev' ? 'Developer Admin' : (p.role || "Attorney"))}</div></div><span style="font-size:12px;color:var(--text-dim);margin-left:8px"><i class="bi bi-arrow-right"></i> view profile</span>`;
+      chip.innerHTML = `${avatarDiv(p.name, p.avatarColor, 30, p.photoUrl)}<div><div style="font-size:14px;font-weight:700;color:var(--text)">${escHtml(p.name)}</div><div style="font-size:12px;color:var(--text-muted)">${escHtml(p.role === 'superdev' ? 'Developer Admin' : (p.role || "Attorney"))}</div></div><span style="font-size:12px;color:var(--gold);margin-left:10px;font-weight:600"><i class="bi bi-arrow-right"></i> view profile</span>`;
       chip.style.display = "inline-flex";
     } else chip.style.display = "none";
   }
 
+  // Left Column: Distinct Boxed Case Properties with Larger Typography
   const infoEl = document.getElementById("cd-info");
   if (infoEl) {
     infoEl.innerHTML = `
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${badge(c.status, statusColor(c.status))} ${badge(c.category || "Case", "var(--gold)")} ${badge(c.type || "Litigation", "var(--violet)")}
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        ${badge(c.status, statusColor(c.status))}
+        ${badge(c.category || "Case", "var(--gold)")}
+        ${badge(c.type || "Litigation", "var(--violet)")}
       </div>
-      <hr class="divider"/>
-      ${[
-        ["Parties Involved", c.parties || "None"],
-        ["Venue / Court", c.venue || "N/A"],
-        ["Date Case Filed", formatDate(c.filedDate)],
-        ["Case / Docket Number", c.caseNumber || "Not indicated"],
-        ["Date Added", c.createdAt || "N/A"]
-      ].map(([l, v]) => `<div style="margin-bottom:14px"><div class="field-label">${l}</div><div style="font-size:14px;color:var(--text)">${escHtml(v)}</div></div>`).join("")}
-      <div><div class="field-label">Case Narrative</div><div style="font-size:14px;color:var(--text-muted);line-height:1.75">${escHtml(c.narrative || "")}</div></div>`;
+
+      <div class="cd-property-grid">
+        <div class="cd-property-box">
+          <div class="cd-prop-label"><i class="bi bi-people-fill"></i> Parties Involved</div>
+          <div class="cd-prop-value">${escHtml(c.parties || "None specified")}</div>
+        </div>
+
+        <div class="cd-property-box">
+          <div class="cd-prop-label"><i class="bi bi-bank2"></i> Venue / Court</div>
+          <div class="cd-prop-value">${escHtml(c.venue || "N/A")}</div>
+        </div>
+
+        <div class="cd-prop-row-2">
+          <div class="cd-property-box">
+            <div class="cd-prop-label"><i class="bi bi-calendar-check"></i> Date Case Filed</div>
+            <div class="cd-prop-value">${formatDate(c.filedDate)}</div>
+          </div>
+          <div class="cd-property-box">
+            <div class="cd-prop-label"><i class="bi bi-hash"></i> Docket Number</div>
+            <div class="cd-prop-value">${escHtml(c.caseNumber || "Not indicated")}</div>
+          </div>
+        </div>
+
+        <div class="cd-property-box">
+          <div class="cd-prop-label"><i class="bi bi-clock"></i> Date Added to CMS</div>
+          <div class="cd-prop-value" style="font-size:14.5px">${escHtml(c.createdAt || "N/A")}</div>
+        </div>
+
+        <div class="cd-property-box">
+          <div class="cd-prop-label"><i class="bi bi-card-text"></i> Case Narrative Summary</div>
+          <div class="cd-prop-value narrative">${escHtml(c.narrative || "No narrative background provided for this case.")}</div>
+        </div>
+      </div>
+    `;
   }
 
+  // Accordion 1: Schedule & Timelines
   const hearingsEl = document.getElementById("cd-hearings");
   if (hearingsEl) {
     const hearingsList = Array.isArray(c.hearings) ? c.hearings : [];
@@ -3153,25 +3304,35 @@ function renderCaseDetail() {
     const sortedDeadlines = [...deadlinesList].sort((a, b) => new Date(a.date) - new Date(b.date));
     const todayStr = new Date().toISOString().split("T")[0];
 
-    let hHtml = `<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:12px"><i class="bi bi-calendar-event" style="color:var(--gold)"></i> Schedule &amp; Timelines</div>`;
-    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-bank" style="color:var(--green)"></i> Court Hearings (${sortedHearings.length})</div>`;
-    hHtml += sortedHearings.length === 0 ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">No court appearances on record.</div>`
-      : `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">` + sortedHearings.map(h => `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${h.date < todayStr ? 'var(--text-dim)' : 'var(--green)'};border-radius:8px"><div style="font-weight:700;font-size:12.5px;color:var(--text)">${formatDate(h.date)} ${h.time ? '· ' + h.time : ''}</div><div style="font-size:12px;font-weight:600;color:var(--gold-light)">${escHtml(h.purpose)}</div>${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">"${escHtml(h.notes)}"</div>` : ''}</div>`).join("") + `</div>`;
+    let hHtml = `<div style="font-size:11.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:8px"><i class="bi bi-bank" style="color:var(--green)"></i> Court Hearings (${sortedHearings.length})</div>`;
+    hHtml += sortedHearings.length === 0
+      ? `<div style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">No court appearances on record.</div>`
+      : `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">` + sortedHearings.map(h => `
+          <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid ${h.date < todayStr ? 'var(--text-dim)' : 'var(--green)'};border-radius:8px">
+            <div style="font-weight:700;font-size:13px;color:var(--text)">${formatDate(h.date)} ${h.time ? '· ' + h.time : ''}</div>
+            <div style="font-size:12.5px;font-weight:600;color:var(--gold-light);margin-top:2px">${escHtml(h.purpose)}</div>
+            ${h.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic;margin-top:2px">"${escHtml(h.notes)}"</div>` : ''}
+          </div>`).join("") + `</div>`;
 
-    hHtml += `<div style="font-size:11px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:6px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document Deadlines (${sortedDeadlines.length})</div>`;
-    hHtml += sortedDeadlines.length === 0 ? `<div style="font-size:12px;color:var(--text-muted)">No filing deadlines logged.</div>`
-      : `<div style="display:flex;flex-direction:column;gap:8px">` + sortedDeadlines.map(d => `<div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px"><div style="font-weight:700;font-size:12.5px">${formatDate(d.date)}</div><div style="font-size:12px;color:var(--gold-light)">${escHtml(d.subtype || d.title || 'Pleading')}</div>${d.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic">"${escHtml(d.notes)}"</div>` : ''}</div>`).join("") + `</div>`;
+    hHtml += `<div style="font-size:11.5px;text-transform:uppercase;color:var(--text-dim);font-weight:700;margin-bottom:8px"><i class="bi bi-file-earmark-text-fill" style="color:var(--gold)"></i> Document Deadlines (${sortedDeadlines.length})</div>`;
+    hHtml += sortedDeadlines.length === 0
+      ? `<div style="font-size:12.5px;color:var(--text-muted)">No filing deadlines logged.</div>`
+      : `<div style="display:flex;flex-direction:column;gap:8px">` + sortedDeadlines.map(d => `
+          <div style="padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-left:4px solid var(--gold);border-radius:8px">
+            <div style="font-weight:700;font-size:13px">${formatDate(d.date)}</div>
+            <div style="font-size:12.5px;color:var(--gold-light);margin-top:2px">${escHtml(d.subtype || d.title || 'Pleading')}</div>
+            ${d.notes ? `<div style="font-size:11.5px;color:var(--text-dim);font-style:italic;margin-top:2px">"${escHtml(d.notes)}"</div>` : ''}
+          </div>`).join("") + `</div>`;
     hearingsEl.innerHTML = hHtml;
   }
 
+  // Accordion 2: Case Files (PDF & Google Docs)
   const docs = c.documents || [];
-  let docsHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <div>
-      <div style="font-size:15px;font-weight:700;color:var(--text)">Case Files (PDF &amp; Google Docs)</div>
-      <div style="font-size:11px;color:var(--text-dim)">View inside system or edit &amp; replace PDF directly</div>
-    </div>
-    ${canEdit ? `<div style="display:inline-flex;align-items:center;gap:8px"><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> In</label><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold)"/> Out</label><button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload</button></div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected</span>`}
-  </div>`;
+  let docsHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:12px;color:var(--text-dim)">Click to view in-app · Edit converts &amp; replaces PDF directly</div>
+      ${canEdit ? `<div style="display:inline-flex;align-items:center;gap:8px"><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Inbound" checked style="accent-color:var(--gold)"/> In</label><label style="font-size:11px;cursor:pointer"><input type="radio" name="cd-file-type" value="Outbound" style="accent-color:var(--gold)"/> Out</label><button class="btn btn-primary btn-sm" onclick="addDocToCase()"><i class="bi bi-cloud-arrow-up"></i> Upload</button></div>` : `<span style="font-size:11px;color:var(--text-dim)"><i class="bi bi-shield-lock"></i> Protected</span>`}
+    </div>`;
 
   if (docs.length === 0) {
     docsHtml += `<div class="upload-area" ${canEdit ? 'onclick="addDocToCase()"' : ''}><div style="font-size:24px;color:var(--gold)"><i class="bi bi-paperclip"></i></div><div>${canEdit ? 'Click to attach a document' : 'No documents uploaded'}</div></div>`;
@@ -3196,32 +3357,19 @@ function renderCaseDetail() {
   const docsEl = document.getElementById("cd-docs");
   if (docsEl) docsEl.innerHTML = docsHtml;
 
-  const historyCard = document.getElementById("cd-history-card");
-  if (historyCard) {
-    const logs = Array.isArray(c.logs) ? c.logs : [];
-    historyCard.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:15px;font-weight:700;color:var(--text)"><i class="bi bi-clock-history" style="color:var(--gold);margin-right:6px"></i>Document Edit History &amp; Activity Logs</div>
-        <span class="badge" style="background:var(--gold-dim);color:var(--gold-light)">${logs.length} ${logs.length === 1 ? 'entry' : 'entries'}</span>
-      </div>
-      ${logs.length === 0
-        ? `<div style="font-size:12px;color:var(--text-dim)">No edit or sharing logs recorded yet.</div>`
-        : logs.slice(0, 12).map(l => `
-          <div class="history-entry">
-            <span class="badge" style="background:var(--gold-dim);color:var(--gold-light);font-size:10px">${escHtml(l.version || "—")}</span>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;color:var(--text)">${escHtml(l.action)}</div>
-              <div style="font-size:11px;color:var(--text-dim)">by ${escHtml(l.user || "Counsel")} · ${escHtml(l.time || "")}</div>
-            </div>
-          </div>`).join("")
-      }`;
-  }
+  // Accordion 3: Document Edit History & Activity Logs (5 per page, starts closed)
+  cdHistoryCurrentPage = 1;
+  renderCaseHistoryPagination();
 
+  // Accordion 4: Update Status (starts closed)
   const statusPanelEl = document.getElementById("cd-status-panel");
   if (statusPanelEl) {
     statusPanelEl.innerHTML = canEdit
-      ? `<div style="font-size:15px;font-weight:700;margin-bottom:12px">Update Status</div>` + STATUS_OPTIONS.map(st => `<button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:9px 14px;border-radius:9px;border:1px solid ${c.status === st ? statusColor(st) : 'var(--border)'};background:${c.status === st ? 'var(--gold-dim)' : 'transparent'};color:${c.status === st ? statusColor(st) : 'var(--text)'};text-align:left;font-weight:${c.status === st ? 700 : 500}">${c.status === st ? '<i class="bi bi-check-lg" style="margin-right:6px"></i>' : ''}${st}</button>`).join("")
-      : `<div style="font-size:14px;font-weight:700;margin-bottom:8px">Current Status</div>${badge(c.status, statusColor(c.status))}`;
+      ? STATUS_OPTIONS.map(st => `
+          <button onclick="confirmUpdateCaseStatus('${st}')" style="display:block;width:100%;margin-bottom:8px;padding:10px 14px;border-radius:9px;border:1px solid ${c.status === st ? statusColor(st) : 'var(--border)'};background:${c.status === st ? 'var(--gold-dim)' : 'transparent'};color:${c.status === st ? statusColor(st) : 'var(--text)'};text-align:left;font-weight:${c.status === st ? 700 : 500}">
+            ${c.status === st ? '<i class="bi bi-check-lg" style="margin-right:6px"></i>' : ''}${st}
+          </button>`).join("")
+      : `<div style="font-size:14px;font-weight:700;margin-bottom:8px">Current Status: ${badge(c.status, statusColor(c.status))}</div>`;
   }
 }
 window.renderCaseDetail = renderCaseDetail;
@@ -3339,7 +3487,20 @@ function renderQuickAccess() {
 }
 
 function openProfile(id) { selProfile = profiles.find(p => p.id === id); if (!selProfile) return; showView("profileDetail"); renderProfileDetail(); }
-function openCase(id) { caseDetailOrigin = currentView; selCase = cases.find(c => c.id === id); if (!selCase) return; const p = profiles.find(x => x.id === selCase.profileId); if (p) selProfile = p; showView("caseDetail"); renderCaseDetail(); }
+function openCase(id) {
+  caseDetailOrigin = currentView;
+  selCase = cases.find(c => c.id === id);
+  if (!selCase) return;
+  const p = profiles.find(x => x.id === selCase.profileId);
+  if (p) selProfile = p;
+  // Reset accordions to default open/closed states on case entry
+  document.getElementById("cd-acc-schedule")?.classList.add("is-open");
+  document.getElementById("cd-acc-files")?.classList.add("is-open");
+  document.getElementById("cd-acc-history")?.classList.remove("is-open");
+  document.getElementById("cd-acc-status")?.classList.remove("is-open");
+  showView("caseDetail");
+  renderCaseDetail();
+}
 window.openProfile = openProfile;
 window.openCase = openCase;
 
@@ -3418,8 +3579,9 @@ function refreshFilterTypes(prefix) {
   const typeSel = document.getElementById(prefix + "-type");
   if (!catSel || !typeSel) return;
   const selectedCat = catSel.value; const curType = typeSel.value;
-  const filteredTypes = selectedCat === "All" ? globalCaseTypes.map(t => t.name) : globalCaseTypes.filter(t => t.category === selectedCat).map(t => t.name);
-  const distinctTypes = [...new Set(filteredTypes)].sort();
+  const fromGlobal = (selectedCat === "All" ? globalCaseTypes : globalCaseTypes.filter(t => t.category === selectedCat)).map(t => t.name);
+  const fromCases = (selectedCat === "All" ? getAccessibleCases() : getAccessibleCases().filter(c => c.category === selectedCat)).map(c => c.type).filter(Boolean);
+  const distinctTypes = [...new Set([...fromGlobal, ...fromCases])].sort();
   typeSel.innerHTML = `<option value="All">All Types</option>` + distinctTypes.map(t => `<option value="${t}">${t}</option>`).join("");
   typeSel.value = distinctTypes.includes(curType) ? curType : "All";
 }
@@ -3451,6 +3613,8 @@ function renderMyProfile() {
   settingsPhotoDataUrl = myProf.photoUrl || null;
   if (settingsPhotoDataUrl) showSettingsPhotoPreview(settingsPhotoDataUrl, myProf.name, myProf.role);
   else resetSettingsPhotoUpload();
+
+  if (document.getElementById("settings-drive-status")) renderSettingsView();
 }
 window.renderMyProfile = renderMyProfile;
 
@@ -3601,7 +3765,6 @@ async function saveUserSettings() {
   }
 }
 
-// ── FIXED UPDATE CREDENTIALS (ALWAYS-VISIBLE CURRENT PASSWORD + CONFIRM) ──
 async function saveSecuritySettings() {
   const u = window._currentUser || window._auth?.currentUser;
   if (!u) return;
@@ -3609,7 +3772,8 @@ async function saveSecuritySettings() {
   const currentPass = document.getElementById("setting-current-password")?.value || "";
   const email = (document.getElementById("setting-email")?.value || "").trim();
   const pass = document.getElementById("setting-password")?.value || "";
-  const confirmPass = document.getElementById("setting-confirm-password")?.value || "";
+  const confirmPassEl = document.getElementById("setting-confirm-password");
+  const confirmPass = confirmPassEl ? confirmPassEl.value : pass;
 
   if (!email) { showToast("Sign-In Email is required.", "error"); return; }
   if (!isValidEmail(email)) { showToast("Email must be @gmail.com, @outlook.com, or @yahoo.com.", "error"); return; }
@@ -3619,10 +3783,12 @@ async function saveSecuritySettings() {
 
   if (pass) {
     if (pass.length < 6) { showToast("New password must be at least 6 characters.", "error"); return; }
-    if (confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
+    if (confirmPassEl && confirmPass !== pass) { showToast("New password and confirmation do not match.", "error"); return; }
   }
 
   if (!currentPass) {
+    const reauthPanel = document.getElementById("setting-reauth-panel");
+    if (reauthPanel) reauthPanel.style.display = "block";
     showToast("Enter your Current Password to verify identity before updating credentials.", "error");
     document.getElementById("setting-current-password")?.focus();
     return;
@@ -3641,7 +3807,8 @@ async function saveSecuritySettings() {
     setElVal("setting-current-password", "");
     setElVal("setting-password", "");
     setElVal("setting-confirm-password", "");
-    document.getElementById("password-requirements").style.display = "none";
+    const reqEl = document.getElementById("password-requirements");
+    if (reqEl) reqEl.style.display = "none";
   } catch (err) {
     showToast("Credential update failed: " + err.message, "error");
   }
@@ -4118,13 +4285,11 @@ window.openFilePreview = async function(doc, docIndex = -1) {
 
   modal.style.display = "flex";
 
-  // 1. Local unsynced file
   if (doc._localTempId && typeof pendingLocalFiles !== "undefined" && pendingLocalFiles[doc._localTempId]) {
     renderBlobInsidePreviewModal(pendingLocalFiles[doc._localTempId], doc.name);
     return;
   }
 
-  // 2. Drive file — fetch bytes via OAuth token so it renders cleanly inside the system
   if (doc.driveFileId) {
     if (typeof hasValidToken === "function" && hasValidToken() && typeof fetchDriveFileBlob === "function") {
       bodyEl.innerHTML = `<div style="text-align:center;color:var(--text)"><span class="spinner"></span><div style="margin-top:12px;font-size:13px;color:var(--text-muted)">Loading file inside Simando Law…</div></div>`;
