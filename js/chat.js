@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — REWORKED ULTRA-MINIMAL CHAT DOCK & CONVERSATIONS
-//  Vertical Recent Chats List · Theme-Matched · Responsive Mobile Fullscreen
+//  Vertical Recent Chats List · Theme-Matched · Mobile Full-Screen
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
@@ -85,6 +85,16 @@
     injectStyles();
     buildUI();
 
+    const u = window._currentUser || window._auth?.currentUser;
+    if (u) {
+      myUid = u.uid;
+      const prof = (window.profiles || []).find(pr => pr.ownerUid === u.uid);
+      myName = prof?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
+      announcePeer();
+      subscribeGroup();
+      subscribePeersAndAllDms();
+    }
+
     if (window._fbOnAuth && window._auth) {
       window._fbOnAuth(window._auth, (user) => {
         if (user) {
@@ -118,18 +128,19 @@
   // ═══════════════════════════════════════════════════════════
   function buildUI() {
     if (document.getElementById("chat-panel")) return;
+    const isMobilePage = !!document.getElementById("mobile-shell");
     const panel = document.createElement("div");
     panel.id = "chat-panel";
-    panel.className = "chat-panel hidden";
+    panel.className = isMobilePage ? "chat-panel mobile-fullscreen hidden" : "chat-panel hidden";
     panel.innerHTML = `
-      <div class="chat-header" id="chat-panel-header" onclick="window._chat.toggleDock(event)" title="Click header to minimize">
+      <div class="chat-header" id="chat-panel-header" onclick="if(!this.closest('.mobile-fullscreen'))window._chat.toggleDock(event)" title="${isMobilePage ? 'Recent Chats' : 'Click header to minimize'}">
         <div class="chat-header-left" style="pointer-events:none;">
           <span class="chat-header-icon"><i class="bi bi-chat-square-text-fill"></i></span>
           <span class="chat-header-title" id="chat-header-title">Recent Chats</span>
           <span class="chat-header-pill">Firm</span>
         </div>
         <div class="chat-header-actions" style="pointer-events:auto;">
-          <button class="chat-icon-btn" title="Minimize" type="button" onclick="window._chat.toggleDock(event)"><i class="bi bi-dash-lg"></i></button>
+          <button class="chat-icon-btn" title="${isMobilePage ? 'Close' : 'Minimize'}" type="button" onclick="window._chat.toggleDock(event)"><i class="bi ${isMobilePage ? 'bi-x-lg' : 'bi-dash-lg'}"></i></button>
         </div>
       </div>
 
@@ -264,10 +275,24 @@
       if (e.stopPropagation) e.stopPropagation();
       if (e.preventDefault && e.type === "submit") e.preventDefault();
     }
-    isExpanded ? minimizeDock() : expandDock();
+    const panel = document.getElementById("chat-panel");
+    const currentlyOpen = panel && !panel.classList.contains("hidden");
+    currentlyOpen ? minimizeDock() : expandDock();
   }
 
   function expandDock() {
+    if (!myUid) {
+      const u = window._currentUser || window._auth?.currentUser;
+      if (u) {
+        myUid = u.uid;
+        const prof = (window.profiles || []).find(pr => pr.ownerUid === u.uid);
+        myName = prof?.name || u.displayName || u.email?.split("@")[0] || "Counsel";
+        announcePeer();
+        subscribeGroup();
+        subscribePeersAndAllDms();
+      }
+    }
+
     if (!myUid || !myName) {
       if (window.showToast) window.showToast("Please wait for account authorization to load.", "error");
       return;
@@ -280,7 +305,10 @@
     isExpanded = true;
     document.body.classList.add("chat-open");
     const panel = document.getElementById("chat-panel");
-    if (panel) panel.classList.remove("hidden");
+    if (panel) {
+      if (document.getElementById("mobile-shell")) panel.classList.add("mobile-fullscreen");
+      panel.classList.remove("hidden");
+    }
 
     if (activeChannel === "group") {
       setSeenTimestamp("group");
@@ -910,13 +938,41 @@
       }
       .chat-panel.hidden { display: none !important; }
 
-      /* Mobile & Small Tablet Fullscreen Override */
-      @media (max-width: 680px) {
+      /* Mobile Full-Screen Mode (always edge-to-edge on mobile.html or <= 768px) */
+      .chat-panel.mobile-fullscreen {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        z-index: 99999 !important;
+      }
+      .chat-panel.mobile-fullscreen .chat-header {
+        padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
+        cursor: default;
+      }
+      .chat-panel.mobile-fullscreen .chat-input-row {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
+      @media (max-width: 768px) {
         .chat-panel {
           position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
           inset: 0 !important;
-          width: 100% !important;
-          max-width: 100% !important;
+          width: 100vw !important;
+          max-width: 100vw !important;
           height: 100dvh !important;
           margin: 0 !important;
           border-radius: 0 !important;
@@ -925,7 +981,7 @@
           z-index: 99999 !important;
         }
         .chat-header {
-          padding-top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+          padding-top: calc(14px + env(safe-area-inset-top, 0px)) !important;
         }
         .chat-input-row {
           padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
@@ -943,7 +999,7 @@
         font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
         background: var(--gold-dim); color: var(--gold-light); border: 1px solid var(--gold-border);
       }
-      .chat-icon-btn { color: var(--text-dim); font-size: 14px; padding: 4px 8px; border-radius: 6px; }
+      .chat-icon-btn { color: var(--text-dim); font-size: 16px; padding: 6px 8px; border-radius: 6px; }
       .chat-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; width: 100% !important; }
       .chat-view.hidden { display: none; }
       .chat-search-wrap { position: relative; padding: 8px 10px 4px; }
