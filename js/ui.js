@@ -119,7 +119,7 @@ function renderGoogleStatusPopover() {
     badgeEl.className = `badge ${connected ? "badge-pass" : "badge-warn"}`;
     badgeEl.textContent = connected ? "Connected" : "Action Needed";
   }
-  if (driveSub) driveSub.textContent = connected ? "Scope: drive.file active" : "Not connected";
+  if (driveSub) driveSub.textContent = connected ? "Drive & Shared Editing active" : "Not connected";
   if (driveState) { driveState.textContent = connected ? "Active" : "Pending"; driveState.style.color = connected ? "var(--green)" : "var(--amber)"; }
   if (docsState)  { docsState.textContent  = connected ? "Ready"  : "Standby"; docsState.style.color  = connected ? "var(--green)" : "var(--amber)"; }
   if (calState)   { calState.textContent   = connected ? "Synced" : "Standby"; calState.style.color   = connected ? "var(--green)" : "var(--amber)"; }
@@ -2240,8 +2240,7 @@ window.goBackMobile = function() {
   else if (currentView === "caseDetail") handleCaseDetailBack();
   else if (currentView === "profileDetail" || currentView === "profileForm") navTo("profiles");
   else navTo("dashboard");
-};
-/ ═══════════════════════════════════════════════════════════════
+};// ═══════════════════════════════════════════════════════════════
 //  SIMANDO LAW — UI CONTROLLER (PART 2 OF 2)
 // ═══════════════════════════════════════════════════════════════
 
