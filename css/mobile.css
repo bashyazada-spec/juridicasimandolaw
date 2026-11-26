@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    SIMANDO LAW — MOBILE & TABLET STYLESHEET (mobile.html, tablet.html, admin-mobile.html)
-   5 Color Themes · Floating Capsule Nav · Slide-Up Sheets · Low-Glare Light Mode · Touch Calendar
+   5 Color Themes · Floating Capsule Nav · Slide-Up Sheets · Full-Screen Chat & Alerts
    ═══════════════════════════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap');
@@ -1059,7 +1059,7 @@ input[type="date"], input[type="time"] { color-scheme: dark; }
 .bnav-add-btn:active { transform: scale(0.94); }
 
 /* ═══════════════════════════════════════════════════════════════
-   SLIDE-UP BOTTOM SHEETS, MODALS, CHAT & TOAST
+   SLIDE-UP BOTTOM SHEETS & FULL-SCREEN OVERLAYS (CHAT + ALERTS)
    ═══════════════════════════════════════════════════════════════ */
 .sheet-backdrop {
   position: fixed;
@@ -1101,6 +1101,43 @@ input[type="date"], input[type="time"] { color-scheme: dark; }
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Full-screen Mobile Notifications / Alerts Overlay */
+#notif-dropdown.sheet-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  background: var(--surface) !important;
+  backdrop-filter: none !important;
+  z-index: 10002 !important;
+  align-items: stretch !important;
+}
+#notif-dropdown .bottom-sheet {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+#notif-dropdown .sheet-handle {
+  display: none !important;
+}
+#notif-dropdown #notifications-list {
+  flex: 1 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
 }
 
 .menu-row {
@@ -1204,18 +1241,17 @@ input[type="date"], input[type="time"] { color-scheme: dark; }
   position: relative !important;
 }
 
-/* Mobile Chat Panel Full Overlay */
+/* Mobile Chat Panel Full-Screen Edge-to-Edge Overlay */
 .chat-panel {
   position: fixed !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  top: 0 !important;
-  max-width: var(--app-max-w) !important;
-  width: 100% !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
   height: 100dvh !important;
-  margin: 0 auto !important;
+  margin: 0 !important;
   border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
   z-index: 10002 !important;
 }
 
